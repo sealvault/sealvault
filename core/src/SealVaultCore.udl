@@ -1,0 +1,106 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+namespace SealVaultCore {
+    string? uri_fixup(string input);
+};
+
+interface AppCore {
+    [Throws=CoreError]
+    constructor(CoreArgs args);
+
+    [Throws=CoreError]
+    sequence<CoreAccount> list_accounts();
+
+    [Throws=CoreError]
+    string active_account_id();
+
+    [Throws=CoreError]
+    string get_in_page_script(string rpc_provider_name, string request_handler_name);
+
+    [Throws=CoreError]
+    string in_page_request(InPageRequestContextI context, string raw_request);
+
+    [Throws=CoreError]
+    string eth_transfer_native_token(string from_address_id, string to_checksum_address, string amount);
+
+    [Throws=CoreError]
+    string eth_transfer_fungible_token(string from_address_id, string to_checksum_address, string amount, string token_id);
+
+    [Throws=CoreError]
+    string eth_transaction_block_explorer_url(string from_address_id, string tx_hash);
+};
+
+[Error]
+enum CoreError{
+  "Fatal",
+  "Retriable",
+  "User",
+};
+
+dictionary CoreAccount {
+    string id;
+    string name;
+    sequence<u8> picture;
+    sequence<CoreAddress> wallets;
+    sequence<CoreDapp> dapps;
+    string created_at;
+    string? updated_at;
+};
+
+dictionary CoreDapp {
+    string id;
+    string human_identifier;
+    string url;
+    sequence<CoreAddress> addresses;
+    sequence<u8>? favicon;
+    string? last_used;
+};
+
+dictionary CoreAddress {
+    string id;
+    boolean is_wallet;
+    string checksum_address;
+    string blockchain_explorer_link;
+    string chain_display_name;
+    sequence<u8> chain_icon;
+    CoreToken native_token;
+    sequence<CoreToken> fungible_tokens;
+};
+
+enum TokenType {
+    "Native",
+    "Fungible"
+};
+
+dictionary CoreToken {
+    string id;
+    string symbol;
+    string amount;
+    TokenType token_type;
+    sequence<u8>? icon;
+};
+
+dictionary CoreArgs {
+    string cache_dir;
+    string db_file_path;
+};
+
+callback interface InPageRequestContextI {
+    string page_url();
+    CoreInPageCallbackI callbacks();
+};
+
+dictionary DappApprovalParams {
+    string account_id;
+    string dapp_identifier;
+    sequence<u8>? favicon;
+};
+
+callback interface CoreInPageCallbackI {
+    // TODO arguments cannot be snake case due to uniffi-rs bug
+    boolean approve_dapp(DappApprovalParams dappApproval);
+    void notify(string messageHex);
+};
+

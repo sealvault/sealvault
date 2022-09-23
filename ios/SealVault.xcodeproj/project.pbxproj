@@ -1,0 +1,605 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 55;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5850C0FC7D0474EEB3ADFC21 /* TokenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C80B600A5AFC33AFACE0 /* TokenView.swift */; };
+		5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C0ECACCBB3AEF2D72B92 /* Token.swift */; };
+		5850C5E7A11D7CBB7D50D89B /* AddressMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */; };
+		5850C848BCC100C1CECBC0DE /* ChainLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */; };
+		5850C9386494A92B159B20B2 /* TokenLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */; };
+		5850C9CBC2E527BE683353DE /* WalletRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850CBB6EF5849DD76087101 /* WalletRow.swift */; };
+		5850CBD0176884BC3B64B08C /* IconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850CEC3F304338F5D6DC43D /* IconView.swift */; };
+		5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C2CE182126E257B1DD22 /* TransferForm.swift */; };
+		5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C6335A85D238AFAD5DC5 /* TokenRow.swift */; };
+		5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* AccountImage.swift */; };
+		68282DD328AD4B7D0034BFA4 /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68282DD228AD4B7D0034BFA4 /* WalletView.swift */; };
+		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
+		686C1D052827C9DC00011311 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C1D042827C9DC00011311 /* Config.swift */; };
+		68745A802826E0F000E7B915 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A7F2826E0F000E7B915 /* BrowserView.swift */; };
+		68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A812826E11500E7B915 /* WebViewRepresentable.swift */; };
+		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
+		688C29B4283FD78000474900 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* ViewModel.swift */; };
+		688C29B6283FE73E00474900 /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* AccountListView.swift */; };
+		688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B9283FE94300474900 /* AppTabNavigation.swift */; };
+		688C29BC283FF32300474900 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BB283FF32300474900 /* AccountView.swift */; };
+		688C29BE283FF33A00474900 /* AccountRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BD283FF33A00474900 /* AccountRow.swift */; };
+		688C29E92840F69100474900 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29E82840F69100474900 /* Account.swift */; };
+		688C29EB284102FC00474900 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29EA284102FC00474900 /* Address.swift */; };
+		68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C3FC28426B040025BCEA /* DappRow.swift */; };
+		68B6C40128426C120025BCEA /* Dapp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C40028426C120025BCEA /* Dapp.swift */; };
+		68B6C40528428FAC0025BCEA /* DappView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C40428428FAC0025BCEA /* DappView.swift */; };
+		68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EE265028DB4A710058CE25 /* DappApproval.swift */; };
+		68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6291128251A0900BDCD02 /* SealVaultApp.swift */; };
+		68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68F6291528251A0B00BDCD02 /* Assets.xcassets */; };
+		68F6291928251A0B00BDCD02 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68F6291828251A0B00BDCD02 /* Preview Assets.xcassets */; };
+		68F6292D28251A0B00BDCD02 /* SealVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		68F6292928251A0B00BDCD02 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 68F6290628251A0900BDCD02 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 68F6290D28251A0900BDCD02;
+			remoteInfo = SealVault;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		5850C0ECACCBB3AEF2D72B92 /* Token.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Token.swift; sourceTree = "<group>"; };
+		5850C2CE182126E257B1DD22 /* TransferForm.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TransferForm.swift; sourceTree = "<group>"; };
+		5850C4EEB3250EA90D094D1D /* AccountImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AccountImage.swift; sourceTree = "<group>"; };
+		5850C6335A85D238AFAD5DC5 /* TokenRow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenRow.swift; sourceTree = "<group>"; };
+		5850C80B600A5AFC33AFACE0 /* TokenView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenView.swift; sourceTree = "<group>"; };
+		5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChainLabel.swift; sourceTree = "<group>"; };
+		5850CBB6EF5849DD76087101 /* WalletRow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WalletRow.swift; sourceTree = "<group>"; };
+		5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AddressMenu.swift; sourceTree = "<group>"; };
+		5850CEC3F304338F5D6DC43D /* IconView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IconView.swift; sourceTree = "<group>"; };
+		5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenLabel.swift; sourceTree = "<group>"; };
+		68282DD228AD4B7D0034BFA4 /* WalletView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
+		685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SealVaultCore.swift; path = Generated/SealVaultCore.swift; sourceTree = "<group>"; };
+		686C1D042827C9DC00011311 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		68745A7F2826E0F000E7B915 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
+		68745A812826E11500E7B915 /* WebViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewRepresentable.swift; sourceTree = "<group>"; };
+		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
+		688C29B3283FD78000474900 /* ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		688C29B5283FE73E00474900 /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
+		688C29B9283FE94300474900 /* AppTabNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabNavigation.swift; sourceTree = "<group>"; };
+		688C29BB283FF32300474900 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		688C29BD283FF33A00474900 /* AccountRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountRow.swift; sourceTree = "<group>"; };
+		688C29E82840F69100474900 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
+		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
+		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
+		68B6C40028426C120025BCEA /* Dapp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dapp.swift; sourceTree = "<group>"; };
+		68B6C40428428FAC0025BCEA /* DappView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappView.swift; sourceTree = "<group>"; };
+		68EE265028DB4A710058CE25 /* DappApproval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappApproval.swift; sourceTree = "<group>"; };
+		68F6290E28251A0900BDCD02 /* SealVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SealVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		68F6291128251A0900BDCD02 /* SealVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealVaultApp.swift; sourceTree = "<group>"; };
+		68F6291528251A0B00BDCD02 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		68F6291828251A0B00BDCD02 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		68F6292828251A0B00BDCD02 /* SealVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SealVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealVaultUITests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		68F6290B28251A0900BDCD02 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68F6292528251A0B00BDCD02 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		681D2A58283195BC000DBC93 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		688C29E72840F5C500474900 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				688C29E82840F69100474900 /* Account.swift */,
+				688C29EA284102FC00474900 /* Address.swift */,
+				68B6C40028426C120025BCEA /* Dapp.swift */,
+				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
+				688C29B3283FD78000474900 /* ViewModel.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		68C0C4FC28A2739600572668 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */,
+			);
+			name = Generated;
+			sourceTree = "<group>";
+		};
+		68F6290528251A0900BDCD02 = {
+			isa = PBXGroup;
+			children = (
+				68F6291028251A0900BDCD02 /* SealVaultApp */,
+				68F6292B28251A0B00BDCD02 /* SealVaultUITests */,
+				68F6290F28251A0900BDCD02 /* Products */,
+				681D2A58283195BC000DBC93 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		68F6290F28251A0900BDCD02 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				68F6290E28251A0900BDCD02 /* SealVault.app */,
+				68F6292828251A0B00BDCD02 /* SealVaultUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
+			isa = PBXGroup;
+			children = (
+				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
+				688C29B5283FE73E00474900 /* AccountListView.swift */,
+				688C29BD283FF33A00474900 /* AccountRow.swift */,
+				688C29BB283FF32300474900 /* AccountView.swift */,
+				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
+				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
+				68F6291528251A0B00BDCD02 /* Assets.xcassets */,
+				68745A7F2826E0F000E7B915 /* BrowserView.swift */,
+				5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */,
+				686C1D042827C9DC00011311 /* Config.swift */,
+				68EE265028DB4A710058CE25 /* DappApproval.swift */,
+				68B6C3FC28426B040025BCEA /* DappRow.swift */,
+				68B6C40428428FAC0025BCEA /* DappView.swift */,
+				68C0C4FC28A2739600572668 /* Generated */,
+				5850CEC3F304338F5D6DC43D /* IconView.swift */,
+				688C29E72840F5C500474900 /* Model */,
+				68F6291728251A0B00BDCD02 /* Preview Content */,
+				68F6291128251A0900BDCD02 /* SealVaultApp.swift */,
+				5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */,
+				5850C6335A85D238AFAD5DC5 /* TokenRow.swift */,
+				5850C80B600A5AFC33AFACE0 /* TokenView.swift */,
+				5850C2CE182126E257B1DD22 /* TransferForm.swift */,
+				5850CBB6EF5849DD76087101 /* WalletRow.swift */,
+				68282DD228AD4B7D0034BFA4 /* WalletView.swift */,
+				68745A812826E11500E7B915 /* WebViewRepresentable.swift */,
+			);
+			path = SealVaultApp;
+			sourceTree = "<group>";
+		};
+		68F6291728251A0B00BDCD02 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				68F6291828251A0B00BDCD02 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		68F6292B28251A0B00BDCD02 /* SealVaultUITests */ = {
+			isa = PBXGroup;
+			children = (
+				68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */,
+			);
+			path = SealVaultUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		681D2A6128319941000DBC93 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		68F6290D28251A0900BDCD02 /* SealVaultApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68F6293228251A0B00BDCD02 /* Build configuration list for PBXNativeTarget "SealVaultApp" */;
+			buildPhases = (
+				681D2A6128319941000DBC93 /* Headers */,
+				68F6290A28251A0900BDCD02 /* Sources */,
+				68F6290B28251A0900BDCD02 /* Frameworks */,
+				68F6290C28251A0900BDCD02 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SealVaultApp;
+			productName = SealVault;
+			productReference = 68F6290E28251A0900BDCD02 /* SealVault.app */;
+			productType = "com.apple.product-type.application";
+		};
+		68F6292728251A0B00BDCD02 /* SealVaultUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68F6293828251A0B00BDCD02 /* Build configuration list for PBXNativeTarget "SealVaultUITests" */;
+			buildPhases = (
+				68F6292428251A0B00BDCD02 /* Sources */,
+				68F6292528251A0B00BDCD02 /* Frameworks */,
+				68F6292628251A0B00BDCD02 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				68F6292A28251A0B00BDCD02 /* PBXTargetDependency */,
+			);
+			name = SealVaultUITests;
+			productName = SealVaultUITests;
+			productReference = 68F6292828251A0B00BDCD02 /* SealVaultUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		68F6290628251A0900BDCD02 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1330;
+				LastUpgradeCheck = 1330;
+				TargetAttributes = {
+					68F6290D28251A0900BDCD02 = {
+						CreatedOnToolsVersion = 13.3.1;
+					};
+					68F6292728251A0B00BDCD02 = {
+						CreatedOnToolsVersion = 13.3.1;
+						TestTargetID = 68F6290D28251A0900BDCD02;
+					};
+				};
+			};
+			buildConfigurationList = 68F6290928251A0900BDCD02 /* Build configuration list for PBXProject "SealVault" */;
+			compatibilityVersion = "Xcode 13.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 68F6290528251A0900BDCD02;
+			productRefGroup = 68F6290F28251A0900BDCD02 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				68F6290D28251A0900BDCD02 /* SealVaultApp */,
+				68F6292728251A0B00BDCD02 /* SealVaultUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		68F6290C28251A0900BDCD02 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68F6291928251A0B00BDCD02 /* Preview Assets.xcassets in Resources */,
+				68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68F6292628251A0B00BDCD02 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		68F6290A28251A0900BDCD02 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */,
+				688C29E92840F69100474900 /* Account.swift in Sources */,
+				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
+				68282DD328AD4B7D0034BFA4 /* WalletView.swift in Sources */,
+				68B6C40528428FAC0025BCEA /* DappView.swift in Sources */,
+				688C29BE283FF33A00474900 /* AccountRow.swift in Sources */,
+				68745A802826E0F000E7B915 /* BrowserView.swift in Sources */,
+				686C1D052827C9DC00011311 /* Config.swift in Sources */,
+				688C29EB284102FC00474900 /* Address.swift in Sources */,
+				68B6C40128426C120025BCEA /* Dapp.swift in Sources */,
+				688C29B4283FD78000474900 /* ViewModel.swift in Sources */,
+				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
+				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
+				688C29BC283FF32300474900 /* AccountView.swift in Sources */,
+				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
+				688C29B6283FE73E00474900 /* AccountListView.swift in Sources */,
+				5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */,
+				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,
+				5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */,
+				5850CBD0176884BC3B64B08C /* IconView.swift in Sources */,
+				5850C0FC7D0474EEB3ADFC21 /* TokenView.swift in Sources */,
+				5850C9CBC2E527BE683353DE /* WalletRow.swift in Sources */,
+				5850C5E7A11D7CBB7D50D89B /* AddressMenu.swift in Sources */,
+				5850C9386494A92B159B20B2 /* TokenLabel.swift in Sources */,
+				5850C848BCC100C1CECBC0DE /* ChainLabel.swift in Sources */,
+				685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */,
+				5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68F6292428251A0B00BDCD02 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68F6292D28251A0B00BDCD02 /* SealVaultUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		68F6292A28251A0B00BDCD02 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 68F6290D28251A0900BDCD02 /* SealVaultApp */;
+			targetProxy = 68F6292928251A0B00BDCD02 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		68F6293028251A0B00BDCD02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		68F6293128251A0B00BDCD02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		68F6293328251A0B00BDCD02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SealVaultApp/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
+				PRODUCT_NAME = SealVault;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		68F6293428251A0B00BDCD02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
+				PRODUCT_NAME = SealVault;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		68F6293928251A0B00BDCD02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TX8MGPD29J;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agostbiro.SealVaultUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SealVaultApp;
+			};
+			name = Debug;
+		};
+		68F6293A28251A0B00BDCD02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TX8MGPD29J;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agostbiro.SealVaultUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SealVaultApp;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		68F6290928251A0900BDCD02 /* Build configuration list for PBXProject "SealVault" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68F6293028251A0B00BDCD02 /* Debug */,
+				68F6293128251A0B00BDCD02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		68F6293228251A0B00BDCD02 /* Build configuration list for PBXNativeTarget "SealVaultApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68F6293328251A0B00BDCD02 /* Debug */,
+				68F6293428251A0B00BDCD02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		68F6293828251A0B00BDCD02 /* Build configuration list for PBXNativeTarget "SealVaultUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68F6293928251A0B00BDCD02 /* Debug */,
+				68F6293A28251A0B00BDCD02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 68F6290628251A0900BDCD02 /* Project object */;
+}

@@ -1,0 +1,47 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  lane :lint do
+    swiftlint(strict: true)
+  end
+
+  lane :pre_build do
+    desc "Build universal Rust binary from core and generate Swift bindings and templates."
+    Dir.chdir("..") do
+      puts Dir.pwd
+      sh("python3", "pre_build.py")
+    end
+  end
+
+  lane :reset_simulators do
+    reset_simulator_contents()
+  end
+
+  lane :clean do
+    desc "Clean Xcode build"
+    xcclean()
+  end
+
+  lane :tests do
+    desc "Run linter, unit and UI tests"
+    lint()
+    reset_simulator_contents()
+    pre_build()
+    run_tests(scheme: "SealVault", devices: ["iPhone 13"], clean: true)
+  end
+end

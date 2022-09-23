@@ -1,0 +1,314 @@
+<!--
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+
+    <title>Ethereum Dapp Tests</title>
+
+    <!-- The dev server injects these by removing the comment if the user agent
+    is
+    not iPhone. For iPhone, the app injects the in-page provider by evaling it
+    and the bridging is done by WKWebView methods instead of HTTP RPC calls.
+    It's important not to eval the in-page provider here to make it
+    easier to debug it with a standalone file source.
+     -->
+    <!--desktop-only
+    <script src="/js/in-page-provider.js"></script>
+    <script>
+      (function SetupHttpBridge() {
+        "use strict"
+
+        const JSONRPC_API = "http://localhost:8080/backend"
+        const SEALVAULT_RPC_PROVIDER = "sealVaultRpcProvider"
+        const SEALVAULT_REQUEST_HANDLER = "sealVaultRequestHandler"
+
+        async function postMessage(message) {
+          const body = typeof message === "string" ? message : JSON.stringify(message)
+          const response = await fetch(JSONRPC_API, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body,
+          })
+          return response.text()
+        }
+
+        window[SEALVAULT_REQUEST_HANDLER] = postMessage
+      })()
+    </script>
+    desktop-only-->
+
+    <script src="/js/sealvault-test.js"></script>
+  </head>
+
+  <body>
+    <h1><a href="ethereum.html">Ethereum Dapp Tests</a></h1>
+  </body>
+
+  <script>
+    ;(async function EthereumDapp() {
+      "use strict"
+
+      const BLOCK_ON_EVENT_SECONDS = 60
+      const { test, executeTests } = await makeSealVaultTest()
+
+      // Wait for a notification.
+      // Returns the event data.
+      function blockOnEvent(event) {
+        return new Promise((resolve, reject) => {
+          window.ethereum.on(event, data => {
+            resolve(data)
+          })
+          window.setTimeout(reject, BLOCK_ON_EVENT_SECONDS * 1000)
+        })
+      }
+
+      test("Provider exists", () => !!window.ethereum)
+
+      test("isMetaMask", () => !!window.isMetaMask)
+
+      // TODO Test only succeeds on first page load after dev server was started.
+      test("Unapproved rejects requests", async () => {
+        let ok = false
+        try {
+          await window.ethereum.request({
+            method: "eth_chainId"
+          })
+        } catch (e) {
+          assertEq(e.code, 4100)
+          ok = true
+        }
+        assert(ok, "Expected unapproved request to throw.")
+      })
+
+      test("eth_requestAccounts", async (method) => {
+        let chainId = blockOnEvent("connect")
+        const accounts = await window.ethereum.request({
+          method,
+        })
+        assertEq(accounts.length, 1)
+        // Ethereum address with 0x prefix is 42 characters
+        assertEq(accounts[0].length, 42)
+
+        // Make sure we get the same address on subsequent call
+        const accounts_second = await window.ethereum.request({
+          method,
+        })
+        assertArrayEq(accounts, accounts_second)
+        chainId = await chainId
+        assert(chainId.startsWith("0x"))
+
+        assertEq(accounts[0], ethereum.selectedAddress)
+        assert(ethereum.isConnected)
+      })
+
+      // Deprecated in favor of `eth_requestAccounts`
+      test("eth_accounts", async (method) => {
+        const accounts = await window.ethereum.request({
+          method,
+        })
+        const requestAccounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        })
+        assertArrayEq(accounts.toString(), requestAccounts.toString())
+      })
+
+      // Deprecated in favor of `eth_requestAccounts`
+      test("enable", async (method) => {
+        const accounts = await window.ethereum.enable()
+        const requestAccounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        })
+        assertArrayEq(accounts.toString(), requestAccounts.toString())
+      })
+
+      test("eth_chainId", async (method) => {
+        const chain_id = await window.ethereum.request({
+          method,
+        })
+        assert(chain_id.startsWith("0x"))
+      })
+
+      test("networkVersion", async () => {
+        assert(Number.isSafeInteger(parseInt(ethereum.networkVersion)))
+      })
+
+      test("wallet_addEthereumChain", async (method) => {
+        let args = {
+          chainId: '0x1',
+          rpcUrls: ['https://mainnet.infura.io/v3/'],
+          chainName: 'Ethereum',
+          nativeCurrency: { name: 'Ethereum', decimals: 18, symbol: 'ETH' },
+          blockExplorerUrls: "https://etherescan.io",
+        }
+
+        const result = await window.ethereum.request({
+          method,
+          params: [args]
+        })
+        // Null means success
+        assertEq(result, null)
+      })
+
+      test("wallet_switchEthereumChain", async (method) => {
+        const goerli = "0x5"
+        let changedChainId = blockOnEvent("chainChanged")
+        await window.ethereum.request({
+          method,
+          params: [{chainId: goerli}]
+        })
+        changedChainId = await changedChainId
+        assertEq(changedChainId, goerli)
+        const chainId = await window.ethereum.request({
+          method: "eth_chainId",
+        })
+        assertEq(chainId, goerli)
+        assertEq(chainId, ethereum.chainId)
+      })
+
+      test("eth_sendTransaction", async (method) => {
+        const chain_id = await window.ethereum.request({method: "eth_chainId"})
+        const accounts = await window.ethereum.request({method: "eth_requestAccounts"})
+        const gasPrice = await window.ethereum.request({method: "eth_gasPrice"})
+        // From MM docs: https://archive.ph/9DUcC
+        const params = {
+          nonce: "0x00",
+          gasPrice: gasPrice,
+          to: "0x0000000000000000000000000000000000000000",
+          from: accounts[0],
+          value: "0x00",
+          gas: "0x2f372",
+          data:
+                  "0x7f7465737432000000000000000000000000000000000000000000000000000000600057", // Optional, but used for defining smart contract creation and interaction.
+          chain_id,
+        };
+        let threw = false
+        try {
+          const txHash = await window.ethereum.request({
+            method,
+            params: [params]
+          })
+        } catch (e) {
+          console.error(e, `e.message: ${e.message}`)
+          assertEq(e.code, -32000)
+          assert(e.message.toLowerCase().includes("insufficient funds"))
+          threw = true
+        }
+        assert(threw, "Expected to throw")
+      })
+
+      test("personal_sign", async (method) => {
+        const accounts = await window.ethereum.request({method: "eth_requestAccounts"})
+        const signature = await window.ethereum.request({
+          method,
+          params: ["0xabcd1234", accounts[0], "ignored-password"]
+        })
+        assert(signature.startsWith("0x"), "signature must start with 0x")
+      })
+
+      test("eth_gasPrice", async (method) => {
+        const price = await window.ethereum.request({
+          method,
+        })
+        assert(price.startsWith("0x"), `Expected '${price}' to start with 0x`)
+      })
+
+      test("eth_estimateGas", async (method) => {
+        const gas = await window.ethereum.request({
+          method,
+          params: [{"from":"0x8D97689C9818892B700e27F316cc3E41e17fBeb9","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}]
+        })
+        assert(gas.startsWith("0x"), `Expected '${gas}' to start with 0x`)
+      })
+
+      test("eth_getBlockByNumber", async (method) => {
+        const blockNumber = await window.ethereum.request({
+          method: "eth_blockNumber"
+        })
+        const block = await window.ethereum.request({
+          method,
+          params: [blockNumber, true]
+        })
+        assertEq(block.number, blockNumber)
+        assert(Array.isArray(block.transactions), "block.transactions should be an array")
+      })
+
+      test("web3_clientVersion", async (method) => {
+        const version = await window.ethereum.request({
+          method,
+        })
+        assert(version.toLowerCase().includes("sealvault"))
+      })
+
+      test("web3_sha3", async (method) => {
+        const hash = await window.ethereum.request({
+          method,
+          params: ["0xabcd"]
+        })
+        assert(hash.startsWith("0x"))
+      })
+
+      test("sendAsync", async (method) => {
+        const request = {
+          id: `sendAsync-id-${Date.now()}`,
+          jsonrpc: "2.0",
+          method: "eth_chainId"
+        }
+        const chain_id = await new Promise((resolve, reject) => {
+          window.ethereum.sendAsync(request, (error, result) => {
+            if (error) {
+              reject(error)
+            } else {
+              resolve(result)
+            }
+          })
+        })
+        assert(chain_id.startsWith("0x"))
+      })
+
+      test("send", async (method) => {
+        const request = {
+          id: `send-id-${Date.now()}`,
+          jsonrpc: "2.0",
+          method: "eth_chainId"
+        }
+        const chain_id_first = await new Promise((resolve, reject) => {
+          window.ethereum.send(request, (error, result) => {
+            if (error) {
+              reject(error)
+            } else {
+              resolve(result)
+            }
+          })
+        })
+        const chain_id_second = await window.ethereum.send("eth_chainId")
+        assertEq(chain_id_first, chain_id_second)
+      })
+
+      test("Unsupported methods correct response", async () => {
+        let ok = false
+        try {
+          await window.ethereum.request({
+            method: "eth_sign"
+          })
+        } catch (e) {
+          assertEq(e.code, 4200)
+          ok = true
+        }
+        assert(ok, "Expected unsupported method to throw.")
+      })
+
+      await executeTests()
+    })()
+  </script>
+</html>

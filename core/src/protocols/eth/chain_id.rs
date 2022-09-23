@@ -1,0 +1,194 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+use crate::protocols::eth::chain_settings::ChainSettings;
+use crate::protocols::eth::token::NativeToken;
+use crate::protocols::eth::NativeTokenAmount;
+
+use ethers::core::types::{U256, U64};
+use ethers::core::utils::parse_units;
+use num_derive::FromPrimitive;
+use serde::{Deserialize, Serialize};
+use strum_macros::{EnumIter, EnumString};
+use url::Url;
+
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    EnumIter,
+    EnumString,
+    FromPrimitive,
+    strum_macros::Display,
+    Serialize,
+    Deserialize,
+)]
+#[strum(serialize_all = "kebab_case")]
+#[serde(rename_all = "kebab-case")]
+pub enum ChainId {
+    EthMainnet = 1,
+    EthGoerli = 5,
+
+    PolygonMainnet = 137,
+    PolygonMumbai = 80001,
+}
+
+impl ChainId {
+    pub fn default_dapp_chain() -> Self {
+        Self::PolygonMainnet
+    }
+
+    pub fn default_wallet_chains() -> [Self; 2] {
+        [Self::EthMainnet, Self::PolygonMainnet]
+    }
+
+    // Does not necessarily match chain id
+    // We return string because it's only used to support a legacy MetaMask api that needs string.
+    pub fn network_id(&self) -> String {
+        match *self {
+            Self::EthMainnet => "1",
+            Self::EthGoerli => "5",
+
+            Self::PolygonMainnet => "137",
+            Self::PolygonMumbai => "80001",
+        }
+        .into()
+    }
+
+    pub fn display_name(&self) -> String {
+        match *self {
+            Self::EthMainnet => "Ethereum",
+            Self::EthGoerli => "Ethereum Goerli Testnet",
+
+            Self::PolygonMainnet => "Polygon PoS",
+            Self::PolygonMumbai => "Polygon PoS Mumbai Testnet",
+        }
+        .into()
+    }
+
+    pub fn native_token(&self) -> NativeToken {
+        match *self {
+            Self::EthMainnet => NativeToken::Eth,
+            Self::EthGoerli => NativeToken::Eth,
+
+            Self::PolygonMainnet => NativeToken::Matic,
+            Self::PolygonMumbai => NativeToken::Matic,
+        }
+    }
+
+    pub fn http_rpc_endpoint(&self) -> Url {
+        let raw_url = match *self {
+            ChainId::EthMainnet => "https://rpc.ankr.com/eth",
+            ChainId::EthGoerli => "https://rpc.ankr.com/eth_goerli",
+            ChainId::PolygonMainnet => "https://rpc.ankr.com/polygon",
+            ChainId::PolygonMumbai => "https://rpc.ankr.com/polygon_mumbai",
+        };
+        Url::parse(raw_url).expect("unit test catches panics")
+    }
+
+    pub fn explorer_url(&self) -> Url {
+        let raw_url = match *self {
+            Self::EthMainnet => "https://etherscan.io/",
+            Self::EthGoerli => "https://goerli.etherscan.io/",
+            Self::PolygonMainnet => "https://polygonscan.com/",
+            Self::PolygonMumbai => "https://mumbai.polygonscan.com/",
+        };
+        Url::parse(raw_url).expect("unit test catches panics")
+    }
+
+    fn default_dapp_allotment(&self) -> NativeTokenAmount {
+        let amount = match *self {
+            Self::EthMainnet => parse_units("0", "ether"),
+            Self::EthGoerli => parse_units("0.1", "ether"),
+            Self::PolygonMainnet => parse_units("0.1", "ether"),
+            Self::PolygonMumbai => parse_units("0.1", "ether"),
+        }
+        .expect("unit test catches panics");
+
+        NativeTokenAmount::new(*self, amount)
+    }
+
+    pub fn default_user_settings(&self) -> ChainSettings {
+        let default_dapp_allotment = self.default_dapp_allotment();
+        ChainSettings::new(default_dapp_allotment)
+    }
+}
+
+impl From<ChainId> for u64 {
+    fn from(chain_id: ChainId) -> Self {
+        chain_id as u64
+    }
+}
+
+impl From<ChainId> for U64 {
+    fn from(chain_id: ChainId) -> Self {
+        let chain_id: u64 = chain_id.into();
+        chain_id.into()
+    }
+}
+
+impl From<ChainId> for U256 {
+    fn from(chain_id: ChainId) -> Self {
+        let chain_id: u64 = chain_id.into();
+        chain_id.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use ethers::core::types::U256;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn to_json() {
+        let chain_id = ChainId::EthMainnet;
+        let s = serde_json::to_string(&chain_id).unwrap();
+        assert_eq!(s, format!("\"{}\"", chain_id));
+        assert_eq!(s, r#""eth-mainnet""#);
+    }
+
+    #[test]
+    fn to_string() {
+        assert_eq!(ChainId::EthMainnet.to_string(), "eth-mainnet");
+    }
+
+    #[test]
+    fn from_string() -> Result<()> {
+        let bp = ChainId::try_from("polygon-mumbai")?;
+
+        assert_eq!(bp, ChainId::PolygonMumbai);
+
+        Ok(())
+    }
+
+    #[test]
+    fn default_dapp_allotments_dont_panic() -> Result<()> {
+        let mut count = U256::zero();
+        for chain_id in ChainId::iter() {
+            let amount = chain_id.default_dapp_allotment();
+            count += amount.amount;
+        }
+
+        assert!(count > U256::zero());
+        Ok(())
+    }
+
+    #[test]
+    fn chain_rpc_endpoints_dont_panic() {
+        for chain_id in ChainId::iter() {
+            assert!(chain_id.http_rpc_endpoint().host().is_some())
+        }
+    }
+
+    #[test]
+    fn chain_explorer_urls_dont_panic() {
+        for chain_id in ChainId::iter() {
+            assert!(chain_id.explorer_url().host().is_some())
+        }
+    }
+}

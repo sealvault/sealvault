@@ -1,0 +1,7 @@
+INHERIT: mkdocs.yml
+plugins:
+  - search
+  - blog:
+      archive: false
+      post_url_format: "{slug}"
+  - privacy

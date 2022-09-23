@@ -1,0 +1,11 @@
+[toolchain]
+# iOS simulator on Apple Silicon is only supported in the nightly channel
+channel = "nightly"
+targets = [
+    # iOS
+    "aarch64-apple-ios",
+    # iOS simulator
+    "aarch64-apple-ios-sim",
+    "x86_64-apple-ios"
+]
+profile = "default"

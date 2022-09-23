@@ -1,0 +1,11 @@
+DROP TABLE accounts;
+DROP TABLE account_pictures;
+DROP TABLE addresses;
+DROP TABLE asymmetric_keys;
+DROP TABLE chains;
+DROP TABLE dapps;
+DROP TABLE data_migrations;
+DROP TABLE data_encryption_keys;
+DROP TABLE local_dapp_sessions;
+DROP TABLE local_encrypted_deks;
+DROP TABLE local_settings;

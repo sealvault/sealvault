@@ -1,0 +1,12 @@
+.sv-center-block {
+    display: block;
+    margin: 0 auto;
+}
+
+.sv-center-text {
+    text-align: center;
+}
+
+.twitter {
+    color: #1DA1F2;
+}

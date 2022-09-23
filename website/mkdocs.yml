@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: SealVault
+docs_dir: src
+
+# Copyright for the website contents is CC 4.0
+copyright: <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2022. The website content is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+
+repo_url: https://github.com/sealvault/sealvault
+edit_uri: ""
+
+theme:
+  name: material
+  custom_dir: src/overrides
+  logo: assets/images/logo.png
+  favicon: assets/images/favicon.png
+  palette:
+    primary: white
+  features:
+    - navigation.tabs
+    - announce.dismiss
+extra:
+  generator: false
+plugins:
+  - search
+markdown_extensions:
+  - footnotes
+  - attr_list
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+
+extra_css:
+  - assets/css/extra.css
+extra_javascript:
+  - assets/js/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+
+nav:
+  - Home:
+    - index.md
+    - Automated Burner Wallets: burners.md
+    - Privacy: privacy.md
+  - Blog: blog/index.md
+  - Developer Docs:
+      - dev-docs/index.md
+      - Principles: dev-docs/principles.md
+      - Design:
+          - dev-docs/design/index.md
+          - Cryptography: dev-docs/design/cryptography.md
+          - Data: dev-docs/design/data.md
+          - Security Model:
+            - dev-docs/design/security-model.md
+            - Attack Tree: dev-docs/design/attack-tree.md
+            - One-Dapp-per-Key: dev-docs/design/one-dapp-per-key.md
+            - Data-Flow Diagrams: dev-docs/design/data-flow.md
+          - Privacy Model: dev-docs/design/privacy.md-model.md
+      - Rust Code Guidelines: dev-docs/rust.md
+  - Forum: https://forum.sealvault.org
