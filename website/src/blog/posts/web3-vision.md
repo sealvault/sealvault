@@ -72,7 +72,7 @@ its implications for innovation.
 
 ### Valuable Data
 
-Further, while the value of ownership is already clear to crypto native users,
+While the value of ownership is already clear to crypto native users,
 data ownership will draw other users to Web3 once the wealth it creates becomes
 apparent.  Synthetic data can be valuable as proven by thriving black markets
 for MMORPGs, and given a choice between investing time in applications
