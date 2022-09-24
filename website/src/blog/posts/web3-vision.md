@@ -59,6 +59,9 @@ decentralized databases is inevitable, once they become available, because:
 
 1. Decentralized databases enable permissionless innovation with data.
 2. Synthetic data can be valuable.
+3. Composability is infectious.
+
+### Permissionless Innovation
 
 We have already seen the flurry of financial innovation[^40] in decentralized
 finance ignited by smart chains, and we'll see a similar innovation explosion in
@@ -66,6 +69,8 @@ all web applications[^50] once general purpose decentralized databases become
 available thus drawing more and more internet users to Web3 in a virtuous cycle.
 Another way to look at this is that data becomes open as code is open with all
 its implications for innovation.
+
+### Valuable Data
 
 Further, while the value of ownership is already clear to crypto native users,
 data ownership will draw other users to Web3 once the wealth it creates becomes
@@ -76,7 +81,7 @@ applications even if the initial user experience is inferior.  Viewing
 blockchain technology as disruptive to centralized databases is a good framework
 for thinking about this.[^55]
 
-## The Law of Potential Composition
+### The Law of Potential Composition
 
 Composable data is user data that can be combined with data from untrusted
 counterparties to produce composable data subject to some invariants.
