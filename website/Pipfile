@@ -1,0 +1,16 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[packages]
+mkdocs-material = {editable = true, ref = "master", git = "https://${GITHUB_TOKEN}:x-oauth-basic@github.com/sealvault/mkdocs-material-insiders.git"}
+
+[dev-packages]
+invoke = "*"
+
+[requires]
+python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true

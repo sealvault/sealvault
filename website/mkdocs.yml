@@ -66,6 +66,6 @@ nav:
             - Attack Tree: dev-docs/design/attack-tree.md
             - One-Dapp-per-Key: dev-docs/design/one-dapp-per-key.md
             - Data-Flow Diagrams: dev-docs/design/data-flow.md
-          - Privacy Model: dev-docs/design/privacy.md-model.md
+          - Privacy Model: dev-docs/design/privacy-model.md
       - Rust Code Guidelines: dev-docs/rust.md
   - Forum: https://forum.sealvault.org

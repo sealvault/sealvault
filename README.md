@@ -1,5 +1,7 @@
 # SealVault
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/88815562-cc13-4f6c-a84d-67cd252fd5f4/deploy-status)](https://app.netlify.com/sites/sealvault/deploys)
+
 ## [Developer Docs](https://sealvault.org/dev-docs/)
 
 Documentation for SealVault developers containing design documents on the
@@ -63,12 +65,8 @@ running `fastlane pre_build` in the `ios` directory.
 - The [Fastlane](https://docs.fastlane.tools/getting-started/ios/setup/) app
   development automation tool:
   - `brew install fastlane`
-- The [Prettier](https://prettier.io/) JavaScript and HTML formatter:
-  - `brew install prettier` 
 - The [Swiftlint](https://github.com/realm/SwiftLint) Swift linter:
   - `brew install swiftlint`
-- The [Black](https://prettier.io/) Python formatter:
-  - `brew install black` 
 - The [Solidity](https://docs.soliditylang.org/en/v0.8.16/index.html) compiler 
   version manager and `solc 0.8.16` that are needed to compile test contracts 
   for unit tests:
