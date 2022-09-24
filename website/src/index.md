@@ -17,7 +17,8 @@ title: Features
     <figure markdown>
     ![iOS app account view](./assets/images/screenshots/account-view.png){ loading=lazy }
     <figcaption>
-    Each dapp gets a separate key. Wallet addresses are never connected to dapps.
+    Each dapp gets a separate key.
+    This protects you from phishing and mitigates compromised dapps.
     [More](./burners.md)
     </figcaption>
     </figure>
@@ -40,7 +41,7 @@ title: Features
     </figcaption>
     </figure>
 
--   __Isolated Identities__
+-   __Isolated identities__
     <figure markdown>
     ![iOS app account list view](./assets/images/screenshots/account-list.png){ loading=lazy }
     <figcaption>
@@ -51,6 +52,12 @@ title: Features
 -   __Multi Chain__
     - Currently: Ethereum and Polygon PoS
     - Planned: all the chains &#127881;
+
+-   __Cross Platform__
+    - Currently: iOS
+    - Next: Android
+    - Planned: MacOS, Window, Linux
+    - E2EE backups and sync
 
 -   __Open Source for Real__
     - [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license

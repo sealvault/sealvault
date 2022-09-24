@@ -36,4 +36,4 @@ automatically to each newly added dapp address for transaction fees.
 
 ## Beta
 
-Sign up for iOS beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+iOS beta is coming October 2022. Sign up for an invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)

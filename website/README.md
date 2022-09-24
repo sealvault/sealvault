@@ -4,8 +4,9 @@
 
 URL: [https://sealvault.org](https://sealvault.org)
 
-Provides landing page and features for end users, developer documentation for
-SealVault developers and the SealVault blog. 
+Provides [landing page](https://sealvault.org) and features for end users,
+[developer documentation](https://sealvault.org/dev-docs/) for SealVault
+developers and the [SealVault blog.](https://sealvault.org/blog/)
 
 Powered by [Material for
 MkDocs](https://squidfunk.github.io/mkdocs-material/).
