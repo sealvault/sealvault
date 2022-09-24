@@ -1,5 +1,7 @@
 # SealVault
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/88815562-cc13-4f6c-a84d-67cd252fd5f4/deploy-status)](https://app.netlify.com/sites/sealvault/deploys)
+
 ## [Developer Docs](https://sealvault.org/dev-docs/)
 
 Documentation for SealVault developers containing design documents on the
