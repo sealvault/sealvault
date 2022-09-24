@@ -1,11 +1,56 @@
-# SealVault
-
 [![Netlify Status](https://api.netlify.com/api/v1/badges/88815562-cc13-4f6c-a84d-67cd252fd5f4/deploy-status)](https://app.netlify.com/sites/sealvault/deploys)
+
+<div align="center">
+  <img src="./website/src/assets/images/logo-with-text.png" alt="SealVault Logo">
+  
+  <p><i>Experiment freely with Web3</i></p>
+</div>
+
+## Features
+
+### Automated burner wallets :fire:  
+
+When you add a dapp to your account, a new key is generated just for this dapp.
+Wallet addresses are never connected to dapps. 
+This protects you from phishing and mitigates compromised dapps.
+[Learn more.](https://sealvault.org/burners/)
+
+
+### Automatic transaction approval 🥳
+
+You decide which dapp to add, after that transactions are approved
+automatically.
+[Learn more.](https://sealvault.org/burners/)
+
+
+### Move assets between wallets and dapps 💰
+
+First class token transfer support for dapp addresses. 
+You can also transfer a pre-configured amount automatically when you add a new dapp. 
+[Learn more.](https://sealvault.org/burners/)
+
+
+### Isolated identities 🕶️
+
+Organize your dapps into accounts for isolated identities. 
+[Learn more.](https://sealvault.org/privacy/)</figcaption>
+
+<div float="left" align="center">
+    <img src="./website/src/assets/images/screenshots/account-view.png" height="600px" />
+    <img src="./website/src/assets/images/screenshots/add-dapp.png" height="600px" />
+</div>
+
+## Status
+
+The project is currently in alpha stage with an iOS app and Polygon PoS support.
+Support for more platforms and blockchains is coming. You can find out more in the [intro blog post.](https://sealvault.org/blog/web3-vision/)
+
+The iOS beta starts October 2022. You can sign up for an invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
 
 ## [Developer Docs](https://sealvault.org/dev-docs/)
 
 Documentation for SealVault developers containing design documents on the
-security and privacy models of the application and more.
+[security](https://sealvault.org/dev-docs/design/security-model/) and [privacy](https://sealvault.org/dev-docs/design/privacy-model/) models of the application and more.
 
 ## Components
 
