@@ -123,11 +123,11 @@ databases is inevitable, this will not bring material improvement in the
 monopolistic status quo of the internet if users don't own their keys.
 
 Users care about products that serve their needs.  Decentralized databases
-enable novel applications that let users port and transact with their data to
-novel applications without permission from application developers.  This is an
-extremely strong value proposition, but it is not necessary for users to own
-their keys to realize it.  Consider the local and cloud Web3 value chains
-sketched below for key management:
+enable novel applications that let users port data and make transactions without
+permission from application developers.  This is an extremely strong value
+proposition, but it is not necessary for users to own their keys to realize it. 
+Consider the local and cloud Web3 value chains sketched below for key
+management:
 
 ```mermaid
 
@@ -175,8 +175,8 @@ power to the cloud provider. The history of the internet has been riddled with
 the abuse of data lock-in, so this would be a highly undesirable outcome for
 Web3.
 
-The challenge is that cloud-based solution is easier for both the user and the
-provider.  Users are familiar with cloud provider accounts and security
+The challenge is that the cloud-based solution is easier for both the user and
+the provider.  Users are familiar with cloud provider accounts and security
 mechanisms and recovery options are well-established.  Similarly, with the cloud
 solution, there is no need to sync keys among devices and key backup is trivial.
 The cloud provider can invoice transaction fees through established payment
@@ -194,7 +194,7 @@ start subsidizing transaction costs.
 ## Wallets
 
 Wallets are the local key and transaction management solution in the blockchain
-world. They generate keys from seed phrases and assume a few keys per user. Seed
+world. They generate keys from seed phrases and assume few keys per user. Seed
 phrases have double purpose: they provide both backup and portability.
 
 Seed phrases have three major disadvantages:
@@ -216,8 +216,8 @@ It is clear to us that in order to realize truly decentralized web applications,
 we need to move beyond the wallet paradigm for everyday key and transaction
 management.  This is why we're building [SealVault,](https://sealvault.org) a
 new type of wallet for your dapps with automatic transaction approval and
-phishing protection through automated burner wallets for key-level dapp
-isolation.
+phishing protection through [automated burner wallets](../../burners.md) for
+key-level dapp isolation.
 
 ## SealVault Goals
 
@@ -233,7 +233,7 @@ iOS app with a built-in browser. It currently supports Polygon PoS only, but we
 want to support all protocols and chains where people are building interesting
 dapps.
 
-After the iOS app, were going to release an Android version followed by desktop
+After the iOS app, we're going to release an Android version followed by desktop
 apps (Windows, MacOS, Linux) with E2EE cross-platform sync and E2EE backups with
 social recovery methods.
 
