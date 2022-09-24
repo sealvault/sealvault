@@ -18,6 +18,15 @@ work on the developer documentation without these by installing the free version
 as documented
 [here.](https://squidfunk.github.io/mkdocs-material/getting-started/)
 
+## Deployment
+
+Pushes to the main branch automatically deploy the website to
+[https://sealvault.org](https://sealvault.org) by Netlify.
+
+[Deploy previews](https://docs.netlify.com/site-deploys/deploy-previews/) are
+enabled for PRs and branches in the `sealvault/sealvault` repo are automatically
+deployed to `https://{branch-name}--sealvault.netlify.app`.
+
 ## License
 
 <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2022. The website content is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
