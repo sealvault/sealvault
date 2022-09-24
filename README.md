@@ -63,12 +63,8 @@ running `fastlane pre_build` in the `ios` directory.
 - The [Fastlane](https://docs.fastlane.tools/getting-started/ios/setup/) app
   development automation tool:
   - `brew install fastlane`
-- The [Prettier](https://prettier.io/) JavaScript and HTML formatter:
-  - `brew install prettier` 
 - The [Swiftlint](https://github.com/realm/SwiftLint) Swift linter:
   - `brew install swiftlint`
-- The [Black](https://prettier.io/) Python formatter:
-  - `brew install black` 
 - The [Solidity](https://docs.soliditylang.org/en/v0.8.16/index.html) compiler 
   version manager and `solc 0.8.16` that are needed to compile test contracts 
   for unit tests:
