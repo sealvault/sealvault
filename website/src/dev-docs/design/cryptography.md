@@ -55,6 +55,17 @@ for Ethereum protocol signatures. This is a constant time pure Rust
 implementation by reputable authors that is popular in the Rust Ethereum
 ecosystem, but it has not been audited independently.
 
+The alternative would be the [Rust
+wrapper](https://docs.rs/secp256k1/latest/secp256k1/) around Bitcoin core's C
+[libsecp256k1](https://github.com/bitcoin-core/secp256k1) which is the most
+battle tested `secp256k1` implementation. In spite of this we went the
+RustCrypto implementation for the following reasons:
+
+1. We already have RustCrytpo dependencies, we like the project, and we will be
+   using more of their ECC crates in the future as they simplify our
+   implementation with common traits.
+1. We prefer pure Rust dependencies when possible for safety.
+
 [^0]: 
     The [linked RFC](https://datatracker.ietf.org/doc/html/rfc7539) is actually
     about ChaCha20Poly1305, not XChaCha20Poly1305.  The difference is that
