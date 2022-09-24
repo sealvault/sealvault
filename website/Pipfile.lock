@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2c811d3aa5c005b1846f77c59b4e4910b939627bc875e577d3dbc80d8017a46b"
+            "sha256": "c5eec7257f439294337e7be5f236af4ea2f0706f66516a2b13ce2f1c379ad410"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.10"
+            "python_version": "3.8"
         },
         "sources": [
             {
@@ -84,7 +84,7 @@
                 "sha256:637245b8bab2b6502fcbc752cc4b7a6f6243bb02b31c5c26156ad103d3d45670",
                 "sha256:7401a975809ea1fdc658c3aa4f78cc2195a0e019c5cbc4c06122884e9ae80c23"
             ],
-            "markers": "python_version >= '3.7'",
+            "markers": "python_version < '3.10'",
             "version": "==4.12.0"
         },
         "jinja2": {
@@ -251,7 +251,7 @@
         },
         "mkdocs-material": {
             "editable": true,
-            "git": "ssh://git@github.com/sealvault/mkdocs-material-insiders.git",
+            "git": "https://${GITHUB_TOKEN}:x-oauth-basic@github.com/sealvault/mkdocs-material-insiders.git",
             "ref": "8a4dce475d8dc6838011c736c326947d076fa46d"
         },
         "mkdocs-material-extensions": {
