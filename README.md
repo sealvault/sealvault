@@ -80,9 +80,9 @@ MkDocs](https://squidfunk.github.io/mkdocs-material/).
 ## Development
 
 On first time setup, install the [requirements](#development-requirements)
-listed below, add the [development secrets](#development-secrets) and then run
-`./ci.py` from the repo root to check if everything was installed correctly.
-(:warning: The CI script will reset all iOS simulators on your machine.)
+listed below and then run `./ci.py` from the repo root to check if everything
+was installed correctly. (:warning: The CI script will reset all iOS simulators
+on your machine.)
 
 The CI script will also create the generated files for you that are a
 prerequisites for an Xcode build. Alternatively you can generate these files by
