@@ -1,0 +1,12 @@
+[build]
+base = "website/"
+command = "mkdocs build --config-file mkdocs.insiders.yml"
+publish = "site"
+
+[[headers]]
+for = "/*"
+[headers.values]
+Strict-Transport-Security = '''
+    max-age=63072000;
+    includeSubDomains;
+    preload'''
