@@ -123,9 +123,10 @@ and decentralized databases.
 
 ## How Can Web3 Go Wrong?
 
-While we believe that the shift in internet value chains to decentralized
-databases is inevitable, this will not bring material improvement in the
-monopolistic status quo of the internet if users don't own their keys.
+Being an internet user in 2022 is like being a guest in one's home. While
+we believe that the shift in internet value chains to decentralized databases is
+inevitable, this will not bring material improvement in the status quo of the
+internet if users don't own their keys.
 
 Users care about products that serve their needs.  Decentralized databases
 enable novel applications that let users port data and make transactions without
