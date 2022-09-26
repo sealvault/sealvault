@@ -4,6 +4,10 @@ jobs:
   ios-ci:
     runs-on: macos-12
     steps:
+      - name: Cancel Previous Runs In Same Branch
+        uses: styfle/cancel-workflow-action@0.10.0
+        with:
+          access_token: ${{ github.token }}
       - name: Check out repository code
         uses: actions/checkout@v3
       # Important to make sure rust-cache uses correct configuration
