@@ -98,20 +98,13 @@ running `fastlane pre_build` in the `ios` directory.
     then run `xcode-select --install` to install CLI tools.
   - You can also install Xcode from the MacOS app store, but the download is
     extremely slow.
-- The [Homebrew](https://brew.sh/) macOS package manager.
-- The [Rustup](https://www.rust-lang.org/tools/install) toolchain
-  - `brew install rustup-init` then:
-  - `rustup init` and follow the instructions
-- The [Ripgrep](https://github.com/BurntSushi/ripgrep) text search tool that we
-  use for linting MPL headers:
-  - `brew install ripgrep`
+- The [Homebrew](https://brew.sh/) macOS package manager, then run `brew bundle`
+  from the repo root to install the dependencies specified in the
+  [`Brewfile`.](./Brewfile)
+- Run `rustup init` which was installed from the [`Brewfile`](./Brewfile) 
+  toolchain and follow the instructions to set up your Rust toolchain.
 - The [Diesel](https://diesel.rs/) ORM CLI that we use to manage Sqlite:
   - `cargo install diesel_cli --no-default-features --features sqlite` 
-- The [Fastlane](https://docs.fastlane.tools/getting-started/ios/setup/) app
-  development automation tool:
-  - `brew install fastlane`
-- The [Swiftlint](https://github.com/realm/SwiftLint) Swift linter:
-  - `brew install swiftlint`
 - The [Solidity](https://docs.soliditylang.org/en/v0.8.16/index.html) compiler 
   version manager and `solc 0.8.16` that are needed to compile test contracts 
   for unit tests:

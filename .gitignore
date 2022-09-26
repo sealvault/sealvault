@@ -37,6 +37,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# Homebrew
+# Brewfile lock changes accross machines
+Brewfile.lock.json
+
 ##########
 # Python #
 ##########
