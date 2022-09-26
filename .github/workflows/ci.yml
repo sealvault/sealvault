@@ -1,0 +1,28 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  ios-ci:
+    runs-on: macos-12
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      # Important to make sure rust-cache uses correct configuration
+      - name: Install latest nightly Rust
+        run: rustup update
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Install Anvil
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+           version: nightly
+      - name: Install Ripgrep
+        run: |
+          brew install ripgrep
+      - name: Install Solidity
+        run: |
+          cargo install svm-rs
+          svm install 0.8.16
+      - name: Run CI script
+        run: ./ci.py

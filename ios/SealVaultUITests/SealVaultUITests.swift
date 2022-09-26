@@ -7,7 +7,7 @@
 import XCTest
 
 class SealVaultUITests: XCTestCase {
-    let timeOutSeconds: TimeInterval = 10
+    let timeOutSeconds: TimeInterval = 30
     let minAccounts = 1
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
@@ -20,7 +20,7 @@ class SealVaultUITests: XCTestCase {
         urlField.clearAndEnterText(text: ethereumTestUrl)
 
         let approveDapp = app.buttons["approveDapp"]
-        approveDapp.waitForExistence(timeout: timeOutSeconds)
+        _ = approveDapp.waitForExistence(timeout: timeOutSeconds)
         approveDapp.tap()
 
         let finishedOk = app.webViews.staticTexts["Finished OK"]
@@ -42,10 +42,12 @@ class SealVaultUITests: XCTestCase {
     func testBrowserSearch() throws {
         let app = try! startBrowserApp()
 
-        let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: "search")
+        let searchText = "somethingrandom"
 
-        let finishedOk = app.webViews.staticTexts["search"]
+        let urlField = app.textFields[browserAddressBar]
+        urlField.clearAndEnterText(text: searchText)
+
+        let finishedOk = app.webViews.staticTexts[searchText]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
     }
 
@@ -64,10 +66,9 @@ class SealVaultUITests: XCTestCase {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
-        print(app.debugDescription)
 
         let accountsButton = app.tabBars.buttons["Accounts"]
-        accountsButton.waitForExistence(timeout: timeOutSeconds)
+        _ = accountsButton.waitForExistence(timeout: timeOutSeconds)
         accountsButton.tap()
 
         let rowCount = app.collectionViews.element(boundBy: 0).cells.count
@@ -121,18 +122,26 @@ func startBrowserApp() throws -> XCUIApplication {
 extension XCUIElement {
     /// Removes any current text in the field before typing in the new value and submitting
     /// Based on: https://stackoverflow.com/a/32894080
-    func clearAndEnterText(text: String) {
-        guard let stringValue = self.value as? String else {
+    func clear() {
+        if self.value as? String == nil {
             XCTFail("Tried to clear and enter text into a non string value")
             return
         }
 
-        self.tap()
+        // Repeatedly delete text as long as there is something in the text field.
+        // This is required to clear text that does not fit in to the textfield and is partially hidden initally.
+        // Important to check for placeholder value, otherwise it gets into an infinite loop.
+        while let stringValue = self.value as? String, !stringValue.isEmpty, stringValue != self.placeholderValue {
+            // Move the cursor to the end of the text field
+            let lowerRightCorner = self.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9))
+            lowerRightCorner.tap()
+            let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
+            self.typeText(delete)
+        }
+    }
 
-        // TODO the * 2 is a hack to get around only partially clearing the field
-        let deleteString = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count * 2)
-
-        self.typeText(deleteString)
+    func clearAndEnterText(text: String) {
+        self.clear()
         // new line at end submits
         self.typeText("\(text)\n")
     }
