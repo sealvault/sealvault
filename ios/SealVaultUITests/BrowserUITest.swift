@@ -6,15 +6,8 @@
 
 import XCTest
 
-class SealVaultUITests: XCTestCase {
-    var timeOutSeconds: TimeInterval {
-        if ProcessInfo.processInfo.environment["CI"] == "true" {
-            return 120
-        } else {
-            return 30
-        }
-    }
-    let minAccounts = 1
+final class BrowserUITest: XCTestCase {
+    var timeOutSeconds: TimeInterval = 30
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
     let browserAddressBar = "browserAddressBar"
@@ -67,55 +60,6 @@ class SealVaultUITests: XCTestCase {
         let finishedOk = app.webViews.staticTexts["Example Domain"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
     }
-
-    func testAccountList() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
-
-        let accountsButton = app.tabBars.buttons["Accounts"]
-        _ = accountsButton.waitForExistence(timeout: timeOutSeconds)
-        accountsButton.tap()
-
-        let rowCount = app.collectionViews.element(boundBy: 0).cells.count
-        XCTAssert(rowCount >= minAccounts)
-    }
-
-//    func testAccountSearch() throws {
-//        // UI tests must launch the application that they test.
-//        let app = XCUIApplication()
-//        app.launch()
-//        app.tabBars.buttons["Accounts"].tap()
-//
-//        let cells = app.tables.element(boundBy: 0).cells
-//        let rowCount = cells.count
-//
-//        // Drag down first row to display search bar
-//        let firstRow = cells.element(boundBy: 0)
-//        let start = firstRow.coordinate(withNormalizedOffset: CGVector(dx: 10, dy: 0))
-//        let finish = firstRow.coordinate(withNormalizedOffset: CGVector(dx: 10, dy: 10))
-//        start.press(forDuration: 0.01, thenDragTo: finish)
-//
-//        let searchField = app.searchFields.element(boundBy: 0)
-//
-//        // Type into the search bar
-//        searchField.tap()
-//        app.typeText("De")
-//
-//        // TODO: add this back after we can create account
-//        // Make sure filtering works (fewer rows are displayed after typing than originally)
-//        // XCTAssert(rowCount > cells.count)
-//
-//        // Accept first autocomplete suggestion
-//        cells.element(boundBy: 0).tap()
-//
-//        // Open account view
-//        cells.element(boundBy: 0).tap()
-//
-//        // Check that account view was opened by existence of back button to accounts overview
-//        let firstNavBarButtonLabel = app.navigationBars.buttons.element(boundBy: 0).label
-//        XCTAssert(firstNavBarButtonLabel == "Accounts")
-//    }
 }
 
 func startBrowserApp() throws -> XCUIApplication {

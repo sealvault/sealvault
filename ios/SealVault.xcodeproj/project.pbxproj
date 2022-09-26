@@ -17,6 +17,7 @@
 		5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C2CE182126E257B1DD22 /* TransferForm.swift */; };
 		5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C6335A85D238AFAD5DC5 /* TokenRow.swift */; };
 		5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* AccountImage.swift */; };
+		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
 		68282DD328AD4B7D0034BFA4 /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68282DD228AD4B7D0034BFA4 /* WalletView.swift */; };
 		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
 		686C1D052827C9DC00011311 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C1D042827C9DC00011311 /* Config.swift */; };
@@ -37,7 +38,7 @@
 		68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6291128251A0900BDCD02 /* SealVaultApp.swift */; };
 		68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68F6291528251A0B00BDCD02 /* Assets.xcassets */; };
 		68F6291928251A0B00BDCD02 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68F6291828251A0B00BDCD02 /* Preview Assets.xcassets */; };
-		68F6292D28251A0B00BDCD02 /* SealVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */; };
+		68F6292D28251A0B00BDCD02 /* NativeUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6292C28251A0B00BDCD02 /* NativeUITest.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +62,9 @@
 		5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AddressMenu.swift; sourceTree = "<group>"; };
 		5850CEC3F304338F5D6DC43D /* IconView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IconView.swift; sourceTree = "<group>"; };
 		5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenLabel.swift; sourceTree = "<group>"; };
+		6811E25828E2430B0044F9FE /* BrowserUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserUITest.swift; sourceTree = "<group>"; };
+		6811E25B28E243F30044F9FE /* FullTest.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = FullTest.xctestplan; sourceTree = "<group>"; };
+		6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NativeUI.xctestplan; sourceTree = "<group>"; };
 		68282DD228AD4B7D0034BFA4 /* WalletView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
 		685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SealVaultCore.swift; path = Generated/SealVaultCore.swift; sourceTree = "<group>"; };
 		686C1D042827C9DC00011311 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
@@ -83,7 +87,7 @@
 		68F6291528251A0B00BDCD02 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		68F6291828251A0B00BDCD02 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		68F6292828251A0B00BDCD02 /* SealVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SealVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealVaultUITests.swift; sourceTree = "<group>"; };
+		68F6292C28251A0B00BDCD02 /* NativeUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUITest.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,6 +109,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6811E25A28E243D40044F9FE /* TestPlans */ = {
+			isa = PBXGroup;
+			children = (
+				6811E25B28E243F30044F9FE /* FullTest.xctestplan */,
+				6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */,
+			);
+			path = TestPlans;
+			sourceTree = "<group>";
+		};
 		681D2A58283195BC000DBC93 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -136,6 +149,7 @@
 		68F6290528251A0900BDCD02 = {
 			isa = PBXGroup;
 			children = (
+				6811E25A28E243D40044F9FE /* TestPlans */,
 				68F6291028251A0900BDCD02 /* SealVaultApp */,
 				68F6292B28251A0B00BDCD02 /* SealVaultUITests */,
 				68F6290F28251A0900BDCD02 /* Products */,
@@ -195,7 +209,8 @@
 		68F6292B28251A0B00BDCD02 /* SealVaultUITests */ = {
 			isa = PBXGroup;
 			children = (
-				68F6292C28251A0B00BDCD02 /* SealVaultUITests.swift */,
+				68F6292C28251A0B00BDCD02 /* NativeUITest.swift */,
+				6811E25828E2430B0044F9FE /* BrowserUITest.swift */,
 			);
 			path = SealVaultUITests;
 			sourceTree = "<group>";
@@ -345,7 +360,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				68F6292D28251A0B00BDCD02 /* SealVaultUITests.swift in Sources */,
+				6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */,
+				68F6292D28251A0B00BDCD02 /* NativeUITest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

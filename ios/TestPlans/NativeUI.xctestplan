@@ -1,0 +1,27 @@
+{
+  "configurations" : [
+    {
+      "id" : "675D3FE9-CE06-400E-B644-390AAC324745",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "BrowserUITest"
+      ],
+      "target" : {
+        "containerPath" : "container:SealVault.xcodeproj",
+        "identifier" : "68F6292728251A0B00BDCD02",
+        "name" : "SealVaultUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
