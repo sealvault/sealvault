@@ -39,6 +39,7 @@ platform :ios do
 
   lane :tests do
     desc "Run linter, unit and UI tests"
+    xcversion(version: "14.0")
     lint()
     reset_simulator_contents()
     pre_build()

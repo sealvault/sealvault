@@ -48,7 +48,8 @@ def mpl_header_check():
 ^// License, v. 2.0. If a copy of the MPL was not distributed with this$
 ^// file, You can obtain one at https://mozilla.org/MPL/2.0/.$
     """.strip()
-    command = f'rg --files-without-match --multiline -trust -tswift -tjs "{pattern}"'
+    # Current directory at end is important otherwise fails in GitHub CI
+    command = f'rg --files-without-match --multiline -trust -tswift -tjs "{pattern}" ./'
     result = sp.run(command, capture_output=True, shell=True, text=True)
     # 0 means match and 1 means no match which is what we want
     if result.returncode > 1:
