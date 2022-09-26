@@ -43,6 +43,8 @@ platform :ios do
     lint()
     reset_simulator_contents()
     pre_build()
-    run_tests(scheme: "SealVault", devices: ["iPhone 13"], clean: true)
+    # Browser tests are flaky in CI
+    testplan = ENV["CI"] ? "NativeUI" : "FullTest"
+    run_tests(scheme: "SealVault", devices: ["iPhone 13"], clean: true, testplan: testplan)
   end
 end
