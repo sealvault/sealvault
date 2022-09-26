@@ -7,7 +7,13 @@
 import XCTest
 
 class SealVaultUITests: XCTestCase {
-    let timeOutSeconds: TimeInterval = 30
+    var timeOutSeconds: TimeInterval {
+        if ProcessInfo.processInfo.environment["CI"] == "true" {
+            return 120
+        } else {
+            return 30
+        }
+    }
     let minAccounts = 1
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
