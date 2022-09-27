@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct AccountListView: View {
-    @EnvironmentObject private var model: ViewModel
+    @EnvironmentObject private var model: GlobalModel
     @State private var selectedAccount: Account?
     @State private var searchString: String = ""
 
@@ -57,7 +57,7 @@ struct AccountListView: View {
 struct AccountListView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            AccountListView().environmentObject(ViewModel.buildForPreview())
+            AccountListView().environmentObject(GlobalModel.buildForPreview())
         }
     }
 }

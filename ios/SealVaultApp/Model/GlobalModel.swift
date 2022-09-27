@@ -5,7 +5,7 @@
 import Foundation
 
 @MainActor
-class ViewModel: ObservableObject {
+class GlobalModel: ObservableObject {
     @Published var accounts: [Account]
 
     /// The account currently used for dapp interactions
@@ -127,7 +127,7 @@ class ViewModel: ObservableObject {
 
 // MARK: - Account & Address
 
-extension ViewModel {
+extension GlobalModel {
     func getAccountSearchSugestions(searchString: String) -> [Account] {
         accounts.filter {
             $0.matches(searchString)
@@ -183,8 +183,8 @@ class PreviewAppCore: AppCoreProtocol {
         }
     }
 
-    extension ViewModel {
-        static func buildForPreview() -> ViewModel {
+    extension GlobalModel {
+        static func buildForPreview() -> GlobalModel {
             let dapps = [
                 Dapp.opensea(),
                 Dapp.sushi(),
@@ -231,7 +231,7 @@ class PreviewAppCore: AppCoreProtocol {
 
             let core = PreviewAppCore()
 
-            return ViewModel(core: core, accounts: accounts, activeAccountId: "1")
+            return GlobalModel(core: core, accounts: accounts, activeAccountId: "1")
         }
     }
 #endif

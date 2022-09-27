@@ -33,7 +33,7 @@ struct DappView: View {
 
 struct DappView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let dapp = account.dapps[0]
         return DappView(account: account, dapp: dapp)

@@ -61,7 +61,7 @@ struct AccountView: View {
 
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         return AccountView(account: model.activeAccount)
     }
 }

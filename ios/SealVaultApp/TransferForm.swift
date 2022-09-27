@@ -11,7 +11,7 @@ struct TransferForm: View {
         case external
     }
 
-    @EnvironmentObject private var model: ViewModel
+    @EnvironmentObject private var model: GlobalModel
     var account: Account
     var fromAddress: Address
     var token: Token
@@ -219,7 +219,7 @@ struct TransferButton: View {
 
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let walletAddress = account.wallets[0]
         let walletToken = walletAddress.nativeToken

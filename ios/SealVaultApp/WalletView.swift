@@ -30,7 +30,7 @@ struct WalletView: View {
 
 struct AddressView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let dapp = account.dapps[0]
         let address: Address = dapp.addressesByChain.values.first!.first!

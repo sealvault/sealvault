@@ -24,7 +24,7 @@
 		68745A802826E0F000E7B915 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A7F2826E0F000E7B915 /* BrowserView.swift */; };
 		68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A812826E11500E7B915 /* WebViewRepresentable.swift */; };
 		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
-		688C29B4283FD78000474900 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* ViewModel.swift */; };
+		688C29B4283FD78000474900 /* GlobalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* GlobalModel.swift */; };
 		688C29B6283FE73E00474900 /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* AccountListView.swift */; };
 		688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B9283FE94300474900 /* AppTabNavigation.swift */; };
 		688C29BC283FF32300474900 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BB283FF32300474900 /* AccountView.swift */; };
@@ -71,7 +71,7 @@
 		68745A7F2826E0F000E7B915 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		68745A812826E11500E7B915 /* WebViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewRepresentable.swift; sourceTree = "<group>"; };
 		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
-		688C29B3283FD78000474900 /* ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		688C29B3283FD78000474900 /* GlobalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalModel.swift; sourceTree = "<group>"; };
 		688C29B5283FE73E00474900 /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
 		688C29B9283FE94300474900 /* AppTabNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabNavigation.swift; sourceTree = "<group>"; };
 		688C29BB283FF32300474900 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
@@ -133,7 +133,7 @@
 				688C29EA284102FC00474900 /* Address.swift */,
 				68B6C40028426C120025BCEA /* Dapp.swift */,
 				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
-				688C29B3283FD78000474900 /* ViewModel.swift */,
+				688C29B3283FD78000474900 /* GlobalModel.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -209,8 +209,8 @@
 		68F6292B28251A0B00BDCD02 /* SealVaultUITests */ = {
 			isa = PBXGroup;
 			children = (
-				68F6292C28251A0B00BDCD02 /* NativeUITest.swift */,
 				6811E25828E2430B0044F9FE /* BrowserUITest.swift */,
+				68F6292C28251A0B00BDCD02 /* NativeUITest.swift */,
 			);
 			path = SealVaultUITests;
 			sourceTree = "<group>";
@@ -336,7 +336,7 @@
 				686C1D052827C9DC00011311 /* Config.swift in Sources */,
 				688C29EB284102FC00474900 /* Address.swift in Sources */,
 				68B6C40128426C120025BCEA /* Dapp.swift in Sources */,
-				688C29B4283FD78000474900 /* ViewModel.swift in Sources */,
+				688C29B4283FD78000474900 /* GlobalModel.swift in Sources */,
 				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
 				688C29BC283FF32300474900 /* AccountView.swift in Sources */,
