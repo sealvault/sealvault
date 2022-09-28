@@ -100,7 +100,7 @@ offers two solutions:
 
 ## Airdrops
 
-There are two types of airdropds: push- and pull-style airdrops.  In a
+There are two types of airdrops: push- and pull-style airdrops.  In a
 push-style airdrop, the token creator sends tokens directly to a user address
 without any interaction on the user's side.  In a pull-style airdrop, the user
 has to approve a transaction or perform an off-chain signature to receive the
