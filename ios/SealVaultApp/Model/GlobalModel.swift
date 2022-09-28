@@ -78,50 +78,33 @@ class GlobalModel: ObservableObject {
         return cacheDirUrl.path
     }
 
-    private func listAccounts() async -> [Account] {
-        // TODO: make a generic dispatch + continuation wrapper
-        func dispatch(completion: @escaping ([Account]) -> Void) {
-            DispatchQueue.global(qos: .background).async {
-                var accounts: [Account] = []
-                do {
-                    accounts = try self.core.listAccounts().map { Account.fromCore(self.core, $0) }
-                } catch {
-                    print("Error fetching account data: \(error)")
-                }
-                completion(accounts)
+    private func listAccounts(_ qos: DispatchQoS.QoSClass) async -> [Account] {
+        return await dispatchBackground(qos) {
+            var accounts: [Account] = []
+            do {
+                accounts = try self.core.listAccounts().map { Account.fromCore(self.core, $0) }
+            } catch {
+                print("Error fetching account data: \(error)")
             }
-        }
-
-        return await withCheckedContinuation { continuation in
-            dispatch { accounts in
-                continuation.resume(returning: accounts)
-            }
+            return accounts
         }
     }
 
-    private func fetchActiveAccountId() async -> String? {
-        func dispatch(completion: @escaping (String?) -> Void) {
-            DispatchQueue.global(qos: .background).async {
-                var activeAccountId: String?
-                do {
-                    activeAccountId = try self.core.activeAccountId()
-                } catch {
-                    print("Error fetching active account id: \(error)")
-                }
-                completion(activeAccountId)
+    private func fetchActiveAccountId(_ qos: DispatchQoS.QoSClass) async -> String? {
+        return await dispatchBackground(qos) {
+            var activeAccountId: String?
+            do {
+                activeAccountId = try self.core.activeAccountId()
+            } catch {
+                print("Error fetching active account id: \(error)")
             }
-        }
-
-        return await withCheckedContinuation { continuation in
-            dispatch { activeAccountId in
-                continuation.resume(returning: activeAccountId)
-            }
+            return activeAccountId
         }
     }
 
     func refreshAccounts() async {
-        self.accounts = await self.listAccounts()
-        self.activeAccountId = await self.fetchActiveAccountId()
+        self.accounts = await self.listAccounts(.userInteractive)
+        self.activeAccountId = await self.fetchActiveAccountId(.userInteractive)
     }
 }
 
