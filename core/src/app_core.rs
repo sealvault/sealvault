@@ -99,6 +99,15 @@ impl AppCore {
         Ok(res)
     }
 
+    pub fn native_token_for_address(&self, address_id: String) -> Result<dto::CoreToken, CoreError> {
+        let res = self.connection_pool.deferred_transaction(|tx_conn| {
+            let mut assembler =
+                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
+            assembler.native_token_for_address(&address_id)
+        })?;
+        Ok(res)
+    }
+
     pub fn get_in_page_script(
         &self,
         rpc_provider_name: String,
@@ -452,6 +461,18 @@ mod tests {
         assert!(matches!(result, Err(CoreError::User {
                 explanation
             }) if explanation.to_lowercase().contains("privacy")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn native_token_for_address() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let account = tmp.first_account();
+        let address_id = account.wallets.first().map(|a| &a.id).unwrap();
+
+        let token = tmp.core.native_token_for_address(address_id.clone())?;
+        assert_eq!(token.amount, "0");
 
         Ok(())
     }

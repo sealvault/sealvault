@@ -125,6 +125,14 @@ extension GlobalModel {
     /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
     /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+        func nativeTokenForAddress(addressId: String) throws -> CoreToken {
+            let token = Address.polygonWallet().nativeToken!
+            let icon = [UInt8](token.icon.pngData()!)
+            return CoreToken(
+                id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
+            )
+        }
+
         func fetchFavicon(rawUrl: String) throws -> [UInt8]? {
             nil
         }

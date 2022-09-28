@@ -9,7 +9,6 @@ use crate::db::{models as m, DeferredTxConnection};
 use crate::favicon::fetch_favicons;
 use crate::http_client::{GetAllBytes, HttpClient, HttpClientError};
 use crate::protocols::eth::ankr;
-use crate::protocols::eth::{ChainId, RpcManagerI};
 use crate::protocols::{eth, TokenType};
 use crate::Error;
 use std::collections::HashMap;
@@ -90,14 +89,14 @@ impl From<Error> for CoreError {
 pub struct Assembler<'a> {
     eth_chains_by_db_id: HashMap<String, m::EthChain>,
     http_client: &'a HttpClient,
-    rpc_manager: &'a dyn RpcManagerI,
+    rpc_manager: &'a dyn eth::RpcManagerI,
     tx_conn: DeferredTxConnection<'a>,
 }
 
 impl<'a> Assembler<'a> {
     pub fn init(
         http_client: &'a HttpClient,
-        rpc_manager: &'a dyn RpcManagerI,
+        rpc_manager: &'a dyn eth::RpcManagerI,
         mut tx_conn: DeferredTxConnection<'a>,
     ) -> Result<Self, Error> {
         let eth_chains = m::Chain::list_eth_chains(tx_conn.as_mut())?;
@@ -203,25 +202,29 @@ impl<'a> Assembler<'a> {
         Ok(result)
     }
 
+    fn chain_id_for_address(&self, address: &m::Address) -> Result<eth::ChainId, Error> {
+        let chain = self
+            .eth_chains_by_db_id
+            .get(&*address.chain_id)
+            .ok_or(Error::Fatal {
+                error: format!("Unknown chain db id: {}", &*address.chain_id),
+            })?;
+        Ok(chain.chain_id)
+    }
+
     fn assemble_address(
         &self,
         address: m::Address,
         is_wallet: bool,
     ) -> Result<CoreAddress, Error> {
+        let chain_id = self.chain_id_for_address(&address)?;
+
         let m::Address {
             deterministic_id,
             address,
-            chain_id: chain_db_id,
             ..
         } = address;
 
-        let chain = self
-            .eth_chains_by_db_id
-            .get(&*chain_db_id)
-            .ok_or(Error::Fatal {
-                error: format!("Unknown chain db id: {}", &*chain_db_id),
-            })?;
-        let chain_id = chain.chain_id;
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String =
             eth::explorer::address_url(chain_id, &address)?.into();
@@ -237,10 +240,16 @@ impl<'a> Assembler<'a> {
         Ok(result)
     }
 
+    pub fn native_token_for_address(&mut self, address_id: &str) -> Result<CoreToken, Error> {
+        let address = m::Address::fetch(self.tx_conn.as_mut(), address_id)?;
+        let chain_id = self.chain_id_for_address(&address)?;
+        self.assemble_native_token(&address.address, chain_id)
+    }
+
     fn assemble_native_token(
         &self,
         address: &str,
-        chain_id: ChainId,
+        chain_id: eth::ChainId,
     ) -> Result<CoreToken, Error> {
         let provider = self.rpc_manager.eth_api_provider(chain_id);
         let native_token_id = format!("{}-{}", chain_id, chain_id.native_token());
@@ -259,7 +268,7 @@ impl<'a> Assembler<'a> {
     fn assemble_fungible_tokens(
         &self,
         address: &str,
-        chain_id: ChainId,
+        chain_id: eth::ChainId,
     ) -> Result<Vec<CoreToken>, Error> {
         use ankr::AnkrRpcI;
         let ankr_api = ankr::AnkrRpc::new()?;

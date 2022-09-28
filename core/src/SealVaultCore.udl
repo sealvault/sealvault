@@ -17,6 +17,9 @@ interface AppCore {
     string active_account_id();
 
     [Throws=CoreError]
+    CoreToken native_token_for_address(string address_id);
+
+    [Throws=CoreError]
     string get_in_page_script(string rpc_provider_name, string request_handler_name);
 
     [Throws=CoreError]
