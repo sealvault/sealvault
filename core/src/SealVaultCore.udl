@@ -65,8 +65,6 @@ dictionary CoreAddress {
     string blockchain_explorer_link;
     string chain_display_name;
     sequence<u8> chain_icon;
-    CoreToken native_token;
-    sequence<CoreToken> fungible_tokens;
 };
 
 enum TokenType {

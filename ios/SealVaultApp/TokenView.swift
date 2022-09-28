@@ -5,22 +5,24 @@
 import SwiftUI
 
 struct TokenView: View {
-    var account: Account
-    var address: Address
+    @State var account: Account
+    @State var address: Address
 
     var body: some View {
         Section {
+            if let nativeToken = address.nativeToken {
                 NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: address.nativeToken)
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    AccountImageCircle(account: account)
-                                }
+                    TransferForm(account: account, fromAddress: address, token: nativeToken)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                AccountImageCircle(account: account)
                             }
+                        }
                 } label: {
-                    TokenRow(token: address.nativeToken)
+                    TokenRow(token: nativeToken)
                 }
+            }
         } header: {
             HStack {
                 Text(address.chainDisplayName)
@@ -33,12 +35,12 @@ struct TokenView: View {
             ForEach(address.fungibleTokens) { token in
                 NavigationLink {
                     TransferForm(account: account, fromAddress: address, token: token)
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    AccountImageCircle(account: account)
-                                }
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                AccountImageCircle(account: account)
                             }
+                        }
                 } label: {
                     TokenRow(token: token)
                 }

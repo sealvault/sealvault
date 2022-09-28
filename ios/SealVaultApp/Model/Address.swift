@@ -5,28 +5,51 @@
 import Foundation
 import SwiftUI
 
-struct Address: Identifiable, Hashable {
-    var id: String
-    var checksumAddress: String
-    var blockchainExplorerLink: URL?
-    var chainDisplayName: String
-    var chainIcon: UIImage
+class Address: Identifiable, ObservableObject {
+    let core: AppCoreProtocol
 
-    var nativeToken: Token
-    var fungibleTokens: [Token]
+    let id: String
+    let checksumAddress: String
+    let blockchainExplorerLink: URL?
+    let chainDisplayName: String
+    let chainIcon: UIImage
 
-    static func fromCore(_ address: CoreAddress) -> Self {
+    @Published var nativeToken: Token?
+    @Published var fungibleTokens: [Token] = []
+    @Published var loading: Bool = false
+
+    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, blockchainExplorerLink: URL?,
+                  chainDisplayName: String, chainIcon: UIImage) {
+        self.core = core
+        self.id = id
+        self.checksumAddress = checksumAddress
+        self.blockchainExplorerLink = blockchainExplorerLink
+        self.chainDisplayName = chainDisplayName
+        self.chainIcon = chainIcon
+    }
+
+    static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress) -> Self {
         let chainIcon = UIImage(data: Data(address.chainIcon)) ?? UIImage(systemName: "diamond")!
         let url = URL(string: address.blockchainExplorerLink)
-        let nativeToken = Token.fromCore(address.nativeToken)
-        var fungibleTokens = address.fungibleTokens.map(Token.fromCore)
-        fungibleTokens.sort {$0.symbol < $1.symbol}
         return Self(
-            id: address.id, checksumAddress: address.checksumAddress, blockchainExplorerLink: url,
-            chainDisplayName: address.chainDisplayName, chainIcon: chainIcon, nativeToken: nativeToken,
-            fungibleTokens: fungibleTokens
+            core, id: address.id, checksumAddress: address.checksumAddress, blockchainExplorerLink: url,
+            chainDisplayName: address.chainDisplayName, chainIcon: chainIcon
         )
     }
+}
+
+// MARK: - Hashable
+
+extension Address: Equatable, Hashable {
+
+    static func == (lhs: Address, rhs: Address) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
 }
 
 // MARK: - display
@@ -62,14 +85,12 @@ extension Address {
         }
 
         static func ethereum(checksumAddress: String) -> Self {
-            let fungibleTokens = [Token.dai(), Token.usdc()]
             let icon = UIImage(named: "eth")!
             let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
             let id = "eth-\(checksumAddress)"
             return Self(
-                id: id, checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA",
-                blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon,
-                nativeToken: Token.eth(), fungibleTokens: fungibleTokens
+                PreviewAppCore(), id: id, checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA",
+                blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon
             )
         }
 
@@ -79,9 +100,8 @@ extension Address {
             let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
             let id = "polygon-pos-\(checksumAddress)"
             return Self(
-                id: id, checksumAddress: checksumAddress, blockchainExplorerLink: explorer,
-                chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: Token.matic(),
-                fungibleTokens: fungibleTokens
+                PreviewAppCore(), id: id, checksumAddress: checksumAddress, blockchainExplorerLink: explorer,
+                chainDisplayName: "Polygon PoS", chainIcon: icon
             )
         }
     }

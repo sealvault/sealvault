@@ -5,7 +5,7 @@
 import Foundation
 import SwiftUI
 
-struct Dapp: Identifiable, Hashable {
+struct Dapp: Identifiable {
     /// Database identifier
     var id: String
     /// Human readable identifier that is either the origin or the registrable domain
@@ -25,9 +25,9 @@ struct Dapp: Identifiable, Hashable {
         return result
     }
 
-    static func fromCore(_ dapp: CoreDapp) -> Self {
+    static func fromCore(_ core: AppCoreProtocol, _ dapp: CoreDapp) -> Self {
         let url = URL(string: dapp.url)
-        let addresses = dapp.addresses.map(Address.fromCore)
+        let addresses = dapp.addresses.map { Address.fromCore(core, $0) }
         return self.init(
             id: dapp.id,
             humanIdentifier: dapp.humanIdentifier,
@@ -46,6 +46,20 @@ struct Dapp: Identifiable, Hashable {
         let faviconOrFallback = favicon ?? UIImage(systemName: "app")!
         return faviconOrFallback
     }
+}
+
+// MARK: - Hashable
+
+extension Dapp: Equatable, Hashable {
+
+    static func == (lhs: Dapp, rhs: Dapp) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
 }
 
 // MARK: - display

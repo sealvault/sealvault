@@ -32,7 +32,7 @@ class GlobalModel: ObservableObject {
         }
         var accounts: [Account] = []
         do {
-            accounts = try core.listAccounts().map(Account.fromCore)
+            accounts = try core.listAccounts().map { Account.fromCore(core, $0) }
         } catch {
             print("Error fetching account data: \(error)")
         }
@@ -84,7 +84,7 @@ class GlobalModel: ObservableObject {
             DispatchQueue.global(qos: .background).async {
                 var accounts: [Account] = []
                 do {
-                    accounts = try self.core.listAccounts().map(Account.fromCore)
+                    accounts = try self.core.listAccounts().map { Account.fromCore(self.core, $0) }
                 } catch {
                     print("Error fetching account data: \(error)")
                 }

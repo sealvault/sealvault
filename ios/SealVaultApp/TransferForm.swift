@@ -222,10 +222,10 @@ struct TransferView_Previews: PreviewProvider {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let walletAddress = account.wallets[0]
-        let walletToken = walletAddress.nativeToken
+        let walletToken = Token.matic()
         let dapp = account.dapps[0]
         let dappAddress = dapp.addresses[0]
-        let dappToken = dappAddress.fungibleTokens[0]
+        let dappToken = Token.dai()
         return Group {
             TransferForm(account: account, fromAddress: dappAddress, token: dappToken).environmentObject(model)
             TransferForm(account: account, fromAddress: walletAddress, token: walletToken).environmentObject(model)

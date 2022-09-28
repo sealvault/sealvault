@@ -46,8 +46,6 @@ pub struct CoreAddress {
     pub blockchain_explorer_link: String,
     pub chain_display_name: String,
     pub chain_icon: Vec<u8>,
-    pub native_token: CoreToken,
-    pub fungible_tokens: Vec<CoreToken>,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -227,10 +225,6 @@ impl<'a> Assembler<'a> {
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String =
             eth::explorer::address_url(chain_id, &address)?.into();
-        let native_token = self.assemble_native_token(&address, chain_id)?;
-
-        let fungible_tokens = self.assemble_fungible_tokens(&address, chain_id)?;
-
         let result = CoreAddress::builder()
             .id(deterministic_id)
             .is_wallet(is_wallet)
@@ -238,8 +232,6 @@ impl<'a> Assembler<'a> {
             .blockchain_explorer_link(explorer_link)
             .chain_display_name(chain_id.display_name())
             .chain_icon(chain_icon)
-            .native_token(native_token)
-            .fungible_tokens(fungible_tokens)
             .build();
 
         Ok(result)
