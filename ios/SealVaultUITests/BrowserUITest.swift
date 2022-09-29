@@ -7,7 +7,7 @@
 import XCTest
 
 final class BrowserUITest: XCTestCase {
-    var timeOutSeconds: TimeInterval = 30
+    var timeOutSeconds: TimeInterval = 60
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
     let browserAddressBar = "browserAddressBar"
