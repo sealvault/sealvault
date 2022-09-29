@@ -6,7 +6,7 @@ import SwiftUI
 
 struct WalletView: View {
     var account: Account
-    var address: Address
+    @StateObject var address: Address
 
     @State private var searchString: String = ""
     @State private var selectedToken: Token?
@@ -24,6 +24,9 @@ struct WalletView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 AccountImageCircle(account: account)
             }
+        }
+        .task {
+            await self.address.refreshNativeToken()
         }
     }
 }

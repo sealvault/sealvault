@@ -5,6 +5,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 struct Dapp: Identifiable {
     /// Database identifier
     var id: String

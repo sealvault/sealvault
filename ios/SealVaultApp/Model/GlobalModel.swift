@@ -126,7 +126,7 @@ extension GlobalModel {
     /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
         func nativeTokenForAddress(addressId: String) throws -> CoreToken {
-            let token = Address.polygonWallet().nativeToken!
+            let token = Token.matic()
             let icon = [UInt8](token.icon.pngData()!)
             return CoreToken(
                 id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon

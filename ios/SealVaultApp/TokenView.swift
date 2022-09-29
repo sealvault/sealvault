@@ -5,8 +5,8 @@
 import SwiftUI
 
 struct TokenView: View {
-    @State var account: Account
-    @State var address: Address
+    var account: Account
+    @StateObject var address: Address
 
     var body: some View {
         Section {

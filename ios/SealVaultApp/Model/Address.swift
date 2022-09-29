@@ -37,6 +37,23 @@ class Address: Identifiable, ObservableObject {
             chainDisplayName: address.chainDisplayName, chainIcon: chainIcon
         )
     }
+
+    func refreshNativeToken() async {
+        let coreToken: CoreToken? = await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.nativeTokenForAddress(addressId: self.id)
+            } catch {
+                print("Failed to fetch native token for address id \(self.id)")
+                return nil
+            }
+        }
+        if let token = coreToken {
+            // `withAnimation`   should be ideally in the view, but it doesn't support async closures.
+            withAnimation {
+                self.nativeToken = Token.fromCore(token)
+            }
+        }
+    }
 }
 
 // MARK: - Hashable
@@ -96,7 +113,6 @@ extension Address {
         }
 
         static func polygon(checksumAddress: String) -> Self {
-            let fungibleTokens = [Token.dai(), Token.usdc()]
             let icon = UIImage(named: "matic")!
             let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
             let id = "polygon-pos-\(checksumAddress)"
