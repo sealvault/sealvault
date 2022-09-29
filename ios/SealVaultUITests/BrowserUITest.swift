@@ -92,6 +92,8 @@ extension XCUIElement {
             lowerRightCorner.tap()
             let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
             self.typeText(delete)
+            // Make sure we read up-to-date self.value
+            Thread.sleep(forTimeInterval: TimeInterval(floatLiteral: 0.1))
         }
     }
 
