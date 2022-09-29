@@ -7,8 +7,8 @@ import SwiftUI
 struct AddressView: View {
     var title: String
     var account: Account
-    @StateObject var address: Address
-    
+    @ObservedObject var address: Address
+
     var body: some View {
         ScrollViewReader { _ in
             // Need the `List` here for the `Section` in the `TokenView`
@@ -34,7 +34,8 @@ struct AddressView_Previews: PreviewProvider {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let address = account.wallets[0]
+        address.nativeToken.amount = nil
 
-        AddressView(title: "Wallet", account: account, address: address)
+        return AddressView(title: "Wallet", account: account, address: address)
     }
 }

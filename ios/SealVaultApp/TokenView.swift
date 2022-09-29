@@ -6,21 +6,21 @@ import SwiftUI
 
 struct TokenView: View {
     var account: Account
-    @StateObject var address: Address
+    @ObservedObject var address: Address
 
     var body: some View {
         Section {
-            if let nativeToken = address.nativeToken {
-                NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: nativeToken)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                AccountImageCircle(account: account)
-                            }
+            NavigationLink {
+                TransferForm(account: account, fromAddress: address, token: address.nativeToken)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            AccountImageCircle(account: account)
                         }
-                } label: {
-                    TokenRow(token: nativeToken)
+                    }
+            } label: {
+                VStack {
+                    TokenRow(token: $address.nativeToken)
                 }
             }
         } header: {
@@ -31,31 +31,22 @@ struct TokenView: View {
             }
         }
         .headerProminence(.standard)
-        Section {
-            ForEach(address.fungibleTokens) { token in
-                NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: token)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                AccountImageCircle(account: account)
-                            }
-                        }
-                } label: {
-                    TokenRow(token: token)
-                }
-            }
-        } header: { Text("Fungible Tokens") }
-    }
-}
-
-struct TokenView_Previews: PreviewProvider {
-    static var previews: some View {
-        let model = GlobalModel.buildForPreview()
-        let account = model.activeAccount
-        let dapp = account.dapps[0]
-        let address: Address = dapp.addressesByChain.values.first!.first!
-
-        return TokenView(account: account, address: address)
+//        Section {
+//            ForEach(address.fungibleTokens) { token in
+//                NavigationLink {
+//                    TransferForm(account: account, fromAddress: address, token: token)
+//                        .navigationBarTitleDisplayMode(.inline)
+//                        .toolbar {
+//                            ToolbarItem(placement: .navigationBarTrailing) {
+//                                AccountImageCircle(account: account)
+//                            }
+//                        }
+//                } label: {
+//                    TokenRow(token: token)
+//                }
+//            }
+//        } header: {
+//            Text("Fungible Tokens")
+//        }
     }
 }

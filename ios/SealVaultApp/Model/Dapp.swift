@@ -6,17 +6,17 @@ import Foundation
 import SwiftUI
 
 @MainActor
-struct Dapp: Identifiable {
+class Dapp: Identifiable, ObservableObject {
     /// Database identifier
-    var id: String
+    let id: String
     /// Human readable identifier that is either the origin or the registrable domain
-    var humanIdentifier: String
-    var url: URL?
-    var addresses: [Address]
-    var lastUsed: String?
+    let humanIdentifier: String
+    let url: URL?
+    @Published var addresses: [Address]
+    let lastUsed: String?
 
     /// Favicon
-    var favicon: UIImage
+    let favicon: UIImage
 
     var addressesByChain: [String: [Address]] {
         var result: [String: [Address]] = Dictionary()
@@ -24,6 +24,17 @@ struct Dapp: Identifiable {
             result[address.chainDisplayName, default: []].append(address)
         }
         return result
+    }
+
+    required init(id: String, humanIdentifier: String, url: URL?, addresses: [Address], lastUsed: String?,
+                  favicon: UIImage) {
+        self.id = id
+        self.humanIdentifier = humanIdentifier
+        self.url = url
+        self.addresses = addresses
+        self.lastUsed = lastUsed
+        self.favicon = favicon
+
     }
 
     static func fromCore(_ core: AppCoreProtocol, _ dapp: CoreDapp) -> Self {

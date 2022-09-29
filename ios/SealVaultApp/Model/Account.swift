@@ -6,12 +6,20 @@ import Foundation
 import SwiftUI
 
 @MainActor
-struct Account: Identifiable {
-    var id: String
-    var name: String
-    var picture: UIImage
-    var wallets: [Address]
-    var dapps: [Dapp]
+class Account: Identifiable, ObservableObject {
+    let id: String
+    @Published var name: String
+    @Published var picture: UIImage
+    @Published var wallets: [Address]
+    @Published var dapps: [Dapp]
+
+    required init(id: String, name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
+        self.id = id
+        self.name = name
+        self.picture = picture
+        self.wallets = wallets
+        self.dapps = dapps
+    }
 
     static func fromCore(_ core: AppCoreProtocol, _ account: CoreAccount) -> Self {
         let wallets = account.wallets.map { Address.fromCore(core, $0) }
@@ -92,7 +100,7 @@ extension Account {
 
 #if DEBUG
     extension Account {
-        init(name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
+        convenience init(name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
             self.init(id: name.lowercased(), name: name, picture: picture, wallets: wallets, dapps: dapps)
         }
     }

@@ -14,12 +14,13 @@ struct TransferForm: View {
     @EnvironmentObject private var model: GlobalModel
     var account: Account
     var fromAddress: Address
-    var token: Token
+    @State var token: Token
 
     @State private var amount = ""
     @State private var toExternal: String = ""
     @State private var toAddress: Address?
     @State private var toAddressType: ToAddressType = .dapp
+
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
         if let toAddr = toAddress {
@@ -61,7 +62,7 @@ struct TransferForm: View {
                     }
                     Spacer()
                     TokenLabel(token: token)
-                    Text(token.amount)
+                    TokenAmount(token: $token)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top)

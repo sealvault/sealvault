@@ -45,13 +45,14 @@ pub struct CoreAddress {
     pub blockchain_explorer_link: String,
     pub chain_display_name: String,
     pub chain_icon: Vec<u8>,
+    pub native_token: CoreToken
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreToken {
     pub id: String,
     pub symbol: String,
-    pub amount: String,
+    pub amount: Option<String>,
     pub token_type: TokenType,
     pub icon: Option<Vec<u8>>,
 }
@@ -225,6 +226,10 @@ impl<'a> Assembler<'a> {
             ..
         } = address;
 
+        // We send the native token without balance first to return result ASAP.
+        // UI then fetches balance async.
+        let native_token = self.native_token_without_balance(&address, chain_id)?;
+
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String =
             eth::explorer::address_url(chain_id, &address)?.into();
@@ -235,6 +240,7 @@ impl<'a> Assembler<'a> {
             .blockchain_explorer_link(explorer_link)
             .chain_display_name(chain_id.display_name())
             .chain_icon(chain_icon)
+            .native_token(native_token)
             .build();
 
         Ok(result)
@@ -246,22 +252,28 @@ impl<'a> Assembler<'a> {
         self.assemble_native_token(&address.address, chain_id)
     }
 
+    fn native_token_without_balance(&self, address: &str, chain_id: eth::ChainId) -> Result<CoreToken, Error> {
+        let native_token_id = format!("eth-{}-{}", chain_id,  address);
+        let icon = Some(chain_id.native_token().icon()?);
+        let native_token = CoreToken::builder()
+            .id(native_token_id)
+            .symbol(chain_id.native_token().to_string())
+            .amount(None)
+            .token_type(TokenType::Native)
+            .icon(icon)
+            .build();
+        Ok(native_token)
+    }
+
     fn assemble_native_token(
         &self,
         address: &str,
         chain_id: eth::ChainId,
     ) -> Result<CoreToken, Error> {
+        let mut native_token = self.native_token_without_balance(address, chain_id)?;
         let provider = self.rpc_manager.eth_api_provider(chain_id);
-        let native_token_id = format!("{}-{}", chain_id, chain_id.native_token());
         let balance = provider.native_token_balance(address)?;
-        let icon = Some(chain_id.native_token().icon()?);
-        let native_token = CoreToken::builder()
-            .id(native_token_id)
-            .symbol(chain_id.native_token().to_string())
-            .amount(balance.display_amount())
-            .token_type(TokenType::Native)
-            .icon(icon)
-            .build();
+        native_token.amount = Some(balance.display_amount());
         Ok(native_token)
     }
 
@@ -329,7 +341,7 @@ impl<'a> Assembler<'a> {
                 Ok(CoreToken::builder()
                     .id(contract_address)
                     .symbol(symbol)
-                    .amount(amount)
+                    .amount(Some(amount))
                     .token_type(TokenType::Fungible)
                     .icon(icon)
                     .build())

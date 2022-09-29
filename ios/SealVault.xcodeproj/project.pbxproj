@@ -23,6 +23,7 @@
 		686C1D052827C9DC00011311 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C1D042827C9DC00011311 /* Config.swift */; };
 		686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686D8BB328E4B91F00031375 /* dispatchBackground.swift */; };
 		686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686D8BB528E5ED7C00031375 /* AddressView.swift */; };
+		686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686D8BB728E5FF4A00031375 /* TokenAmount.swift */; };
 		68745A802826E0F000E7B915 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A7F2826E0F000E7B915 /* BrowserView.swift */; };
 		68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A812826E11500E7B915 /* WebViewRepresentable.swift */; };
 		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
@@ -72,6 +73,7 @@
 		686C1D042827C9DC00011311 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		686D8BB328E4B91F00031375 /* dispatchBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dispatchBackground.swift; sourceTree = "<group>"; };
 		686D8BB528E5ED7C00031375 /* AddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressView.swift; sourceTree = "<group>"; };
+		686D8BB728E5FF4A00031375 /* TokenAmount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenAmount.swift; sourceTree = "<group>"; };
 		68745A7F2826E0F000E7B915 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		68745A812826E11500E7B915 /* WebViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewRepresentable.swift; sourceTree = "<group>"; };
 		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
@@ -144,8 +146,8 @@
 				688C29E82840F69100474900 /* Account.swift */,
 				688C29EA284102FC00474900 /* Address.swift */,
 				68B6C40028426C120025BCEA /* Dapp.swift */,
-				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
 				688C29B3283FD78000474900 /* GlobalModel.swift */,
+				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -200,6 +202,7 @@
 				688C29E72840F5C500474900 /* Model */,
 				68F6291728251A0B00BDCD02 /* Preview Content */,
 				68F6291128251A0900BDCD02 /* SealVaultApp.swift */,
+				686D8BB728E5FF4A00031375 /* TokenAmount.swift */,
 				5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */,
 				5850C6335A85D238AFAD5DC5 /* TokenRow.swift */,
 				5850C80B600A5AFC33AFACE0 /* TokenView.swift */,
@@ -357,6 +360,7 @@
 				688C29BC283FF32300474900 /* AccountView.swift in Sources */,
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
+				686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */,
 				688C29B6283FE73E00474900 /* AccountListView.swift in Sources */,
 				5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */,
 				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,

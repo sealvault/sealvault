@@ -6,8 +6,8 @@ import SwiftUI
 
 struct DappView: View {
     var account: Account
-    var dapp: Dapp
-    
+    @ObservedObject var dapp: Dapp
+
     var body: some View {
         AddressView(title: dapp.displayName, account: account, address: dapp.addresses.first!)
     }

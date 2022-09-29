@@ -68,6 +68,7 @@ dictionary CoreAddress {
     string blockchain_explorer_link;
     string chain_display_name;
     sequence<u8> chain_icon;
+    CoreToken native_token;
 };
 
 enum TokenType {
@@ -78,7 +79,7 @@ enum TokenType {
 dictionary CoreToken {
     string id;
     string symbol;
-    string amount;
+    string? amount;
     TokenType token_type;
     sequence<u8>? icon;
 };

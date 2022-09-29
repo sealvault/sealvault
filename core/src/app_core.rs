@@ -472,7 +472,7 @@ mod tests {
         let address_id = account.wallets.first().map(|a| &a.id).unwrap();
 
         let token = tmp.core.native_token_for_address(address_id.clone())?;
-        assert_eq!(token.amount, "0");
+        assert_eq!(token.amount, Some("0".into()));
 
         Ok(())
     }

@@ -126,10 +126,16 @@ extension GlobalModel {
     /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
         func nativeTokenForAddress(addressId: String) throws -> CoreToken {
-            let token = Token.matic()
+            let token = DispatchQueue.main.sync {
+                return Token.matic()
+            }
             let icon = [UInt8](token.icon.pngData()!)
+            let amount = DispatchQueue.main.sync {
+                token.amount
+            }
+            Thread.sleep(forTimeInterval: 1)
             return CoreToken(
-                id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
+                id: token.id, symbol: token.symbol, amount: amount, tokenType: TokenType.native, icon: icon
             )
         }
 

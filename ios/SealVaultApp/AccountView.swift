@@ -6,7 +6,7 @@ import SwiftUI
 
 @MainActor
 struct AccountView: View {
-    var account: Account
+    @ObservedObject var account: Account
 
     @State private var selectedDapp: Dapp?
     @State private var searchString: String = ""

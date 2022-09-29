@@ -6,7 +6,7 @@ import SwiftUI
 
 struct WalletView: View {
     var account: Account
-    @StateObject var address: Address
+    @ObservedObject var address: Address
 
     var body: some View {
         AddressView(title: "Wallet", account: account, address: address)
