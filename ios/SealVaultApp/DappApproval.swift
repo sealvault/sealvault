@@ -4,6 +4,7 @@
 
 import SwiftUI
 
+@MainActor
 struct DappApprovalRequest: Identifiable {
     // It's important to have a unique id per request
     var id = UUID()

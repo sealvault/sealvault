@@ -5,6 +5,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 struct Account: Identifiable {
     var id: String
     var name: String

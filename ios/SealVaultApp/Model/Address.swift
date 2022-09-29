@@ -5,6 +5,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 class Address: Identifiable, ObservableObject {
     let core: AppCoreProtocol
 

@@ -4,6 +4,7 @@
 
 import SwiftUI
 
+@MainActor
 struct AccountView: View {
     var account: Account
 
