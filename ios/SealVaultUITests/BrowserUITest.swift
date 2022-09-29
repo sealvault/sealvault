@@ -78,6 +78,11 @@ extension XCUIElement {
             return
         }
 
+        // Make sure keyboard is fully visible before we start deleting text, otherwise lower right corner tap below
+        // may be inaccurate.
+        self.tap()
+        _ = XCUIApplication().keyboards.element.waitForExistence(timeout: 2)
+
         // Repeatedly delete text as long as there is something in the text field.
         // This is required to clear text that does not fit in to the textfield and is partially hidden initally.
         // Important to check for placeholder value, otherwise it gets into an infinite loop.
