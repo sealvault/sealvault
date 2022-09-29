@@ -7,27 +7,9 @@ import SwiftUI
 struct DappView: View {
     var account: Account
     var dapp: Dapp
-
-    @State private var searchString: String = ""
-    @State private var selectedToken: Token?
-
+    
     var body: some View {
-        ScrollViewReader { _ in
-            List {
-                ForEach(dapp.addressesByChain.sorted(by: { $0.key < $1.key }), id: \.key) { _, value in
-                    ForEach(value) { address in
-                        TokenView(account: account, address: address)
-                    }
-                }
-            }
-        }
-        .navigationTitle(Text(dapp.displayName))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: account)
-            }
-        }
+        AddressView(title: dapp.displayName, account: account, address: dapp.addresses.first!)
     }
 }
 

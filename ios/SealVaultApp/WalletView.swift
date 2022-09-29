@@ -8,30 +8,12 @@ struct WalletView: View {
     var account: Account
     @StateObject var address: Address
 
-    @State private var searchString: String = ""
-    @State private var selectedToken: Token?
-
     var body: some View {
-        ScrollViewReader { _ in
-            // Need the `List` here for the `Section` in the `TokenView`
-            List {
-                TokenView(account: account, address: address)
-            }
-        }
-        .navigationTitle(Text("Wallet"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: account)
-            }
-        }
-        .task {
-            await self.address.refreshNativeToken()
-        }
+        AddressView(title: "Wallet", account: account, address: address)
     }
 }
 
-struct AddressView_Previews: PreviewProvider {
+struct WalletView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
