@@ -78,21 +78,22 @@ extension XCUIElement {
             return
         }
 
-        // Make sure keyboard is fully visible before we start deleting text, otherwise lower right corner tap below
-        // may be inaccurate.
-        self.tap()
-        _ = XCUIApplication().keyboards.element.waitForExistence(timeout: 2)
-
         // Repeatedly delete text as long as there is something in the text field.
         // This is required to clear text that does not fit in to the textfield and is partially hidden initally.
         // Important to check for placeholder value, otherwise it gets into an infinite loop.
         while let stringValue = self.value as? String, !stringValue.isEmpty, stringValue != self.placeholderValue {
+            // Make sure keyboard is fully visible before we start deleting text, otherwise lower right corner tap below
+            // may be inaccurate.
+            self.tap()
+            _ = XCUIApplication().keyboards.element.waitForExistence(timeout: 5)
+
             // Move the cursor to the end of the text field
             let lowerRightCorner = self.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9))
             lowerRightCorner.tap()
             let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
             self.typeText(delete)
-            // Make sure we read up-to-date self.value
+
+            // Make sure we read up-to-date self.value when evaluating loop condition
             Thread.sleep(forTimeInterval: TimeInterval(floatLiteral: 0.1))
         }
     }
