@@ -264,15 +264,14 @@ class CoreInPageCallback: CoreInPageCallbackI {
     }
 
     func notify(messageHex: String) {
-        DispatchQueue.main.sync { [weak self] in
-            guard let that = self else {
-                return
-            }
-            guard let webView = that.message.webView else {
+        DispatchQueue.main.async {
+            // Must capture self to prevent the callback object from being GCed before this has a chance to run
+            guard let webView = self.message.webView else {
+                print("Returning early from notify: webview has been GCed")
                 return
             }
 
-            webView.evaluateJavaScript("window.\(that.rpcProviderName).notify('\(messageHex)')")
+            webView.evaluateJavaScript("window.\(self.rpcProviderName).notify('\(messageHex)')")
         }
     }
 }
