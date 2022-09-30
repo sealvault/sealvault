@@ -168,7 +168,17 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
                         replyHandler(response, nil)
                     }
                 } catch {
-                    print("core.inPageRequest returned error: \(error)")
+                    if let err = error as? CoreError {
+                        print("Core error resolving in page request: \(err) for message \(messageBody)")
+                        DispatchQueue.main.async {
+                            replyHandler(nil, "Core error")
+                        }
+                    } else {
+                        print("Unknown error resolving in page request: \(error) for message \(messageBody)")
+                        DispatchQueue.main.async {
+                            replyHandler(nil, "Unknown error")
+                        }
+                    }
                 }
             }
         } else {
