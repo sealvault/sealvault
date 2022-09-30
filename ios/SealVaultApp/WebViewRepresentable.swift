@@ -70,18 +70,20 @@ public struct WebViewRepresentable: UIViewRepresentable {
     }
 
     public func updateUIView(_ webView: WKWebView, context _: Context) {
-        let model = stateModel
-        if model.urlChanged {
-            loadUrlIfValid(webView: webView)
-            // Important to set to false even if the url is invalid,
-            // bc the semantics is that we tried to process the change.
-            model.urlChanged = false
-        } else if webView.canGoBack, model.goBack {
-            webView.goBack()
-            model.goBack = false
-        } else if webView.canGoForward, model.goForward {
-            webView.goForward()
-            model.goForward = false
+        DispatchQueue.main.async {
+            let model = self.stateModel
+            if model.urlChanged {
+                loadUrlIfValid(webView: webView)
+                // Important to set to false even if the url is invalid,
+                // bc the semantics is that we tried to process the change.
+                model.urlChanged = false
+            } else if webView.canGoBack, model.goBack {
+                webView.goBack()
+                model.goBack = false
+            } else if webView.canGoForward, model.goForward {
+                webView.goForward()
+                model.goForward = false
+            }
         }
     }
 
