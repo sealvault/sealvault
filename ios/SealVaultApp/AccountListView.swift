@@ -48,7 +48,9 @@ struct AccountListView: View {
                     Text(suggestion.displayName).searchCompletion(suggestion.displayName)
                 }
             }
-            .refreshable(action: { await model.refreshAccounts() })
+            .refreshable(action: {
+                await model.refreshAccounts()
+            })
         }
         .navigationTitle(Text("Accounts"))
     }
