@@ -162,10 +162,10 @@ impl<'a> InPageProvider<'a> {
         chain_id: eth::ChainId,
         selected_address: &str,
     ) -> Result<(), Error> {
-        let network_id = chain_id.network_id();
+        let network_version = chain_id.network_version();
         let event = SealVaultConnect {
             chain_id: chain_id.into(),
-            network_id: &network_id,
+            network_version: &network_version,
             selected_address,
         };
         let data = serde_json::to_value(&event).map_err(|_| Error::Fatal {
@@ -186,14 +186,14 @@ impl<'a> InPageProvider<'a> {
         };
         self.notify(&chain_message)?;
 
-        let network_id = chain_id.network_id();
-        let network_id =
-            serde_json::to_value(&network_id).map_err(|err| Error::Fatal {
+        let network_version = chain_id.network_version();
+        let network_version =
+            serde_json::to_value(&network_version).map_err(|err| Error::Fatal {
                 error: err.to_string(),
             })?;
         let network_message = ProviderMessage {
             event: ProviderEvent::NetworkChanged,
-            data: network_id,
+            data: network_version,
         };
         self.notify(&network_message)
     }
@@ -339,7 +339,8 @@ impl<'a> InPageProvider<'a> {
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
             .build();
-        let user_approved = self.request_context.callbacks().approve_dapp(dapp_approval);
+        let callbacks = self.request_context.callbacks();
+        let user_approved = callbacks.approve_dapp(dapp_approval);
         if user_approved {
             let address = self.add_new_dapp(tx_conn, account_id)?;
             Ok(Some(address))
@@ -652,7 +653,7 @@ struct ProviderMessage {
 #[serde(rename_all = "camelCase")]
 struct SealVaultConnect<'a> {
     chain_id: ethers::core::types::U64,
-    network_id: &'a str,
+    network_version: &'a str,
     selected_address: &'a str,
 }
 
@@ -668,7 +669,7 @@ enum ProviderEvent {
     AccountsChanged,
     // Legacy MetaMask https://docs.metamask.io/guide/ethereum-provider.html#legacy-events
     NetworkChanged,
-    // Custom connect event as we need to inject the networkId in addition to chainId
+    // Custom connect event as we need to inject the networkVersion in addition to chainId
     SealVaultConnect,
 }
 
@@ -817,9 +818,14 @@ pub fn load_in_page_provider_script(
     rpc_provider_name: &str,
     request_handler_name: &str,
 ) -> Result<String, Error> {
+    let chain_id = eth::ChainId::default_dapp_chain();
+    let network_version = chain_id.network_version();
+    let hex_chain_id = chain_id.display_hex();
     let replacements = vec![
         (config::RPC_PROVIDER_PLACEHOLDER, rpc_provider_name),
         (config::REQUEST_HANDLER_PLACEHOLDER, request_handler_name),
+        (config::DEFAULT_CHAIN_ID_PLACEHOLDER, &hex_chain_id),
+        (config::DEFAULT_NETWORK_VERSION_PLACEHOLDER, &network_version),
     ];
 
     let path = format!(
@@ -966,8 +972,13 @@ mod tests {
         let source =
             load_in_page_provider_script(rpc_provider_name, request_handler_name)?;
 
+        let network_version = eth::ChainId::default_dapp_chain().network_version();
+        let chain_id = eth::ChainId::default_dapp_chain().display_hex();
+
         assert!(source.contains(rpc_provider_name));
         assert!(source.contains(request_handler_name));
+        assert!(source.contains(&network_version));
+        assert!(source.contains(&chain_id));
 
         Ok(())
     }
