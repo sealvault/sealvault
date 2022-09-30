@@ -15,6 +15,9 @@ struct AddressView: View {
             List {
                 TokenView(account: account, address: address)
             }
+            .refreshable(action: {
+                await address.refreshTokens()
+            })
         }
         .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
