@@ -5,16 +5,25 @@
 import Foundation
 import SwiftUI
 
-struct Account: Identifiable, Hashable {
-    var id: String
-    var name: String
-    var picture: UIImage
-    var wallets: [Address]
-    var dapps: [Dapp]
+@MainActor
+class Account: Identifiable, ObservableObject {
+    let id: String
+    @Published var name: String
+    @Published var picture: UIImage
+    @Published var wallets: [Address]
+    @Published var dapps: [Dapp]
 
-    static func fromCore(_ account: CoreAccount) -> Self {
-        let wallets = account.wallets.map(Address.fromCore)
-        let dapps = account.dapps.map(Dapp.fromCore)
+    required init(id: String, name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
+        self.id = id
+        self.name = name
+        self.picture = picture
+        self.wallets = wallets
+        self.dapps = dapps
+    }
+
+    static func fromCore(_ core: AppCoreProtocol, _ account: CoreAccount) -> Self {
+        let wallets = account.wallets.map { Address.fromCore(core, $0) }
+        let dapps = account.dapps.map { Dapp.fromCore(core, $0) }
         let picture = UIImage(data: Data(account.picture)) ?? UIImage(systemName: "person")!
         return Self(id: account.id, name: account.name, picture: picture, wallets: wallets, dapps: dapps)
     }
@@ -30,6 +39,20 @@ struct Account: Identifiable, Hashable {
             return nil
         }
     }
+}
+
+// MARK: - Hashable
+
+extension Account: Equatable, Hashable {
+
+    static func == (lhs: Account, rhs: Account) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
 }
 
 // MARK: - Display
@@ -77,7 +100,7 @@ extension Account {
 
 #if DEBUG
     extension Account {
-        init(name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
+        convenience init(name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
             self.init(id: name.lowercased(), name: name, picture: picture, wallets: wallets, dapps: dapps)
         }
     }

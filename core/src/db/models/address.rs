@@ -185,6 +185,21 @@ impl Address {
         Ok(exists.map(|_| deterministic_id))
     }
 
+    /// Fetch the the address entity by id.
+    pub fn fetch(
+        conn: &mut SqliteConnection,
+        address_id: &str,
+    ) -> Result<Self, Error> {
+        use addresses::dsl as a;
+
+        let address: Address = addresses::table
+            .filter(a::deterministic_id.eq(address_id))
+            .select(ALL_COLUMNS)
+            .first(conn)?;
+
+        Ok(address)
+    }
+
     pub fn fetch_account_id(
         conn: &mut SqliteConnection,
         address_id: &str,
@@ -217,6 +232,7 @@ impl Address {
         Ok(asymmetric_key_id)
     }
 
+    /// Fetch the blockchain address.
     pub fn fetch_address(
         conn: &mut SqliteConnection,
         address_id: &str,

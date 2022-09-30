@@ -9,7 +9,6 @@ use crate::db::{models as m, DeferredTxConnection};
 use crate::favicon::fetch_favicons;
 use crate::http_client::{GetAllBytes, HttpClient, HttpClientError};
 use crate::protocols::eth::ankr;
-use crate::protocols::eth::{ChainId, RpcManagerI};
 use crate::protocols::{eth, TokenType};
 use crate::Error;
 use std::collections::HashMap;
@@ -46,15 +45,14 @@ pub struct CoreAddress {
     pub blockchain_explorer_link: String,
     pub chain_display_name: String,
     pub chain_icon: Vec<u8>,
-    pub native_token: CoreToken,
-    pub fungible_tokens: Vec<CoreToken>,
+    pub native_token: CoreToken
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreToken {
     pub id: String,
     pub symbol: String,
-    pub amount: String,
+    pub amount: Option<String>,
     pub token_type: TokenType,
     pub icon: Option<Vec<u8>>,
 }
@@ -92,14 +90,14 @@ impl From<Error> for CoreError {
 pub struct Assembler<'a> {
     eth_chains_by_db_id: HashMap<String, m::EthChain>,
     http_client: &'a HttpClient,
-    rpc_manager: &'a dyn RpcManagerI,
+    rpc_manager: &'a dyn eth::RpcManagerI,
     tx_conn: DeferredTxConnection<'a>,
 }
 
 impl<'a> Assembler<'a> {
     pub fn init(
         http_client: &'a HttpClient,
-        rpc_manager: &'a dyn RpcManagerI,
+        rpc_manager: &'a dyn eth::RpcManagerI,
         mut tx_conn: DeferredTxConnection<'a>,
     ) -> Result<Self, Error> {
         let eth_chains = m::Chain::list_eth_chains(tx_conn.as_mut())?;
@@ -205,32 +203,36 @@ impl<'a> Assembler<'a> {
         Ok(result)
     }
 
+    fn chain_id_for_address(&self, address: &m::Address) -> Result<eth::ChainId, Error> {
+        let chain = self
+            .eth_chains_by_db_id
+            .get(&*address.chain_id)
+            .ok_or(Error::Fatal {
+                error: format!("Unknown chain db id: {}", &*address.chain_id),
+            })?;
+        Ok(chain.chain_id)
+    }
+
     fn assemble_address(
         &self,
         address: m::Address,
         is_wallet: bool,
     ) -> Result<CoreAddress, Error> {
+        let chain_id = self.chain_id_for_address(&address)?;
+
         let m::Address {
             deterministic_id,
             address,
-            chain_id: chain_db_id,
             ..
         } = address;
 
-        let chain = self
-            .eth_chains_by_db_id
-            .get(&*chain_db_id)
-            .ok_or(Error::Fatal {
-                error: format!("Unknown chain db id: {}", &*chain_db_id),
-            })?;
-        let chain_id = chain.chain_id;
+        // We send the native token without balance first to return result ASAP.
+        // UI then fetches balance async.
+        let native_token = self.native_token_without_balance(&address, chain_id)?;
+
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String =
             eth::explorer::address_url(chain_id, &address)?.into();
-        let native_token = self.assemble_native_token(&address, chain_id)?;
-
-        let fungible_tokens = self.assemble_fungible_tokens(&address, chain_id)?;
-
         let result = CoreAddress::builder()
             .id(deterministic_id)
             .is_wallet(is_wallet)
@@ -239,35 +241,52 @@ impl<'a> Assembler<'a> {
             .chain_display_name(chain_id.display_name())
             .chain_icon(chain_icon)
             .native_token(native_token)
-            .fungible_tokens(fungible_tokens)
             .build();
 
         Ok(result)
     }
 
-    fn assemble_native_token(
-        &self,
-        address: &str,
-        chain_id: ChainId,
-    ) -> Result<CoreToken, Error> {
-        let provider = self.rpc_manager.eth_api_provider(chain_id);
-        let native_token_id = format!("{}-{}", chain_id, chain_id.native_token());
-        let balance = provider.native_token_balance(address)?;
+    pub fn native_token_for_address(&mut self, address_id: &str) -> Result<CoreToken, Error> {
+        let address = m::Address::fetch(self.tx_conn.as_mut(), address_id)?;
+        let chain_id = self.chain_id_for_address(&address)?;
+        self.assemble_native_token(&address.address, chain_id)
+    }
+
+    fn native_token_without_balance(&self, address: &str, chain_id: eth::ChainId) -> Result<CoreToken, Error> {
+        let native_token_id = format!("eth-{}-{}", chain_id,  address);
         let icon = Some(chain_id.native_token().icon()?);
         let native_token = CoreToken::builder()
             .id(native_token_id)
             .symbol(chain_id.native_token().to_string())
-            .amount(balance.display_amount())
+            .amount(None)
             .token_type(TokenType::Native)
             .icon(icon)
             .build();
         Ok(native_token)
     }
 
+    fn assemble_native_token(
+        &self,
+        address: &str,
+        chain_id: eth::ChainId,
+    ) -> Result<CoreToken, Error> {
+        let mut native_token = self.native_token_without_balance(address, chain_id)?;
+        let provider = self.rpc_manager.eth_api_provider(chain_id);
+        let balance = provider.native_token_balance(address)?;
+        native_token.amount = Some(balance.display_amount());
+        Ok(native_token)
+    }
+
+    pub fn fungible_tokens_for_address(&mut self, address_id: &str) -> Result<Vec<CoreToken>, Error> {
+        let address = m::Address::fetch(self.tx_conn.as_mut(), address_id)?;
+        let chain_id = self.chain_id_for_address(&address)?;
+        self.assemble_fungible_tokens(&address.address, chain_id)
+    }
+
     fn assemble_fungible_tokens(
         &self,
         address: &str,
-        chain_id: ChainId,
+        chain_id: eth::ChainId,
     ) -> Result<Vec<CoreToken>, Error> {
         use ankr::AnkrRpcI;
         let ankr_api = ankr::AnkrRpc::new()?;
@@ -328,7 +347,7 @@ impl<'a> Assembler<'a> {
                 Ok(CoreToken::builder()
                     .id(contract_address)
                     .symbol(symbol)
-                    .amount(amount)
+                    .amount(Some(amount))
                     .token_type(TokenType::Fungible)
                     .icon(icon)
                     .build())

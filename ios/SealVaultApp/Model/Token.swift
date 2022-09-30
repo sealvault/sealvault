@@ -5,12 +5,21 @@
 import Foundation
 import SwiftUI
 
-struct Token: Identifiable, Hashable {
-    var id: String
-    var symbol: String
-    var icon: UIImage
-    var amount: String
-    var nativeToken: Bool
+@MainActor
+class Token: Identifiable, ObservableObject {
+    let id: String
+    let symbol: String
+    let icon: UIImage
+    @Published var amount: String?
+    let nativeToken: Bool
+
+    required init(id: String, symbol: String, icon: UIImage, amount: String?, nativeToken: Bool) {
+        self.id = id
+        self.symbol = symbol
+        self.icon = icon
+        self.amount = amount
+        self.nativeToken = nativeToken
+    }
 
     static func fromCore(_ token: CoreToken) -> Self {
         var tokenIcon: UIImage?
@@ -25,6 +34,19 @@ struct Token: Identifiable, Hashable {
             amount: token.amount,
             nativeToken: token.tokenType == TokenType.native
         )
+    }
+}
+
+// MARK: - Hashable
+
+extension Token: Equatable, Hashable {
+
+    static func == (lhs: Token, rhs: Token) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

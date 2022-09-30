@@ -5,17 +5,18 @@
 import Foundation
 import SwiftUI
 
-struct Dapp: Identifiable, Hashable {
+@MainActor
+class Dapp: Identifiable, ObservableObject {
     /// Database identifier
-    var id: String
+    let id: String
     /// Human readable identifier that is either the origin or the registrable domain
-    var humanIdentifier: String
-    var url: URL?
-    var addresses: [Address]
-    var lastUsed: String?
+    let humanIdentifier: String
+    let url: URL?
+    @Published var addresses: [Address]
+    let lastUsed: String?
 
     /// Favicon
-    var favicon: UIImage
+    let favicon: UIImage
 
     var addressesByChain: [String: [Address]] {
         var result: [String: [Address]] = Dictionary()
@@ -25,9 +26,20 @@ struct Dapp: Identifiable, Hashable {
         return result
     }
 
-    static func fromCore(_ dapp: CoreDapp) -> Self {
+    required init(id: String, humanIdentifier: String, url: URL?, addresses: [Address], lastUsed: String?,
+                  favicon: UIImage) {
+        self.id = id
+        self.humanIdentifier = humanIdentifier
+        self.url = url
+        self.addresses = addresses
+        self.lastUsed = lastUsed
+        self.favicon = favicon
+
+    }
+
+    static func fromCore(_ core: AppCoreProtocol, _ dapp: CoreDapp) -> Self {
         let url = URL(string: dapp.url)
-        let addresses = dapp.addresses.map(Address.fromCore)
+        let addresses = dapp.addresses.map { Address.fromCore(core, $0) }
         return self.init(
             id: dapp.id,
             humanIdentifier: dapp.humanIdentifier,
@@ -46,6 +58,20 @@ struct Dapp: Identifiable, Hashable {
         let faviconOrFallback = favicon ?? UIImage(systemName: "app")!
         return faviconOrFallback
     }
+}
+
+// MARK: - Hashable
+
+extension Dapp: Equatable, Hashable {
+
+    static func == (lhs: Dapp, rhs: Dapp) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
 }
 
 // MARK: - display

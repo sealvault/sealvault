@@ -45,7 +45,7 @@ class BrowserModel: ObservableObject {
 }
 
 struct BrowserView: View {
-    @EnvironmentObject private var viewModel: ViewModel
+    @EnvironmentObject private var viewModel: GlobalModel
 
     @StateObject var browserModel = BrowserModel()
 
@@ -113,6 +113,6 @@ struct BrowserView: View {
 
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
-        BrowserView().environmentObject(ViewModel.buildForPreview())
+        BrowserView().environmentObject(GlobalModel.buildForPreview())
     }
 }

@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct TokenRow: View {
-    var token: Token
+    @Binding var token: Token
 
     var body: some View {
         HStack {
@@ -17,20 +17,7 @@ struct TokenRow: View {
 
             Spacer()
 
-            if token.amount.count > 12 {
-                let prefix = String(token.amount.prefix(9))
-                Text("\(prefix)...")
-            } else {
-                Text(token.amount)
-            }
+            TokenAmount(token: $token)
         }
-    }
-}
-
-struct TokenRow_Previews: PreviewProvider {
-    static var previews: some View {
-        let token = Token.usdc()
-
-        return TokenRow(token: token)
     }
 }

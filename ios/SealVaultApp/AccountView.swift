@@ -4,8 +4,10 @@
 
 import SwiftUI
 
+@MainActor
 struct AccountView: View {
-    var account: Account
+    @EnvironmentObject private var model: GlobalModel
+    @Binding var account: Account
 
     @State private var selectedDapp: Dapp?
     @State private var searchString: String = ""
@@ -41,13 +43,10 @@ struct AccountView: View {
                     Text("Dapps")
                 }
             }
+            .refreshable(action: {
+                await model.refreshAccounts()
+            })
             .accessibilityRotor("Dapps", entries: account.dapps, entryLabel: \.displayName)
-//            .searchable(text: $searchString) {
-//                let searchResults = account.getDappSearchSuggestions(searchString: searchString)
-//                ForEach(searchResults) { suggestion in
-//                    Text(suggestion.displayName).searchCompletion(suggestion.displayName)
-//                }
-//            }
         }
         .navigationTitle(Text(account.displayName))
         .navigationBarTitleDisplayMode(.inline)
@@ -61,7 +60,15 @@ struct AccountView: View {
 
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
-        return AccountView(account: model.activeAccount)
+        let model = GlobalModel.buildForPreview()
+        return PreviewWrapper(account: model.activeAccount)
+    }
+
+    struct PreviewWrapper: View {
+        @State var account: Account
+
+        var body: some View {
+            AccountView(account: $account)
+        }
     }
 }

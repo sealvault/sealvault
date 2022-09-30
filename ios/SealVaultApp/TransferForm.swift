@@ -11,15 +11,16 @@ struct TransferForm: View {
         case external
     }
 
-    @EnvironmentObject private var model: ViewModel
+    @EnvironmentObject private var model: GlobalModel
     var account: Account
     var fromAddress: Address
-    var token: Token
+    @Binding var token: Token
 
     @State private var amount = ""
     @State private var toExternal: String = ""
     @State private var toAddress: Address?
     @State private var toAddressType: ToAddressType = .dapp
+
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
         if let toAddr = toAddress {
@@ -61,7 +62,7 @@ struct TransferForm: View {
                     }
                     Spacer()
                     TokenLabel(token: token)
-                    Text(token.amount)
+                    TokenAmount(token: $token)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top)
@@ -219,16 +220,27 @@ struct TransferButton: View {
 
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let walletAddress = account.wallets[0]
-        let walletToken = walletAddress.nativeToken
+        let walletToken = Token.matic()
         let dapp = account.dapps[0]
         let dappAddress = dapp.addresses[0]
-        let dappToken = dappAddress.fungibleTokens[0]
+        let dappToken = Token.dai()
         return Group {
-            TransferForm(account: account, fromAddress: dappAddress, token: dappToken).environmentObject(model)
-            TransferForm(account: account, fromAddress: walletAddress, token: walletToken).environmentObject(model)
+            PreviewWrapper(model: model, account: account, fromAddress: dappAddress, token: dappToken)
+            PreviewWrapper(model: model, account: account, fromAddress: walletAddress, token: walletToken)
+        }
+    }
+
+    struct PreviewWrapper: View {
+        var model: GlobalModel
+        var account: Account
+        var fromAddress: Address
+        @State var token: Token
+
+        var body: some View {
+            TransferForm(account: account, fromAddress: fromAddress, token: $token).environmentObject(model)
         }
     }
 }
