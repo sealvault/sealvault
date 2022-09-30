@@ -25,6 +25,9 @@ struct AccountListView: View {
             })
         }
         .navigationTitle(Text("Accounts"))
+        .task {
+            await self.model.refreshAccounts()
+        }
     }
 }
 

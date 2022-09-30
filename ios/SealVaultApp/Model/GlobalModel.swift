@@ -28,21 +28,10 @@ class GlobalModel: ObservableObject {
         do {
             core = try AppCore(args: coreArgs)
         } catch {
+            print("Failed to create core: \(error)")
             exit(1)
         }
-        var accounts: [Account] = []
-        do {
-            accounts = try core.listAccounts().map { Account.fromCore(core, $0) }
-        } catch {
-            print("Error fetching account data: \(error)")
-        }
-        var activeAccountId: String?
-        do {
-            activeAccountId = try core.activeAccountId()
-        } catch {
-            print("Error fetching active account id: \(error)")
-        }
-        return Self(core: core, accounts: accounts, activeAccountId: activeAccountId)
+        return Self(core: core, accounts: [], activeAccountId: nil)
     }
 
     private static func ensureDbFilePath() -> String {
