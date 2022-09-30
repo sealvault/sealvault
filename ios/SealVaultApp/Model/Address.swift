@@ -40,7 +40,7 @@ class Address: Identifiable, ObservableObject {
         )
     }
 
-    func refreshNativeToken() async {
+    private func refreshNativeToken() async {
         let coreToken: CoreToken? = await dispatchBackground(.userInteractive) {
             do {
                 return try self.core.nativeTokenForAddress(addressId: self.id)
@@ -55,6 +55,31 @@ class Address: Identifiable, ObservableObject {
             }
         }
     }
+
+    private func refreshFungibleTokens() async {
+        let tokens: [CoreToken] = await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.fungibleTokensForAddress(addressId: self.id)
+            } catch {
+                print("Failed to fetch fungible tokens for address id \(self.id)")
+                return []
+            }
+        }
+        withAnimation {
+            // Not passing the function as that'd lose MainActor context.
+            self.fungibleTokens = tokens.map { Token.fromCore($0) }
+        }
+    }
+
+    func refreshTokens() async {
+        self.loading = true
+        defer { self.loading = false }
+        async let native: () = self.refreshNativeToken()
+        async let fungible: () = self.refreshFungibleTokens()
+        // Execute concurrently
+        _ = await [native, fungible]
+    }
+
 }
 
 // MARK: - Hashable

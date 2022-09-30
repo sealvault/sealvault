@@ -277,6 +277,12 @@ impl<'a> Assembler<'a> {
         Ok(native_token)
     }
 
+    pub fn fungible_tokens_for_address(&mut self, address_id: &str) -> Result<Vec<CoreToken>, Error> {
+        let address = m::Address::fetch(self.tx_conn.as_mut(), address_id)?;
+        let chain_id = self.chain_id_for_address(&address)?;
+        self.assemble_fungible_tokens(&address.address, chain_id)
+    }
+
     fn assemble_fungible_tokens(
         &self,
         address: &str,

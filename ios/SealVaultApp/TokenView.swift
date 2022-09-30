@@ -11,7 +11,7 @@ struct TokenView: View {
     var body: some View {
         Section {
             NavigationLink {
-                TransferForm(account: account, fromAddress: address, token: address.nativeToken)
+                TransferForm(account: account, fromAddress: address, token: $address.nativeToken)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -31,22 +31,28 @@ struct TokenView: View {
             }
         }
         .headerProminence(.standard)
-//        Section {
-//            ForEach(address.fungibleTokens) { token in
-//                NavigationLink {
-//                    TransferForm(account: account, fromAddress: address, token: token)
-//                        .navigationBarTitleDisplayMode(.inline)
-//                        .toolbar {
-//                            ToolbarItem(placement: .navigationBarTrailing) {
-//                                AccountImageCircle(account: account)
-//                            }
-//                        }
-//                } label: {
-//                    TokenRow(token: token)
-//                }
-//            }
-//        } header: {
-//            Text("Fungible Tokens")
-//        }
+        Section {
+            ForEach($address.fungibleTokens) { $token in
+                NavigationLink {
+                    TransferForm(account: account, fromAddress: address, token: $token)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                AccountImageCircle(account: account)
+                            }
+                        }
+                } label: {
+                    TokenRow(token: $token)
+                }
+            }
+        } header: {
+            if address.loading {
+                ProgressView()
+            } else if !address.fungibleTokens.isEmpty {
+                Text("Fungible Tokens")
+            } else {
+                Text("No Tokens")
+            }
+        }
     }
 }

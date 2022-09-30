@@ -24,7 +24,7 @@ struct AddressView: View {
             }
         }
         .task {
-            await self.address.refreshNativeToken()
+            await self.address.refreshTokens()
         }
     }
 }

@@ -108,6 +108,15 @@ impl AppCore {
         Ok(res)
     }
 
+    pub fn fungible_tokens_for_address(&self, address_id: String) -> Result<Vec<dto::CoreToken>, CoreError> {
+        let res = self.connection_pool.deferred_transaction(|tx_conn| {
+            let mut assembler =
+                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
+            assembler.fungible_tokens_for_address(&address_id)
+        })?;
+        Ok(res)
+    }
+
     pub fn get_in_page_script(
         &self,
         rpc_provider_name: String,

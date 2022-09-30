@@ -14,7 +14,7 @@ struct TransferForm: View {
     @EnvironmentObject private var model: GlobalModel
     var account: Account
     var fromAddress: Address
-    @State var token: Token
+    @Binding var token: Token
 
     @State private var amount = ""
     @State private var toExternal: String = ""
@@ -228,8 +228,19 @@ struct TransferView_Previews: PreviewProvider {
         let dappAddress = dapp.addresses[0]
         let dappToken = Token.dai()
         return Group {
-            TransferForm(account: account, fromAddress: dappAddress, token: dappToken).environmentObject(model)
-            TransferForm(account: account, fromAddress: walletAddress, token: walletToken).environmentObject(model)
+            PreviewWrapper(model: model, account: account, fromAddress: dappAddress, token: dappToken)
+            PreviewWrapper(model: model, account: account, fromAddress: walletAddress, token: walletToken)
+        }
+    }
+
+    struct PreviewWrapper: View {
+        var model: GlobalModel
+        var account: Account
+        var fromAddress: Address
+        @State var token: Token
+
+        var body: some View {
+            TransferForm(account: account, fromAddress: fromAddress, token: $token).environmentObject(model)
         }
     }
 }

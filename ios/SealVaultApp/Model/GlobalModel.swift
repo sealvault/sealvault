@@ -121,114 +121,125 @@ extension GlobalModel {
 // MARK: - Development
 
 #if DEBUG
-    import SwiftUI
-    /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
-    /// pass this stub.
+import SwiftUI
+/// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
+/// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-        func nativeTokenForAddress(addressId: String) throws -> CoreToken {
-            let token = DispatchQueue.main.sync {
-                return Token.matic()
-            }
+    static func toCoreToken(token: Token) -> CoreToken {
+        return DispatchQueue.main.sync {
             let icon = [UInt8](token.icon.pngData()!)
-            let amount = DispatchQueue.main.sync {
-                token.amount
-            }
-            Thread.sleep(forTimeInterval: 1)
             return CoreToken(
-                id: token.id, symbol: token.symbol, amount: amount, tokenType: TokenType.native, icon: icon
+                id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
             )
         }
-
-        func fetchFavicon(rawUrl: String) throws -> [UInt8]? {
-            nil
-        }
-
-        func dappIdentifier(rawUrl: String) throws -> String {
-            let url = URL(string: rawUrl)!
-            return url.host!
-        }
-
-        func ethTransferFungibleToken(
-            fromAddressId: String, toChecksumAddress: String, amount: String, tokenId: String
-        ) throws -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func ethTransferNativeToken(fromAddressId _: String, toChecksumAddress _: String, amount _: String) throws
-        -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func ethTransactionBlockExplorerUrl(fromAddressId _: String, txHash _: String) throws -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func listAccounts() throws -> [CoreAccount] {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func activeAccountId() throws -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func getInPageScript(rpcProviderName _: String, requestHandlerName _: String) throws -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
-
-        func inPageRequest(context _: InPageRequestContextI, rawRequest _: String) throws -> String {
-            throw CoreError.Fatal(message: "not implemented")
-        }
     }
 
-    extension GlobalModel {
-        static func buildForPreview() -> GlobalModel {
-            let dapps = [
-                Dapp.opensea(),
-                Dapp.sushi(),
-                Dapp.uniswap()
-            ]
-            let wallets = [
-                Address.ethereumWallet(),
-                Address.polygonWallet()
-            ]
-            let activeAccountName = "alice.eth"
-            let accounts = [
-                Account(
-                    id: "1", name: activeAccountName, picture: UIImage(named: "cat-green")!, wallets: wallets,
-                    dapps: [
-                        Dapp.ens(),
-                        Dapp.opensea(),
-                        Dapp.uniswap(),
-                        Dapp.dhedge(),
-                        Dapp.sushi(),
-                        Dapp.aave(),
-                        Dapp.oneInch(),
-                        Dapp.quickswap(),
-                        Dapp.darkForest(),
-                        Dapp.dnd()
-                    ]
-                ),
-                Account(
-                    id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
-                    dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
-                ),
-                Account(
-                    id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
-                    dapps: [Dapp.darkForest()]
-                ),
-                Account(
-                    id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
-                    dapps: [Dapp.dnd()]
-                ),
-                Account(
-                    id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
-                    dapps: [Dapp.opensea()]
-                )
-            ]
-
-            let core = PreviewAppCore()
-
-            return GlobalModel(core: core, accounts: accounts, activeAccountId: "1")
+    func fungibleTokensForAddress(addressId: String) throws -> [CoreToken] {
+        let tokens = DispatchQueue.main.sync {
+            [Token.dai(), Token.usdc()]
         }
+        Thread.sleep(forTimeInterval: 1)
+        return tokens.map(Self.toCoreToken)
     }
+
+    func nativeTokenForAddress(addressId: String) throws -> CoreToken {
+        let token = DispatchQueue.main.sync {
+            return Token.matic()
+        }
+        Thread.sleep(forTimeInterval: 1)
+        return Self.toCoreToken(token: token)
+    }
+
+    func fetchFavicon(rawUrl: String) throws -> [UInt8]? {
+        nil
+    }
+
+    func dappIdentifier(rawUrl: String) throws -> String {
+        let url = URL(string: rawUrl)!
+        return url.host!
+    }
+
+    func ethTransferFungibleToken(
+        fromAddressId: String, toChecksumAddress: String, amount: String, tokenId: String
+    ) throws -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func ethTransferNativeToken(fromAddressId _: String, toChecksumAddress _: String, amount _: String) throws
+    -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func ethTransactionBlockExplorerUrl(fromAddressId _: String, txHash _: String) throws -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func listAccounts() throws -> [CoreAccount] {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func activeAccountId() throws -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func getInPageScript(rpcProviderName _: String, requestHandlerName _: String) throws -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func inPageRequest(context _: InPageRequestContextI, rawRequest _: String) throws -> String {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+}
+
+extension GlobalModel {
+    static func buildForPreview() -> GlobalModel {
+        let dapps = [
+            Dapp.opensea(),
+            Dapp.sushi(),
+            Dapp.uniswap()
+        ]
+        let wallets = [
+            Address.ethereumWallet(),
+            Address.polygonWallet()
+        ]
+        let activeAccountName = "alice.eth"
+        let accounts = [
+            Account(
+                id: "1", name: activeAccountName, picture: UIImage(named: "cat-green")!, wallets: wallets,
+                dapps: [
+                    Dapp.ens(),
+                    Dapp.opensea(),
+                    Dapp.uniswap(),
+                    Dapp.dhedge(),
+                    Dapp.sushi(),
+                    Dapp.aave(),
+                    Dapp.oneInch(),
+                    Dapp.quickswap(),
+                    Dapp.darkForest(),
+                    Dapp.dnd()
+                ]
+            ),
+            Account(
+                id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
+                dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
+            ),
+            Account(
+                id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
+                dapps: [Dapp.darkForest()]
+            ),
+            Account(
+                id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
+                dapps: [Dapp.dnd()]
+            ),
+            Account(
+                id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
+                dapps: [Dapp.opensea()]
+            )
+        ]
+
+        let core = PreviewAppCore()
+
+        return GlobalModel(core: core, accounts: accounts, activeAccountId: "1")
+    }
+}
 #endif
