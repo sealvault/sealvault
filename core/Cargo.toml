@@ -15,7 +15,7 @@ base64 = "0.13.0"
 chacha20poly1305 = { version = "0.9.1", features = ["std"] }
 chrono = "0.4.19"
 der = "^0.5.0"
-diesel = { version = "2.0.0-rc.0", features = ["sqlite", "r2d2"] }
+diesel = { version = "2.0.0", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "2.0.0-rc.0", features = ["sqlite"] }
 # `serde` feauture implicitly depends on `pem` in 0.12.1
 ecdsa = {version = "0.14", features = ["digest", "sign"]}
@@ -29,7 +29,7 @@ k256 = { version = "0.11", features = ["digest", "ecdsa", "keccak256", "pkcs8", 
 # This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)
 # with the feature flag. We need at least 0.24, bc that bundles SQLite 3.38.0 which
 # ships with JSON support compiled in.
-libsqlite3-sys = { version = ">=0.24, <0.25.0", features = ["bundled"] }
+libsqlite3-sys = { version = ">=0.24, <0.26.0", features = ["bundled"] }
 rand = "0.8.5"
 readonly = "0.2.1"
 rust-embed = "6.4.0"
@@ -40,8 +40,8 @@ strum_macros = "^0.24"
 thiserror = "1.0.31"
 tokio = "1.18.2"
 typed-builder = "0.10.0"
-uniffi = "0.18.0"
-uniffi_macros = "0.18.0"
+uniffi = "0.20.0"
+uniffi_macros = "0.20.0"
 uuid = { version = "1.1.1", features = ["v4"] }
 sha3 = "0.10.1"
 hex = "0.4.3"
@@ -74,7 +74,7 @@ data-encoding = "2.3.2"
 
 [build-dependencies]
 # Important to match uniffi dep version in `embedded-uniff-bindgen`
-uniffi_build = { version = "^0.18", features=["builtin-bindgen"] }
+uniffi_build = { version = "0.20.0", features=["builtin-bindgen"] }
 
 [dev-dependencies]
 anyhow = { version = "1.0.57", features = ["backtrace"] }
