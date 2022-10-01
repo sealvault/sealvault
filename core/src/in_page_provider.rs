@@ -886,80 +886,54 @@ lazy_static! {
 // More tests are in integrations tests in the [dev server.](tools/dev-server/static/ethereum.html)
 #[cfg(test)]
 mod tests {
-
+    use std::sync::Arc;
     use super::*;
-    use crate::db::data_migrations;
-    use crate::db::schema_migrations::run_migrations;
     use anyhow::Result;
     use strum::IntoEnumIterator;
-
-    struct TestInPageProvider {
-        keychain: Keychain,
-        connection_pool: ConnectionPool,
-        public_suffix_list: PublicSuffixList,
-        rpc_manager: Box<dyn eth::RpcManagerI>,
-        http_client: HttpClient,
-    }
-
-    impl TestInPageProvider {
-        pub fn new(page_url: &str) -> Self {
-            let connection_pool =
-                ConnectionPool::new(":memory:").expect("can start sqlite in memory");
-            let rpc_manager = Box::new(eth::AnvilRpcManager::new());
-            let public_suffix_list = PublicSuffixList::new().expect("can load PSL");
-            // TODO the current tests won't make http requests, but if they do in the future, this
-            // should be replace by a mock.
-            let http_client = HttpClient::new_without_cache();
-            let keychain = Keychain::new();
-            // Run DB schema migrations and data migrations that haven't been applied yet.
-            connection_pool
-                .exclusive_transaction(|mut tx_conn| {
-                    run_migrations(&mut tx_conn)?;
-                    data_migrations::run_all(tx_conn, &keychain)
-                })
-                .expect("migrations succeed");
-
-            Self {
-                rpc_manager,
-                public_suffix_list,
-                connection_pool,
-                keychain,
-                http_client,
-            }
-        }
-
-        fn provider(&self) -> InPageProvider {
-            let context = InPageRequestContextMock::default_boxed();
-
-            InPageProvider::new(
-                &self.keychain,
-                &self.connection_pool,
-                &self.public_suffix_list,
-                &*self.rpc_manager,
-                &self.http_client,
-                context,
-            )
-            .expect("url valid")
-        }
-    }
-
-    impl<'a> Default for TestInPageProvider {
-        fn default() -> Self {
-            Self::new("http:/localhost:8080")
-        }
-    }
+    use tokio::task::JoinHandle;
+    use crate::app_core::tests::TmpCore;
 
     #[test]
     fn proxy_checks_allowed_methods() -> Result<()> {
-        let test: TestInPageProvider = Default::default();
+        let core = TmpCore::new()?;
+        let provider = core.in_page_provider();
 
-        let result = test.connection_pool.deferred_transaction(|mut tx_conn| {
-            test.provider()
+        let result = provider.connection_pool.deferred_transaction(|mut tx_conn| {
+            provider
                 .proxy_method(&mut tx_conn, "eth_coinbase", ())
         });
         assert!(
             matches!(result, Err(Error::JsonRpc { code, .. }) if code == ErrorCode::ServerError(4200))
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parallel_requests_ok() -> Result<()> {
+        let core = Arc::new(TmpCore::new()?);
+
+        // Authorize "dapp"
+        let provider = core.in_page_provider();
+        provider.connection_pool.deferred_transaction(|mut tx_conn| {
+            provider.eth_request_accounts(&mut tx_conn, None)
+        })?;
+
+        let mut tasks: Vec<JoinHandle<Result<eth::ChainId, Error>>> = Default::default();
+        for _ in 0..config::DB_CONNECTION_POOL_SIZE {
+            let ccore = core.clone();
+            let res = rt::spawn_blocking(move || {
+                let provider = ccore.in_page_provider();
+                provider.connection_pool.deferred_transaction(|mut tx_conn| {
+                    provider.fetch_eth_chain_id(&mut tx_conn)
+                })
+            });
+            tasks.push(res);
+        }
+        let tasks = rt::block_on(futures::future::join_all(tasks));
+        for t in tasks {
+            t??;
+        }
 
         Ok(())
     }
