@@ -1,6 +1,4 @@
 PRAGMA encoding = 'UTF-8';
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
 PRAGMA auto_vacuum = FULL;
 
 CREATE TABLE accounts

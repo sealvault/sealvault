@@ -7,6 +7,7 @@ use std::time::Duration;
 // Thread pools
 // We're just one app among many on the user's device, keep the footprint low.
 pub const DB_CONNECTION_POOL_SIZE: u32 = 4;
+pub const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(1);
 pub const TOKIO_WORKER_THREADS: usize = 1;
 pub const TOKIO_MAX_BLOCKING_THREADS: usize = 8;
 
