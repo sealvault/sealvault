@@ -91,6 +91,7 @@ pub struct Assembler<'a> {
     eth_chains_by_db_id: HashMap<String, m::EthChain>,
     http_client: &'a HttpClient,
     rpc_manager: &'a dyn eth::RpcManagerI,
+    // TODO avoid blocking with open db connection
     tx_conn: DeferredTxConnection<'a>,
 }
 
