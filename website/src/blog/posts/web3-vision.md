@@ -248,7 +248,9 @@ You can sign up for the iOS beta
 the [forum.](https://forum.sealvault.org/t/web3-vision-discussion/) We'd love to
 hear from you!
 
-
+<figure markdown>
+![SealVault Logo](../../assets/images/logo.png){ loading=lazy }
+</figure>
 
 [^10]: 
     Blockchain technology is often described as a new computing paradigm. There
