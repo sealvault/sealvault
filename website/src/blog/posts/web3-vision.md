@@ -9,7 +9,7 @@ links:
 - dev-docs/design/one-dapp-per-key.md
 ---
 
-# Our Web3 Vision
+# Why Web3 Is Inevitable, How It Can Go Wrong, and What to Do About It
 
 ## Intro
 
