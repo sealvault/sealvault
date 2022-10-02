@@ -160,7 +160,7 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
                 return
             }
 
-            DispatchQueue.global(qos: .background).async { [weak self] in
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 do {
                     let response = try self?.core.inPageRequest(context: context, rawRequest: messageBody)
                     // TODO: what happens if page navigates away before we reply?
