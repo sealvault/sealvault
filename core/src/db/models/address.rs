@@ -192,7 +192,7 @@ impl Address {
     ) -> Result<Self, Error> {
         use addresses::dsl as a;
 
-        let address: Address = addresses::table
+        let address: Self = addresses::table
             .filter(a::deterministic_id.eq(address_id))
             .select(ALL_COLUMNS)
             .first(conn)?;

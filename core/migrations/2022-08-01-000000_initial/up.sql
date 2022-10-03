@@ -1,6 +1,4 @@
 PRAGMA encoding = 'UTF-8';
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
 PRAGMA auto_vacuum = FULL;
 
 CREATE TABLE accounts
@@ -141,13 +139,15 @@ CREATE TABLE data_encryption_keys
 -- Keeps track of which address is used on which chain for a dapp.
 CREATE TABLE local_dapp_sessions
 (
-    id           INTEGER PRIMARY KEY NOT NULL,
+    -- uuid to prevent accidental reuse with integer ids
+    uuid           TEXT PRIMARY KEY NOT NULL,
 
     address_id   TEXT UNIQUE NOT NULL,
     dapp_id      TEXT        NOT NULL,
 
     -- RFC 3339 timestamps
     last_used_at TEXT        NOT NULL,
+    updated_at   TEXT        NOT NULL,
     created_at   TEXT        NOT NULL,
 
     FOREIGN KEY (address_id) REFERENCES addresses (deterministic_id),

@@ -43,11 +43,19 @@ impl From<r2d2::PoolError> for Error {
 
 impl From<diesel::result::Error> for Error {
     fn from(err: diesel::result::Error) -> Self {
+        const SQLITE_BUSY_MESSAGE: &str = "database is locked";
+
         match err {
-            diesel::result::Error::DatabaseError(kind, _info) => {
-                Error::Fatal {
-                    // Don't include `DatabaseErrorInformation` as it can contain user data.
-                    error: format!("{:?}", kind),
+            diesel::result::Error::DatabaseError(kind, info) => {
+                if info.message() == SQLITE_BUSY_MESSAGE {
+                    Error::Retriable {
+                        error: "Failed to acquire DB lock in busy_timeout.".to_string(),
+                    }
+                } else {
+                    Error::Fatal {
+                        // Don't include `DatabaseErrorInformation` as it can contain user data.
+                        error: format!("Unexpected Diesel database error kind: '{:?}'", kind),
+                    }
                 }
             }
             _ => Error::Fatal {

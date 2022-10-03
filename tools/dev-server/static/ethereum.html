@@ -73,9 +73,23 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         })
       }
 
-      test("Provider exists", () => !!window.ethereum)
+      test("Provider exists", () => {
+        assert(!!window.ethereum)
+      })
 
-      test("isMetaMask", () => !!window.isMetaMask)
+      test("isMetaMask", () =>
+        assert(!!window.ethereum.isMetaMask)
+      )
+
+      test("networkVersion", () => {
+        assert(Number.isFinite(parseInt(window.ethereum.networkVersion)))
+      })
+
+      test("chainId", () => {
+        // 0x-prefixed hex pattern
+        const regex = /^0x[0-9a-f]+$/
+        assert(regex.test(window.ethereum.chainId))
+      })
 
       // TODO Test only succeeds on first page load after dev server was started.
       test("Unapproved rejects requests", async () => {

@@ -57,6 +57,7 @@ impl KeyMaterial {
     /// targets to prevent its usage for cases other than the in-memory keychain.re won't be
     #[cfg(debug_assertions)]
     #[deprecated]
+    #[allow(dead_code)]
     pub(super) fn clone_for_in_memory_keychain(&self) -> Result<Self, Error> {
         Self::from_slice(self.0.as_slice())
     }

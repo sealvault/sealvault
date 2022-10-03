@@ -255,7 +255,7 @@ pub struct CoreArgs {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
     use crate::in_page_provider::InPageRequestContextMock;
@@ -265,7 +265,7 @@ mod tests {
     use tempfile::TempDir;
 
     /// Create an empty path in a temp directory for a Sqlite DB.
-    struct TmpCore {
+    pub(crate) struct TmpCore {
         pub core: AppCore,
         // The TempDir is kept to keep it open for the lifetime of the backend as the db file is
         // deleted when in the TempDir dtor is invoked.
@@ -275,7 +275,8 @@ mod tests {
 
     impl TmpCore {
         pub fn new() -> Result<Self, CoreError> {
-            // We could use an in memory database, but it helps to inspect the DB if tests fail.
+            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
+            // mode.
             let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
                 error: err.to_string(),
             })?;
@@ -304,16 +305,29 @@ mod tests {
             })
         }
 
-        fn data_migration_version(&self) -> Result<Option<String>, Error> {
+        pub fn data_migration_version(&self) -> Result<Option<String>, Error> {
             let mut conn = self.core.connection_pool.connection()?;
             let mut migrations = m::DataMigration::list_all(&mut conn)?;
             migrations.sort_by_key(|m| m.version.clone());
             Ok(migrations.last().map(|m| m.version.clone()))
         }
 
-        fn first_account(&self) -> dto::CoreAccount {
+        pub fn first_account(&self) -> dto::CoreAccount {
             let accounts = self.core.list_accounts().expect("cannot list accounts");
             accounts.into_iter().next().expect("no accounts")
+        }
+
+        pub fn in_page_provider(&self) -> InPageProvider {
+            let context = InPageRequestContextMock::default_boxed();
+
+            InPageProvider::new(
+                &self.core.keychain,
+                &self.core.connection_pool,
+                &self.core.public_suffix_list,
+                &*self.core.rpc_manager,
+                &self.core.http_client,
+                context,
+            ).expect("url valid")
         }
     }
 
