@@ -120,6 +120,7 @@ extension WKWebView {
 final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
     let core: AppCoreProtocol
     let stateModel: BrowserModel
+    let serialQueue: DispatchQueue
 
     let handlerName: String = "sealVaultRequestHandler"
     let handlerKey: String
@@ -131,7 +132,12 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
     init(core: AppCoreProtocol, stateModel: BrowserModel) {
         self.core = core
         self.stateModel = stateModel
-        handlerKey = "webkit.messageHandlers.\(handlerName).postMessage"
+        // Processes one request at a time. We can't let unlimited concurrent requests, as they might exhaust the global
+        // thread pool.
+        // TODO we could support 4-8 concurrent in-page requests, but Swift makes that very difficult without rewriting
+        // for async Swift.
+        self.serialQueue = DispatchQueue(label: self.handlerName, qos: .userInitiated, target: DispatchQueue.global())
+        self.handlerKey = "webkit.messageHandlers.\(handlerName).postMessage"
 
         super.init()
     }
@@ -160,7 +166,7 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
                 return
             }
 
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self.serialQueue.async { [weak self] in
                 do {
                     let response = try self?.core.inPageRequest(context: context, rawRequest: messageBody)
                     // TODO: what happens if page navigates away before we reply?
