@@ -22,8 +22,8 @@ const PAGE_SIZE: usize = 100;
 // Server derive for tests.
 #[rpc(client, server, namespace = "ankr")]
 trait AnkrRpcApi {
-    #[method(name = "getAccountBalances", param_kind = map)]
-    async fn get_account_balances(
+    #[method(name = "getAccountBalance", param_kind = map)]
+    async fn get_account_balance(
         &self,
         blockchain: Vec<AnkrBlockchain>,
         // Need to be camel case for correct generated code
@@ -61,7 +61,7 @@ pub trait AnkrRpcI<'a> {
         loop {
             let result: AnkrTokenBalances = self
                 .client()
-                .get_account_balances(
+                .get_account_balance(
                     blockchains.clone(),
                     PAGE_SIZE,
                     page_token.as_deref(),
@@ -307,7 +307,7 @@ mod tests {
     // Test mock of the Ankr API.
     #[async_trait]
     impl AnkrRpcApiServer for AnkrRpcApiServerImpl {
-        async fn get_account_balances(
+        async fn get_account_balance(
             &self,
             blockchain: Vec<AnkrBlockchain>,
             pageSize: usize,
