@@ -17,6 +17,12 @@ interface AppCore {
     string active_account_id();
 
     [Throws=CoreError]
+    CoreToken native_token_for_address(string address_id);
+
+    [Throws=CoreError]
+    sequence<CoreToken> fungible_tokens_for_address(string address_id);
+
+    [Throws=CoreError]
     string get_in_page_script(string rpc_provider_name, string request_handler_name);
 
     [Throws=CoreError]
@@ -66,7 +72,6 @@ dictionary CoreAddress {
     string chain_display_name;
     sequence<u8> chain_icon;
     CoreToken native_token;
-    sequence<CoreToken> fungible_tokens;
 };
 
 enum TokenType {
@@ -77,7 +82,7 @@ enum TokenType {
 dictionary CoreToken {
     string id;
     string symbol;
-    string amount;
+    string? amount;
     TokenType token_type;
     sequence<u8>? icon;
 };

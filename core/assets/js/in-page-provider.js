@@ -10,6 +10,10 @@
   const SEALVAULT_RPC_PROVIDER = "<SEALVAULT_RPC_PROVIDER>"
   // Can be nested property
   const SEALVAULT_REQUEST_HANDLER = "<SEALVAULT_REQUEST_HANDLER>"
+  // 0x prefixed hex format
+  const SEALVAULT_DEFAULT_CHAIN_ID = "<SEALVAULT_DEFAULT_CHAIN_ID>";
+  // Decimal integer string
+  const SEALVAULT_DEFAULT_NETWORK_VERSION = "<SEALVAULT_DEFAULT_NETWORK_VERSION>";
 
   /**
    * Get a potentially nested property from object.
@@ -226,7 +230,16 @@
               window,
               SEALVAULT_REQUEST_HANDLER
           )
-          const rawResponse = await requestHandler.call(parent, JSON.stringify(jsonRpcRequest))
+          let rawResponse
+          try {
+            rawResponse = await requestHandler.call(parent, JSON.stringify(jsonRpcRequest))
+          } catch (error) {
+            throw new ProviderRpcError({
+              message: error.toString(),
+              // Server error
+              code: -32000
+            })
+          }
           // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
           // See the security model in the developer docs for more.
           const response = JSON.parse(hexBytesToString(rawResponse))
@@ -270,8 +283,8 @@
 
       const state = {
         isConnected: false,
-        chainId: null,
-        networkId: null,
+        chainId: SEALVAULT_DEFAULT_CHAIN_ID,
+        networkVersion: SEALVAULT_DEFAULT_NETWORK_VERSION,
         selectedAddress: null
       }
 
@@ -378,7 +391,7 @@
         },
         networkVersion: {
           get() {
-            return state.networkId
+            return state.networkVersion
           },
           enumerable: true,
         },
@@ -404,12 +417,21 @@
           value: sendAsync
         }
       })
-      
-      ethereum.on("sealVaultConnect", ({chainId, networkId, selectedAddress}) => {
+
+      ethereum.on("sealVaultConnect", ({chainId, networkVersion, selectedAddress}) => {
         if (!state.isConnected) {
           state.isConnected = true
-          state.chainId = chainId
-          state.networkId = networkId
+
+          if (state.chainId !== chainId) {
+            state.chainId = chainId
+            ethereum.emit("chainChanged", chainId)
+          }
+
+          if (state.networkVersion !== networkVersion) {
+            state.networkVersion = networkVersion
+            ethereum.emit("networkChanged", networkVersion)
+          }
+
           state.selectedAddress = selectedAddress
           ethereum.emit("connect", chainId)
         }
@@ -429,8 +451,8 @@
         ethereum.emit("chainIdChanged", chainId)
       })
 
-      ethereum.on("networkChanged", (networkId) => {
-        state.networkId = networkId
+      ethereum.on("networkChanged", (networkVersion) => {
+        state.networkVersion = networkVersion
       })
 
       ethereum.on("accountsChanged", (accounts) => {

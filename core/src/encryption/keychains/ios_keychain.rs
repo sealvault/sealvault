@@ -258,8 +258,6 @@ extern "C" {
     static kSecAttrAccessible: CFStringRef;
 
     static kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly: CFStringRef;
-    static kSecAttrAccessibleWhenUnlocked: CFStringRef;
-    static kSecAttrAccessibleAfterFirstUnlock: CFStringRef;
 
     static kSecAttrSynchronizable: CFStringRef;
 

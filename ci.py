@@ -76,7 +76,7 @@ def run_clippy(target=None):
     allow = "-A clippy::derive_partial_eq_without_eq -A clippy::extra_unused_lifetimes -A non_snake_case"
 
     sp.run(
-        f"cargo clippy {target_arg}-- {allow}".split(" "),
+        f"cargo clippy {target_arg}-- -D warnings {allow}".split(" "),
         check=True,
     )
 

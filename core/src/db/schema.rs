@@ -91,11 +91,12 @@ table! {
 }
 
 table! {
-    local_dapp_sessions (id) {
-        id -> Integer,
+    local_dapp_sessions (uuid) {
+        uuid -> Text,
         address_id -> Text,
         dapp_id -> Text,
         last_used_at -> Text,
+        updated_at -> Text,
         created_at -> Text,
     }
 }

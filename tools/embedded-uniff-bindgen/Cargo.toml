@@ -8,4 +8,4 @@ license = "MPL-2.0"
 [dependencies]
 anyhow = "1"
 # Important to match exactly uniffi dep version in `core`
-uniffi_bindgen = "^0.18"
+uniffi_bindgen = "0.20.0"

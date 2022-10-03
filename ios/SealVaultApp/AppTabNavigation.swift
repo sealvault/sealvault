@@ -10,7 +10,7 @@ struct AppTabNavigation: View {
         case webBrowser
     }
 
-    @EnvironmentObject private var model: ViewModel
+    @EnvironmentObject private var model: GlobalModel
     @State var selection: Tab = .accountList
 
     var body: some View {
@@ -49,7 +49,7 @@ struct AppTabNavigation: View {
 
 struct AppTabNavigation_Previews: PreviewProvider {
     static var previews: some View {
-        AppTabNavigation().environmentObject(ViewModel.buildForPreview())
-        AppTabNavigation(selection: .accountList).environmentObject(ViewModel.buildForPreview())
+        AppTabNavigation().environmentObject(GlobalModel.buildForPreview())
+        AppTabNavigation(selection: .accountList).environmentObject(GlobalModel.buildForPreview())
     }
 }

@@ -6,21 +6,23 @@ import SwiftUI
 
 struct TokenView: View {
     var account: Account
-    var address: Address
+    @ObservedObject var address: Address
 
     var body: some View {
         Section {
-                NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: address.nativeToken)
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    AccountImageCircle(account: account)
-                                }
-                            }
-                } label: {
-                    TokenRow(token: address.nativeToken)
+            NavigationLink {
+                TransferForm(account: account, fromAddress: address, token: $address.nativeToken)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            AccountImageCircle(account: account)
+                        }
+                    }
+            } label: {
+                VStack {
+                    TokenRow(token: $address.nativeToken)
                 }
+            }
         } header: {
             HStack {
                 Text(address.chainDisplayName)
@@ -30,30 +32,27 @@ struct TokenView: View {
         }
         .headerProminence(.standard)
         Section {
-            ForEach(address.fungibleTokens) { token in
+            ForEach($address.fungibleTokens) { $token in
                 NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: token)
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    AccountImageCircle(account: account)
-                                }
+                    TransferForm(account: account, fromAddress: address, token: $token)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                AccountImageCircle(account: account)
                             }
+                        }
                 } label: {
-                    TokenRow(token: token)
+                    TokenRow(token: $token)
                 }
             }
-        } header: { Text("Fungible Tokens") }
-    }
-}
-
-struct TokenView_Previews: PreviewProvider {
-    static var previews: some View {
-        let model = ViewModel.buildForPreview()
-        let account = model.activeAccount
-        let dapp = account.dapps[0]
-        let address: Address = dapp.addressesByChain.values.first!.first!
-
-        return TokenView(account: account, address: address)
+        } header: {
+            if address.loading {
+                ProgressView()
+            } else if !address.fungibleTokens.isEmpty {
+                Text("Fungible Tokens")
+            } else {
+                Text("No Tokens")
+            }
+        }
     }
 }

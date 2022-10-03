@@ -4,6 +4,7 @@
 
 import SwiftUI
 
+@MainActor
 struct DappApprovalRequest: Identifiable {
     // It's important to have a unique id per request
     var id = UUID()
@@ -32,7 +33,7 @@ extension DappApprovalRequest {
 #endif
 
 struct DappApproval: View {
-    @EnvironmentObject private var viewModel: ViewModel
+    @EnvironmentObject private var viewModel: GlobalModel
     @Environment(\.dismiss) var dismiss
     @Environment(\.isPresented) private var isPresented
 
@@ -107,7 +108,7 @@ struct DappApproval: View {
 
 struct DappApproval_Previews: PreviewProvider {
     static var previews: some View {
-        let model = ViewModel.buildForPreview()
+        let model = GlobalModel.buildForPreview()
         let request = DappApprovalRequest.buildForPreview(model.activeAccountId!)
         DappApproval(request: request).environmentObject(model)
     }

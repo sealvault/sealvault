@@ -23,7 +23,7 @@ pub use dapp::Dapp;
 pub use data_encryption_key::{DataEncryptionKey, NewDataEncryptionKey};
 pub use data_migration::{DataMigration, NewDataMigration};
 pub use local_dapp_session::{
-    DappSessionParams, LocalDappSession, UpdateDappSessionParams,
+    DappSessionParams, LocalDappSession,
 };
 pub use local_encrypted_dek::{LocalEncryptedDek, NewLocalEncryptedDek};
 pub use local_settings::LocalSettings;

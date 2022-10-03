@@ -9,7 +9,7 @@ links:
 - dev-docs/design/one-dapp-per-key.md
 ---
 
-# Our Web3 Vision
+# Why Web3 Is Inevitable, How It Can Go Wrong, and What to Do About It
 
 ## Intro
 
@@ -248,7 +248,9 @@ You can sign up for the iOS beta
 the [forum.](https://forum.sealvault.org/t/web3-vision-discussion/) We'd love to
 hear from you!
 
-
+<figure markdown>
+![SealVault Logo](../../assets/images/logo.png){ loading=lazy }
+</figure>
 
 [^10]: 
     Blockchain technology is often described as a new computing paradigm. There

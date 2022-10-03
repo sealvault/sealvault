@@ -47,7 +47,7 @@ impl ChainId {
 
     // Does not necessarily match chain id
     // We return string because it's only used to support a legacy MetaMask api that needs string.
-    pub fn network_id(&self) -> String {
+    pub fn network_version(&self) -> String {
         match *self {
             Self::EthMainnet => "1",
             Self::EthGoerli => "5",
@@ -56,6 +56,19 @@ impl ChainId {
             Self::PolygonMumbai => "80001",
         }
         .into()
+    }
+
+    /// Display chain id as hex string prefixed with 0x, eg "0x89"
+    pub fn display_hex(self) -> String {
+        let hex_chain_id: ethers::types::U64 = self.into();
+        let mut hex_chain_id = serde_json::to_string(&hex_chain_id)
+            .expect("serde_json::Value can be always deserialized");
+
+        // Remove first and last quotation marks from json serialization
+        hex_chain_id.remove(0);
+        hex_chain_id.pop();
+
+        hex_chain_id
     }
 
     pub fn display_name(&self) -> String {
@@ -190,5 +203,15 @@ mod tests {
         for chain_id in ChainId::iter() {
             assert!(chain_id.explorer_url().host().is_some())
         }
+    }
+
+    #[test]
+    fn network_version() {
+        assert_eq!(ChainId::PolygonMainnet.network_version(), "137");
+    }
+
+    #[test]
+    fn display_hex() {
+        assert_eq!(ChainId::PolygonMainnet.display_hex(), "0x89");
     }
 }

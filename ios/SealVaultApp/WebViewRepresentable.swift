@@ -70,18 +70,20 @@ public struct WebViewRepresentable: UIViewRepresentable {
     }
 
     public func updateUIView(_ webView: WKWebView, context _: Context) {
-        let model = stateModel
-        if model.urlChanged {
-            loadUrlIfValid(webView: webView)
-            // Important to set to false even if the url is invalid,
-            // bc the semantics is that we tried to process the change.
-            model.urlChanged = false
-        } else if webView.canGoBack, model.goBack {
-            webView.goBack()
-            model.goBack = false
-        } else if webView.canGoForward, model.goForward {
-            webView.goForward()
-            model.goForward = false
+        DispatchQueue.main.async {
+            let model = self.stateModel
+            if model.urlChanged {
+                loadUrlIfValid(webView: webView)
+                // Important to set to false even if the url is invalid,
+                // bc the semantics is that we tried to process the change.
+                model.urlChanged = false
+            } else if webView.canGoBack, model.goBack {
+                webView.goBack()
+                model.goBack = false
+            } else if webView.canGoForward, model.goForward {
+                webView.goForward()
+                model.goForward = false
+            }
         }
     }
 
@@ -118,6 +120,7 @@ extension WKWebView {
 final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
     let core: AppCoreProtocol
     let stateModel: BrowserModel
+    let serialQueue: DispatchQueue
 
     let handlerName: String = "sealVaultRequestHandler"
     let handlerKey: String
@@ -129,7 +132,12 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
     init(core: AppCoreProtocol, stateModel: BrowserModel) {
         self.core = core
         self.stateModel = stateModel
-        handlerKey = "webkit.messageHandlers.\(handlerName).postMessage"
+        // Processes one request at a time. We can't let unlimited concurrent requests, as they might exhaust the global
+        // thread pool.
+        // TODO we could support 4-8 concurrent in-page requests, but Swift makes that very difficult without rewriting
+        // for async Swift.
+        self.serialQueue = DispatchQueue(label: self.handlerName, qos: .userInitiated, target: DispatchQueue.global())
+        self.handlerKey = "webkit.messageHandlers.\(handlerName).postMessage"
 
         super.init()
     }
@@ -158,7 +166,7 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
                 return
             }
 
-            DispatchQueue.global(qos: .background).async { [weak self] in
+            self.serialQueue.async { [weak self] in
                 do {
                     let response = try self?.core.inPageRequest(context: context, rawRequest: messageBody)
                     // TODO: what happens if page navigates away before we reply?
@@ -166,7 +174,15 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
                         replyHandler(response, nil)
                     }
                 } catch {
-                    print("core.inPageRequest returned error: \(error)")
+                    if let err = error as? CoreError {
+                        DispatchQueue.main.async {
+                            replyHandler(nil, "Core error")
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            replyHandler(nil, "Unknown error")
+                        }
+                    }
                 }
             }
         } else {
@@ -252,15 +268,14 @@ class CoreInPageCallback: CoreInPageCallbackI {
     }
 
     func notify(messageHex: String) {
-        DispatchQueue.main.sync { [weak self] in
-            guard let that = self else {
-                return
-            }
-            guard let webView = that.message.webView else {
+        DispatchQueue.main.async {
+            // Must capture self to prevent the callback object from being GCed before this has a chance to run
+            guard let webView = self.message.webView else {
+                print("Returning early from notify: webview has been GCed")
                 return
             }
 
-            webView.evaluateJavaScript("window.\(that.rpcProviderName).notify('\(messageHex)')")
+            webView.evaluateJavaScript("window.\(self.rpcProviderName).notify('\(messageHex)')")
         }
     }
 }

@@ -6,6 +6,8 @@ use crate::{config, Error};
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::{Connection, SqliteConnection};
 use std::fmt::{Debug, Formatter};
+use std::time::Duration;
+use diesel::connection::SimpleConnection;
 
 /// A Sqlite connection pool.
 #[derive(Debug)]
@@ -20,6 +22,10 @@ impl ConnectionPool {
         let manager = ConnectionManager::new(db_path);
         let pool = Pool::builder()
             .max_size(config::DB_CONNECTION_POOL_SIZE)
+            .connection_customizer(Box::new(ConnectionOptions {
+                // Needed to allow concurrent transactions
+                busy_timeout: config::DB_BUSY_TIMEOUT
+            }))
             .build(manager)?;
         Ok(Self { pool })
     }
@@ -94,3 +100,24 @@ impl<'a> Debug for ExclusiveTxConnection<'a> {
         f.debug_struct("ExclusiveTxConnection").finish()
     }
 }
+
+// Based on https://stackoverflow.com/a/57717533
+#[derive(Debug)]
+pub struct ConnectionOptions {
+    pub busy_timeout: Duration,
+}
+
+impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
+for ConnectionOptions
+{
+    fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
+        (|| {
+            let timeout = self.busy_timeout.as_millis();
+            conn.batch_execute(&format!("PRAGMA busy_timeout = {};", timeout))?;
+            conn.batch_execute("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")?;
+            conn.batch_execute("PRAGMA foreign_keys = ON;")?;
+            Ok(())
+        })().map_err(diesel::r2d2::Error::QueryError)
+    }
+}
+
