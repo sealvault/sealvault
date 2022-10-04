@@ -16,8 +16,7 @@ use crate::protocols::eth;
 use crate::utils::{new_uuid, rfc3339_timestamp};
 use typed_builder::TypedBuilder;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
 pub struct LocalDappSession {
     pub uuid: String,
     pub address_id: String,
@@ -25,7 +24,7 @@ pub struct LocalDappSession {
 
     pub chain_id: eth::ChainId,
     pub account_id: String,
-    pub address: String
+    pub address: String,
 }
 
 #[derive(TypedBuilder)]
@@ -69,7 +68,9 @@ const ALL_COLUMNS: AllColumns = (
 );
 
 impl LocalDappSessionEntity {
-    pub fn all_columns() -> AllColumns { ALL_COLUMNS }
+    pub fn all_columns() -> AllColumns {
+        ALL_COLUMNS
+    }
 
     /// Fetch currently used chain id for a dapp session.
     pub fn fetch_eth_chain_id(
@@ -93,17 +94,11 @@ impl LocalDappSessionEntity {
         Ok(protocol_data.chain_id)
     }
 
-    pub fn fetch_account_id(
-        &self,
-        conn: &mut SqliteConnection,
-    ) -> Result<String, Error> {
+    pub fn fetch_account_id(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
         m::Address::fetch_account_id(conn, &self.address_id)
     }
 
-    pub fn fetch_address(
-        &self,
-        conn: &mut SqliteConnection,
-    ) -> Result<String, Error> {
+    pub fn fetch_address(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
         m::Address::fetch_address(conn, &self.address_id)
     }
 }
@@ -115,7 +110,7 @@ impl LocalDappSession {
         tx_conn: &mut DeferredTxConnection,
         params: &DappSessionParams,
     ) -> Result<Self, Error> {
-        if let Some(session) = Self::fetch_eth_session(tx_conn, params)?{
+        if let Some(session) = Self::fetch_eth_session(tx_conn, params)? {
             Ok(session)
         } else {
             Self::create_eth_session(tx_conn, params)
@@ -211,17 +206,25 @@ impl LocalDappSession {
 
         let session = match entity {
             Some(entity) => Some(Self::from_entity(tx_conn, entity)?),
-            None => None
+            None => None,
         };
         Ok(session)
     }
 
-    fn from_entity(tx_conn: &mut DeferredTxConnection, entity: LocalDappSessionEntity) -> Result<Self, Error> {
+    fn from_entity(
+        tx_conn: &mut DeferredTxConnection,
+        entity: LocalDappSessionEntity,
+    ) -> Result<Self, Error> {
         let chain_id = entity.fetch_eth_chain_id(tx_conn.as_mut())?;
         let account_id = entity.fetch_account_id(tx_conn.as_mut())?;
         let address = entity.fetch_address(tx_conn.as_mut())?;
 
-        let LocalDappSessionEntity {uuid, address_id, dapp_id, ..} = entity;
+        let LocalDappSessionEntity {
+            uuid,
+            address_id,
+            dapp_id,
+            ..
+        } = entity;
         let session = LocalDappSession::builder()
             .uuid(uuid)
             .address_id(address_id)
@@ -235,34 +238,33 @@ impl LocalDappSession {
 
     /// Update currently used address for a dapp session.
     pub fn update_session_address(
-        &self,
+        self,
         tx_conn: &mut DeferredTxConnection,
         new_address_id: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<Self, Error> {
         use local_dapp_sessions::dsl as lds;
 
         // There is a unique constraint on address
-        diesel::update(
-            local_dapp_sessions::table.filter(lds::uuid.eq(&self.uuid)),
-        )
-        .set((
-             lds::address_id.eq(new_address_id),
-             lds::updated_at.eq(rfc3339_timestamp())
-         ))
-        .execute(tx_conn.as_mut())?;
+        diesel::update(local_dapp_sessions::table.filter(lds::uuid.eq(&self.uuid)))
+            .set((
+                lds::address_id.eq(new_address_id),
+                lds::updated_at.eq(rfc3339_timestamp()),
+            ))
+            .execute(tx_conn.as_mut())?;
 
-        Ok(())
+        Self::fetch_session_by_id(tx_conn, &self.uuid)
     }
 
-    pub fn update_last_used_at(&self, conn: &mut SqliteConnection) -> Result<(), Error> {
+    pub fn update_last_used_at(
+        self,
+        tx_conn: &mut DeferredTxConnection,
+    ) -> Result<Self, Error> {
         use local_dapp_sessions::dsl as lds;
 
-        diesel::update(
-            local_dapp_sessions::table.filter(lds::uuid.eq(&self.uuid)),
-        )
+        diesel::update(local_dapp_sessions::table.filter(lds::uuid.eq(&self.uuid)))
             .set(lds::last_used_at.eq(rfc3339_timestamp()))
-            .execute(conn)?;
-        Ok(())
-    }
+            .execute(tx_conn.as_mut())?;
 
+        Self::fetch_session_by_id(tx_conn, &self.uuid)
+    }
 }

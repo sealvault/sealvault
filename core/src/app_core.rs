@@ -13,6 +13,7 @@ use crate::protocols::eth;
 use crate::public_suffix_list::PublicSuffixList;
 use crate::{dto, in_page_provider, CoreError};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 /// Provides cross-platform key and transaction management.
 /// Exposed to host language via FFI.
@@ -20,17 +21,40 @@ use std::fmt::Debug;
 /// All members are `Send + Sync + 'static`.
 /// No async interfaces, because concurrency is managed by the host languages.
 pub struct AppCore {
-    connection_pool: ConnectionPool,
-    keychain: Keychain,
-    http_client: HttpClient,
-    rpc_manager: Box<dyn eth::RpcManagerI>,
-    public_suffix_list: PublicSuffixList,
+    resources: Arc<CoreResources>,
+}
+
+// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
+#[derive(Debug)]
+#[readonly::make]
+pub struct CoreResources {
+    pub connection_pool: ConnectionPool,
+    pub keychain: Keychain,
+    pub http_client: HttpClient,
+    pub rpc_manager: Box<dyn eth::RpcManagerI>,
+    pub public_suffix_list: PublicSuffixList,
 }
 
 impl AppCore {
     pub fn new(args: CoreArgs) -> Result<Self, CoreError> {
         let rpc_manager = Box::new(eth::RpcManager::new());
         Self::new_with_overrides(args, rpc_manager)
+    }
+
+    fn connection_pool(&self) -> &ConnectionPool {
+        &self.resources.connection_pool
+    }
+
+    fn keychain(&self) -> &Keychain {
+        &self.resources.keychain
+    }
+
+    fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
+        &*self.resources.rpc_manager
+    }
+
+    fn assembler(&self) -> dto::Assembler {
+        dto::Assembler::new(self.resources.clone())
     }
 
     /// Let us mock functionality. Not exposed through FFI.
@@ -51,27 +75,26 @@ impl AppCore {
         let public_suffix_list = PublicSuffixList::new()?;
 
         let http_client = HttpClient::new(args.cache_dir);
-
-        Ok(AppCore {
+        let resources = CoreResources {
             rpc_manager,
             connection_pool,
             keychain,
             http_client,
             public_suffix_list,
+        };
+
+        Ok(AppCore {
+            resources: Arc::new(resources),
         })
     }
 
     pub fn list_accounts(&self) -> Result<Vec<dto::CoreAccount>, CoreError> {
-        let res = self.connection_pool.deferred_transaction(|tx_conn| {
-            let mut assembler =
-                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
-            assembler.assemble_accounts()
-        })?;
+        let res = self.assembler().assemble_accounts()?;
         Ok(res)
     }
 
     pub fn active_account_id(&self) -> Result<String, CoreError> {
-        let mut conn = self.connection_pool.connection()?;
+        let mut conn = self.connection_pool().connection()?;
         let res = m::LocalSettings::fetch_active_account_id(&mut conn)?;
         Ok(res)
     }
@@ -81,39 +104,35 @@ impl AppCore {
         name: String,
         bundled_picture_name: String,
     ) -> Result<Vec<dto::CoreAccount>, CoreError> {
-        let res = self.connection_pool.deferred_transaction(|mut tx_conn| {
+        self.connection_pool().deferred_transaction(|mut tx_conn| {
             let account_params = m::AccountParams::builder()
                 .name(&*name)
                 .bundled_picture_name(&*bundled_picture_name)
                 .build();
             m::Account::create_eth_account(
                 &mut tx_conn,
-                &self.keychain,
+                self.keychain(),
                 &account_params,
             )?;
-
-            let mut assembler =
-                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
-            assembler.assemble_accounts()
+            Ok(())
         })?;
+
+        self.list_accounts()
+    }
+
+    pub fn native_token_for_address(
+        &self,
+        address_id: String,
+    ) -> Result<dto::CoreToken, CoreError> {
+        let res = self.assembler().native_token_for_address(&address_id)?;
         Ok(res)
     }
 
-    pub fn native_token_for_address(&self, address_id: String) -> Result<dto::CoreToken, CoreError> {
-        let res = self.connection_pool.deferred_transaction(|tx_conn| {
-            let mut assembler =
-                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
-            assembler.native_token_for_address(&address_id)
-        })?;
-        Ok(res)
-    }
-
-    pub fn fungible_tokens_for_address(&self, address_id: String) -> Result<Vec<dto::CoreToken>, CoreError> {
-        let res = self.connection_pool.deferred_transaction(|tx_conn| {
-            let mut assembler =
-                dto::Assembler::init(&self.http_client, &*self.rpc_manager, tx_conn)?;
-            assembler.fungible_tokens_for_address(&address_id)
-        })?;
+    pub fn fungible_tokens_for_address(
+        &self,
+        address_id: String,
+    ) -> Result<Vec<dto::CoreToken>, CoreError> {
+        let res = self.assembler().fungible_tokens_for_address(&address_id)?;
         Ok(res)
     }
 
@@ -133,17 +152,11 @@ impl AppCore {
         &self,
         context: Box<dyn InPageRequestContextI>,
         raw_request: String,
-    ) -> Result<String, CoreError> {
-        let provider = InPageProvider::new(
-            &self.keychain,
-            &self.connection_pool,
-            &self.public_suffix_list,
-            &*self.rpc_manager,
-            &self.http_client,
-            context,
-        )?;
-        let res = provider.in_page_request(&raw_request)?;
-        Ok(res)
+    ) -> Result<(), CoreError> {
+        let resources = self.resources.clone();
+        let provider = InPageProvider::new(resources, context)?;
+        let _ = provider.in_page_request(raw_request);
+        Ok(())
     }
 
     fn fetch_eth_signing_key_for_transfer(
@@ -151,7 +164,7 @@ impl AppCore {
         from_address_id: &str,
         to_checksum_address: &str,
     ) -> Result<eth::SigningKey, Error> {
-        let signing_key = self.connection_pool.deferred_transaction(|mut tx_conn| {
+        let signing_key = self.connection_pool().deferred_transaction(|mut tx_conn| {
             // Returns NotFoundError if the address is not in the db.
             let from_account_id =
                 m::Address::fetch_account_id(tx_conn.as_mut(), from_address_id)?;
@@ -172,7 +185,7 @@ impl AppCore {
 
             m::Address::fetch_eth_signing_key(
                 &mut tx_conn,
-                &self.keychain,
+                self.keychain(),
                 from_address_id,
             )
         })?;
@@ -187,16 +200,14 @@ impl AppCore {
         to_checksum_address: String,
         amount_decimal: String,
     ) -> Result<String, CoreError> {
-        let signing_key = self.fetch_eth_signing_key_for_transfer(
-            &from_address_id,
-            &to_checksum_address,
-        )?;
+        let signing_key = self
+            .fetch_eth_signing_key_for_transfer(&from_address_id, &to_checksum_address)?;
 
         let amount = eth::NativeTokenAmount::new_from_decimal(
             signing_key.chain_id,
             &amount_decimal,
         )?;
-        let rpc_provider = self.rpc_manager.eth_api_provider(signing_key.chain_id);
+        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
         let tx_hash = rpc_provider.transfer_native_token(
             &signing_key,
             &to_checksum_address,
@@ -217,14 +228,10 @@ impl AppCore {
     ) -> Result<String, CoreError> {
         // TODO we use contract address as token id for now, but it should be chain specific
         let contract_address = &token_id;
-        println!(
-            "from add {} to addr {} amount {} contract addr {}",
-            from_address_id, to_checksum_address, amount_decimal, contract_address
-        );
         let signing_key = self
             .fetch_eth_signing_key_for_transfer(&from_address_id, &to_checksum_address)?;
 
-        let rpc_provider = self.rpc_manager.eth_api_provider(signing_key.chain_id);
+        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
         let tx_hash = rpc_provider.transfer_fungible_token(
             &signing_key,
             &to_checksum_address,
@@ -241,7 +248,7 @@ impl AppCore {
         from_address_id: String,
         tx_hash: String,
     ) -> Result<String, CoreError> {
-        let mut conn = self.connection_pool.connection()?;
+        let mut conn = self.connection_pool().connection()?;
         let chain_id = m::Address::fetch_eth_chain_id(&mut conn, &from_address_id)?;
         let url = eth::explorer::tx_url(chain_id, &tx_hash)?;
         Ok(url.to_string())
@@ -258,10 +265,11 @@ pub struct CoreArgs {
 pub mod tests {
 
     use super::*;
-    use crate::in_page_provider::InPageRequestContextMock;
     use crate::protocols::ChecksumAddress;
+    use crate::{CoreInPageCallbackI, DappApprovalParams};
     use anyhow::Result;
     use std::fs;
+    use std::sync::RwLock;
     use tempfile::TempDir;
 
     /// Create an empty path in a temp directory for a Sqlite DB.
@@ -271,6 +279,7 @@ pub mod tests {
         // deleted when in the TempDir dtor is invoked.
         #[allow(dead_code)]
         tmp_dir: TempDir,
+        in_page_callback_state: Arc<InPageCallbackState>,
     }
 
     impl TmpCore {
@@ -302,11 +311,12 @@ pub mod tests {
             Ok(TmpCore {
                 core: backend,
                 tmp_dir,
+                in_page_callback_state: Arc::new(Default::default()),
             })
         }
 
         pub fn data_migration_version(&self) -> Result<Option<String>, Error> {
-            let mut conn = self.core.connection_pool.connection()?;
+            let mut conn = self.core.connection_pool().connection()?;
             let mut migrations = m::DataMigration::list_all(&mut conn)?;
             migrations.sort_by_key(|m| m.version.clone());
             Ok(migrations.last().map(|m| m.version.clone()))
@@ -317,55 +327,170 @@ pub mod tests {
             accounts.into_iter().next().expect("no accounts")
         }
 
-        pub fn in_page_provider(&self) -> InPageProvider {
-            let context = InPageRequestContextMock::default_boxed();
+        pub fn in_page_provider(
+            &self,
+            page_url: &str,
+            user_approves: bool,
+        ) -> InPageProvider {
+            let context = Box::new(InPageRequestContextMock::new(
+                page_url,
+                user_approves,
+                self.in_page_callback_state.clone(),
+            ));
 
-            InPageProvider::new(
-                &self.core.keychain,
-                &self.core.connection_pool,
-                &self.core.public_suffix_list,
-                &*self.core.rpc_manager,
-                &self.core.http_client,
-                context,
-            ).expect("url valid")
+            InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
+        }
+
+        pub fn dapp_approval(&self) -> Option<DappApprovalParams> {
+            self.in_page_callback_state
+                .dapp_approval
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn responses(&self) -> Vec<String> {
+            self.in_page_callback_state
+                .responses
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn notifications(&self) -> Vec<String> {
+            self.in_page_callback_state
+                .notifications
+                .read()
+                .unwrap()
+                .clone()
+        }
+    }
+
+    #[derive(Debug, Default)]
+    pub struct InPageCallbackState {
+        dapp_approval: Arc<RwLock<Option<DappApprovalParams>>>,
+        responses: Arc<RwLock<Vec<String>>>,
+        notifications: Arc<RwLock<Vec<String>>>,
+    }
+
+    impl InPageCallbackState {
+        pub fn new() -> Self {
+            Self {
+                dapp_approval: Arc::new(Default::default()),
+                responses: Arc::new(Default::default()),
+                notifications: Arc::new(Default::default()),
+            }
+        }
+
+        fn decode_hex(hex_str: &str) -> String {
+            let res = hex::decode(hex_str).expect("valid hex");
+            String::from_utf8_lossy(&res).into()
+        }
+
+        fn update_dapp_approval(&self, dapp_approval: DappApprovalParams) {
+            {
+                let _ = self
+                    .dapp_approval
+                    .write()
+                    .expect("no poison")
+                    .insert(dapp_approval);
+            }
+        }
+
+        fn add_response(&self, response_hex: String) {
+            {
+                let mut responses = self.responses.write().expect("no poison");
+                responses.push(Self::decode_hex(&response_hex))
+            }
+        }
+
+        fn add_notification(&self, event_hex: String) {
+            {
+                let mut notifications = self.notifications.write().expect("no poison");
+                notifications.push(Self::decode_hex(&event_hex))
+            }
+        }
+    }
+
+    // Implement for all targets, not only testing to let the dev server use it too.
+    #[derive(Debug)]
+    pub struct InPageRequestContextMock {
+        pub page_url: String,
+        pub callbacks: Box<CoreInPageCallbackMock>,
+    }
+
+    impl InPageRequestContextMock {
+        pub fn new(
+            page_url: &str,
+            user_approves: bool,
+            state: Arc<InPageCallbackState>,
+        ) -> Self {
+            Self {
+                page_url: page_url.into(),
+                callbacks: Box::new(CoreInPageCallbackMock::new(user_approves, state)),
+            }
+        }
+        pub fn default_boxed(state: Arc<InPageCallbackState>) -> Box<Self> {
+            Box::new(InPageRequestContextMock::new(
+                "https://example.com",
+                true,
+                state,
+            ))
+        }
+    }
+
+    impl InPageRequestContextI for InPageRequestContextMock {
+        fn page_url(&self) -> String {
+            self.page_url.clone()
+        }
+
+        fn callbacks(&self) -> Box<dyn CoreInPageCallbackI> {
+            self.callbacks.clone()
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct CoreInPageCallbackMock {
+        user_approves: bool,
+        state: Arc<InPageCallbackState>,
+    }
+
+    impl CoreInPageCallbackMock {
+        pub fn new(user_approves: bool, state: Arc<InPageCallbackState>) -> Self {
+            Self {
+                state,
+                user_approves,
+            }
+        }
+    }
+
+    impl CoreInPageCallbackI for CoreInPageCallbackMock {
+        fn approve_dapp(&self, dapp_approval: DappApprovalParams) -> bool {
+            self.state.update_dapp_approval(dapp_approval);
+            self.user_approves
+        }
+
+        fn respond(&self, response_hex: String) {
+            self.state.add_response(response_hex)
+        }
+
+        fn notify(&self, event_hex: String) {
+            self.state.add_notification(event_hex)
         }
     }
 
     #[test]
     fn no_panic_on_invalid_in_page_request() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let _account = tmp.first_account();
-        let iprc = InPageRequestContextMock::default_boxed();
+        let state: Arc<InPageCallbackState> = Arc::new(Default::default());
+        let context = Box::new(InPageRequestContextMock::new(
+            "https://example.com",
+            true,
+            state.clone(),
+        ));
 
-        let result = tmp
-            .core
-            .in_page_request(iprc, "invalid-jsonrpc-payload".to_string());
-
-        match result {
-            Ok(_) => panic!("expected error"),
-            Err(err) => assert!(err.to_string().to_lowercase().contains("request")),
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn proxied_in_page_request() -> Result<()> {
-        let tmp = TmpCore::new()?;
-        // "{"jsonrpc":"2.0","id":"6ac3a5ef-e0ef-4c46-9589-b0fe3f728ddc","method":"eth_gasPrice"}"
-        let payload = r#"
-        {
-            "jsonrpc": "2.0",
-            "id": "my-request-id",
-            "method": "eth_gasPrice"
-        }"#
-        .to_string();
-        let _account = tmp.first_account();
-        let iprc = InPageRequestContextMock::default_boxed();
-
-        let result = tmp.core.in_page_request(iprc, payload)?;
-
-        assert_ne!(result.len(), 0);
+        tmp.core
+            .in_page_request(context, "invalid-jsonrpc-payload".to_string())?;
 
         Ok(())
     }
@@ -414,7 +539,7 @@ pub mod tests {
     }
 
     fn setup_accounts(core: &AppCore) -> Result<(String, String)> {
-        let keychain = &core.keychain;
+        let keychain = &core.resources.keychain;
 
         let accounts = core.create_account("account-two".into(), "pug-yellow".into())?;
         assert_eq!(accounts.len(), 2);
@@ -422,7 +547,7 @@ pub mod tests {
         let account_id_one = &accounts[0].id;
         let account_id_two = &accounts[1].id;
 
-        let res = core.connection_pool.deferred_transaction(|mut tx_conn| {
+        let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
             let from_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
                 keychain,
@@ -480,7 +605,6 @@ pub mod tests {
             contract_address,
         );
 
-        println!("{:?}", result);
         assert!(matches!(result, Err(CoreError::User {
                 explanation
             }) if explanation.to_lowercase().contains("privacy")));

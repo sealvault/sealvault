@@ -26,7 +26,7 @@ interface AppCore {
     string get_in_page_script(string rpc_provider_name, string request_handler_name);
 
     [Throws=CoreError]
-    string in_page_request(InPageRequestContextI context, string raw_request);
+    void in_page_request(InPageRequestContextI context, string raw_request);
 
     [Throws=CoreError]
     string eth_transfer_native_token(string from_address_id, string to_checksum_address, string amount);
@@ -104,8 +104,8 @@ dictionary DappApprovalParams {
 };
 
 callback interface CoreInPageCallbackI {
-    // TODO arguments cannot be snake case due to uniffi-rs bug
-    boolean approve_dapp(DappApprovalParams dappApproval);
-    void notify(string messageHex);
+    boolean approve_dapp(DappApprovalParams dapp_approval);
+    void respond(string response_hex);
+    void notify(string message_hex);
 };
 

@@ -191,5 +191,4 @@ mod tests {
         let identifier = Dapp::dapp_identifier(url, &psl).unwrap();
         assert_eq!(identifier, "example.com");
     }
-
 }

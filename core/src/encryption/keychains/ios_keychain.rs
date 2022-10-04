@@ -133,11 +133,7 @@ impl IOSKeychainInternal {
         };
     }
 
-    fn put(
-        &self,
-        key: KeyEncryptionKey,
-        class: KeychainStorage,
-    ) -> Result<(), Error> {
+    fn put(&self, key: KeyEncryptionKey, class: KeychainStorage) -> Result<(), Error> {
         let (name, key_material) = key.into_keychain();
         let wrapped_value = Arc::new(key_material);
         let query = class.put_query(&name, wrapped_value);
