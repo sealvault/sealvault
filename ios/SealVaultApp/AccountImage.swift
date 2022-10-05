@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct AccountImageRectangle: View {
-    var account: Account
+    @ObservedObject var account: Account
     @ScaledMetric var size: CGFloat = 60
 
     private let cornerRadius: Double = 10

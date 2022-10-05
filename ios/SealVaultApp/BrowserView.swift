@@ -47,7 +47,7 @@ class BrowserModel: ObservableObject {
 struct BrowserView: View {
     @EnvironmentObject private var viewModel: GlobalModel
 
-    @StateObject var browserModel = BrowserModel()
+    @ObservedObject var browserModel = BrowserModel()
 
     var body: some View {
         VStack(spacing: 0) {

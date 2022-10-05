@@ -5,13 +5,13 @@
 import SwiftUI
 
 struct TokenView: View {
-    var account: Account
+    @ObservedObject var account: Account
     @ObservedObject var address: Address
 
     var body: some View {
         Section {
             NavigationLink {
-                TransferForm(account: account, fromAddress: address, token: $address.nativeToken)
+                TransferForm(account: account, fromAddress: address, token: address.nativeToken)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -19,9 +19,7 @@ struct TokenView: View {
                         }
                     }
             } label: {
-                VStack {
-                    TokenRow(token: $address.nativeToken)
-                }
+                TokenRow(token: address.nativeToken)
             }
         } header: {
             HStack {
@@ -32,9 +30,9 @@ struct TokenView: View {
         }
         .headerProminence(.standard)
         Section {
-            ForEach($address.fungibleTokens) { $token in
+            ForEach(address.fungibleTokenList) { token in
                 NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: $token)
+                    TransferForm(account: account, fromAddress: address, token: token)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
@@ -42,7 +40,7 @@ struct TokenView: View {
                             }
                         }
                 } label: {
-                    TokenRow(token: $token)
+                    TokenRow(token: token)
                 }
             }
         } header: {

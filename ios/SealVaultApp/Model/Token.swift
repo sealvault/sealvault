@@ -9,7 +9,7 @@ import SwiftUI
 class Token: Identifiable, ObservableObject {
     let id: String
     let symbol: String
-    let icon: UIImage
+    @Published var icon: UIImage
     @Published var amount: String?
     let nativeToken: Bool
 
@@ -22,18 +22,40 @@ class Token: Identifiable, ObservableObject {
     }
 
     static func fromCore(_ token: CoreToken) -> Self {
-        var tokenIcon: UIImage?
-        if let icon = token.icon {
-            tokenIcon = UIImage(data: Data(icon))
-        }
-        let tokenIconOrFallback = tokenIcon ?? UIImage(systemName: "banknote")!
+
         return self.init(
             id: token.id,
             symbol: token.symbol,
-            icon: tokenIconOrFallback,
+            icon: Self.convertIcon(token.icon),
             amount: token.amount,
             nativeToken: token.tokenType == TokenType.native
         )
+    }
+
+    static func convertIcon(_ maybeIcon: [UInt8]?) -> UIImage {
+        var tokenIcon: UIImage?
+        if let icon = maybeIcon {
+            tokenIcon = UIImage(data: Data(icon))
+        }
+        return tokenIcon ?? UIImage(systemName: "banknote")!
+    }
+
+    func updateFromCore(_ token: CoreToken) {
+        assert(self.id == token.id, "token id mismatch in update from core")
+        assert(self.symbol == token.symbol, "symbol mismatch in update from core")
+        self.icon = Self.convertIcon(token.icon)
+        // Tokens are listed without amounts first when fetching accounts.
+        // Don't unset amount if we have fetched the amount for this token already.
+        if token.amount != nil {
+            self.amount = token.amount
+        }
+        switch token.tokenType {
+        case .native:
+            assert(self.nativeToken, "native token mismatch in update from core")
+        case .fungible:
+            assert(!self.nativeToken, "fungible token mismatch in update from core")
+        }
+
     }
 }
 

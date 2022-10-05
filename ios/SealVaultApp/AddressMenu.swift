@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct AddressMenu: View {
-    var address: Address
+    @ObservedObject var address: Address
 
     var body: some View {
         Menu(address.addressDisplay) {

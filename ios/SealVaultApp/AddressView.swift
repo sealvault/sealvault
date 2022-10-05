@@ -5,8 +5,8 @@
 import SwiftUI
 
 struct AddressView: View {
-    var title: String
-    var account: Account
+    let title: String
+    @ObservedObject var account: Account
     @ObservedObject var address: Address
 
     var body: some View {
@@ -36,7 +36,7 @@ struct AddressView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
-        let address = account.wallets[0]
+        let address = account.wallets.values.first!
         address.nativeToken.amount = nil
 
         return AddressView(title: "Wallet", account: account, address: address)
