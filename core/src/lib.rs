@@ -11,19 +11,19 @@ extern crate lazy_static;
 extern crate num_derive;
 
 // These are public, because they're used by the dev server
+pub mod app_core;
 pub mod assets;
 pub mod async_runtime;
 pub mod config;
-pub mod in_page_provider;
-
-pub mod app_core;
-mod db;
 pub mod dto;
+pub mod in_page_provider;
+pub mod protocols;
+
+mod db;
 mod encryption;
 mod error;
 mod favicon;
 mod http_client;
-pub mod protocols;
 mod public_suffix_list;
 mod signatures;
 mod utils;

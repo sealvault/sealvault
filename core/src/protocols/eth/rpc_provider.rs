@@ -12,8 +12,8 @@ use crate::protocols::eth::{
 use crate::{async_runtime as rt, Error};
 use ethers::core::types::{Address, BlockNumber, TransactionRequest, H256};
 use ethers::providers::{Http, Middleware, Provider};
-use ethers::types::{BlockId};
-use serde::{Serialize};
+use ethers::types::BlockId;
+use serde::Serialize;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use url::Url;
@@ -39,7 +39,19 @@ impl RpcProvider {
     where
         T: Debug + Serialize + Send + Sync,
     {
-        let res: serde_json::Value = rt::block_on(self.provider.request(method, params))?;
+        rt::block_on(self.proxy_rpc_request_async(method, params))
+    }
+
+    pub async fn proxy_rpc_request_async<T>(
+        &self,
+        method: &str,
+        params: T,
+    ) -> Result<serde_json::Value, Error>
+    where
+        T: Debug + Serialize + Send + Sync,
+    {
+        // Need to make type concrete and convert error
+        let res: serde_json::Value = self.provider.request(method, params).await?;
         Ok(res)
     }
 
@@ -50,10 +62,18 @@ impl RpcProvider {
         signing_key: &SigningKey,
         tx: TransactionRequest,
     ) -> Result<H256, Error> {
+        rt::block_on(self.send_transaction_async(signing_key, tx))
+    }
+
+    pub async fn send_transaction_async(
+        &self,
+        signing_key: &SigningKey,
+        tx: TransactionRequest,
+    ) -> Result<H256, Error> {
         let signer = SignerMiddleware::new(&self.provider, signing_key);
-        let pending_tx = rt::block_on(
-            signer.send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest))),
-        )?;
+        let pending_tx = signer
+            .send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest)))
+            .await?;
         Ok(pending_tx.tx_hash())
     }
 
@@ -83,6 +103,19 @@ impl RpcProvider {
         to_checksum_address: &str,
         amount: &NativeTokenAmount,
     ) -> Result<String, Error> {
+        rt::block_on(self.transfer_native_token_async(
+            signing_key,
+            to_checksum_address,
+            amount,
+        ))
+    }
+
+    pub async fn transfer_native_token_async(
+        &self,
+        signing_key: &SigningKey,
+        to_checksum_address: &str,
+        amount: &NativeTokenAmount,
+    ) -> Result<String, Error> {
         self.verify_chain_ids(signing_key, amount.chain_id)?;
 
         let to_address = parse_checksum_address(to_checksum_address)?;
@@ -94,12 +127,28 @@ impl RpcProvider {
             .value(amount.amount)
             .from(signing_key.address);
 
-        let tx_hash = self.send_transaction(signing_key, tx)?;
+        let tx_hash = self.send_transaction_async(signing_key, tx).await?;
 
         Ok(display_tx_hash(tx_hash))
     }
 
     pub fn transfer_fungible_token(
+        &self,
+        signing_key: &SigningKey,
+        to_checksum_address: &str,
+        amount_decimal: &str,
+        contract_checksum_address: &str,
+    ) -> Result<String, Error> {
+        let future = self.transfer_fungible_token_async(
+            signing_key,
+            to_checksum_address,
+            amount_decimal,
+            contract_checksum_address,
+        );
+        rt::block_on(future)
+    }
+
+    pub async fn transfer_fungible_token_async(
         &self,
         signing_key: &SigningKey,
         to_checksum_address: &str,
@@ -119,20 +168,18 @@ impl RpcProvider {
 
         let contract_call = contract.decimals();
         let decimals: u8 =
-            rt::block_on(contract_call.call()).map_err(|err| Error::Retriable {
+            contract_call.call().await.map_err(|err| Error::Retriable {
                 error: err.to_string(),
             })?;
-        println!("decimals {}", decimals);
         let fungible_token =
             FungibleToken::new(self.chain_id, contract_address, decimals);
         let fungible_token_amount =
             FungibleTokenAmount::new_from_decimal(fungible_token, amount_decimal)?;
 
         let contract_call = contract.transfer(to_address, fungible_token_amount.amount);
-        let pending_tx =
-            rt::block_on(contract_call.send()).map_err(|err| Error::Retriable {
-                error: err.to_string(),
-            })?;
+        let pending_tx = contract_call.send().await.map_err(|err| Error::Retriable {
+            error: err.to_string(),
+        })?;
         Ok(display_tx_hash(pending_tx.tx_hash()))
     }
 
@@ -141,13 +188,18 @@ impl RpcProvider {
         &self,
         address: &str,
     ) -> Result<NativeTokenAmount, Error> {
+        rt::block_on(self.native_token_balance_async(address))
+    }
+
+    pub async fn native_token_balance_async(
+        &self,
+        address: &str,
+    ) -> Result<NativeTokenAmount, Error> {
         let address = address.parse::<Address>().map_err(|err| Error::Retriable {
             error: err.to_string(),
         })?;
-        let balance = rt::block_on(
-            self.provider
-                .get_balance(address, Some(BlockNumber::Latest.into())),
-        )?;
+        let block_id: Option<BlockId> = Some(BlockNumber::Latest.into());
+        let balance = self.provider.get_balance(address, block_id).await?;
         let amount = NativeTokenAmount::new(self.chain_id, balance);
         Ok(amount)
     }
@@ -226,6 +278,12 @@ pub mod anvil {
         }
     }
 
+    impl Default for AnvilRpcManager {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RpcManagerI for AnvilRpcManager {
         fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider {
             let http_endpoint = self.anvil_endpoint();
@@ -253,14 +311,12 @@ mod tests {
     use ethers::signers::Signer;
     use ethers::utils::to_checksum;
     use std::ops::Add;
-    use strum::IntoEnumIterator;
 
     use crate::protocols::eth::contracts::test_util::TestContractDeployer;
     use crate::protocols::eth::signing_key::checksum_address;
-    use crate::protocols::eth::token::FungibleToken;
+
     use crate::protocols::eth::EthereumAsymmetricKey;
     use crate::protocols::ChecksumAddress;
-    use serde_json::json;
 
     #[test]
     fn get_block_number() -> Result<()> {

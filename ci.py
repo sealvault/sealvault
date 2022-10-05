@@ -71,9 +71,7 @@ def run_clippy(target=None):
     # The first two rules are disabled to regressions in clippy that produce false positives:
     # https://github.com/rust-lang/rust-clippy/issues/8867
     # https://github.com/rust-lang/rust-clippy/issues/9014
-    # The third rule is allowed, because there is some generated code that spits out camel case despite our best
-    # efforts. Please don't use non-snake case variable names though!
-    allow = "-A clippy::derive_partial_eq_without_eq -A clippy::extra_unused_lifetimes -A non_snake_case"
+    allow = "-A clippy::derive_partial_eq_without_eq -A clippy::extra_unused_lifetimes"
 
     sp.run(
         f"cargo clippy {target_arg}-- -D warnings {allow}".split(" "),

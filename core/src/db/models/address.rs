@@ -186,10 +186,7 @@ impl Address {
     }
 
     /// Fetch the the address entity by id.
-    pub fn fetch(
-        conn: &mut SqliteConnection,
-        address_id: &str,
-    ) -> Result<Self, Error> {
+    pub fn fetch(conn: &mut SqliteConnection, address_id: &str) -> Result<Self, Error> {
         use addresses::dsl as a;
 
         let address: Self = addresses::table

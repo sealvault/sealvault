@@ -40,7 +40,8 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
             },
             body,
           })
-          return response.text()
+          const text = await response.text()
+          window[SEALVAULT_RPC_PROVIDER].respond(text)
         }
 
         window[SEALVAULT_REQUEST_HANDLER] = postMessage
@@ -66,7 +67,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       // Returns the event data.
       function blockOnEvent(event) {
         return new Promise((resolve, reject) => {
-          window.ethereum.on(event, data => {
+          window.ethereum.on(event, (data) => {
             resolve(data)
           })
           window.setTimeout(reject, BLOCK_ON_EVENT_SECONDS * 1000)
@@ -77,9 +78,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         assert(!!window.ethereum)
       })
 
-      test("isMetaMask", () =>
-        assert(!!window.ethereum.isMetaMask)
-      )
+      test("isMetaMask", () => assert(!!window.ethereum.isMetaMask))
 
       test("networkVersion", () => {
         assert(Number.isFinite(parseInt(window.ethereum.networkVersion)))
@@ -96,7 +95,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         let ok = false
         try {
           await window.ethereum.request({
-            method: "eth_chainId"
+            method: "eth_chainId",
           })
         } catch (e) {
           assertEq(e.code, 4100)
@@ -159,16 +158,16 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
       test("wallet_addEthereumChain", async (method) => {
         let args = {
-          chainId: '0x1',
-          rpcUrls: ['https://mainnet.infura.io/v3/'],
-          chainName: 'Ethereum',
-          nativeCurrency: { name: 'Ethereum', decimals: 18, symbol: 'ETH' },
+          chainId: "0x1",
+          rpcUrls: ["https://mainnet.infura.io/v3/"],
+          chainName: "Ethereum",
+          nativeCurrency: { name: "Ethereum", decimals: 18, symbol: "ETH" },
           blockExplorerUrls: "https://etherescan.io",
         }
 
         const result = await window.ethereum.request({
           method,
-          params: [args]
+          params: [args],
         })
         // Null means success
         assertEq(result, null)
@@ -179,7 +178,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         let changedChainId = blockOnEvent("chainChanged")
         await window.ethereum.request({
           method,
-          params: [{chainId: goerli}]
+          params: [{ chainId: goerli }],
         })
         changedChainId = await changedChainId
         assertEq(changedChainId, goerli)
@@ -191,9 +190,9 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       test("eth_sendTransaction", async (method) => {
-        const chain_id = await window.ethereum.request({method: "eth_chainId"})
-        const accounts = await window.ethereum.request({method: "eth_requestAccounts"})
-        const gasPrice = await window.ethereum.request({method: "eth_gasPrice"})
+        const chain_id = await window.ethereum.request({ method: "eth_chainId" })
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
+        const gasPrice = await window.ethereum.request({ method: "eth_gasPrice" })
         // From MM docs: https://archive.ph/9DUcC
         const params = {
           nonce: "0x00",
@@ -202,15 +201,14 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
           from: accounts[0],
           value: "0x00",
           gas: "0x2f372",
-          data:
-                  "0x7f7465737432000000000000000000000000000000000000000000000000000000600057", // Optional, but used for defining smart contract creation and interaction.
+          data: "0x7f7465737432000000000000000000000000000000000000000000000000000000600057", // Optional, but used for defining smart contract creation and interaction.
           chain_id,
-        };
+        }
         let threw = false
         try {
           const txHash = await window.ethereum.request({
             method,
-            params: [params]
+            params: [params],
           })
         } catch (e) {
           console.error(e, `e.message: ${e.message}`)
@@ -222,10 +220,10 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       test("personal_sign", async (method) => {
-        const accounts = await window.ethereum.request({method: "eth_requestAccounts"})
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
         const signature = await window.ethereum.request({
           method,
-          params: ["0xabcd1234", accounts[0], "ignored-password"]
+          params: ["0xabcd1234", accounts[0], "ignored-password"],
         })
         assert(signature.startsWith("0x"), "signature must start with 0x")
       })
@@ -240,18 +238,24 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       test("eth_estimateGas", async (method) => {
         const gas = await window.ethereum.request({
           method,
-          params: [{"from":"0x8D97689C9818892B700e27F316cc3E41e17fBeb9","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}]
+          params: [
+            {
+              from: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+              to: "0xd3CdA913deB6f67967B99D67aCDFa1712C293601",
+              value: "0x186a0",
+            },
+          ],
         })
         assert(gas.startsWith("0x"), `Expected '${gas}' to start with 0x`)
       })
 
       test("eth_getBlockByNumber", async (method) => {
         const blockNumber = await window.ethereum.request({
-          method: "eth_blockNumber"
+          method: "eth_blockNumber",
         })
         const block = await window.ethereum.request({
           method,
-          params: [blockNumber, true]
+          params: [blockNumber, true],
         })
         assertEq(block.number, blockNumber)
         assert(Array.isArray(block.transactions), "block.transactions should be an array")
@@ -267,7 +271,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       test("web3_sha3", async (method) => {
         const hash = await window.ethereum.request({
           method,
-          params: ["0xabcd"]
+          params: ["0xabcd"],
         })
         assert(hash.startsWith("0x"))
       })
@@ -276,7 +280,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         const request = {
           id: `sendAsync-id-${Date.now()}`,
           jsonrpc: "2.0",
-          method: "eth_chainId"
+          method: "eth_chainId",
         }
         const chain_id = await new Promise((resolve, reject) => {
           window.ethereum.sendAsync(request, (error, result) => {
@@ -294,7 +298,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         const request = {
           id: `send-id-${Date.now()}`,
           jsonrpc: "2.0",
-          method: "eth_chainId"
+          method: "eth_chainId",
         }
         const chain_id_first = await new Promise((resolve, reject) => {
           window.ethereum.send(request, (error, result) => {
@@ -313,7 +317,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         let ok = false
         try {
           await window.ethereum.request({
-            method: "eth_sign"
+            method: "eth_sign",
           })
         } catch (e) {
           assertEq(e.code, 4200)

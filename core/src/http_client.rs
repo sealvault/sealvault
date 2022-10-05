@@ -2,9 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{async_runtime as rt, Error};
+use crate::{config, Error};
+
+use futures::StreamExt;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache};
-use reqwest::{Client, Response};
+use reqwest::Client;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use std::fmt::Debug;
 
@@ -31,56 +33,29 @@ impl HttpClient {
         Self { client }
     }
 
-    /// Get urls concurrently.
-    /// The request library wants owned urls.
-    fn get_all(
+    /// Fetch the URLs and return the bodies as bytes or None if there was an error.
+    pub async fn get_bytes(
         &self,
         urls: impl Iterator<Item = url::Url>,
-    ) -> Result<Vec<Result<Response, HttpClientError>>, Error> {
-        let tasks = urls.map(|url| rt::spawn(self.client.get(url).send()));
-        let tasks = rt::block_on(futures::future::join_all(tasks));
-        let mut responses: Vec<Result<Response, HttpClientError>> = Default::default();
-        for task in tasks {
-            // Propagate join error if any.
-            let middleware_result = task?;
-            let response: Result<Response, HttpClientError> = middleware_result
-                // Turn the response into HTTP error if any, then convert reqwuest error to
-                // middleware error if any.
-                .and_then(|r| r.error_for_status().map_err(|err| err.into()))
-                // Convert middleware error to HttpClientError if any.
-                .map_err(|err| err.into());
-            responses.push(response);
-        }
-        Ok(responses)
-    }
-}
-
-// Trait helps with mocking for tests
-pub trait GetAllBytes {
-    /// Fetch bodies as bytes concurrently.
-    fn get_bytes(
-        &self,
-        urls: impl Iterator<Item = url::Url>,
-    ) -> Result<Vec<Result<Vec<u8>, HttpClientError>>, Error>;
-}
-
-impl GetAllBytes for HttpClient {
-    fn get_bytes(
-        &self,
-        urls: impl Iterator<Item = url::Url>,
-    ) -> Result<Vec<Result<Vec<u8>, HttpClientError>>, Error> {
-        let responses = self.get_all(urls)?;
-        let results = responses
-            .into_iter()
-            .map(|r| {
-                r.and_then(|r| {
-                    rt::block_on(r.bytes())
-                        .map(|r| r.to_vec())
-                        .map_err(|err| err.into())
-                })
+    ) -> Vec<Option<Vec<u8>>> {
+        let result: Vec<Option<Vec<u8>>> = futures::stream::iter(urls)
+            .map(|url| {
+                let client = &self.client;
+                async move {
+                    // TODO log errors
+                    let response = client.get(url).send().await.ok();
+                    match response {
+                        Some(response) => {
+                            response.bytes().await.ok().map(|bytes| bytes.into())
+                        }
+                        None => None,
+                    }
+                }
             })
-            .collect();
-        Ok(results)
+            .buffer_unordered(config::MAX_ASYNC_CONCURRENT_REQUESTS)
+            .collect()
+            .await;
+        result
     }
 }
 

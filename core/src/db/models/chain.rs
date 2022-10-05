@@ -47,10 +47,7 @@ impl TryFrom<Chain> for EthChain {
         } = chain;
         if protocol != BlockchainProtocol::Ethereum {
             return Err(Error::Fatal {
-                error: format!(
-                    "Expected Ethereum protocol, instead got: {}",
-                    protocol
-                ),
+                error: format!("Expected Ethereum protocol, instead got: {}", protocol),
             });
         }
         let chain_data: eth::ProtocolData = protocol_data.convert_into()?;
@@ -80,13 +77,29 @@ impl Chain {
         Ok(results)
     }
 
+    /// Fetch an Ethereum chain id by the db entity's deterministic id.
+    pub fn fetch_eth_chain_id(
+        conn: &mut SqliteConnection,
+        deterministic_id: &str,
+    ) -> Result<eth::ChainId, Error> {
+        use chains::dsl as c;
+        let protocol_data: JsonValue = chains::table
+            .filter(c::deterministic_id.eq(&deterministic_id))
+            .select(c::protocol_data)
+            .first(conn)?;
+
+        let protocol_data: eth::ProtocolData = protocol_data.convert_into()?;
+
+        Ok(protocol_data.chain_id)
+    }
+
     /// Fetch the deterministic id for an Ethereum chain.
     /// Creates the chain entity if it's not in the db yet.
     pub fn fetch_or_create_eth_chain_id(
         conn: &mut DeferredTxConnection,
         chain_id: eth::ChainId,
     ) -> Result<String, Error> {
-        match Self::fetch_eth_chain_id(conn.as_mut(), chain_id)? {
+        match Self::fetch_eth_chain_deterministic_id(conn.as_mut(), chain_id)? {
             Some(chain_id) => Ok(chain_id),
             None => Self::create_eth_chain(conn.as_mut(), chain_id),
         }
@@ -109,7 +122,7 @@ impl Chain {
     }
 
     /// Fetch an Ethereum chain and return its deterministic id if it exists.
-    fn fetch_eth_chain_id(
+    fn fetch_eth_chain_deterministic_id(
         conn: &mut SqliteConnection,
         chain_id: eth::ChainId,
     ) -> Result<Option<String>, Error> {

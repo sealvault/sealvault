@@ -2,12 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::{config, Error};
+use crate::{async_runtime as rt, config, Error};
+use diesel::connection::SimpleConnection;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::{Connection, SqliteConnection};
 use std::fmt::{Debug, Formatter};
 use std::time::Duration;
-use diesel::connection::SimpleConnection;
 
 /// A Sqlite connection pool.
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl ConnectionPool {
             .max_size(config::DB_CONNECTION_POOL_SIZE)
             .connection_customizer(Box::new(ConnectionOptions {
                 // Needed to allow concurrent transactions
-                busy_timeout: config::DB_BUSY_TIMEOUT
+                busy_timeout: config::DB_BUSY_TIMEOUT,
             }))
             .build(manager)?;
         Ok(Self { pool })
@@ -46,6 +46,24 @@ impl ConnectionPool {
             let tx_conn = DeferredTxConnection(conn);
             callback(tx_conn)
         })
+    }
+
+    // TODO figure out how to avoid 'static bound on closure. It's annoying, because it requires
+    // moving everything inside the closure.
+    pub async fn deferred_transaction_async<T, F>(&self, callback: F) -> Result<T, Error>
+    where
+        F: FnOnce(DeferredTxConnection) -> Result<T, Error> + Send + 'static,
+        T: Send + 'static,
+    {
+        let pool = self.pool.clone();
+        rt::spawn_blocking(move || {
+            let mut conn = pool.get()?;
+            conn.transaction::<T, Error, _>(|conn| {
+                let tx_conn = DeferredTxConnection(conn);
+                callback(tx_conn)
+            })
+        })
+        .await?
     }
 
     /// Start an exclusive transaction.
@@ -108,16 +126,18 @@ pub struct ConnectionOptions {
 }
 
 impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
-for ConnectionOptions
+    for ConnectionOptions
 {
     fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
         (|| {
             let timeout = self.busy_timeout.as_millis();
             conn.batch_execute(&format!("PRAGMA busy_timeout = {};", timeout))?;
-            conn.batch_execute("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")?;
+            conn.batch_execute(
+                "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;",
+            )?;
             conn.batch_execute("PRAGMA foreign_keys = ON;")?;
             Ok(())
-        })().map_err(diesel::r2d2::Error::QueryError)
+        })()
+        .map_err(diesel::r2d2::Error::QueryError)
     }
 }
-

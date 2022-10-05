@@ -8,13 +8,17 @@ use crate::protocols::TokenType;
 use crate::Error;
 use ethers::types::{Address, U256};
 use jsonrpsee::core::{async_trait, RpcResult};
-use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
+use jsonrpsee::http_client::HttpClient;
+// Behind flag otherwise `cargo fix` removes it
+#[cfg(not(test))]
+use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::types::error::{ErrorCode};
+use jsonrpsee::types::error::ErrorCode;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 // Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
+#[cfg(not(test))]
 const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";
 const PAGE_SIZE: usize = 100;
 
@@ -26,7 +30,6 @@ trait AnkrRpcApi {
     async fn get_account_balance(
         &self,
         blockchain: Vec<AnkrBlockchain>,
-        // Need to be camel case for correct generated code
         pageSize: usize,
         pageToken: Option<&str>,
         walletAddress: &str,
@@ -255,7 +258,7 @@ pub use tests::AnkrRpc;
 mod tests {
     use super::*;
 
-    use crate::{async_runtime as rt};
+    use crate::async_runtime as rt;
     use jsonrpsee::core::logger::{Body, HttpLogger, MethodKind, Params, Request};
     use jsonrpsee::core::{async_trait, RpcResult};
     use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
@@ -277,7 +280,7 @@ mod tests {
                     .set_logger(ServerLogger)
                     .build("127.0.0.1:0"),
             )
-                .expect("can build server");
+            .expect("can build server");
             let server_addr = server.local_addr().expect("has local address");
             let url = format!("http://{}", server_addr);
             let server_handle = server
@@ -309,10 +312,10 @@ mod tests {
     impl AnkrRpcApiServer for AnkrRpcApiServerImpl {
         async fn get_account_balance(
             &self,
-            blockchain: Vec<AnkrBlockchain>,
-            pageSize: usize,
+            _blockchain: Vec<AnkrBlockchain>,
+            _pageSize: usize,
             pageToken: Option<&str>,
-            walletAddress: &str,
+            _walletAddress: &str,
         ) -> RpcResult<AnkrTokenBalances> {
             // Simulate paging once
             let page_token = if pageToken.is_none() {
@@ -323,49 +326,49 @@ mod tests {
 
             let balances = if pageToken.is_none() {
                 json!([
-              {
-                "blockchain": "polygon",
-                "tokenName": "USD Coin (PoS)",
-                "tokenSymbol": "USDC",
-                "tokenDecimals": 6,
-                "tokenType": "ERC20",
-                "contractAddress": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-                "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                "balance": "0.119157",
-                "balanceRawInteger": "119157",
-                "balanceUsd": "0.119157",
-                "tokenPrice": "1",
-                "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174/logo.png"
-              },
-              {
-                "blockchain": "polygon",
-                "tokenName": "Polygon",
-                "tokenSymbol": "MATIC",
-                "tokenDecimals": 18,
-                "tokenType": "NATIVE",
-                "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                "balance": "0.941696667609996629",
-                "balanceRawInteger": "941696667609996629",
-                "balanceUsd": "0",
-                "tokenPrice": "0",
-                "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
-              },
-            ])
+                  {
+                    "blockchain": "polygon",
+                    "tokenName": "USD Coin (PoS)",
+                    "tokenSymbol": "USDC",
+                    "tokenDecimals": 6,
+                    "tokenType": "ERC20",
+                    "contractAddress": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
+                    "balance": "0.119157",
+                    "balanceRawInteger": "119157",
+                    "balanceUsd": "0.119157",
+                    "tokenPrice": "1",
+                    "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174/logo.png"
+                  },
+                  {
+                    "blockchain": "polygon",
+                    "tokenName": "Polygon",
+                    "tokenSymbol": "MATIC",
+                    "tokenDecimals": 18,
+                    "tokenType": "NATIVE",
+                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
+                    "balance": "0.941696667609996629",
+                    "balanceRawInteger": "941696667609996629",
+                    "balanceUsd": "0",
+                    "tokenPrice": "0",
+                    "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
+                  },
+                ])
             } else {
                 json!([{
-                "blockchain": "polygon",
-                "tokenName": "Space Protocol",
-                "tokenSymbol": "SPL",
-                "tokenDecimals": 18,
-                "tokenType": "ERC20",
-                "contractAddress": "0xfec6832ab7bea7d3db02472b64cb59cfc6f2c107",
-                "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                "balance": "500",
-                "balanceRawInteger": "500000000000000000000",
-                "balanceUsd": "0",
-                "tokenPrice": "0",
-                "thumbnail": ""
-            }])
+                    "blockchain": "polygon",
+                    "tokenName": "Space Protocol",
+                    "tokenSymbol": "SPL",
+                    "tokenDecimals": 18,
+                    "tokenType": "ERC20",
+                    "contractAddress": "0xfec6832ab7bea7d3db02472b64cb59cfc6f2c107",
+                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
+                    "balance": "500",
+                    "balanceRawInteger": "500000000000000000000",
+                    "balanceUsd": "0",
+                    "tokenPrice": "0",
+                    "thumbnail": ""
+                }])
             };
 
             let balances: Vec<AnkrTokenBalance> =

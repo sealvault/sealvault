@@ -80,8 +80,7 @@ pub fn uri_fixup(input: impl AsRef<str>) -> Option<String> {
         return None;
     }
 
-    let url =
-        Url::parse(trimmed).or_else(|_| Url::parse(&format!("http://{}", trimmed)));
+    let url = Url::parse(trimmed).or_else(|_| Url::parse(&format!("http://{}", trimmed)));
 
     url.ok().and_then(|u| {
         if !ALLOWED_SCHEMES.contains(u.scheme()) {

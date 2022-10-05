@@ -175,7 +175,7 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
-    func inPageRequest(context _: InPageRequestContextI, rawRequest _: String) throws -> String {
+    func inPageRequest(context _: InPageRequestContextI, rawRequest _: String) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 }

@@ -8,11 +8,14 @@ use actix_web::{
     HttpServer, Responder,
 };
 use dotenv::dotenv;
+use ethers_core::utils::hex;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
-use uniffi_sealvault_core as svc;
+use uniffi_sealvault_core::{
+    AppCore, CoreArgs, CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI,
+};
 
 const DB_PATH: &str = ":memory:";
 const STATIC_FOLDER: &str = "./static";
@@ -28,13 +31,11 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let backend_args = svc::CoreArgs {
+    let backend_args = CoreArgs {
         cache_dir: "./cache".into(),
         db_file_path: DB_PATH.into(),
     };
-    let backend_service = Arc::new(
-        svc::AppCore::new(backend_args).expect("core initializes"),
-    );
+    let backend_service = Arc::new(AppCore::new(backend_args).expect("core initializes"));
 
     HttpServer::new(move || {
         App::new()
@@ -52,7 +53,7 @@ async fn main() -> std::io::Result<()> {
 
 #[post("/backend")]
 async fn backend(
-    backend_service: web::Data<Arc<svc::AppCore>>,
+    backend_service: web::Data<Arc<AppCore>>,
     req: HttpRequest,
     req_body: String,
 ) -> impl Responder {
@@ -63,8 +64,8 @@ async fn backend(
         .unwrap_or(&default_referer)
         .to_str()
         .unwrap();
-    // TODO support notify
-    let iprc = Box::new(svc::in_page_provider::InPageRequestContextMock::new(referer));
+    // TODO support respond and notify
+    let iprc = Box::new(InPageRequestContextMock::new(referer));
     let result = tokio::task::spawn_blocking(move || {
         backend_service.in_page_request(iprc, req_body)
     })
@@ -109,7 +110,7 @@ async fn get_html(req: HttpRequest) -> impl Responder {
 }
 
 #[get("/js/in-page-provider.js")]
-async fn in_page_provider(backend_service: web::Data<Arc<svc::AppCore>>) -> impl Responder {
+async fn in_page_provider(backend_service: web::Data<Arc<AppCore>>) -> impl Responder {
     const SEALVAULT_RPC_PROVIDER: &str = "sealVaultRpcProvider";
     const SEALVAULT_REQUEST_HANDLER: &str = "sealVaultRequestHandler";
 
@@ -124,4 +125,63 @@ async fn in_page_provider(backend_service: web::Data<Arc<svc::AppCore>>) -> impl
     HttpResponse::Ok()
         .content_type("application/javascript")
         .body(contents)
+}
+
+#[derive(Debug)]
+pub struct InPageRequestContextMock {
+    pub page_url: String,
+    pub callbacks: Box<CoreInPageCallbackMock>,
+}
+
+impl InPageRequestContextMock {
+    pub fn new(page_url: &str) -> Self {
+        Self {
+            page_url: page_url.into(),
+            callbacks: Box::new(CoreInPageCallbackMock::new()),
+        }
+    }
+    pub fn default_boxed() -> Box<Self> {
+        Box::new(InPageRequestContextMock::new("https://example.com"))
+    }
+}
+
+impl InPageRequestContextI for InPageRequestContextMock {
+    fn page_url(&self) -> String {
+        self.page_url.clone()
+    }
+
+    fn callbacks(&self) -> Box<dyn CoreInPageCallbackI> {
+        self.callbacks.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CoreInPageCallbackMock {}
+
+impl CoreInPageCallbackMock {
+    // We don't want to create the mock by accident with `Default::default`.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl CoreInPageCallbackI for CoreInPageCallbackMock {
+    fn approve_dapp(&self, _: DappApprovalParams) -> bool {
+        // Don't slow down tests noticeably, but simulate blocking.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        true
+    }
+
+    fn respond(&self, response_hex: String) {
+        let response = hex::decode(response_hex).expect("valid hex");
+        let response = String::from_utf8_lossy(&response);
+        log::info!("CoreInPageCallbackMock.response: '{:?}'", response);
+    }
+
+    fn notify(&self, message_hex: String) {
+        let event = hex::decode(message_hex).expect("valid hex");
+        let event = String::from_utf8_lossy(&event);
+        log::info!("CoreInPageCallbackMock.notify: '{:?}'", event);
+    }
 }
