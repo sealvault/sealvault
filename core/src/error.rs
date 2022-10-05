@@ -54,7 +54,10 @@ impl From<diesel::result::Error> for Error {
                 } else {
                     Error::Fatal {
                         // Don't include `DatabaseErrorInformation` as it can contain user data.
-                        error: format!("Unexpected Diesel database error kind: '{:?}'", kind),
+                        error: format!(
+                            "Unexpected Diesel database error kind: '{:?}'",
+                            kind
+                        ),
                     }
                 }
             }
@@ -153,7 +156,7 @@ impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::Retriable {
             // Error is opaque, OK to expose.
-            error: err.to_string()
+            error: err.to_string(),
         }
     }
 }

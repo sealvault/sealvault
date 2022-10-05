@@ -11,9 +11,12 @@
   // Can be nested property
   const SEALVAULT_REQUEST_HANDLER = "<SEALVAULT_REQUEST_HANDLER>"
   // 0x prefixed hex format
-  const SEALVAULT_DEFAULT_CHAIN_ID = "<SEALVAULT_DEFAULT_CHAIN_ID>";
+  const SEALVAULT_DEFAULT_CHAIN_ID = "<SEALVAULT_DEFAULT_CHAIN_ID>"
   // Decimal integer string
-  const SEALVAULT_DEFAULT_NETWORK_VERSION = "<SEALVAULT_DEFAULT_NETWORK_VERSION>";
+  const SEALVAULT_DEFAULT_NETWORK_VERSION = "<SEALVAULT_DEFAULT_NETWORK_VERSION>"
+
+  const ETHEREUM_PROVIDER = "ethereum"
+  const REQUEST_TIMEOUT_MS = 60 * 1000
 
   /**
    * Get a potentially nested property from object.
@@ -60,8 +63,8 @@
    * @returns The string.
    */
   function hexBytesToString(hexStr) {
-    const ints = hexStr.match(/[\da-f]{2}/gi).map(h =>parseInt(h, 16));
-    const bytes = new Uint8Array(ints);
+    const ints = hexStr.match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16))
+    const bytes = new Uint8Array(ints)
     return new TextDecoder().decode(bytes)
   }
 
@@ -74,10 +77,10 @@
    */
   function uuidV4() {
     // Expands to '10000000-1000-4000-8000-100000000000'
-    const template = [1e7]+-1e3+-4e3+-8e3+-1e11
-    return template.replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
+    const template = [1e7] + -1e3 + -4e3 + -8e3 + -1e11
+    return template.replace(/[018]/g, (c) =>
+      (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+    )
   }
 
   /**
@@ -195,8 +198,12 @@
     class ProviderRpcError extends Error {
       constructor(error) {
         let { code, data, message } = error
+        // Server error
+        code = code ?? -32000
         if (!message) {
-          message = `JSONRPC Error ${code} ${data ? " - " + JSON.stringify(data, null, 2) : ""}`
+          message = `JSONRPC Error ${code} ${
+            data ? " - " + JSON.stringify(data, null, 2) : ""
+          }`
         }
         super(message)
         this.code = code
@@ -204,11 +211,12 @@
       }
     }
 
-    const ETHEREUM_PROVIDER = "ethereum"
-
     EthereumProvider.modules = {}
 
     EthereumProvider.modules.sealVaultRpc = (function SealVaultRpcProvider() {
+      // Map from request id to promise resolvers
+      const requests = new Map()
+
       /**
        * The SealVault iOS app sends responses to the in-page provider via this object.
        * It is not meant to be accessed by third parties, but it's exposed on the window
@@ -225,28 +233,63 @@
          * @param {Object} jsonRpcRequest  - The JSON RPC request object.
          * @returns {Promise}
          */
-        async request(jsonRpcRequest) {
-          const { parent, value: requestHandler } = getPropByString(
+        request(jsonRpcRequest) {
+          const requestPromise = new Promise((resolve, reject) => {
+            const { parent, value: requestHandler } = getPropByString(
               window,
               SEALVAULT_REQUEST_HANDLER
+            )
+            try {
+              requestHandler.call(parent, JSON.stringify(jsonRpcRequest))
+            } catch (e) {
+              console.error(`SealVault RPC provider failed to call request handler: ${e}`)
+              reject(new ProviderRpcError({ message: e.toString() }))
+              return
+            }
+            requests.set(jsonRpcRequest.id, { resolve, reject })
+          })
+
+          const timeout = new Promise((resolve, reject) =>
+            window.setTimeout(() => {
+              console.error(`SealVault RPC request id ${jsonRpcRequest.id} timed out.`)
+              requests.delete(jsonRpcRequest.id)
+              reject(new ProviderRpcError({ message: "Timeout" }))
+            }, REQUEST_TIMEOUT_MS)
           )
-          let rawResponse
+
+          return Promise.race([requestPromise, timeout])
+        },
+
+        /**
+         * The SealVault app uses this to respond to in-page-requests.
+         *
+         * @param {String} responseHex  - The message object as hexadecimal utf-8 bytes.
+         * @returns undefined
+         */
+        respond(responseHex) {
+          let response
           try {
-            rawResponse = await requestHandler.call(parent, JSON.stringify(jsonRpcRequest))
+            // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
+            // See the security model in the developer docs for more.
+            response = JSON.parse(hexBytesToString(responseHex))
           } catch (error) {
-            throw new ProviderRpcError({
-              message: error.toString(),
-              // Server error
-              code: -32000
-            })
+            // We don't know which request to respond to
+            console.error(
+              `SealVault RPC provider failed to parse response: ${responseHex}`
+            )
+            return
           }
-          // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
-          // See the security model in the developer docs for more.
-          const response = JSON.parse(hexBytesToString(rawResponse))
+          const resolvers = requests.get(response.id)
+          if (!resolvers) {
+            console.error(
+              `SealVault RPC provider got unknown request id in response: ${response}`
+            )
+            return
+          }
           if (response.error) {
-            throw new ProviderRpcError(response.error)
+            resolvers.reject(new ProviderRpcError(response.error))
           } else {
-            return response.result
+            resolvers.resolve(response.result)
           }
         },
 
@@ -257,11 +300,11 @@
          * See [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193#events) for
          * specification of each event.
          *
-         * @param {String} rawMessage  - The message object as hexadecimal utf-8 bytes.
+         * @param {String} messageHex  - The message object as hexadecimal utf-8 bytes.
          * @returns undefined
          */
-        notify(rawMessage) {
-          const message = JSON.parse(hexBytesToString(rawMessage))
+        notify(messageHex) {
+          const message = JSON.parse(hexBytesToString(messageHex))
           EthereumProvider.modules.ethereum.emit(message.event, message.data)
         },
       }
@@ -285,14 +328,14 @@
         isConnected: false,
         chainId: SEALVAULT_DEFAULT_CHAIN_ID,
         networkVersion: SEALVAULT_DEFAULT_NETWORK_VERSION,
-        selectedAddress: null
+        selectedAddress: null,
       }
 
       /**
        * Alias for ethereum.request({ method: 'eth_requestAccounts' }).
        */
       function enable() {
-        return request({method: 'eth_requestAccounts'})
+        return request({ method: "eth_requestAccounts" })
       }
 
       /**
@@ -336,10 +379,11 @@
        * @returns {void}
        */
       function sendAsync(jsonRpcRequest, callback) {
-        EthereumProvider.modules.sealVaultRpc.request(jsonRpcRequest)
+        EthereumProvider.modules.sealVaultRpc
+          .request(jsonRpcRequest)
           // Catch is first to not catch error from callback.
-          .catch(error => callback(error, null))
-          .then(result => callback(null, result))
+          .catch((error) => callback(error, null))
+          .then((result) => callback(null, result))
       }
 
       /**
@@ -353,12 +397,14 @@
        */
       function send(methodOrPayload, paramsOrCallback) {
         if (
-          methodOrPayload && typeof methodOrPayload.method === "string" &&
-          paramsOrCallback && typeof paramsOrCallback === "function"
+          methodOrPayload &&
+          typeof methodOrPayload.method === "string" &&
+          paramsOrCallback &&
+          typeof paramsOrCallback === "function"
         ) {
           return sendAsync(methodOrPayload, paramsOrCallback)
         } else if (typeof methodOrPayload === "string") {
-          return request({method: methodOrPayload, params: paramsOrCallback})
+          return request({ method: methodOrPayload, params: paramsOrCallback })
         } else {
           // The third signature of `send` requires synchronous RPC calls which we can't
           // support.
@@ -411,14 +457,14 @@
           value: request,
         },
         send: {
-          value: send
+          value: send,
         },
         sendAsync: {
-          value: sendAsync
-        }
+          value: sendAsync,
+        },
       })
 
-      ethereum.on("sealVaultConnect", ({chainId, networkVersion, selectedAddress}) => {
+      ethereum.on("sealVaultConnect", ({ chainId, networkVersion, selectedAddress }) => {
         if (!state.isConnected) {
           state.isConnected = true
 

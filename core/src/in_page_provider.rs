@@ -5,9 +5,9 @@
 use crate::async_runtime as rt;
 use crate::db::models as m;
 use crate::db::ConnectionPool;
-use crate::encryption::Keychain;
+
 use crate::protocols::eth;
-use crate::public_suffix_list::PublicSuffixList;
+
 use crate::{assets, config, Error};
 use jsonrpsee::core::server::helpers::MethodResponse;
 use jsonrpsee::types::error::{CallError, ErrorCode};
@@ -17,64 +17,71 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt::Debug;
-use std::iter;
+
 use std::str::FromStr;
+use std::sync::Arc;
+
+use crate::app_core::CoreResources;
+use crate::favicon::fetch_favicon_async;
 use strum_macros::{EnumIter, EnumString};
 use typed_builder::TypedBuilder;
 use url::Url;
-use crate::favicon::fetch_favicons;
-use crate::http_client::HttpClient;
 
 #[derive(Debug)]
 #[readonly::make]
-pub(super) struct InPageProvider<'a> {
-    keychain: &'a Keychain,
-    connection_pool: &'a ConnectionPool,
-    public_suffix_list: &'a PublicSuffixList,
-    rpc_manager: &'a dyn eth::RpcManagerI,
-    http_client: &'a HttpClient,
+pub(super) struct InPageProvider {
+    resources: Arc<CoreResources>,
     request_context: Box<dyn InPageRequestContextI>,
     url: Url,
 }
 
-impl<'a> InPageProvider<'a> {
+impl InPageProvider {
     pub(super) fn new(
-        keychain: &'a Keychain,
-        connection_pool: &'a ConnectionPool,
-        public_suffix_list: &'a PublicSuffixList,
-        rpc_manager: &'a dyn eth::RpcManagerI,
-        http_client: &'a HttpClient,
+        resources: Arc<CoreResources>,
         request_context: Box<dyn InPageRequestContextI>,
     ) -> Result<Self, Error> {
         let url = Url::parse(&request_context.page_url())?;
         Ok(Self {
-            keychain,
-            connection_pool,
-            public_suffix_list,
-            rpc_manager,
-            http_client,
+            resources,
             request_context,
             url,
         })
     }
 
+    fn connection_pool(&self) -> &ConnectionPool {
+        &self.resources.connection_pool
+    }
+
     // TODO add rate limiting
     // TODO refuse in page requests if dapp wasn't served over https or doesn't have a registrable
     // domain unless in dev mode.
-    pub(super) fn in_page_request(&self, raw_request: &str) -> Result<String, Error> {
-        let response = self.raw_json_rpc_request(raw_request)?;
-        // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
-        // See the security model in the developer docs for more.
-        Ok(hex::encode(response.result.as_bytes()))
+    pub(super) fn in_page_request(
+        self,
+        raw_request: String,
+    ) -> tokio::task::JoinHandle<Result<(), Error>> {
+        rt::spawn(self.in_page_request_async(raw_request))
     }
 
-    fn raw_json_rpc_request(&self, raw_request: &str) -> Result<MethodResponse, Error> {
+    async fn in_page_request_async(self, raw_request: String) -> Result<(), Error> {
+        let response = self.raw_json_rpc_request(raw_request).await?;
+        // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
+        // See the security model in the developer docs for more.
+        let hex_response = hex::encode(response.result.as_bytes());
+        let callbacks = self.request_context.callbacks();
+        callbacks.respond(hex_response);
+        Ok(())
+    }
+
+    async fn raw_json_rpc_request(
+        &self,
+        raw_request: String,
+    ) -> Result<MethodResponse, Error> {
         if raw_request.as_bytes().len() > config::MAX_JSONRPC_REQUEST_SIZE_BYTES {
             return Err(invalid_raw_request());
         }
         let req: Request =
-            serde_json::from_str(raw_request).map_err(|_| invalid_raw_request())?;
-        match self.dispatch(&req) {
+            serde_json::from_str(&raw_request).map_err(|_| invalid_raw_request())?;
+        match self.dispatch(&req).await {
             Ok(result) => Ok(MethodResponse::response(
                 req.id,
                 result,
@@ -91,18 +98,19 @@ impl<'a> InPageProvider<'a> {
     }
 
     /// Resolve JSON-RPC method.
-    fn dispatch(&self, request: &Request) -> Result<serde_json::Value, Error> {
-        let maybe_session = self.fetch_session_for_approved_dapp()?;
+    async fn dispatch<'a>(
+        &self,
+        request: &'a Request<'a>,
+    ) -> Result<serde_json::Value, Error> {
+        let maybe_session = self.fetch_session_for_approved_dapp().await?;
         match &*request.method {
             // These methods request the user approval if the user hasn't added the dapp yet
             // in the account.
             "eth_requestAccounts" | "eth_accounts" => {
-                self.eth_request_accounts(maybe_session)
+                self.eth_request_accounts(maybe_session).await
             }
             _ => match maybe_session {
-                Some(session) => {
-                    self.dispatch_authorized_methods(request, session)
-                }
+                Some(session) => self.dispatch_authorized_methods(request, session).await,
                 None => {
                     let err: Error = InPageErrorCode::Unauthorized.into();
                     Err(err)
@@ -112,45 +120,48 @@ impl<'a> InPageProvider<'a> {
     }
 
     /// Resolve JSON-RPC method if user has approved the dapp in the current account.
-    fn dispatch_authorized_methods(
+    async fn dispatch_authorized_methods<'a>(
         &self,
-        request: &Request,
-        session: m::LocalDappSession
+        request: &'a Request<'a>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let params = Params::new(request.params.map(|params| params.get()));
+        // let params = Params::new(request.params.map(|params| params.get()));
         match &*request.method {
             "eth_chainId" => self.eth_chain_id(session),
             "eth_sendTransaction" => {
-                self.eth_send_transaction(request.params, session)
+                self.eth_send_transaction(request.params, session).await
             }
-            "personal_sign" => self.personal_sign(request.params, session),
-            "wallet_addEthereumChain" => self.wallet_add_ethereum_chain(params),
+            "personal_sign" => self.personal_sign(request.params, session).await,
+            "wallet_addEthereumChain" => self.wallet_add_ethereum_chain(request.params),
             "wallet_switchEthereumChain" => {
-                self.wallet_switch_ethereum_chain(params, session)
+                self.wallet_switch_ethereum_chain(request.params, session)
+                    .await
             }
             "web3_clientVersion" => self.web3_client_version(),
-            "web3_sha3" => self.web3_sha3(request.params),
-            method => self.proxy_method(method, request.params, session),
+            "web3_sha3" => self.web3_sha3(request.params).await,
+            method => self.proxy_method(method, request.params, session).await,
         }
     }
 
     /// Notify the in-page JS about an event in the background.
-    fn notify(&self, message: &ProviderMessage) -> Result<(), Error> {
-        let json_message = serde_json::to_string(&message).map_err(|_| Error::Fatal {
-            error: format!(
-                "Failed to deserialize message for event: '{:?}'",
-                message.event
-            ),
-        })?;
-        let message_hex = hex::encode(json_message);
+    async fn notify(&self, message: ProviderMessage) -> Result<(), Error> {
         let callbacks = self.request_context.callbacks();
-        // TODO notification should happen on a background thread as the processing may be blocking,
-        // but doing that crashes in iOS UI tests (not when manually testing the simulator though).
-        callbacks.notify(message_hex);
-        Ok(())
+        rt::spawn_blocking(move || {
+            let json_message =
+                serde_json::to_string(&message).map_err(|_| Error::Fatal {
+                    error: format!(
+                        "Failed to deserialize message for event: '{:?}'",
+                        message.event
+                    ),
+                })?;
+            let message_hex = hex::encode(json_message);
+            callbacks.notify(message_hex);
+            Ok(())
+        })
+        .await?
     }
 
-    fn notify_connect(
+    async fn notify_connect(
         &self,
         chain_id: eth::ChainId,
         selected_address: &str,
@@ -168,16 +179,16 @@ impl<'a> InPageProvider<'a> {
             event: ProviderEvent::SealVaultConnect,
             data,
         };
-        self.notify(&message)
+        self.notify(message).await
     }
 
-    fn notify_chain_changed(&self, chain_id: eth::ChainId) -> Result<(), Error> {
+    async fn notify_chain_changed(&self, chain_id: eth::ChainId) -> Result<(), Error> {
         let chain_id_json = chain_id_to_hex_str_json(chain_id)?;
         let chain_message = ProviderMessage {
             event: ProviderEvent::ChainChanged,
             data: chain_id_json,
         };
-        self.notify(&chain_message)?;
+        self.notify(chain_message).await?;
 
         let network_version = chain_id.network_version();
         let network_version =
@@ -188,14 +199,14 @@ impl<'a> InPageProvider<'a> {
             event: ProviderEvent::NetworkChanged,
             data: network_version,
         };
-        self.notify(&network_message)
+        self.notify(network_message).await
     }
 
-    fn proxy_method<T>(
+    async fn proxy_method<T>(
         &self,
         method: &str,
         params: T,
-        session: m::LocalDappSession
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error>
     where
         T: Debug + Serialize + Send + Sync,
@@ -209,28 +220,31 @@ impl<'a> InPageProvider<'a> {
             });
         }
 
-        let provider = self.rpc_manager.eth_api_provider(session.chain_id);
-        provider.proxy_rpc_request(method, params)
+        let provider = self
+            .resources
+            .rpc_manager
+            .eth_api_provider(session.chain_id);
+        provider.proxy_rpc_request_async(method, params).await
     }
 
     fn eth_chain_id(
         &self,
-        session: m::LocalDappSession
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         let chain_id: ethers::core::types::U64 = session.chain_id.into();
         let result = to_value(chain_id)?;
         Ok(result)
     }
 
-    fn eth_request_accounts(
+    async fn eth_request_accounts(
         &self,
         maybe_session: Option<m::LocalDappSession>,
     ) -> Result<serde_json::Value, Error> {
         let session = match maybe_session {
             // User has approved the dapp before in this account.
-            Some(session) =>  Ok(session),
+            Some(session) => Ok(session),
             // Request permission from user to add the dapp to the account.
-            None => match self.request_add_new_dapp()? {
+            None => match self.request_add_new_dapp().await? {
                 // User approved, return the newly created address.
                 Some(session) => Ok(session),
                 // User declined, return JSON-RPC error.
@@ -238,73 +252,91 @@ impl<'a> InPageProvider<'a> {
                     let err: Error = InPageErrorCode::UserRejected.into();
                     Err(err)
                 }
-            }
+            },
         }?;
 
-        let mut conn = self.connection_pool.connection()?;
-        session.update_last_used_at(&mut conn)?;
+        let session = self
+            .connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                session.update_last_used_at(&mut tx_conn)
+            })
+            .await?;
 
-        self.notify_connect(session.chain_id, &session.address)?;
+        self.notify_connect(session.chain_id, &session.address)
+            .await?;
 
-        let m::LocalDappSession {address, ..}  = session;
+        let m::LocalDappSession { address, .. } = session;
         let result = to_value(vec![address])?;
         Ok(result)
     }
 
-    fn fetch_session_for_approved_dapp(
+    async fn fetch_session_for_approved_dapp(
         &self,
     ) -> Result<Option<m::LocalDappSession>, Error> {
-        self.connection_pool.deferred_transaction(|mut tx_conn| {
-            let account_id = m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
-            let maybe_dapp_id = m::Dapp::fetch_id_for_account(
-                tx_conn.as_mut(),
-                self.url.clone(),
-                self.public_suffix_list,
-                &account_id,
-            )?;
-            // If the dapp has been added to the account, return an existing session or create one.
-            // It can happen that the dapp has been added, but no local session exists if the dapp
-            // was added on an other device.
-            let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
-                Some(dapp_id) => {
-                    let params = m::DappSessionParams::builder()
-                        .dapp_id(&dapp_id)
-                        .account_id(&account_id)
-                        .build();
-                    let session = m::LocalDappSession::create_eth_session_if_not_exists(
-                        &mut tx_conn, &params,
-                    )?;
-                    Some(session)
-                }
-                None => None,
-            };
-            Ok(maybe_session)
-        })
+        let url = self.url.clone();
+        let resources = self.resources.clone();
+        self.connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                let account_id =
+                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
+                let maybe_dapp_id = m::Dapp::fetch_id_for_account(
+                    tx_conn.as_mut(),
+                    url,
+                    &resources.public_suffix_list,
+                    &account_id,
+                )?;
+                // If the dapp has been added to the account, return an existing session or create one.
+                // It can happen that the dapp has been added, but no local session exists if the dapp
+                // was added on an other device.
+                let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
+                    Some(dapp_id) => {
+                        let params = m::DappSessionParams::builder()
+                            .dapp_id(&dapp_id)
+                            .account_id(&account_id)
+                            .build();
+                        let session =
+                            m::LocalDappSession::create_eth_session_if_not_exists(
+                                &mut tx_conn,
+                                &params,
+                            )?;
+                        Some(session)
+                    }
+                    None => None,
+                };
+                Ok(maybe_session)
+            })
+            .await
     }
 
     /// Add a new dapp to the account requesting the user's approval and return the new 1DK address
     /// if the user approved it.
-    fn request_add_new_dapp(
-        &self,
-    ) -> Result<Option<m::LocalDappSession>, Error> {
-        let favicon = self.fetch_favicon()?;
-        // Drop connection once we fetched account id.
-        let account_id = {
-            let mut conn = self.connection_pool.connection()?;
-            m::LocalSettings::fetch_active_account_id(&mut conn)
-        }?;
-        let dapp_identifier = m::Dapp::dapp_identifier(self.url.clone(), self.public_suffix_list)?;
-        let dapp_approval = DappApprovalParams::builder()
-            .account_id(account_id)
-            .dapp_identifier(dapp_identifier)
-            .favicon(favicon)
-            .build();
+    async fn request_add_new_dapp(&self) -> Result<Option<m::LocalDappSession>, Error> {
+        let url = self.url.clone();
+        let resources = self.resources.clone();
         let callbacks = self.request_context.callbacks();
-        let user_approved = callbacks.approve_dapp(dapp_approval.clone());
+        let favicon = self.fetch_favicon().await?;
+        let result: Result<(bool, DappApprovalParams), Error> =
+            rt::spawn_blocking(move || {
+                // Drop connection once we fetched account id.
+                let account_id = {
+                    let mut conn = resources.connection_pool.connection()?;
+                    m::LocalSettings::fetch_active_account_id(&mut conn)
+                }?;
+                let dapp_identifier =
+                    m::Dapp::dapp_identifier(url, &resources.public_suffix_list)?;
+                let dapp_approval = DappApprovalParams::builder()
+                    .account_id(account_id)
+                    .dapp_identifier(dapp_identifier)
+                    .favicon(favicon)
+                    .build();
+                // TODO there should be a timeout here, but the blocking task is not cancellable
+                let user_approved = callbacks.approve_dapp(dapp_approval.clone());
+                Ok((user_approved, dapp_approval))
+            })
+            .await?;
+        let (user_approved, dapp_approval) = result?;
         if user_approved {
-            // Important to pass dapp approval with account id, since the current account may change
-            // between approval and adding the new dapp.
-            let session = self.add_new_dapp(&dapp_approval)?;
+            let session = self.add_new_dapp(dapp_approval).await?;
             Ok(Some(session))
         } else {
             Ok(None)
@@ -313,94 +345,118 @@ impl<'a> InPageProvider<'a> {
 
     /// Add a new dapp to the account and return the dapp's deterministic id.
     /// Also transfers the configured default amount to the new dapp address.
-    fn add_new_dapp(
+    async fn add_new_dapp(
         &self,
-        dapp_approval: &DappApprovalParams,
+        dapp_approval: DappApprovalParams,
     ) -> Result<m::LocalDappSession, Error> {
         // Add dapp to account and create local session
-        let session = self.connection_pool.deferred_transaction(|mut tx_conn| {
-            let chain_id = eth::ChainId::default_dapp_chain();
-            let dapp_id = m::Dapp::create_if_not_exists(
-                &mut tx_conn,
-                self.url.clone(),
-                self.public_suffix_list,
-            )?;
-            m::Address::create_eth_key_and_address(
-                &mut tx_conn,
-                self.keychain,
-                &dapp_approval.account_id,
-                chain_id,
-                Some(&dapp_id),
-                false,
-            )?;
-            let params = m::DappSessionParams::builder()
-                .dapp_id(&dapp_id)
-                .account_id(&dapp_approval.account_id)
-                .chain_id(chain_id)
-                .build();
-            m::LocalDappSession::create_eth_session(&mut tx_conn, &params)
-        })?;
+        let url = self.url.clone();
+        let resources = self.resources.clone();
+        let session = self
+            .connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                let chain_id = eth::ChainId::default_dapp_chain();
+                let dapp_id = m::Dapp::create_if_not_exists(
+                    &mut tx_conn,
+                    url,
+                    &resources.public_suffix_list,
+                )?;
+                m::Address::create_eth_key_and_address(
+                    &mut tx_conn,
+                    &resources.keychain,
+                    &dapp_approval.account_id,
+                    chain_id,
+                    Some(&dapp_id),
+                    false,
+                )?;
+                let params = m::DappSessionParams::builder()
+                    .dapp_id(&dapp_id)
+                    .account_id(&dapp_approval.account_id)
+                    .chain_id(chain_id)
+                    .build();
+                m::LocalDappSession::create_eth_session(&mut tx_conn, &params)
+            })
+            .await?;
 
-        self.transfer_default_dapp_allotment(&session)?;
+        self.transfer_default_dapp_allotment(session.clone())
+            .await?;
 
         // Transfer default dapp allotment to new dapp address from account wallet.
         Ok(session)
     }
 
-    fn transfer_default_dapp_allotment(
+    async fn transfer_default_dapp_allotment(
         &self,
-        session: &m::LocalDappSession
+        session: m::LocalDappSession,
     ) -> Result<(), Error> {
-        let (
-            provider,
-            chain_settings,
-            wallet_signing_key,
-        ) = self.connection_pool.deferred_transaction(|mut tx_conn| {
-            let wallet_address_id =
-                m::Address::fetch_eth_wallet_id(&mut tx_conn, &session.account_id, session.chain_id)?;
-            let chain_settings =
-                m::Chain::fetch_user_settings_for_eth_chain(tx_conn.as_mut(), session.chain_id)?;
-            let wallet_signing_key = m::Address::fetch_eth_signing_key(
-                &mut tx_conn,
-                self.keychain,
-                &wallet_address_id,
-            )?;
-            let provider = self.rpc_manager.eth_api_provider(wallet_signing_key.chain_id);
-            Ok((
-                provider,
-                chain_settings,
-                wallet_signing_key,
-            ))
-        })?;
+        let resources = self.resources.clone();
+        let (chain_settings, wallet_signing_key) = self
+            .connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                let wallet_address_id = m::Address::fetch_eth_wallet_id(
+                    &mut tx_conn,
+                    &session.account_id,
+                    session.chain_id,
+                )?;
+                let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
+                    tx_conn.as_mut(),
+                    session.chain_id,
+                )?;
+                let wallet_signing_key = m::Address::fetch_eth_signing_key(
+                    &mut tx_conn,
+                    &resources.keychain,
+                    &wallet_address_id,
+                )?;
+                Ok((chain_settings, wallet_signing_key))
+            })
+            .await?;
         let dapp_address = session.address.clone();
         // Call blockchain API in background.
-        rt::spawn_blocking(move || {
-            // Call fails if there are insufficient funds.
-            let res = provider.transfer_native_token(
-                &wallet_signing_key,
-                &dapp_address,
-                &chain_settings.default_dapp_allotment,
-            );
-            match res {
-                Ok(_) => (),
-                Err(err) => {
-                    // TODO display error message in ui instead
-                    log::info!(
-                        "Failed to transfer allotment to new dapp due to error: {}",
-                        err
-                    );
-                }
-            }
-        });
+        rt::spawn(Self::make_default_dapp_allotment_transfer(
+            self.resources.clone(),
+            chain_settings,
+            wallet_signing_key,
+            dapp_address,
+        ));
         Ok(())
     }
 
-    fn eth_send_transaction(
+    async fn make_default_dapp_allotment_transfer(
+        resources: Arc<CoreResources>,
+        chain_settings: eth::ChainSettings,
+        wallet_signing_key: eth::SigningKey,
+        dapp_address: String,
+    ) -> Result<(), Error> {
+        let provider = resources
+            .rpc_manager
+            .eth_api_provider(wallet_signing_key.chain_id);
+        // Call fails if there are insufficient funds.
+        let res = provider
+            .transfer_native_token_async(
+                &wallet_signing_key,
+                &dapp_address,
+                &chain_settings.default_dapp_allotment,
+            )
+            .await;
+        match res {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                // TODO display error message in ui instead
+                log::error!(
+                    "Failed to transfer allotment to new dapp due to error: {}",
+                    err
+                );
+                Ok(())
+            }
+        }
+    }
+
+    async fn eth_send_transaction(
         &self,
-        params: Option<&'a serde_json::value::RawValue>,
-        session: m::LocalDappSession
+        params: Option<&serde_json::value::RawValue>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let signing_key = self.fetch_eth_signing_key(&session)?;
+        let signing_key = self.fetch_eth_signing_key(session).await?;
 
         let params = Params::new(params.map(|params| params.get()));
         // TODO use EIP-1559 once we can get reliable max_priority_fee_per_gas estimates on all
@@ -414,16 +470,19 @@ impl<'a> InPageProvider<'a> {
         // current. MetaMask does this too.
         tx.nonce = None;
 
-        let provider = self.rpc_manager.eth_api_provider(signing_key.chain_id);
-        let tx_hash = provider.send_transaction(&signing_key, tx)?;
+        let provider = self
+            .resources
+            .rpc_manager
+            .eth_api_provider(signing_key.chain_id);
+        let tx_hash = provider.send_transaction_async(&signing_key, tx).await?;
 
         to_value(tx_hash)
     }
 
-    fn personal_sign(
+    async fn personal_sign(
         &self,
-        params: Option<&'a serde_json::value::RawValue>,
-        session: m::LocalDappSession
+        params: Option<&serde_json::value::RawValue>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         let params = Params::new(params.map(|params| params.get()));
         let mut params = params.sequence();
@@ -443,19 +502,22 @@ impl<'a> InPageProvider<'a> {
         // Password argument is ignored.
         let _password: Option<String> = params.optional_next()?;
 
-        let signing_key = self.fetch_eth_signing_key(&session)?;
-        let signer = eth::Signer::new(&signing_key);
-        let signature = signer.personal_sign(message)?;
-
-        to_value(signature.to_string())
+        let signing_key = self.fetch_eth_signing_key(session).await?;
+        rt::spawn_blocking(move || {
+            let signer = eth::Signer::new(&signing_key);
+            let signature = signer.personal_sign(message)?;
+            to_value(signature.to_string())
+        })
+        .await?
     }
 
     /// We don't support adding chains that aren't supported already, so this is a noop if the chain
     /// is already supported and an error if it isn't.
     fn wallet_add_ethereum_chain(
         &self,
-        params: Params,
+        params: Option<&serde_json::value::RawValue>,
     ) -> Result<serde_json::Value, Error> {
+        let params = Params::new(params.map(|params| params.get()));
         let chain_params: AddEthereumChainParameter = params.sequence().next()?;
         // If we can parse it, it's a supported chain id which means it was "added".
         let _chain_id: eth::ChainId = parse_0x_chain_id(&chain_params.chain_id)?;
@@ -464,30 +526,38 @@ impl<'a> InPageProvider<'a> {
         to_value(result)
     }
 
-    fn wallet_switch_ethereum_chain(
+    async fn wallet_switch_ethereum_chain(
         &self,
-        params: Params,
-        session: m::LocalDappSession
+        params: Option<&serde_json::value::RawValue>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
+        let params = Params::new(params.map(|params| params.get()));
         let chain_id: SwitchEthereumChainParameter = params.sequence().next()?;
         // If we can parse the chain, then it's supported.
         let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_id.chain_id)?;
 
-        self.connection_pool.deferred_transaction(|mut tx_conn| {
-            let chain_entity_id = m::Chain::fetch_or_create_eth_chain_id(&mut tx_conn, new_chain_id)?;
+        self.resources
+            .connection_pool
+            .deferred_transaction_async(move |mut tx_conn| {
+                let chain_entity_id =
+                    m::Chain::fetch_or_create_eth_chain_id(&mut tx_conn, new_chain_id)?;
 
-            let asymmetric_key_id = m::Address::fetch_key_id(tx_conn.as_mut(), &session.address_id)?;
-            let address_entity = m::AddressEntity::builder()
-                .asymmetric_key_id(&asymmetric_key_id)
-                .chain_entity_id(&chain_entity_id)
-                .build();
-            let new_address_id =
-                m::Address::fetch_or_create_for_eth_chain(&mut tx_conn, &address_entity)?;
+                let asymmetric_key_id =
+                    m::Address::fetch_key_id(tx_conn.as_mut(), &session.address_id)?;
+                let address_entity = m::AddressEntity::builder()
+                    .asymmetric_key_id(&asymmetric_key_id)
+                    .chain_entity_id(&chain_entity_id)
+                    .build();
+                let new_address_id = m::Address::fetch_or_create_for_eth_chain(
+                    &mut tx_conn,
+                    &address_entity,
+                )?;
 
-            session.update_session_address(&mut tx_conn, &new_address_id)
-        })?;
+                session.update_session_address(&mut tx_conn, &new_address_id)
+            })
+            .await?;
 
-        self.notify_chain_changed(new_chain_id)?;
+        self.notify_chain_changed(new_chain_id).await?;
 
         // Result should be null on success. We need type annotations for serde.
         let result: Option<String> = None;
@@ -498,35 +568,43 @@ impl<'a> InPageProvider<'a> {
         Ok("SealVault".into())
     }
 
-    fn web3_sha3(
+    async fn web3_sha3(
         &self,
-        params: Option<&'a serde_json::value::RawValue>,
+        params: Option<&serde_json::value::RawValue>,
     ) -> Result<serde_json::Value, Error> {
         let params = Params::new(params.map(|params| params.get()));
         let mut params = params.sequence();
         let message: String = params.next()?;
-        let message = decode_0x_hex_prefix(&message)?;
-        let hash = ethers::core::utils::keccak256(message);
-        let result = format!("0x{}", hex::encode(hash));
-        to_value(result)
-    }
-
-
-    fn fetch_eth_signing_key(&self, session: &m::LocalDappSession) -> Result<eth::SigningKey, Error> {
-        self.connection_pool.deferred_transaction(|mut tx_conn| {
-            m::Address::fetch_eth_signing_key(
-                &mut tx_conn,
-                self.keychain,
-                &session.address_id,
-            )
+        rt::spawn_blocking(move || {
+            let message = decode_0x_hex_prefix(&message)?;
+            let hash = ethers::core::utils::keccak256(message);
+            let result = format!("0x{}", hex::encode(hash));
+            to_value(result)
         })
+        .await?
     }
 
-    fn fetch_favicon(
+    async fn fetch_eth_signing_key(
         &self,
-    ) -> Result<Option<Vec<u8>>, Error> {
-        let favicons = fetch_favicons(self.http_client, iter::once(self.url.clone()))?;
-        let favicon = favicons.into_iter().next().flatten();
+        session: m::LocalDappSession,
+    ) -> Result<eth::SigningKey, Error> {
+        let resources = self.resources.clone();
+        let signing_key: eth::SigningKey = self
+            .connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                m::Address::fetch_eth_signing_key(
+                    &mut tx_conn,
+                    &resources.keychain,
+                    &session.address_id,
+                )
+            })
+            .await?;
+        Ok(signing_key)
+    }
+
+    async fn fetch_favicon(&self) -> Result<Option<Vec<u8>>, Error> {
+        let client = &self.resources.http_client;
+        let favicon = fetch_favicon_async(client, self.url.clone()).await?;
         Ok(favicon)
     }
 }
@@ -555,63 +633,12 @@ pub trait CoreInPageCallbackI: Send + Sync + Debug {
     /// execute transactions automatically.
     fn approve_dapp(&self, dapp_approval: DappApprovalParams) -> bool;
 
+    /// Respond to an in-page provider request.
+    fn respond(&self, response_hex: String);
+
     /// Notify the in-page provider of an event.
     fn notify(&self, event_hex: String);
 }
-// Implement for all targets, not only testing to let the dev server use it too.
-#[derive(Debug)]
-pub struct InPageRequestContextMock {
-    pub page_url: String,
-    pub callbacks: Box<CoreInPageCallbackMock>,
-}
-
-impl InPageRequestContextMock {
-    pub fn new(page_url: &str) -> Self {
-        Self {
-            page_url: page_url.into(),
-            callbacks: Box::new(CoreInPageCallbackMock::new()),
-        }
-    }
-    pub fn default_boxed() -> Box<Self> {
-        Box::new(InPageRequestContextMock::new("https://example.com"))
-    }
-}
-
-impl InPageRequestContextI for InPageRequestContextMock {
-    fn page_url(&self) -> String {
-        self.page_url.clone()
-    }
-
-    fn callbacks(&self) -> Box<dyn CoreInPageCallbackI> {
-        self.callbacks.clone()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct CoreInPageCallbackMock {}
-
-impl CoreInPageCallbackMock {
-    // We don't want to create the mock by accident with `Default::default`.
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl CoreInPageCallbackI for CoreInPageCallbackMock {
-    fn approve_dapp(&self, _: DappApprovalParams) -> bool {
-        // Don't slow down tests noticeably, but simulate blocking.
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        true
-    }
-
-    fn notify(&self, event: String) {
-        let event = hex::decode(event).expect("valid hex");
-        let event = String::from_utf8_lossy(&event);
-        log::info!("CoreInPageCallbackMock.notify: '{:?}'", event);
-    }
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProviderMessage {
@@ -701,10 +728,8 @@ fn chain_id_to_hex_str_json(chain_id: eth::ChainId) -> Result<serde_json::Value,
 }
 
 fn to_value(val: impl Serialize) -> Result<serde_json::Value, Error> {
-    serde_json::to_value(val).map_err(|_err| {
-        Error::Fatal {
-            error: "Failed to serialize json value".into(),
-        }
+    serde_json::to_value(val).map_err(|_err| Error::Fatal {
+        error: "Failed to serialize json value".into(),
     })
 }
 
@@ -801,7 +826,10 @@ pub fn load_in_page_provider_script(
         (config::RPC_PROVIDER_PLACEHOLDER, rpc_provider_name),
         (config::REQUEST_HANDLER_PLACEHOLDER, request_handler_name),
         (config::DEFAULT_CHAIN_ID_PLACEHOLDER, &hex_chain_id),
-        (config::DEFAULT_NETWORK_VERSION_PLACEHOLDER, &network_version),
+        (
+            config::DEFAULT_NETWORK_VERSION_PLACEHOLDER,
+            &network_version,
+        ),
     ];
 
     let path = format!(
@@ -862,31 +890,101 @@ lazy_static! {
 // More tests are in integrations tests in the [dev server.](tools/dev-server/static/ethereum.html)
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
+    use crate::app_core::tests::TmpCore;
     use anyhow::Result;
     use jsonrpsee::types::Id;
+
+    use crate::utils::new_uuid;
     use strum::IntoEnumIterator;
-    use tokio::task::JoinHandle;
-    use crate::app_core::tests::TmpCore;
+
+    const TEST_URL: &str = "https://example.com";
+    const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
+    const ETH_CHAIN_ID: &str = "eth_chainId";
+
+    impl InPageProvider {
+        fn call_no_arg(self, method: &str) -> Result<()> {
+            let id = new_uuid();
+            let request = Request::new(method.into(), None, Id::Str(id.into()));
+            let raw_request =
+                serde_json::to_string(&request).expect("request serializes");
+            let handle = self.in_page_request(raw_request);
+            rt::block_on(handle)??;
+            Ok(())
+        }
+    }
+
+    fn authorize_dapp(core: &TmpCore) -> Result<()> {
+        let provider = core.in_page_provider(TEST_URL, true);
+        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        Ok(())
+    }
+
+    #[test]
+    fn responds_on_allowed() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        authorize_dapp(&core)?;
+
+        assert!(core.dapp_approval().is_some());
+        assert_eq!(core.responses().len(), 1);
+        assert_eq!(core.notifications().len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn disallows_un_approved() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        let provider = core.in_page_provider(TEST_URL, false);
+        provider.call_no_arg(ETH_CHAIN_ID)?;
+
+        let provider = core.in_page_provider(TEST_URL, false);
+        provider.call_no_arg(ETH_CHAIN_ID)?;
+
+        let responses = core.responses();
+        assert!(core.dapp_approval().is_none());
+        assert_eq!(responses.len(), 2);
+        assert_eq!(core.notifications().len(), 0);
+
+        let unauthorized = InPageErrorCode::Unauthorized.to_i32().to_string();
+        assert!(responses[1].contains(&unauthorized));
+
+        Ok(())
+    }
 
     #[test]
     fn proxy_checks_allowed_methods() -> Result<()> {
         let core = TmpCore::new()?;
-        let provider = core.in_page_provider();
-        // Authorize first
-        let request = Request::new("eth_requestAccounts".into(), None, Id::Number(1));
-        provider.dispatch(&request)?;
+
+        authorize_dapp(&core)?;
 
         // This request should be refused as it's an unsupported method
-        let request = Request::new("eth_coinbase".into(), None, Id::Number(2));
+        let provider = core.in_page_provider(TEST_URL, true);
+        provider.call_no_arg("eth_coinbase")?;
 
-        let result = provider.dispatch(&request);
-        println!("ersult {:?}", result);
+        let responses = core.responses();
+        assert!(core.dapp_approval().is_some());
+        assert_eq!(responses.len(), 2);
 
-        assert!(
-            matches!(result, Err(Error::JsonRpc { code, .. }) if code == ErrorCode::ServerError(4200))
-        );
+        let unsupported = InPageErrorCode::UnsupportedMethod.to_i32().to_string();
+        assert!(responses[1].contains(&unsupported));
+
+        Ok(())
+    }
+
+    #[test]
+    fn proxied_method_ok() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        authorize_dapp(&core)?;
+
+        let provider = core.in_page_provider(TEST_URL, true);
+        provider.call_no_arg("eth_gasPrice")?;
+
+        let responses = core.responses();
+        assert_eq!(responses.len(), 2);
 
         Ok(())
     }

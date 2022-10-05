@@ -5,6 +5,8 @@
 use crate::signatures::AsymmetricKey;
 use k256::Secp256k1;
 
+// Some names need to be be camel case in ankr for generated code.
+#[allow(non_snake_case)]
 pub mod ankr;
 mod chain_id;
 mod chain_settings;

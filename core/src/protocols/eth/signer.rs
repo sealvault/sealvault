@@ -47,11 +47,6 @@ impl<'a> Signer<'a> {
 
     /// Make sure transaction parameters match our address data.
     fn verify_tx_params(&self, tx: &TypedTransaction) -> Result<(), Error> {
-        println!(
-            "tx.from() {:?}, self.address() {:?}",
-            tx.from(),
-            self.address()
-        );
         if tx.from() != Some(&self.address()) {
             return Err(Error::Fatal {
                 error: "Wrong from in tx params".into(),

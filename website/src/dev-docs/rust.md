@@ -41,7 +41,7 @@ async Rust has some rough edges which we can avoid this way.  For this reason,
 our Rust code is written as single threaded, blocking code and concurrency is
 handled by the host languages. 
 
-There are two exceptions:
+There are three exceptions:
 
 1. Some of our Rust dependencies only expose async interfaces. In this case we
 block on them with the `async_runtime` module that wraps a lazy-initialized
@@ -50,3 +50,8 @@ global Tokio runtime.
 function that we want to call multiple times concurrently during one FFI call
 (eg. to fetch multiple images), then we write that function as async, spawn
 instances of it on the async runtime and then block on the joined futures.
+3. While initially the in-page provider was implemented with the blocking 
+approach, we discovered that it's surprisingly difficult to get a fixed-sized
+dedicated thread-pool in Swift and one request at a time is not good enough 
+performance-wise, so we've refactored it to async in Rust and callback-based 
+through FFI. 

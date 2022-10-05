@@ -33,7 +33,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
 
                 let contentController = WKUserContentController()
                 contentController.addUserScript(userScript)
-                contentController.addScriptMessageHandler(
+                contentController.add(
                     scriptHandler, contentWorld: .page, name: scriptHandler.handlerName
                 )
 
@@ -117,7 +117,7 @@ extension WKWebView {
     }
 }
 
-final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
+final class WebViewScriptHandler: NSObject, WKScriptMessageHandler {
     let core: AppCoreProtocol
     let stateModel: BrowserModel
     let serialQueue: DispatchQueue
@@ -152,8 +152,7 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
     }
 
     func userContentController(
-        _: WKUserContentController, didReceive message: WKScriptMessage,
-        replyHandler: @escaping (Any?, String?) -> Void
+        _: WKUserContentController, didReceive message: WKScriptMessage
     ) {
         if UIApplication.shared.applicationState == .background {
             return
@@ -168,21 +167,11 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandlerWithReply {
 
             self.serialQueue.async { [weak self] in
                 do {
-                    let response = try self?.core.inPageRequest(context: context, rawRequest: messageBody)
-                    // TODO: what happens if page navigates away before we reply?
-                    DispatchQueue.main.async {
-                        replyHandler(response, nil)
-                    }
+                    print("\(messageBody)")
+                    try self?.core.inPageRequest(context: context, rawRequest: messageBody)
                 } catch {
-                    if let err = error as? CoreError {
-                        DispatchQueue.main.async {
-                            replyHandler(nil, "Core error")
-                        }
-                    } else {
-                        DispatchQueue.main.async {
-                            replyHandler(nil, "Unknown error")
-                        }
-                    }
+                    // If an error is thrown here, it's caused by Swift, eg. passing an invalid url
+                    print("Error: \(error)")
                 }
             }
         } else {
@@ -225,6 +214,7 @@ class InPageRequestContext: InPageRequestContextI {
     }
 }
 
+// TODO should check that it responds to the same dapp from where the message originated
 // The callbacks are dispatched on a background thread from `userContentController`
 class CoreInPageCallback: CoreInPageCallbackI {
     var stateModel: BrowserModel
@@ -265,6 +255,18 @@ class CoreInPageCallback: CoreInPageCallbackI {
         // if it times out which we can't as is
         semaphore.wait()
         return approved
+    }
+
+    func respond(responseHex: String) {
+        DispatchQueue.main.async {
+            // Must capture self to prevent the callback object from being GCed before this has a chance to run
+            guard let webView = self.message.webView else {
+                print("Returning early from notify: webview has been GCed")
+                return
+            }
+
+            webView.evaluateJavaScript("window.\(self.rpcProviderName).respond('\(responseHex)')")
+        }
     }
 
     func notify(messageHex: String) {
