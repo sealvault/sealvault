@@ -7,15 +7,7 @@ import SwiftUI
 @MainActor
 struct AccountView: View {
     @EnvironmentObject private var model: GlobalModel
-    @Binding var account: Account
-
-    @State private var selectedDapp: Dapp?
-    @State private var searchString: String = ""
-
-    var listedDapps: [Dapp] {
-        let filteredDapps = searchString.isEmpty ? account.dapps : account.dapps.filter { $0.matches(searchString) }
-        return filteredDapps
-    }
+    @ObservedObject var account: Account
 
     var body: some View {
         ScrollViewReader { _ in
@@ -23,7 +15,8 @@ struct AccountView: View {
                 Section {
                     ForEach(account.wallets) { wallet in
                         NavigationLink {
-                            WalletView(account: account, address: wallet)
+                            AddressView(title: "Wallet", account: account, address: wallet)
+
                         } label: {
                             WalletRow(address: wallet)
                         }
@@ -32,11 +25,13 @@ struct AccountView: View {
                     Text("Wallets")
                 }
                 Section {
-                    ForEach(listedDapps) { dapp in
-                        NavigationLink(tag: dapp, selection: $selectedDapp) {
-                            DappView(account: account, dapp: dapp)
-                        } label: {
-                            DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
+                    ForEach(account.dapps) { dapp in
+                        ForEach(dapp.addresses) { dappAddress in
+                            NavigationLink {
+                                AddressView(title: "Dapp", account: account, address: dappAddress)
+                            } label: {
+                                DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
+                            }
                         }
                     }
                 } header: {
@@ -55,20 +50,15 @@ struct AccountView: View {
                 AccountImageCircle(account: account)
             }
         }
+        .task {
+            await self.model.refreshAccounts()
+        }
     }
 }
 
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return PreviewWrapper(account: model.activeAccount)
-    }
-
-    struct PreviewWrapper: View {
-        @State var account: Account
-
-        var body: some View {
-            AccountView(account: $account)
-        }
+        return AccountView(account: model.activeAccount)
     }
 }

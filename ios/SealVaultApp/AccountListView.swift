@@ -6,16 +6,15 @@ import SwiftUI
 
 struct AccountListView: View {
     @EnvironmentObject private var model: GlobalModel
-    @State private var selectedAccount: Account?
 
     var body: some View {
         ScrollViewReader { _ in
             List {
-                ForEach($model.accounts) { $account in
-                    NavigationLink(tag: account, selection: $selectedAccount) {
-                        AccountView(account: $account)
+                ForEach(model.accounts) { account in
+                    NavigationLink {
+                        AccountView(account: account)
                     } label: {
-                        AccountRow(account: $account).padding(.vertical, 8).accessibilityIdentifier(account.displayName)
+                        AccountRow(account: account).padding(.vertical, 8).accessibilityIdentifier(account.displayName)
                     }
                 }
             }

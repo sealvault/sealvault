@@ -12,8 +12,8 @@ struct TransferForm: View {
     }
 
     @EnvironmentObject private var model: GlobalModel
-    var account: Account
-    var fromAddress: Address
+    @ObservedObject var account: Account
+    @ObservedObject var fromAddress: Address
     @Binding var token: Token
 
     @State private var amount = ""
@@ -79,7 +79,7 @@ struct TransferForm: View {
                     case .wallet:
                         Picker("Wallet", selection: $toAddress) {
                             Text("none").tag(nil as Address?)
-                            ForEach(account.wallets) { wallet in
+                            ForEach($account.wallets) { $wallet in
                                 // TODO: use protocol + chain id and move to address
                                 if wallet.chainDisplayName == fromAddress.chainDisplayName &&
                                     fromAddress.id != wallet.id {
@@ -90,8 +90,8 @@ struct TransferForm: View {
                     case .dapp:
                         Picker("Dapp", selection: $toAddress) {
                             Text("none").tag(nil as Dapp?)
-                            ForEach(account.dapps) { dapp in
-                                ForEach(dapp.addresses) { dappAddress in
+                            ForEach($account.dapps) { $dapp in
+                                ForEach($dapp.addresses) { $dappAddress in
                                     // TODO: use protocol + chain id and move to address
                                     if dappAddress.chainDisplayName == fromAddress.chainDisplayName &&
                                         fromAddress.id != dappAddress.id {
@@ -150,7 +150,11 @@ struct TransferForm: View {
                 amount: amount
             ).padding()
 
-        }.padding()
+        }
+        .padding()
+        .task {
+            await self.model.refreshAccounts()
+        }
     }
 }
 
@@ -235,8 +239,8 @@ struct TransferView_Previews: PreviewProvider {
 
     struct PreviewWrapper: View {
         var model: GlobalModel
-        var account: Account
-        var fromAddress: Address
+        @State var account: Account
+        @State var fromAddress: Address
         @State var token: Token
 
         var body: some View {

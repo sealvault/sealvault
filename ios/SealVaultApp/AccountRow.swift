@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct AccountRow: View {
-    @Binding var account: Account
+    @ObservedObject var account: Account
 
     private let cornerRadius: Double = 10
     private let maxDapps = 3
@@ -39,7 +39,7 @@ struct AccountRow_Previews: PreviewProvider {
     struct PreviewWrapper: View {
         @State var account: Account
         var body: some View {
-            AccountRow(account: $account)
+            AccountRow(account: account)
         }
     }
 

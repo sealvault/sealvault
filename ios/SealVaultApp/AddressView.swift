@@ -5,8 +5,8 @@
 import SwiftUI
 
 struct AddressView: View {
-    var title: String
-    var account: Account
+    let title: String
+    @ObservedObject var account: Account
     @ObservedObject var address: Address
 
     var body: some View {

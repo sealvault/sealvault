@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct TokenView: View {
-    var account: Account
+    @ObservedObject var account: Account
     @ObservedObject var address: Address
 
     var body: some View {
@@ -19,9 +19,7 @@ struct TokenView: View {
                         }
                     }
             } label: {
-                VStack {
-                    TokenRow(token: $address.nativeToken)
-                }
+                TokenRow(token: $address.nativeToken)
             }
         } header: {
             HStack {

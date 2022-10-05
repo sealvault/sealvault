@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct TokenLabel: View {
-    var token: Token
+    @ObservedObject var token: Token
 
     var body: some View {
         Label {
