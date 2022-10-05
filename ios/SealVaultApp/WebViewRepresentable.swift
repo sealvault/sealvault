@@ -167,7 +167,6 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandler {
 
             self.serialQueue.async { [weak self] in
                 do {
-                    print("\(messageBody)")
                     try self?.core.inPageRequest(context: context, rawRequest: messageBody)
                 } catch {
                     // If an error is thrown here, it's caused by Swift, eg. passing an invalid url
