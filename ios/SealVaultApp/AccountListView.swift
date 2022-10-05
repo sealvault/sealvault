@@ -10,7 +10,7 @@ struct AccountListView: View {
     var body: some View {
         ScrollViewReader { _ in
             List {
-                ForEach(model.accounts) { account in
+                ForEach(model.accountList) { account in
                     NavigationLink {
                         AccountView(account: account)
                     } label: {
@@ -18,7 +18,7 @@ struct AccountListView: View {
                     }
                 }
             }
-            .accessibilityRotor("Accounts", entries: model.accounts, entryLabel: \.displayName)
+            .accessibilityRotor("Accounts", entries: model.accountList, entryLabel: \.displayName)
             .refreshable(action: {
                 await model.refreshAccounts()
             })

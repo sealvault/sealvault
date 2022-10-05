@@ -6,20 +6,41 @@ import Foundation
 
 @MainActor
 class GlobalModel: ObservableObject {
-    @Published var accounts: [Account]
-
+    @Published var accounts: [String: Account]
     /// The account currently used for dapp interactions
     @Published var activeAccountId: String?
+
     var activeAccount: Account {
-        return accounts.first(where: { acc in acc.id == activeAccountId })!
+        return accountList.first(where: { acc in acc.id == activeAccountId })!
+    }
+
+    var accountList: [Account] {
+        accounts.values.sorted(by: {$0.displayName < $1.displayName})
     }
 
     let core: AppCoreProtocol
 
     required init(core: AppCoreProtocol, accounts: [Account], activeAccountId: String?) {
         self.core = core
-        self.accounts = accounts
+        self.accounts = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
         self.activeAccountId = activeAccountId
+    }
+
+    private func updateAccounts(_ coreAccounts: [CoreAccount]) {
+        let newIds = Set(coreAccounts.map {$0.id})
+        let oldIds = Set(self.accounts.keys)
+        let toRemoveIds = oldIds.subtracting(newIds)
+        for id in toRemoveIds {
+            self.accounts.removeValue(forKey: id)
+        }
+        for coreAccount in coreAccounts {
+            if let account = self.accounts[coreAccount.id] {
+                account.updateFromCore(coreAccount)
+            } else {
+                let account = Account.fromCore(self.core, coreAccount)
+                self.accounts[account.id] = account
+            }
+        }
     }
 
     static func buildOnStartup() -> Self {
@@ -67,42 +88,37 @@ class GlobalModel: ObservableObject {
         return cacheDirUrl.path
     }
 
-    private func listAccounts(_ qos: DispatchQoS.QoSClass) async -> [Account] {
+    private func listAccounts(_ qos: DispatchQoS.QoSClass) async -> [CoreAccount]? {
         return await dispatchBackground(qos) {
-            var accounts: [Account] = []
             do {
-                accounts = try self.core.listAccounts().map { Account.fromCore(self.core, $0) }
+                return try self.core.listAccounts()
             } catch {
                 print("Error fetching account data: \(error)")
+                return nil
             }
-            return accounts
         }
     }
 
     private func fetchActiveAccountId(_ qos: DispatchQoS.QoSClass) async -> String? {
         return await dispatchBackground(qos) {
-            var activeAccountId: String?
             do {
-                activeAccountId = try self.core.activeAccountId()
+                return try self.core.activeAccountId()
             } catch {
                 print("Error fetching active account id: \(error)")
+                return nil
             }
-            return activeAccountId
         }
     }
 
     func refreshAccounts() async {
-        self.accounts = await self.listAccounts(.userInteractive)
-        self.activeAccountId = await self.fetchActiveAccountId(.userInteractive)
-    }
-}
+        let accounts = await self.listAccounts(.userInteractive)
+        let activeAccountId = await self.fetchActiveAccountId(.userInteractive)
 
-// MARK: - Account & Address
-
-extension GlobalModel {
-    func getAccountSearchSugestions(searchString: String) -> [Account] {
-        accounts.filter {
-            $0.matches(searchString)
+        if let accounts = accounts {
+            self.updateAccounts(accounts)
+        }
+        if let activeAccountId = activeAccountId {
+            self.activeAccountId = activeAccountId
         }
     }
 }
@@ -182,18 +198,16 @@ class PreviewAppCore: AppCoreProtocol {
 
 extension GlobalModel {
     static func buildForPreview() -> GlobalModel {
-        let dapps = [
-            Dapp.opensea(),
-            Dapp.sushi(),
-            Dapp.uniswap()
-        ]
         let wallets = [
             Address.ethereumWallet(),
             Address.polygonWallet()
         ]
         let activeAccountName = "alice.eth"
+        let core = PreviewAppCore()
+
         let accounts = [
             Account(
+                core,
                 id: "1", name: activeAccountName, picture: UIImage(named: "cat-green")!, wallets: wallets,
                 dapps: [
                     Dapp.ens(),
@@ -209,24 +223,26 @@ extension GlobalModel {
                 ]
             ),
             Account(
+                core,
                 id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
                 dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
             ),
             Account(
+                core,
                 id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
                 dapps: [Dapp.darkForest()]
             ),
             Account(
+                core,
                 id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
                 dapps: [Dapp.dnd()]
             ),
             Account(
+                core,
                 id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
                 dapps: [Dapp.opensea()]
             )
         ]
-
-        let core = PreviewAppCore()
 
         return GlobalModel(core: core, accounts: accounts, activeAccountId: "1")
     }

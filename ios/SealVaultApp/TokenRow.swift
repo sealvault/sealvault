@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct TokenRow: View {
-    @Binding var token: Token
+    @ObservedObject var token: Token
 
     var body: some View {
         HStack {
@@ -17,7 +17,7 @@ struct TokenRow: View {
 
             Spacer()
 
-            TokenAmount(token: $token)
+            TokenAmount(token: token)
         }
     }
 }

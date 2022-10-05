@@ -11,8 +11,8 @@ struct DappApprovalRequest: Identifiable {
     let accountId: String
     let dappHumanIdentifier: String
     let dappFavicon: [UInt8]?
-    var approve: () -> Void
-    var dismiss: () -> Void
+    let approve: () -> Void
+    let dismiss: () -> Void
 }
 
 #if DEBUG
@@ -40,11 +40,11 @@ struct DappApproval: View {
     @State var request: DappApprovalRequest
 
     private var account: Account {
-        viewModel.accounts.first(where: { $0.id == request.accountId })!
+        viewModel.accountList.first(where: { $0.id == request.accountId })!
     }
 
     private var dappIcon: Image {
-        let image = Dapp.faviconWithFallback(rawIcon: request.dappFavicon)
+        let image = Dapp.faviconWithFallback(request.dappFavicon)
         return Image(uiImage: image)
     }
 
@@ -102,7 +102,6 @@ struct DappApproval: View {
             // Make sure signal is called no matter how the view disappears (eg by swiping instead of tapping a button).
             request.dismiss()
         }
-
     }
 }
 

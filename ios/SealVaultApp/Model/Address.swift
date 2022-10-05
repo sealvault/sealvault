@@ -11,13 +11,17 @@ class Address: Identifiable, ObservableObject {
 
     let id: String
     let checksumAddress: String
-    let blockchainExplorerLink: URL?
-    let chainDisplayName: String
-    let chainIcon: UIImage
+    @Published var blockchainExplorerLink: URL?
+    @Published var chainDisplayName: String
+    @Published var chainIcon: UIImage
 
     @Published var nativeToken: Token
-    @Published var fungibleTokens: [Token] = []
+    @Published var fungibleTokens: [String: Token]
     @Published var loading: Bool = false
+
+    var fungibleTokenList: [Token] {
+        self.fungibleTokens.values.sorted(by: {$0.symbol < $1.symbol})
+    }
 
     required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, blockchainExplorerLink: URL?,
                   chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
@@ -28,10 +32,11 @@ class Address: Identifiable, ObservableObject {
         self.chainDisplayName = chainDisplayName
         self.chainIcon = chainIcon
         self.nativeToken = nativeToken
+        self.fungibleTokens = Dictionary()
     }
 
     static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress) -> Self {
-        let chainIcon = UIImage(data: Data(address.chainIcon)) ?? UIImage(systemName: "diamond")!
+        let chainIcon = Self.convertIcon(address.chainIcon)
         let url = URL(string: address.blockchainExplorerLink)
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
@@ -40,8 +45,43 @@ class Address: Identifiable, ObservableObject {
         )
     }
 
-    private func refreshNativeToken() async {
-        let coreToken: CoreToken? = await dispatchBackground(.userInteractive) {
+    static func convertIcon(_ icon: [UInt8]) -> UIImage {
+        return UIImage(data: Data(icon)) ?? UIImage(systemName: "diamond")!
+    }
+
+    func updateFromCore(_ address: CoreAddress) {
+        withAnimation {
+            assert(self.id == address.id, "id mismatch when updating address from core")
+            assert(
+                self.checksumAddress == address.checksumAddress,
+                "checksum address mismatch when updating address from core"
+            )
+            // These values may become user configurable at some point
+            self.blockchainExplorerLink = URL(string: address.blockchainExplorerLink)
+            self.chainDisplayName = address.chainDisplayName
+            self.chainIcon = Self.convertIcon(address.chainIcon)
+            self.nativeToken.updateFromCore(address.nativeToken)
+        }
+    }
+
+    func updateFungibleTokens(_ coreTokens: [CoreToken]) {
+        let newIds = Set(coreTokens.map {$0.id})
+        let oldIds = Set(self.fungibleTokens.keys)
+        let toRemoveIds = oldIds.subtracting(newIds)
+        for id in toRemoveIds {
+            self.fungibleTokens.removeValue(forKey: id)
+        }
+        for coreToken in coreTokens {
+            if let token = self.fungibleTokens[coreToken.id] {
+                token.updateFromCore(coreToken)
+            } else {
+                self.fungibleTokens[coreToken.id] = Token.fromCore(coreToken)
+            }
+        }
+    }
+
+    private func fetchhNativeToken() async -> CoreToken? {
+        return await dispatchBackground(.userInteractive) {
             do {
                 return try self.core.nativeTokenForAddress(addressId: self.id)
             } catch {
@@ -49,35 +89,32 @@ class Address: Identifiable, ObservableObject {
                 return nil
             }
         }
-        if let token = coreToken {
-            withAnimation {
-                self.nativeToken = Token.fromCore(token)
-            }
-        }
     }
 
-    private func refreshFungibleTokens() async {
-        let tokens: [CoreToken] = await dispatchBackground(.userInteractive) {
+    private func fetchFungibleTokens() async -> [CoreToken]? {
+        return await dispatchBackground(.userInteractive) {
             do {
                 return try self.core.fungibleTokensForAddress(addressId: self.id)
             } catch {
                 print("Failed to fetch fungible tokens for address id \(self.id)")
-                return []
+                return nil
             }
-        }
-        withAnimation {
-            // Not passing the function as that'd lose MainActor context.
-            self.fungibleTokens = tokens.map { Token.fromCore($0) }
         }
     }
 
     func refreshTokens() async {
         self.loading = true
         defer { self.loading = false }
-        async let native: () = self.refreshNativeToken()
-        async let fungible: () = self.refreshFungibleTokens()
+        async let native = self.fetchhNativeToken()
+        async let fungibles = self.fetchFungibleTokens()
         // Execute concurrently
-        _ = await [native, fungible]
+        let (nativeToken, fungibleTokens) = await (native, fungibles)
+        if let nativeToken = nativeToken {
+            self.nativeToken.updateFromCore(nativeToken)
+        }
+        if let fungibleTokens = fungibleTokens {
+            self.updateFungibleTokens(fungibleTokens)
+        }
     }
 
 }

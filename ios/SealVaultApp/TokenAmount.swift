@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct TokenAmount: View {
-    @Binding var token: Token
+    @ObservedObject var token: Token
 
     var body: some View {
         if let amount = token.amount {

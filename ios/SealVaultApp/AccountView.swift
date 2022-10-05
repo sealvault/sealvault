@@ -13,7 +13,7 @@ struct AccountView: View {
         ScrollViewReader { _ in
             List {
                 Section {
-                    ForEach(account.wallets) { wallet in
+                    ForEach(account.walletList) { wallet in
                         NavigationLink {
                             AddressView(title: "Wallet", account: account, address: wallet)
 
@@ -25,8 +25,8 @@ struct AccountView: View {
                     Text("Wallets")
                 }
                 Section {
-                    ForEach(account.dapps) { dapp in
-                        ForEach(dapp.addresses) { dappAddress in
+                    ForEach(account.dappList) { dapp in
+                        ForEach(dapp.addressList) { dappAddress in
                             NavigationLink {
                                 AddressView(title: "Dapp", account: account, address: dappAddress)
                             } label: {
@@ -41,7 +41,7 @@ struct AccountView: View {
             .refreshable(action: {
                 await model.refreshAccounts()
             })
-            .accessibilityRotor("Dapps", entries: account.dapps, entryLabel: \.displayName)
+            .accessibilityRotor("Dapps", entries: account.dappList, entryLabel: \.displayName)
         }
         .navigationTitle(Text(account.displayName))
         .navigationBarTitleDisplayMode(.inline)
