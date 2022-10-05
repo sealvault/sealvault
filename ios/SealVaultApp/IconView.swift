@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct IconView: View {
-    var image: Image
+    let image: Image
     @ScaledMetric var iconSize: CGFloat
 
     var body: some View {

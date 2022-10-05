@@ -5,36 +5,23 @@
 import SwiftUI
 
 struct TransferForm: View {
-    enum ToAddressType {
-        case wallet
-        case dapp
-        case external
-    }
-
     @EnvironmentObject private var model: GlobalModel
-    var account: Account
-    var fromAddress: Address
-    @Binding var token: Token
+    @ObservedObject var account: Account
+    @ObservedObject var fromAddress: Address
+    @ObservedObject var token: Token
 
     @State private var amount = ""
     @State private var toExternal: String = ""
-    @State private var toAddress: Address?
-    @State private var toAddressType: ToAddressType = .dapp
+    @State private var toAddress: ToAddress = ToAddress.none
 
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
-        if let toAddr = toAddress {
-            toChecksumAddress = toAddr.checksumAddress
+        if case .some(value: let toAddressId) = toAddress {
+            toChecksumAddress = account.addressForAddressId(addressId: toAddressId)?.checksumAddress
         } else if toExternal != "" {
             toChecksumAddress = toExternal
         }
         return toChecksumAddress
-    }
-
-    private func setTo(_ toAddressType: ToAddressType) {
-        self.toAddressType = toAddressType
-        toExternal = ""
-        toAddress = nil
     }
 
     var body: some View {
@@ -53,79 +40,17 @@ struct TransferForm: View {
 
             Spacer()
 
-            GroupBox {
-                HStack {
-                    if account.isWallet(address: fromAddress) {
-                        Text("Wallet").font(.headline)
-                    } else if let dapp = account.dappForAddress(address: fromAddress) {
-                        DappRow(dapp: dapp)
-                    }
-                    Spacer()
-                    TokenLabel(token: token)
-                    TokenAmount(token: $token)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top)
-            } label: {
-                HStack {
-                    Text("From")
-                    Spacer()
-                    AddressMenu(address: fromAddress)
-                }.frame(maxWidth: .infinity)
-            }
-            GroupBox("To") {
-                VStack {
-                    switch toAddressType {
-                    case .wallet:
-                        Picker("Wallet", selection: $toAddress) {
-                            Text("none").tag(nil as Address?)
-                            ForEach(account.wallets) { wallet in
-                                // TODO: use protocol + chain id and move to address
-                                if wallet.chainDisplayName == fromAddress.chainDisplayName &&
-                                    fromAddress.id != wallet.id {
-                                    Text("\(wallet.chainDisplayName) \(wallet.addressDisplay)").tag(wallet as Address?)
-                                }
-                            }
-                        }
-                    case .dapp:
-                        Picker("Dapp", selection: $toAddress) {
-                            Text("none").tag(nil as Dapp?)
-                            ForEach(account.dapps) { dapp in
-                                ForEach(dapp.addresses) { dappAddress in
-                                    // TODO: use protocol + chain id and move to address
-                                    if dappAddress.chainDisplayName == fromAddress.chainDisplayName &&
-                                        fromAddress.id != dappAddress.id {
-                                        Text("\(dapp.humanIdentifier) \(dappAddress.addressDisplay)")
-                                            .tag(dappAddress as Address?)
-                                    }
-                                }
-                            }
-                        }
-                    case .external:
-                        TextField("Address", text: $toExternal)
-                            .textFieldStyle(.roundedBorder)
-                            .padding(.horizontal)
-                            .keyboardType(.alphabet)
-                    }
-                    Picker("to", selection: $toAddressType) {
-                        Button(action: {
-                            setTo(ToAddressType.wallet)
-                        }, label: {
-                            Text("Wallet")
-                        }).tag(ToAddressType.wallet)
-                        Button(action: {
-                            setTo(ToAddressType.dapp)
-                        }, label: {
-                            Text("Dapp")
-                        }).tag(ToAddressType.dapp)
-                        Button(action: {
-                            setTo(ToAddressType.external)
-                        }, label: {
-                            Text("External")
-                        }).tag(ToAddressType.external)
-                    }.pickerStyle(.segmented)
-                }
-            }
+            FromSection(account: account, fromAddress: fromAddress, token: token)
+
+            ToSection(
+                account: account,
+                fromAddress: fromAddress,
+                token: token,
+                amount: $amount,
+                toExternal: $toExternal,
+                toAddress: $toAddress
+            )
+
             GroupBox("Amount") {
                 HStack {
                     Label {
@@ -150,7 +75,132 @@ struct TransferForm: View {
                 amount: amount
             ).padding()
 
-        }.padding()
+        }
+        .padding()
+        .task {
+            async let accounts: () = self.model.refreshAccounts()
+            async let tokens: () = self.fromAddress.refreshTokens()
+            // Refresh concurrently
+            _ = await (accounts, tokens)
+        }
+    }
+}
+
+struct FromSection: View {
+    @ObservedObject var account: Account
+    @ObservedObject var fromAddress: Address
+    @ObservedObject var token: Token
+
+    var body: some View {
+        GroupBox {
+            HStack {
+                if account.isWallet(address: fromAddress) {
+                    Text("Wallet").font(.headline)
+                } else if let dapp = account.dappForAddress(address: fromAddress) {
+                    DappRow(dapp: dapp)
+                }
+                Spacer()
+                TokenLabel(token: token)
+                TokenAmount(token: token)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top)
+        } label: {
+            HStack {
+                Text("From")
+                Spacer()
+                AddressMenu(address: fromAddress)
+            }.frame(maxWidth: .infinity)
+        }
+    }
+}
+enum ToAddress: Hashable {
+    case none
+    // Holds address id. Can't put address in there, bc compiler can't figure out that it
+    // remains part of the Main Actor.
+    case some(String)
+}
+
+struct ToSection: View {
+
+    @ObservedObject var account: Account
+    @ObservedObject var fromAddress: Address
+    @ObservedObject var token: Token
+
+    @Binding var amount: String
+    @Binding var toExternal: String
+    @Binding var toAddress: ToAddress
+    @State var toAddressType: ToAddressType = .dapp
+
+    enum ToAddressType {
+        case wallet
+        case dapp
+        case external
+    }
+
+    private func setTo(_ toAddressType: ToAddressType) {
+        self.toAddressType = toAddressType
+        toExternal = ""
+        toAddress = ToAddress.none
+    }
+
+    private func canTransferTo(_ toAddress: Address) -> Bool {
+        // TODO: use protocol + chain id and move to address
+        return toAddress.chainDisplayName == fromAddress.chainDisplayName && fromAddress.id != toAddress.id
+    }
+
+    var body: some View {
+
+        GroupBox("To") {
+            VStack {
+                switch toAddressType {
+                case .wallet:
+                    Picker("Wallet", selection: $toAddress) {
+                        Text("none").tag(ToAddress.none)
+                        ForEach(account.walletList) { wallet in
+                            if canTransferTo(wallet) {
+                                Text("\(wallet.chainDisplayName) \(wallet.addressDisplay)")
+                                    .tag(ToAddress.some(wallet.id))
+                            }
+                        }
+                    }
+                case .dapp:
+                    Picker("Dapp", selection: $toAddress) {
+                        Text("none").tag(ToAddress.none)
+                        ForEach(account.dappList) { dapp in
+                            ForEach(dapp.addressList) { dappAddress in
+                                if canTransferTo(dappAddress) {
+                                    Text("\(dapp.humanIdentifier) \(dappAddress.addressDisplay)")
+                                        .tag(ToAddress.some(dappAddress.id))
+                                }
+                            }
+                        }
+                    }
+                case .external:
+                    TextField("Address", text: $toExternal)
+                        .textFieldStyle(.roundedBorder)
+                        .padding(.horizontal)
+                        .keyboardType(.alphabet)
+                }
+                Picker("to", selection: $toAddressType) {
+                    Button(action: {
+                        setTo(ToAddressType.wallet)
+                    }, label: {
+                        Text("Wallet")
+                    }).tag(ToAddressType.wallet)
+                    Button(action: {
+                        setTo(ToAddressType.dapp)
+                    }, label: {
+                        Text("Dapp")
+                    }).tag(ToAddressType.dapp)
+                    Button(action: {
+                        setTo(ToAddressType.external)
+                    }, label: {
+                        Text("External")
+                    }).tag(ToAddressType.external)
+                }.pickerStyle(.segmented)
+            }
+        }
     }
 }
 
@@ -222,10 +272,10 @@ struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
-        let walletAddress = account.wallets[0]
+        let walletAddress = account.walletList[0]
         let walletToken = Token.matic()
-        let dapp = account.dapps[0]
-        let dappAddress = dapp.addresses[0]
+        let dapp = account.dappList[0]
+        let dappAddress = dapp.addressList[0]
         let dappToken = Token.dai()
         return Group {
             PreviewWrapper(model: model, account: account, fromAddress: dappAddress, token: dappToken)
@@ -235,12 +285,12 @@ struct TransferView_Previews: PreviewProvider {
 
     struct PreviewWrapper: View {
         var model: GlobalModel
-        var account: Account
-        var fromAddress: Address
+        @State var account: Account
+        @State var fromAddress: Address
         @State var token: Token
 
         var body: some View {
-            TransferForm(account: account, fromAddress: fromAddress, token: $token).environmentObject(model)
+            TransferForm(account: account, fromAddress: fromAddress, token: token).environmentObject(model)
         }
     }
 }

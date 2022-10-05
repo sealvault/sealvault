@@ -7,56 +7,89 @@ import SwiftUI
 
 @MainActor
 class Dapp: Identifiable, ObservableObject {
+    let core: AppCoreProtocol
     /// Database identifier
     let id: String
     /// Human readable identifier that is either the origin or the registrable domain
-    let humanIdentifier: String
-    let url: URL?
-    @Published var addresses: [Address]
-    let lastUsed: String?
+    @Published var humanIdentifier: String
+    @Published var url: URL?
+    @Published var addresses: [String: Address]
+    @Published var lastUsed: String?
 
     /// Favicon
-    let favicon: UIImage
+    @Published var favicon: UIImage
+
+    var addressList: [Address] {
+        self.addresses.values.sorted(by: {$0.chainDisplayName < $1.chainDisplayName })
+    }
 
     var addressesByChain: [String: [Address]] {
         var result: [String: [Address]] = Dictionary()
-        for address in addresses {
+        for address in addresses.values {
             result[address.chainDisplayName, default: []].append(address)
         }
         return result
     }
 
-    required init(id: String, humanIdentifier: String, url: URL?, addresses: [Address], lastUsed: String?,
-                  favicon: UIImage) {
+    required init(
+        _ core: AppCoreProtocol, id: String, humanIdentifier: String, url: URL?, addresses: [Address],
+        lastUsed: String?, favicon: UIImage) {
+        self.core = core
         self.id = id
         self.humanIdentifier = humanIdentifier
         self.url = url
-        self.addresses = addresses
+        self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
         self.lastUsed = lastUsed
         self.favicon = favicon
-
     }
 
     static func fromCore(_ core: AppCoreProtocol, _ dapp: CoreDapp) -> Self {
         let url = URL(string: dapp.url)
         let addresses = dapp.addresses.map { Address.fromCore(core, $0) }
         return self.init(
+            core,
             id: dapp.id,
             humanIdentifier: dapp.humanIdentifier,
             url: url,
             addresses: addresses,
             lastUsed: dapp.lastUsed,
-            favicon: Self.faviconWithFallback(rawIcon: dapp.favicon)
+            favicon: Self.faviconWithFallback(dapp.favicon)
         )
     }
 
-    static func faviconWithFallback(rawIcon: [UInt8]?) -> UIImage {
+    static func faviconWithFallback(_ rawIcon: [UInt8]?) -> UIImage {
         var favicon: UIImage?
         if let icon = rawIcon {
             favicon = UIImage(data: Data(icon))
         }
         let faviconOrFallback = favicon ?? UIImage(systemName: "app")!
         return faviconOrFallback
+    }
+
+    func updateFromCore(_ dapp: CoreDapp) {
+        assert(self.id == dapp.id, "id mismatch in dapp update from core")
+        self.humanIdentifier = dapp.humanIdentifier
+        self.url = URL(string: dapp.url)
+        self.updateAddresses(dapp.addresses)
+        self.lastUsed = dapp.lastUsed
+        self.favicon = Self.faviconWithFallback(dapp.favicon)
+    }
+
+    func updateAddresses(_ coreAddresses: [CoreAddress]) {
+        let newIds = Set(coreAddresses.map {$0.id})
+        let oldIds = Set(self.addresses.keys)
+        let toRemoveIds = oldIds.subtracting(newIds)
+        for id in toRemoveIds {
+            self.addresses.removeValue(forKey: id)
+        }
+        for coreAddr in coreAddresses {
+            if let address = self.addresses[coreAddr.id] {
+                address.updateFromCore(coreAddr)
+            } else {
+                let address = Address.fromCore(self.core, coreAddr)
+                self.addresses[address.id] = address
+            }
+        }
     }
 }
 
@@ -98,13 +131,24 @@ extension Dapp {
 
 #if DEBUG
     extension Dapp {
+        static func build(
+            id: String, humanIdentifier: String, url: URL?, addresses: [Address], favicon: UIImage
+        ) -> Self {
+            let core = PreviewAppCore()
+            return Self(
+                core,
+                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-01", favicon: favicon
+            )
+
+        }
+
         static func uniswap() -> Self {
             let id = "uniswap.org"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "uniswap")!
             let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-01", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -113,8 +157,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "sushi")!
             let addresses = [Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-02", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -123,8 +167,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "opensea")!
             let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-03", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -133,8 +177,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "ens")!
             let addresses = [Address.ethereumDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-04", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -143,8 +187,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "aave")!
             let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-05", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -153,8 +197,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "dnd")!
             let addresses = [Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-06", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -163,8 +207,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "darkforest")!
             let addresses = [Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-07", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -173,8 +217,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "dhedge")!
             let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-08", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -183,8 +227,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "1inch")!
             let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-09", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
@@ -193,8 +237,8 @@ extension Dapp {
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "quickswap")!
             let addresses = [Address.polygonDapp()]
-            return Self(
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-10", favicon: favicon
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 

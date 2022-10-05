@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct DappRow: View {
-    var dapp: Dapp
+    @ObservedObject var dapp: Dapp
 
     var body: some View {
         Label {
