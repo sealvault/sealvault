@@ -1,5 +1,5 @@
 ---
-title: Features
+title: Automated Burner Wallets App
 ---
 
 <h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
