@@ -68,12 +68,12 @@ struct TransferForm: View {
                 }
             }
 
-            Spacer()
-
             TransferButton(
                 core: model.core, token: token, fromAddressId: fromAddress.id, toChecksumAddress: toChecksumAddress,
                 amount: amount
             ).padding()
+
+            Spacer()
 
         }
         .padding()
@@ -263,7 +263,8 @@ struct TransferButton: View {
             .background(Color.accentColor)
             .border(Color.accentColor)
             .foregroundColor(Color.white)
-            .cornerRadius(50)
+            .cornerRadius(8)
+
         }
     }
 }
