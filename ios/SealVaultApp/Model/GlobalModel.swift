@@ -45,7 +45,7 @@ class GlobalModel: ObservableObject {
 
     static func buildOnStartup() -> Self {
         let coreArgs = CoreArgs(cacheDir: cacheDir(), dbFilePath: ensureDbFilePath())
-        var core: AppCore
+        var core: AppCoreProtocol
         do {
             core = try AppCore(args: coreArgs)
         } catch {
@@ -126,33 +126,73 @@ class GlobalModel: ObservableObject {
 // MARK: - Development
 
 #if DEBUG
+// swiftlint:disable force_try
 import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-    static func toCoreToken(token: Token) -> CoreToken {
-        return DispatchQueue.main.sync {
-            let icon = [UInt8](token.icon.pngData()!)
-            return CoreToken(
-                id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
-            )
-        }
+
+    @MainActor
+    static func toCoreAccount(_ account: Account) -> CoreAccount {
+        let picture = [UInt8](account.picture.pngData()!)
+        let wallets = account.walletList.map(Self.toCoreAddress)
+        let dapps = account.dappList.map(Self.toCoreDapp)
+        return CoreAccount(
+            id: account.id, name: account.name, picture: picture, wallets: wallets, dapps: dapps,
+            createdAt: "2022-08-01", updatedAt: "2022-08-01"
+        )
+    }
+
+    @MainActor
+    static func toCoreDapp(_ dapp: Dapp) -> CoreDapp {
+        let icon = [UInt8](dapp.favicon.pngData()!)
+        let url = dapp.url?.absoluteString ?? "https://ens.domains"
+        let addresses = dapp.addressList.map(Self.toCoreAddress)
+        return CoreDapp(
+            id: dapp.id, humanIdentifier: dapp.humanIdentifier, url: url, addresses: addresses,
+            favicon: icon, lastUsed: dapp.lastUsed
+        )
+    }
+
+    @MainActor
+    static func toCoreAddress(_ address: Address) -> CoreAddress {
+        let icon = [UInt8](address.chainIcon.pngData()!)
+        let nativeToken = Self.toCoreToken(address.nativeToken)
+        let blockchainExplorerLink = address.blockchainExplorerLink?.absoluteString ?? "https://etherscani.io"
+        return CoreAddress(
+            id: address.id, isWallet: address.isWallet, checksumAddress: address.checksumAddress,
+            blockchainExplorerLink: blockchainExplorerLink, chainDisplayName: address.chainDisplayName,
+            chainIcon: icon, nativeToken: nativeToken
+        )
+    }
+
+    @MainActor
+    static func toCoreToken(_ token: Token) -> CoreToken {
+        let icon = [UInt8](token.icon.pngData()!)
+        return CoreToken(
+            id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
+        )
     }
 
     func fungibleTokensForAddress(addressId: String) throws -> [CoreToken] {
         let tokens = DispatchQueue.main.sync {
-            [Token.dai(), Token.usdc()]
+            // Force update with new ids
+            [Token.dai(UUID().uuidString), Token.usdc(UUID().uuidString)]
         }
         Thread.sleep(forTimeInterval: 1)
-        return tokens.map(Self.toCoreToken)
+        return DispatchQueue.main.sync {
+            return tokens.map(Self.toCoreToken)
+        }
     }
 
     func nativeTokenForAddress(addressId: String) throws -> CoreToken {
         let token = DispatchQueue.main.sync {
-            return Token.matic()
+            return Token.matic(UUID().uuidString)
         }
         Thread.sleep(forTimeInterval: 1)
-        return Self.toCoreToken(token: token)
+        return DispatchQueue.main.sync {
+            return Self.toCoreToken(token)
+        }
     }
 
     func fetchFavicon(rawUrl: String) throws -> [UInt8]? {
@@ -180,11 +220,59 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func listAccounts() throws -> [CoreAccount] {
-        throw CoreError.Fatal(message: "not implemented")
+        return DispatchQueue.main.sync {
+            let wallets = [
+                Address.ethereumWallet(),
+                Address.polygonWallet()
+            ]
+            let activeAccountName = "alice.eth"
+            let activeAccountId = try! self.activeAccountId()
+
+            let accounts = [
+                Account(
+                    self,
+                    id: activeAccountId, name: activeAccountName, picture: UIImage(named: "cat-green")!,
+                    wallets: wallets,
+                    dapps: [
+                        Dapp.ens(),
+                        Dapp.opensea(),
+                        Dapp.uniswap(),
+                        Dapp.dhedge(),
+                        Dapp.sushi(),
+                        Dapp.aave(),
+                        Dapp.oneInch(),
+                        Dapp.quickswap(),
+                        Dapp.darkForest(),
+                        Dapp.dnd()
+                    ]
+                ),
+                Account(
+                    self,
+                    id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
+                    dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
+                ),
+                Account(
+                    self,
+                    id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
+                    dapps: [Dapp.darkForest()]
+                ),
+                Account(
+                    self,
+                    id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
+                    dapps: [Dapp.dnd()]
+                ),
+                Account(
+                    self,
+                    id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
+                    dapps: [Dapp.opensea()]
+                )
+            ]
+            return accounts.map(Self.toCoreAccount)
+        }
     }
 
     func activeAccountId() throws -> String {
-        throw CoreError.Fatal(message: "not implemented")
+        return "1"
     }
 
     func getInPageScript(rpcProviderName _: String, requestHandlerName _: String) throws -> String {
@@ -198,53 +286,11 @@ class PreviewAppCore: AppCoreProtocol {
 
 extension GlobalModel {
     static func buildForPreview() -> GlobalModel {
-        let wallets = [
-            Address.ethereumWallet(),
-            Address.polygonWallet()
-        ]
-        let activeAccountName = "alice.eth"
         let core = PreviewAppCore()
-
-        let accounts = [
-            Account(
-                core,
-                id: "1", name: activeAccountName, picture: UIImage(named: "cat-green")!, wallets: wallets,
-                dapps: [
-                    Dapp.ens(),
-                    Dapp.opensea(),
-                    Dapp.uniswap(),
-                    Dapp.dhedge(),
-                    Dapp.sushi(),
-                    Dapp.aave(),
-                    Dapp.oneInch(),
-                    Dapp.quickswap(),
-                    Dapp.darkForest(),
-                    Dapp.dnd()
-                ]
-            ),
-            Account(
-                core,
-                id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
-                dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
-            ),
-            Account(
-                core,
-                id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
-                dapps: [Dapp.darkForest()]
-            ),
-            Account(
-                core,
-                id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
-                dapps: [Dapp.dnd()]
-            ),
-            Account(
-                core,
-                id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
-                dapps: [Dapp.opensea()]
-            )
-        ]
-
-        return GlobalModel(core: core, accounts: accounts, activeAccountId: "1")
+        let accounts = try! core.listAccounts().map { Account.fromCore(core, $0) }
+        let activeAccountId = try! core.activeAccountId()
+        return GlobalModel(core: core, accounts: accounts, activeAccountId: activeAccountId)
     }
 }
+// swiftlint:enable force_try
 #endif

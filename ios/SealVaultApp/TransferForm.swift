@@ -94,7 +94,7 @@ struct FromSection: View {
     var body: some View {
         GroupBox {
             HStack {
-                if account.isWallet(address: fromAddress) {
+                if fromAddress.isWallet {
                     Text("Wallet").font(.headline)
                 } else if let dapp = account.dappForAddress(address: fromAddress) {
                     DappRow(dapp: dapp)
@@ -273,10 +273,10 @@ struct TransferView_Previews: PreviewProvider {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount
         let walletAddress = account.walletList[0]
-        let walletToken = Token.matic()
+        let walletToken = Token.matic(walletAddress.checksumAddress)
         let dapp = account.dappList[0]
         let dappAddress = dapp.addressList[0]
-        let dappToken = Token.dai()
+        let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
         return Group {
             PreviewWrapper(model: model, account: account, fromAddress: dappAddress, token: dappToken)
             PreviewWrapper(model: model, account: account, fromAddress: walletAddress, token: walletToken)

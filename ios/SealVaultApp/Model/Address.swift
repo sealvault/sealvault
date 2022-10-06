@@ -11,6 +11,7 @@ class Address: Identifiable, ObservableObject {
 
     let id: String
     let checksumAddress: String
+    let isWallet: Bool
     @Published var blockchainExplorerLink: URL?
     @Published var chainDisplayName: String
     @Published var chainIcon: UIImage
@@ -23,11 +24,12 @@ class Address: Identifiable, ObservableObject {
         self.fungibleTokens.values.sorted(by: {$0.symbol < $1.symbol})
     }
 
-    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, blockchainExplorerLink: URL?,
-                  chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
+    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool,
+                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
+        self.isWallet = isWallet
         self.blockchainExplorerLink = blockchainExplorerLink
         self.chainDisplayName = chainDisplayName
         self.chainIcon = chainIcon
@@ -40,8 +42,9 @@ class Address: Identifiable, ObservableObject {
         let url = URL(string: address.blockchainExplorerLink)
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
-            core, id: address.id, checksumAddress: address.checksumAddress, blockchainExplorerLink: url,
-            chainDisplayName: address.chainDisplayName, chainIcon: chainIcon, nativeToken: nativeToken
+            core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
+            blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName, chainIcon: chainIcon,
+            nativeToken: nativeToken
         )
     }
 
@@ -60,7 +63,18 @@ class Address: Identifiable, ObservableObject {
             self.blockchainExplorerLink = URL(string: address.blockchainExplorerLink)
             self.chainDisplayName = address.chainDisplayName
             self.chainIcon = Self.convertIcon(address.chainIcon)
+            self.updateNativeToken(address.nativeToken)
             self.nativeToken.updateFromCore(address.nativeToken)
+        }
+    }
+
+    func updateNativeToken(_ coreToken: CoreToken?) {
+        if let token = coreToken {
+            if token.id == self.nativeToken.id {
+                self.nativeToken.updateFromCore(token)
+            } else {
+                self.nativeToken = Token.fromCore(token)
+            }
         }
     }
 
@@ -109,9 +123,7 @@ class Address: Identifiable, ObservableObject {
         async let fungibles = self.fetchFungibleTokens()
         // Execute concurrently
         let (nativeToken, fungibleTokens) = await (native, fungibles)
-        if let nativeToken = nativeToken {
-            self.nativeToken.updateFromCore(nativeToken)
-        }
+        self.updateNativeToken(nativeToken)
         if let fungibleTokens = fungibleTokens {
             self.updateFungibleTokens(fungibleTokens)
         }
@@ -150,41 +162,41 @@ extension Address {
 #if DEBUG
 extension Address {
     static func ethereumWallet() -> Self {
-        Self.ethereum(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA")
+        Self.ethereum(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: true)
     }
 
     static func polygonWallet() -> Self {
-        Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA")
+        Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: true)
     }
 
     static func ethereumDapp() -> Self {
-        Self.ethereum(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2")
+        Self.ethereum(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2", isWallet: false)
     }
 
     static func polygonDapp() -> Self {
-        Self.polygon(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2")
+        Self.polygon(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2", isWallet: false)
     }
 
-    static func ethereum(checksumAddress: String) -> Self {
-        let nativeToken = Token.eth()
+    static func ethereum(checksumAddress: String, isWallet: Bool) -> Self {
+        let nativeToken = Token.eth(checksumAddress)
         let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
         let id = "eth-\(checksumAddress)"
         return Self(
             PreviewAppCore(), id: id, checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA",
-            blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon,
+            isWallet: isWallet, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon,
             nativeToken: nativeToken
         )
     }
 
-    static func polygon(checksumAddress: String) -> Self {
-        let nativeToken = Token.matic()
+    static func polygon(checksumAddress: String, isWallet: Bool) -> Self {
+        let nativeToken = Token.matic(checksumAddress)
         let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
         let id = "polygon-pos-\(checksumAddress)"
         return Self(
-            PreviewAppCore(), id: id, checksumAddress: checksumAddress, blockchainExplorerLink: explorer,
-            chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken
+            PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet,
+            blockchainExplorerLink: explorer, chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken
         )
     }
 }

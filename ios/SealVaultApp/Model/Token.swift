@@ -84,28 +84,32 @@ extension Token {
 
 #if DEBUG
     extension Token {
-        static func eth() -> Token {
+        static func eth(_ address: String) -> Token {
             let symbol = "ETH"
+            let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: symbol, symbol: symbol, icon: icon, amount: "45.45122312", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "45.45122312", nativeToken: true)
         }
 
-        static func matic() -> Token {
+        static func matic(_ address: String) -> Token {
             let symbol = "MATIC"
+            let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: symbol, symbol: symbol, icon: icon, amount: "0.9123", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "0.9123", nativeToken: true)
         }
 
-        static func usdc() -> Token {
+        static func usdc(_ address: String) -> Token {
             let symbol = "USDC"
+            let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: symbol, symbol: symbol, icon: icon, amount: "123.45", nativeToken: false)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "123.45", nativeToken: false)
         }
 
-        static func dai() -> Token {
+        static func dai(_ address: String) -> Token {
             let symbol = "DAI"
+            let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: symbol, symbol: symbol, icon: icon, amount: "4.321", nativeToken: false)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "4.321", nativeToken: false)
         }
     }
 #endif
