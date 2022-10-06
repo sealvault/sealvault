@@ -91,10 +91,6 @@ class Account: Identifiable, ObservableObject {
         }
     }
 
-    func isWallet(address: Address) -> Bool {
-        wallets[address.id] != nil
-    }
-
     func dappForAddress(address: Address) -> Dapp? {
         if let dapp = dappList.first(where: { $0.addresses[address.id] != nil }) {
             return dapp
