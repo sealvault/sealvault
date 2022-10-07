@@ -3,29 +3,28 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::encryption::key_material::KeyMaterial;
-use crate::encryption::keychains::keychain::KeychainImpl;
+use crate::encryption::keychains::keychain::{KeychainImpl, soft_delete_rename};
 use crate::Error;
-
 use crate::encryption::KeyEncryptionKey;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 /// In-memory keychain for testing.
 pub(super) struct InMemoryKeychain {
-    data: Arc<Mutex<HashMap<String, KeyMaterial>>>,
+    data: Arc<RwLock<HashMap<String, KeyMaterial>>>,
 }
 
 impl InMemoryKeychain {
     pub fn new() -> Self {
-        let data = Arc::new(Mutex::new(HashMap::new()));
+        let data = Arc::new(RwLock::new(HashMap::new()));
         InMemoryKeychain { data }
     }
 }
 
 impl KeychainImpl for InMemoryKeychain {
     fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
-        let d = self.data.lock()?;
+        let d = self.data.read()?;
         // Only case when we want to use the `clone_for_in_memory_keychain` method.
         #[allow(deprecated)]
         let key_material = d
@@ -37,8 +36,21 @@ impl KeychainImpl for InMemoryKeychain {
         Ok(KeyEncryptionKey::new(name.into(), key_material))
     }
 
+    fn soft_delete(&self, name: &str) -> Result<(), Error> {
+        let key = self.get(name)?;
+        let new_name = soft_delete_rename(name);
+        let (_, key_material) = key.into_keychain();
+        let key = KeyEncryptionKey::new(new_name, key_material);
+        self.put_local_unlocked(key)?;
+
+        let mut d = self.data.write()?;
+        let _ = d.remove(name);
+
+        Ok(())
+    }
+
     fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
-        let mut d = self.data.lock()?;
+        let mut d = self.data.write()?;
         let (name, key_material) = key.into_keychain();
         d.insert(name, key_material);
         Ok(())

@@ -13,6 +13,8 @@ use zeroize::ZeroizeOnDrop;
 const KEY_BYTES: usize = 32;
 pub type KeyArray = [u8; KEY_BYTES];
 
+const INVARIANT_VIOLATION: &str = "Invariant violation";
+
 /// Encryption key material.
 /// We store the key in a boxed array so that when the struct gets moved, no copies are made of the
 /// key material. This would be a problem, because we couldn't zeroize those copies.
@@ -25,7 +27,7 @@ impl KeyMaterial {
         let default: KeyArray = Default::default();
         if buffer.ct_eq(&default).unwrap_u8() == 1 {
             return Err(Error::Fatal {
-                error: "Invariant violation".into(),
+                error: INVARIANT_VIOLATION.into(),
             });
         }
         Ok(Self(buffer))
@@ -40,7 +42,7 @@ impl KeyMaterial {
     pub(super) fn from_slice(bytes: &[u8]) -> Result<Self, Error> {
         if KEY_BYTES.ct_eq(&bytes.len()).unwrap_u8() == 0 {
             return Err(Error::Fatal {
-                error: "Invariant violation".into(),
+                error: INVARIANT_VIOLATION.into(),
             });
         }
         let mut buffer: Box<KeyArray> = Box::new(Default::default());
@@ -54,7 +56,7 @@ impl KeyMaterial {
     /// unreachable copies for zeroization, but it's implementation dependent, so it's best to not
     /// take chances.
     /// We restrict this methods visibility, mark it as deprecated, and only implement it for debug
-    /// targets to prevent its usage for cases other than the in-memory keychain.re won't be
+    /// targets to prevent its usage for cases other than the in-memory keychain.
     #[cfg(debug_assertions)]
     #[deprecated]
     #[allow(dead_code)]
