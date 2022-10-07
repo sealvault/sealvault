@@ -22,6 +22,7 @@ pub(super) trait ExposeKeyMaterial<'a> {
 
 /// Data encryption key.
 #[derive(Debug)]
+#[readonly::make]
 pub struct DataEncryptionKey(SymmetricKey);
 
 impl DataEncryptionKey {
@@ -90,6 +91,7 @@ impl<'a> ExposeKeyMaterial<'a> for DataEncryptionKey {
 
 /// Encryption key for data encryption keys.
 #[derive(Debug)]
+#[readonly::make]
 pub struct KeyEncryptionKey(SymmetricKey);
 
 impl KeyEncryptionKey {
