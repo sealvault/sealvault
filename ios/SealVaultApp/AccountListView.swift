@@ -30,6 +30,7 @@ struct AccountListView: View {
     }
 }
 
+#if DEBUG
 struct AccountListView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
@@ -37,3 +38,4 @@ struct AccountListView_Previews: PreviewProvider {
         }
     }
 }
+#endif

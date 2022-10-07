@@ -18,9 +18,11 @@ struct WalletRow: View {
     }
 }
 
+#if DEBUG
 struct WalletRow_Previews: PreviewProvider {
     static var previews: some View {
         let address = Address.ethereumWallet()
         return WalletRow(address: address)
     }
 }
+#endif

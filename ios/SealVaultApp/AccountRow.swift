@@ -30,6 +30,7 @@ struct AccountRow: View {
     }
 }
 
+#if DEBUG
 struct AccountRow_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
@@ -44,3 +45,4 @@ struct AccountRow_Previews: PreviewProvider {
     }
 
 }
+#endif

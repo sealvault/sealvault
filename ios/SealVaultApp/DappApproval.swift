@@ -15,23 +15,6 @@ struct DappApprovalRequest: Identifiable {
     let dismiss: () -> Void
 }
 
-#if DEBUG
-extension DappApprovalRequest {
-    static func buildForPreview(_ accountId: String) -> Self {
-        let dapp = Dapp.uniswap()
-        let favicon = [UInt8](dapp.favicon.pngData()!)
-        let request = DappApprovalRequest(
-            accountId: accountId,
-            dappHumanIdentifier: dapp.humanIdentifier,
-            dappFavicon: favicon,
-            approve: {},
-            dismiss: {}
-        )
-        return request
-    }
-}
-#endif
-
 struct DappApproval: View {
     @EnvironmentObject private var viewModel: GlobalModel
     @Environment(\.dismiss) var dismiss
@@ -105,6 +88,23 @@ struct DappApproval: View {
     }
 }
 
+#if DEBUG
+
+extension DappApprovalRequest {
+    static func buildForPreview(_ accountId: String) -> Self {
+        let dapp = Dapp.uniswap()
+        let favicon = [UInt8](dapp.favicon.pngData()!)
+        let request = DappApprovalRequest(
+            accountId: accountId,
+            dappHumanIdentifier: dapp.humanIdentifier,
+            dappFavicon: favicon,
+            approve: {},
+            dismiss: {}
+        )
+        return request
+    }
+}
+
 struct DappApproval_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
@@ -112,3 +112,4 @@ struct DappApproval_Previews: PreviewProvider {
         DappApproval(request: request).environmentObject(model)
     }
 }
+#endif

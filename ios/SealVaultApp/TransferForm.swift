@@ -269,6 +269,7 @@ struct TransferButton: View {
     }
 }
 
+#if DEBUG
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
@@ -295,3 +296,4 @@ struct TransferView_Previews: PreviewProvider {
         }
     }
 }
+#endif

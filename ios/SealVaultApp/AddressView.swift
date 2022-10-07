@@ -32,6 +32,7 @@ struct AddressView: View {
     }
 }
 
+#if DEBUG
 struct AddressView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
@@ -42,3 +43,4 @@ struct AddressView_Previews: PreviewProvider {
         return AddressView(title: "Wallet", account: account, address: address)
     }
 }
+#endif

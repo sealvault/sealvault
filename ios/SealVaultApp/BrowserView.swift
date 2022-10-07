@@ -111,8 +111,10 @@ struct BrowserView: View {
     }
 }
 
+#if DEBUG
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
         BrowserView().environmentObject(GlobalModel.buildForPreview())
     }
 }
+#endif
