@@ -8,6 +8,8 @@ mod encryption_output;
 mod key_material;
 mod keychains;
 
-pub use crate::encryption::encryption_key::{DataEncryptionKey, KeyEncryptionKey};
-pub use crate::encryption::encryption_output::EncryptionOutput;
-pub use crate::encryption::keychains::Keychain;
+pub use crate::encryption::{
+    encryption_key::{DataEncryptionKey, KeyEncryptionKey},
+    encryption_output::EncryptionOutput,
+    keychains::Keychain,
+};

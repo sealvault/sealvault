@@ -2,10 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use diesel::deserialize::FromSql;
-use diesel::serialize::ToSql;
-use diesel::sqlite::Sqlite;
 use std::str::FromStr;
+
+use diesel::{deserialize::FromSql, serialize::ToSql, sqlite::Sqlite};
 
 #[derive(
     Clone,
@@ -50,8 +49,9 @@ impl ToSql<SqlText, Sqlite> for BlockchainProtocol {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn to_string() {

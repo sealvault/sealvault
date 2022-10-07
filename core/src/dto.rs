@@ -2,21 +2,22 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::async_runtime as rt;
-use crate::db::models::ListAddressesForDappParams;
-/// Data transfer objects passed through FFI to host languages.
-use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
-use crate::favicon::fetch_favicons;
-use crate::http_client::HttpClient;
-use crate::protocols::eth::ankr;
-use crate::protocols::{eth, TokenType};
-use crate::Error;
+use std::{iter, sync::Arc};
 
-use crate::app_core::CoreResources;
-use std::iter;
-use std::sync::Arc;
 use typed_builder::TypedBuilder;
 use url::Url;
+
+/// Data transfer objects passed through FFI to host languages.
+use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
+use crate::{
+    app_core::CoreResources,
+    async_runtime as rt,
+    db::models::ListAddressesForDappParams,
+    favicon::fetch_favicons,
+    http_client::HttpClient,
+    protocols::{eth, eth::ankr, TokenType},
+    Error,
+};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreAccount {

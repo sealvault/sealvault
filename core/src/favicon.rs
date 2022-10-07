@@ -2,11 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::async_runtime as rt;
-use crate::http_client::HttpClient;
-use crate::{config, Error};
 use std::iter;
+
 use url::{Host, Url};
+
+use crate::{async_runtime as rt, config, http_client::HttpClient, Error};
 
 /// Fetch favicons for a list of urls concurrently from the DuckDuckGo favicon api.
 /// Uses local cache and returns None if there was an error fetching the favicon.
@@ -57,9 +57,10 @@ fn site_url_to_api_url(url: Url) -> Result<Url, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
     use url::Url;
+
+    use super::*;
 
     #[test]
     fn dapp_url_to_api_url_expected() -> Result<()> {

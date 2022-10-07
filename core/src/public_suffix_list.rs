@@ -2,15 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::assets::load_asset_as_string;
-use crate::{config, Error};
+use std::{
+    fmt::{Debug, Formatter},
+    str,
+    time::Duration,
+};
 
 use publicsuffix::Psl;
 
-use std::fmt::{Debug, Formatter};
-
-use std::str;
-use std::time::Duration;
+use crate::{assets::load_asset_as_string, config, Error};
 
 /// Represents list of domain suffixes under which internet users can directly register domains
 /// names. See https://publicsuffix.org/ for more.
@@ -126,9 +126,10 @@ impl From<Option<String>> for RegistrableDomain {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
     use lazy_static::lazy_static;
+
+    use super::*;
 
     fn rd(s: &str) -> RegistrableDomain {
         RegistrableDomain::Domain(s.into())

@@ -2,22 +2,24 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::deterministic_id::{DeterministicId, EntityName};
-use crate::db::schema::accounts;
-
-use crate::utils::{new_uuid, rfc3339_timestamp};
-use crate::Error;
-
-use crate::db::models as m;
-use crate::db::DeferredTxConnection;
-use crate::encryption::Keychain;
-use crate::protocols::eth;
-use diesel::prelude::*;
-use diesel::SqliteConnection;
-use generic_array::typenum::U1;
-use generic_array::GenericArray;
 use std::fmt::Debug;
+
+use diesel::{prelude::*, SqliteConnection};
+use generic_array::{typenum::U1, GenericArray};
 use typed_builder::TypedBuilder;
+
+use crate::{
+    db::{
+        deterministic_id::{DeterministicId, EntityName},
+        models as m,
+        schema::accounts,
+        DeferredTxConnection,
+    },
+    encryption::Keychain,
+    protocols::eth,
+    utils::{new_uuid, rfc3339_timestamp},
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]

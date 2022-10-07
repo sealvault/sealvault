@@ -6,5 +6,6 @@ mod asymmetric_key;
 mod elliptic_curve;
 mod secp256k1_key;
 
-pub use crate::signatures::asymmetric_key::AsymmetricKey;
-pub use crate::signatures::elliptic_curve::EllipticCurve;
+pub use crate::signatures::{
+    asymmetric_key::AsymmetricKey, elliptic_curve::EllipticCurve,
+};

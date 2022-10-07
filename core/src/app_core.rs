@@ -2,18 +2,22 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::models as m;
-use crate::db::schema_migrations::run_migrations;
-use crate::db::{data_migrations, ConnectionPool};
-use crate::encryption::Keychain;
-use crate::error::Error;
-use crate::http_client::HttpClient;
-use crate::in_page_provider::{InPageProvider, InPageRequestContextI};
-use crate::protocols::eth;
-use crate::public_suffix_list::PublicSuffixList;
-use crate::{dto, in_page_provider, CoreError};
-use std::fmt::Debug;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
+
+use crate::{
+    db::{
+        data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
+    },
+    dto,
+    encryption::Keychain,
+    error::Error,
+    http_client::HttpClient,
+    in_page_provider,
+    in_page_provider::{InPageProvider, InPageRequestContextI},
+    protocols::eth,
+    public_suffix_list::PublicSuffixList,
+    CoreError,
+};
 
 /// Provides cross-platform key and transaction management.
 /// Exposed to host language via FFI.
@@ -264,13 +268,13 @@ pub struct CoreArgs {
 #[cfg(test)]
 pub mod tests {
 
-    use super::*;
-    use crate::protocols::ChecksumAddress;
-    use crate::{CoreInPageCallbackI, DappApprovalParams};
+    use std::{fs, sync::RwLock};
+
     use anyhow::Result;
-    use std::fs;
-    use std::sync::RwLock;
     use tempfile::TempDir;
+
+    use super::*;
+    use crate::{protocols::ChecksumAddress, CoreInPageCallbackI, DappApprovalParams};
 
     #[readonly::make]
     pub(crate) struct TmpCoreDir {
@@ -279,7 +283,7 @@ pub mod tests {
         #[allow(dead_code)]
         pub tmp_dir: TempDir,
         pub cache_dir: String,
-        pub db_file_path: String
+        pub db_file_path: String,
     }
 
     impl TmpCoreDir {
@@ -301,14 +305,18 @@ pub mod tests {
                 .into_string()
                 .unwrap();
 
-            let cache_dir = cache_dir.into_os_string().into_string().map_err(|err| Error::Fatal {
-                error: format!("{:?}", err)
-            })?;
+            let cache_dir =
+                cache_dir
+                    .into_os_string()
+                    .into_string()
+                    .map_err(|err| Error::Fatal {
+                        error: format!("{:?}", err),
+                    })?;
 
             Ok(Self {
                 tmp_dir,
                 cache_dir,
-                db_file_path
+                db_file_path,
             })
         }
     }

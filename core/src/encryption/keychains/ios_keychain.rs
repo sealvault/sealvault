@@ -3,25 +3,36 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Based on: https://github.com/kornelski/rust-security-framework/
-use crate::encryption::key_material::KeyMaterial;
-use crate::encryption::keychains::keychain::{KeychainImpl, soft_delete_rename};
-use crate::encryption::KeyEncryptionKey;
-use crate::{config, Error};
-use core_foundation::base::CFType;
-use core_foundation::base::TCFType;
-use core_foundation::boolean::CFBoolean;
-use core_foundation::data::CFData;
-use core_foundation::dictionary::CFDictionary;
-use core_foundation::string::CFString;
-use core_foundation_sys::base::{CFGetTypeID, CFRelease};
-use core_foundation_sys::base::{CFTypeRef, OSStatus};
-use core_foundation_sys::data::CFDataRef;
-use core_foundation_sys::dictionary::CFDictionaryRef;
-use core_foundation_sys::string::CFStringRef;
-use std::cell::Cell;
-use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
+use std::{
+    cell::Cell,
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
+
+use core_foundation::{
+    base::{CFType, TCFType},
+    boolean::CFBoolean,
+    data::CFData,
+    dictionary::CFDictionary,
+    string::CFString,
+};
+use core_foundation_sys::{
+    base::{CFGetTypeID, CFRelease, CFTypeRef, OSStatus},
+    data::CFDataRef,
+    dictionary::CFDictionaryRef,
+    string::CFStringRef,
+};
+
+use crate::{
+    config,
+    encryption::{
+        key_material::KeyMaterial,
+        keychains::keychain::{soft_delete_rename, KeychainImpl},
+        KeyEncryptionKey,
+    },
+    Error,
+};
 
 pub(super) struct IOSKeychain {
     // It's a Mutex, instead of a RwLock because we only want access from one thread for reads as
@@ -69,7 +80,6 @@ impl KeychainImpl for IOSKeychain {
 
         Ok(())
     }
-
 }
 
 /// Helper that we mark as not sync due to unsafe calls.
@@ -86,7 +96,11 @@ impl IOSKeychainInternal {
         }
     }
 
-    fn get(&self, name: &str, storage_class: KeychainStorage) -> Result<KeyMaterial, Error> {
+    fn get(
+        &self,
+        name: &str,
+        storage_class: KeychainStorage,
+    ) -> Result<KeyMaterial, Error> {
         let query = storage_class.get_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
 
@@ -148,7 +162,11 @@ impl IOSKeychainInternal {
         };
     }
 
-    fn put(&self, key: KeyEncryptionKey, storage_class: KeychainStorage) -> Result<(), Error> {
+    fn put(
+        &self,
+        key: KeyEncryptionKey,
+        storage_class: KeychainStorage,
+    ) -> Result<(), Error> {
         let (name, key_material) = key.into_keychain();
         let wrapped_value = Arc::new(key_material);
         let query = storage_class.put_query(&name, wrapped_value);
@@ -234,27 +252,23 @@ impl KeychainStorage {
 
     fn get_query(&self, name: &str) -> Vec<(CFString, CFType)> {
         let mut query = self.base_query(name);
-        query.push(
-            (
-                unsafe { CFString::wrap_under_get_rule(kSecReturnData) },
-                CFBoolean::from(true).as_CFType(),
-            ),
-        );
+        query.push((
+            unsafe { CFString::wrap_under_get_rule(kSecReturnData) },
+            CFBoolean::from(true).as_CFType(),
+        ));
         query
     }
 
     fn put_query(&self, name: &str, value: Arc<KeyMaterial>) -> Vec<(CFString, CFType)> {
         let mut query = self.base_query(name);
-        query.push(
-            (
-                unsafe { CFString::wrap_under_get_rule(kSecValueData) },
-                // Best effort to create a `CFData` referencing buffer without creating a copy.
-                // We want to avoid a copy to make sure we can zeroize the buffer.
-                // Unfortunately, the underlying Core Foundation `CFDataCreateWithBytesNoCopy`
-                // doesn't actually make a hard guarantee that there will be no copy.
-                CFData::from_arc(value).as_CFType(),
-            ),
-        );
+        query.push((
+            unsafe { CFString::wrap_under_get_rule(kSecValueData) },
+            // Best effort to create a `CFData` referencing buffer without creating a copy.
+            // We want to avoid a copy to make sure we can zeroize the buffer.
+            // Unfortunately, the underlying Core Foundation `CFDataCreateWithBytesNoCopy`
+            // doesn't actually make a hard guarantee that there will be no copy.
+            CFData::from_arc(value).as_CFType(),
+        ));
         query
     }
 

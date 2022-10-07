@@ -2,19 +2,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::deterministic_id::{DeterministicId, EntityName};
-use crate::db::schema::{accounts, asymmetric_keys, dapps};
-use crate::public_suffix_list::PublicSuffixList;
-use diesel::prelude::*;
-use diesel::SqliteConnection;
-use generic_array::typenum::U1;
-use generic_array::GenericArray;
+use diesel::{prelude::*, SqliteConnection};
+use generic_array::{typenum::U1, GenericArray};
 use url::Url;
 
-use crate::db::url_value::UrlValue;
-use crate::db::DeferredTxConnection;
-use crate::utils::rfc3339_timestamp;
-use crate::Error;
+use crate::{
+    db::{
+        deterministic_id::{DeterministicId, EntityName},
+        schema::{accounts, asymmetric_keys, dapps},
+        url_value::UrlValue,
+        DeferredTxConnection,
+    },
+    public_suffix_list::PublicSuffixList,
+    utils::rfc3339_timestamp,
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
@@ -126,8 +128,7 @@ impl DappEntity {
         use accounts::dsl as a;
         use asymmetric_keys::dsl as ak;
         use dapps::dsl as d;
-        use diesel::expression::AsExpression;
-        use diesel::sql_types::Bool;
+        use diesel::{expression::AsExpression, sql_types::Bool};
 
         let deterministic_id = self.deterministic_id()?;
 

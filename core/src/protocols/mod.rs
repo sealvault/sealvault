@@ -7,6 +7,7 @@ mod checksum_address;
 pub mod eth;
 mod token_type;
 
-pub use crate::protocols::blockchain_protocol::BlockchainProtocol;
-pub use crate::protocols::checksum_address::ChecksumAddress;
-pub use crate::protocols::token_type::TokenType;
+pub use crate::protocols::{
+    blockchain_protocol::BlockchainProtocol, checksum_address::ChecksumAddress,
+    token_type::TokenType,
+};

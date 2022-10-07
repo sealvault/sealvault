@@ -3,13 +3,15 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use k256::{
-    ecdsa::recoverable::Signature as RecoverableSignature,
-    ecdsa::signature::DigestSigner, ecdsa::SigningKey, Secp256k1,
+    ecdsa::{
+        recoverable::Signature as RecoverableSignature, signature::DigestSigner,
+        SigningKey,
+    },
+    Secp256k1,
 };
 use sha3::Keccak256;
 
-use crate::signatures::AsymmetricKey;
-use crate::Error;
+use crate::{signatures::AsymmetricKey, Error};
 
 impl AsymmetricKey<Secp256k1> {
     /// Perform an ECDSA signature on a Keccak256 pre-hashed message using the Secp256k1 curve with
@@ -26,15 +28,14 @@ impl AsymmetricKey<Secp256k1> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use anyhow::Result;
-
-    use k256::ecdsa::signature::Verifier;
-    use k256::ecdsa::VerifyingKey;
-    use k256::PublicKey;
-
+    use k256::{
+        ecdsa::{signature::Verifier, VerifyingKey},
+        PublicKey,
+    };
     use sha3::{Digest, Keccak256};
+
+    use super::*;
 
     impl std::str::FromStr for AsymmetricKey<Secp256k1> {
         type Err = anyhow::Error;

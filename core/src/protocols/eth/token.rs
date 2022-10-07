@@ -1,14 +1,15 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-use crate::assets::load_binary;
-use crate::protocols::eth::ChainId;
-use crate::{config, Error};
-use ethers::core::types::{Address, U256};
-use ethers::utils::to_checksum;
+use ethers::{
+    core::types::{Address, U256},
+    utils::to_checksum,
+};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString};
+
+use crate::{assets::load_binary, config, protocols::eth::ChainId, Error};
 
 #[derive(Debug, PartialEq, EnumIter, EnumString, Display, Serialize, Deserialize)]
 #[strum(serialize_all = "UPPERCASE")]
@@ -186,10 +187,12 @@ impl FungibleTokenBalance {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anyhow::Result;
     use std::ops::Mul;
+
+    use anyhow::Result;
     use strum::IntoEnumIterator;
+
+    use super::*;
 
     #[test]
     fn new_amount_from_decimal_str() -> Result<()> {

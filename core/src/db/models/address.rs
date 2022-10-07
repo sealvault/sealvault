@@ -2,27 +2,24 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::deterministic_id::{DeterministicId, EntityName};
-use diesel::expression::AsExpression;
-
-use crate::db::models::{DataEncryptionKey, NewAsymmetricKey};
-use crate::db::schema::{
-    addresses, asymmetric_keys, chains, dapps, data_encryption_keys,
-};
-use crate::db::{DeferredTxConnection, JsonValue};
-use crate::encryption::Keychain;
-use crate::protocols::eth;
-use crate::protocols::BlockchainProtocol;
-
-use crate::db::models as m;
-use crate::utils::rfc3339_timestamp;
-use crate::{config, Error};
-use diesel::prelude::*;
-use diesel::sql_types::Bool;
-use diesel::SqliteConnection;
-use generic_array::typenum::U2;
-use generic_array::GenericArray;
+use diesel::{expression::AsExpression, prelude::*, sql_types::Bool, SqliteConnection};
+use generic_array::{typenum::U2, GenericArray};
 use typed_builder::TypedBuilder;
+
+use crate::{
+    config,
+    db::{
+        deterministic_id::{DeterministicId, EntityName},
+        models as m,
+        models::{DataEncryptionKey, NewAsymmetricKey},
+        schema::{addresses, asymmetric_keys, chains, dapps, data_encryption_keys},
+        DeferredTxConnection, JsonValue,
+    },
+    encryption::Keychain,
+    protocols::{eth, BlockchainProtocol},
+    utils::rfc3339_timestamp,
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
@@ -273,9 +270,10 @@ impl Address {
         connection: &mut SqliteConnection,
         checksum_address: &str,
     ) -> Result<Option<String>, Error> {
-        use crate::protocols::eth::validate_checksum_address;
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
+
+        use crate::protocols::eth::validate_checksum_address;
 
         validate_checksum_address(checksum_address)?;
 
@@ -296,11 +294,12 @@ impl Address {
         keychain: &Keychain,
         address_id: &str,
     ) -> Result<eth::SigningKey, Error> {
-        use crate::encryption::EncryptionOutput;
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
         use chains::dsl as c;
         use data_encryption_keys::dsl as dek;
+
+        use crate::encryption::EncryptionOutput;
 
         let (dek_name, encrypted_der, protocol_data) = asymmetric_keys::table
             .inner_join(

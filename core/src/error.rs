@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use diesel::r2d2;
 use std::str::FromStr;
 
+use diesel::r2d2;
 use jsonrpsee::types::error::ErrorCode as JsonrpseeErrorCode;
 use lazy_static::lazy_static;
 use regex::Regex;

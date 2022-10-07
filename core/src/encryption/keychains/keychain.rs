@@ -2,15 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::encryption::encryption_key::KeyEncryptionKey;
+use std::fmt::Debug;
 
 #[cfg(not(target_os = "ios"))]
 use crate::encryption::keychains::in_memory_keychain::InMemoryKeychain;
 #[cfg(target_os = "ios")]
 use crate::encryption::keychains::ios_keychain::IOSKeychain;
-use crate::{config, Error};
-use std::fmt::Debug;
-use crate::utils::unix_timestamp;
+use crate::{
+    config, encryption::encryption_key::KeyEncryptionKey, utils::unix_timestamp, Error,
+};
 
 /// Keychain to securely store secrets on the operating system.
 /// Injected by the host language as a Uniffi callback interface.

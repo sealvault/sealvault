@@ -2,11 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use diesel::deserialize::FromSql;
-use diesel::serialize::ToSql;
-use diesel::sql_types::Text;
-use diesel::sqlite::Sqlite;
 use std::fmt::Debug;
+
+use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Text, sqlite::Sqlite};
 use url::Url;
 
 /// Wrapper to let us implement Diesel FromSql and ToSql for url::Url.

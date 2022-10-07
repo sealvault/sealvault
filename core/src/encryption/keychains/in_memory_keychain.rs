@@ -2,13 +2,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::encryption::key_material::KeyMaterial;
-use crate::encryption::keychains::keychain::{KeychainImpl, soft_delete_rename};
-use crate::Error;
-use crate::encryption::KeyEncryptionKey;
-use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Formatter},
+    sync::{Arc, RwLock},
+};
+
+use crate::{
+    encryption::{
+        key_material::KeyMaterial,
+        keychains::keychain::{soft_delete_rename, KeychainImpl},
+        KeyEncryptionKey,
+    },
+    Error,
+};
 
 /// In-memory keychain for testing.
 pub(super) struct InMemoryKeychain {

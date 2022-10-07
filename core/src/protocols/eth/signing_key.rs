@@ -2,18 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::chain_id::ChainId;
-
-use crate::Error;
-use ethers::core::types::Address;
-use ethers::core::utils::to_checksum;
-use k256::PublicKey;
-
-use crate::protocols::checksum_address::ChecksumAddress;
-use sha3::{Digest, Keccak256};
 use std::fmt;
 
-use crate::protocols::eth::{EthereumAsymmetricKey, ProtocolData};
+use ethers::core::{types::Address, utils::to_checksum};
+use k256::PublicKey;
+use sha3::{Digest, Keccak256};
+
+use crate::{
+    protocols::{
+        checksum_address::ChecksumAddress,
+        eth::{chain_id::ChainId, EthereumAsymmetricKey, ProtocolData},
+    },
+    Error,
+};
 
 #[readonly::make]
 pub struct SigningKey {
@@ -84,10 +85,10 @@ impl fmt::Debug for SigningKey {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
-
     use k256::SecretKey;
+
+    use super::*;
 
     // Test vector from https://github.com/ethereumbook/ethereumbook/blob/develop/04keys-addresses.asciidoc
     #[test]

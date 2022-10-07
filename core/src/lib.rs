@@ -29,14 +29,14 @@ mod signatures;
 mod utils;
 
 // Interfaces defined in SealVaultCore.udl must be exposed directly.
-pub use crate::app_core::{AppCore, CoreArgs};
-pub use crate::dto::{CoreAccount, CoreAddress, CoreDapp, CoreError, CoreToken};
-pub use crate::error::Error;
-pub use crate::in_page_provider::{
-    CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI,
+pub use crate::{
+    app_core::{AppCore, CoreArgs},
+    dto::{CoreAccount, CoreAddress, CoreDapp, CoreError, CoreToken},
+    error::Error,
+    in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
+    protocols::TokenType,
+    utils::uri_fixup,
 };
-pub use crate::protocols::TokenType;
-pub use crate::utils::uri_fixup;
 
 // Build FFI based on SealVaultCore.udl.
 uniffi_macros::include_scaffolding!("SealVaultCore");

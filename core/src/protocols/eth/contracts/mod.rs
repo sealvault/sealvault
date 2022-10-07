@@ -16,19 +16,22 @@ abigen!(
 
 #[cfg(test)]
 pub mod test_util {
-    use crate::protocols::eth::ChainId;
+    use std::{path::PathBuf, sync::Arc, time::Duration};
+
     use anyhow::Result;
-    use ethers::contract::ContractFactory;
-    use ethers::core::types::Address;
-    use ethers::core::utils::{Anvil, AnvilInstance};
-    use ethers::middleware::SignerMiddleware;
-    use ethers::providers::{Http, Provider};
-    use ethers::signers::coins_bip39::English;
-    use ethers::signers::{LocalWallet, MnemonicBuilder, Signer};
-    use ethers::solc::{Artifact, Project, ProjectPathsConfig};
-    use std::path::PathBuf;
-    use std::sync::Arc;
-    use std::time::Duration;
+    use ethers::{
+        contract::ContractFactory,
+        core::{
+            types::Address,
+            utils::{Anvil, AnvilInstance},
+        },
+        middleware::SignerMiddleware,
+        providers::{Http, Provider},
+        signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer},
+        solc::{Artifact, Project, ProjectPathsConfig},
+    };
+
+    use crate::protocols::eth::ChainId;
 
     const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 

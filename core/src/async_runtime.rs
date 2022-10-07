@@ -2,9 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::future::Future;
+
 #[cfg(not(feature = "without_global_executor"))]
 use lazy_static::lazy_static;
-use std::future::Future;
 use tokio::task::JoinHandle;
 
 #[cfg(not(feature = "without_global_executor"))]

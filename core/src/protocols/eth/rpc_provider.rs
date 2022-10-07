@@ -2,21 +2,28 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::checksum_address::parse_checksum_address;
-use crate::protocols::eth::contracts::ERC20Contract;
-use crate::protocols::eth::signer::SignerMiddleware;
-use crate::protocols::eth::token::FungibleToken;
-use crate::protocols::eth::{
-    ChainId, FungibleTokenAmount, NativeTokenAmount, SigningKey,
+use std::{
+    fmt::{Debug, Formatter},
+    sync::Arc,
 };
-use crate::{async_runtime as rt, Error};
-use ethers::core::types::{Address, BlockNumber, TransactionRequest, H256};
-use ethers::providers::{Http, Middleware, Provider};
-use ethers::types::BlockId;
+
+use ethers::{
+    core::types::{Address, BlockNumber, TransactionRequest, H256},
+    providers::{Http, Middleware, Provider},
+    types::BlockId,
+};
 use serde::Serialize;
-use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 use url::Url;
+
+use crate::{
+    async_runtime as rt,
+    protocols::eth::{
+        checksum_address::parse_checksum_address, contracts::ERC20Contract,
+        signer::SignerMiddleware, token::FungibleToken, ChainId, FungibleTokenAmount,
+        NativeTokenAmount, SigningKey,
+    },
+    Error,
+};
 
 #[derive(Clone, Debug)]
 pub struct RpcProvider {
@@ -245,10 +252,14 @@ fn display_tx_hash(tx_hash: H256) -> String {
 
 #[cfg(test)]
 pub mod anvil {
-    use super::*;
+    use std::{
+        fmt::Formatter,
+        sync::{Arc, RwLock},
+    };
+
     use ethers::core::utils::{Anvil, AnvilInstance};
-    use std::fmt::Formatter;
-    use std::sync::{Arc, RwLock};
+
+    use super::*;
 
     pub struct AnvilRpcManager {
         // Lazy initialized Anvil instance.
@@ -303,20 +314,24 @@ pub mod anvil {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anyhow::Result;
-    use ethers::core::types::U256;
-    use ethers::core::utils::Anvil;
-    use ethers::providers::{PendingTransaction, Provider};
-    use ethers::signers::Signer;
-    use ethers::utils::to_checksum;
     use std::ops::Add;
 
-    use crate::protocols::eth::contracts::test_util::TestContractDeployer;
-    use crate::protocols::eth::signing_key::checksum_address;
+    use anyhow::Result;
+    use ethers::{
+        core::{types::U256, utils::Anvil},
+        providers::{PendingTransaction, Provider},
+        signers::Signer,
+        utils::to_checksum,
+    };
 
-    use crate::protocols::eth::EthereumAsymmetricKey;
-    use crate::protocols::ChecksumAddress;
+    use super::*;
+    use crate::protocols::{
+        eth::{
+            contracts::test_util::TestContractDeployer, signing_key::checksum_address,
+            EthereumAsymmetricKey,
+        },
+        ChecksumAddress,
+    };
 
     #[test]
     fn get_block_number() -> Result<()> {

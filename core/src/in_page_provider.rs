@@ -2,30 +2,30 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::async_runtime as rt;
-use crate::db::models as m;
-use crate::db::ConnectionPool;
+use std::{collections::HashSet, fmt::Debug, str::FromStr, sync::Arc};
 
-use crate::protocols::eth;
-
-use crate::{assets, config, Error};
-use jsonrpsee::core::server::helpers::MethodResponse;
-use jsonrpsee::types::error::{CallError, ErrorCode};
-use jsonrpsee::types::{ErrorObject, Params, Request};
+use jsonrpsee::{
+    core::server::helpers::MethodResponse,
+    types::{
+        error::{CallError, ErrorCode},
+        ErrorObject, Params, Request,
+    },
+};
 use lazy_static::lazy_static;
 use num_traits::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::fmt::Debug;
-
-use std::str::FromStr;
-use std::sync::Arc;
-
-use crate::app_core::CoreResources;
-use crate::favicon::fetch_favicon_async;
 use strum_macros::{EnumIter, EnumString};
 use typed_builder::TypedBuilder;
 use url::Url;
+
+use crate::{
+    app_core::CoreResources,
+    assets, async_runtime as rt, config,
+    db::{models as m, ConnectionPool},
+    favicon::fetch_favicon_async,
+    protocols::eth,
+    Error,
+};
 
 #[derive(Debug)]
 #[readonly::make]
@@ -890,13 +890,12 @@ lazy_static! {
 // More tests are in integrations tests in the [dev server.](tools/dev-server/static/ethereum.html)
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::app_core::tests::TmpCore;
     use anyhow::Result;
     use jsonrpsee::types::Id;
-
-    use crate::utils::new_uuid;
     use strum::IntoEnumIterator;
+
+    use super::*;
+    use crate::{app_core::tests::TmpCore, utils::new_uuid};
 
     const TEST_URL: &str = "https://example.com";
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";

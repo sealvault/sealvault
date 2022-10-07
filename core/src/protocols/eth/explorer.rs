@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::ChainId;
-use crate::Error;
 use url::Url;
+
+use crate::{protocols::eth::ChainId, Error};
 
 /// Get the blockchain explorer url for an address.
 pub fn address_url(chain_id: ChainId, address: &str) -> Result<Url, Error> {
@@ -31,8 +31,9 @@ fn map_err(err: url::ParseError) -> Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn correct_ethereum_explorer_address_url() -> Result<()> {

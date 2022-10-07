@@ -2,16 +2,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::chain_settings::ChainSettings;
-use crate::protocols::eth::token::NativeToken;
-use crate::protocols::eth::NativeTokenAmount;
-
-use ethers::core::types::{U256, U64};
-use ethers::core::utils::parse_units;
+use ethers::core::{
+    types::{U256, U64},
+    utils::parse_units,
+};
 use num_derive::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use url::Url;
+
+use crate::protocols::eth::{
+    chain_settings::ChainSettings, token::NativeToken, NativeTokenAmount,
+};
 
 #[derive(
     Copy,
@@ -152,10 +154,11 @@ impl From<ChainId> for U256 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
     use ethers::core::types::U256;
     use strum::IntoEnumIterator;
+
+    use super::*;
 
     #[test]
     fn to_json() {

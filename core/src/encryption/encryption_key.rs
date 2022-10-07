@@ -2,13 +2,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::encryption::encrypt_decrypt::{decrypt, encrypt};
-use crate::encryption::encryption_output::EncryptionOutput;
-use crate::encryption::key_material::KeyMaterial;
-use crate::Error;
 use std::fmt::{Debug, Formatter};
 
 use zeroize::Zeroizing;
+
+use crate::{
+    encryption::{
+        encrypt_decrypt::{decrypt, encrypt},
+        encryption_output::EncryptionOutput,
+        key_material::KeyMaterial,
+    },
+    Error,
+};
 
 /// We need separate data encryption and key encryption key types to prevent encrypting data by
 /// accident with a key encryption.
@@ -143,9 +148,9 @@ impl Debug for SymmetricKey {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn encrypt_decrypt_dek() -> Result<()> {

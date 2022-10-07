@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::chain_id::ChainId;
-
 use serde::{Deserialize, Serialize};
+
+use crate::protocols::eth::chain_id::ChainId;
 
 /// Information about the
 #[derive(Debug, Clone, Serialize, Deserialize)]

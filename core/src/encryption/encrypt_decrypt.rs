@@ -2,11 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::encryption::encryption_key::ExposeKeyMaterial;
-use crate::encryption::encryption_output::EncryptionOutput;
-use crate::{utils, Error};
 use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+
+use crate::{
+    encryption::{
+        encryption_key::ExposeKeyMaterial, encryption_output::EncryptionOutput,
+    },
+    utils, Error,
+};
 
 pub(super) fn encrypt<'msg, 'aad, 'key>(
     plaintext: impl Into<Payload<'msg, 'aad>>,
@@ -35,10 +39,10 @@ pub(super) fn decrypt<'msg, 'aad, 'key>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use crate::encryption::encryption_key::DataEncryptionKey;
     use anyhow::Result;
+
+    use super::*;
+    use crate::encryption::encryption_key::DataEncryptionKey;
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {

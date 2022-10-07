@@ -2,14 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::Error;
-use chacha20poly1305::XNonce;
-use diesel::deserialize::FromSql;
-use diesel::serialize::ToSql;
-use diesel::sql_types::Binary;
-use diesel::sqlite::Sqlite;
 use std::fmt::{Debug, Formatter};
+
+use chacha20poly1305::XNonce;
+use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Binary, sqlite::Sqlite};
 use typed_builder::TypedBuilder;
+
+use crate::Error;
 
 const NONCE_BYTES: usize = 24;
 const TAG_BYTES: usize = 16;
@@ -89,12 +88,16 @@ impl ToSql<Binary, Sqlite> for EncryptionOutput {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::encryption::encrypt_decrypt::{decrypt, encrypt};
-    use crate::encryption::DataEncryptionKey;
+    use std::error::Error;
+
     use aead::Payload;
     use anyhow::Result;
-    use std::error::Error;
+
+    use super::*;
+    use crate::encryption::{
+        encrypt_decrypt::{decrypt, encrypt},
+        DataEncryptionKey,
+    };
 
     #[test]
     fn to_vec_from_vec() -> Result<()> {

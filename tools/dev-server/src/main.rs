@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::{fs::File, io::Read, path::PathBuf, sync::Arc};
+
 use actix_files as fs;
 use actix_web::{
     get, http::header, middleware::Logger, post, web, App, HttpRequest, HttpResponse,
@@ -9,10 +11,6 @@ use actix_web::{
 };
 use dotenv::dotenv;
 use ethers_core::utils::hex;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
-use std::sync::Arc;
 use uniffi_sealvault_core::{
     AppCore, CoreArgs, CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI,
 };

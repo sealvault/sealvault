@@ -2,18 +2,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::assets::load_profile_pic;
-use crate::db::deterministic_id::{DeterministicId, EntityName};
-use crate::db::schema::account_pictures;
-
-use crate::utils::{blake3_hash, rfc3339_timestamp};
-
-use crate::Error;
-use diesel::prelude::*;
-use diesel::SqliteConnection;
-use generic_array::typenum::U1;
-use generic_array::GenericArray;
 use std::fmt::Debug;
+
+use diesel::{prelude::*, SqliteConnection};
+use generic_array::{typenum::U1, GenericArray};
+
+use crate::{
+    assets::load_profile_pic,
+    db::{
+        deterministic_id::{DeterministicId, EntityName},
+        schema::account_pictures,
+    },
+    utils::{blake3_hash, rfc3339_timestamp},
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]

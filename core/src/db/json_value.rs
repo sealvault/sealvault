@@ -2,15 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::Error;
-use diesel::deserialize::FromSql;
-use diesel::serialize::ToSql;
-use diesel::sql_types::Text;
-use diesel::sqlite::Sqlite;
-use olpc_cjson::CanonicalFormatter;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use std::fmt::{Debug, Formatter};
+
+use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Text, sqlite::Sqlite};
+use olpc_cjson::CanonicalFormatter;
+use serde::{de::DeserializeOwned, Serialize};
+
+use crate::Error;
 
 /// Wrapper to let us implement Diesel `FromSql` and `ToSql` for `serde_json::Value`.
 #[derive(

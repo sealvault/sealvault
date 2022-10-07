@@ -2,12 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::config;
-use crate::db::{models as m, DeferredTxConnection, ExclusiveTxConnection};
-use crate::encryption::Keychain;
-use crate::encryption::{DataEncryptionKey, KeyEncryptionKey};
-
-use crate::Error;
+use crate::{
+    config,
+    db::{models as m, DeferredTxConnection, ExclusiveTxConnection},
+    encryption::{DataEncryptionKey, KeyEncryptionKey, Keychain},
+    Error,
+};
 
 trait Migration {
     fn version() -> &'static str;
@@ -20,7 +20,6 @@ trait Migration {
 }
 
 struct MigrationV0 {}
-
 
 impl Migration for MigrationV0 {
     // TODO add version enum
@@ -80,10 +79,7 @@ impl Migration for MigrationV0 {
     }
 }
 
-pub fn run_all(
-    tx_conn: ExclusiveTxConnection,
-    keychain: &Keychain,
-) -> Result<(), Error> {
+pub fn run_all(tx_conn: ExclusiveTxConnection, keychain: &Keychain) -> Result<(), Error> {
     // We take an ExclusiveTxConnection as argument, because this method should be run in an
     // exclusive transaction, but called functions can be ran in deferred transactions.
     let mut tx_conn: DeferredTxConnection = tx_conn.into();
@@ -104,10 +100,12 @@ pub fn run_all(
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use crate::app_core::tests::{TmpCoreDir};
-    use crate::db::ConnectionPool;
-    use crate::db::schema_migrations::run_migrations;
+
     use super::*;
+    use crate::{
+        app_core::tests::TmpCoreDir,
+        db::{schema_migrations::run_migrations, ConnectionPool},
+    };
 
     #[test]
     fn v0_rollback_works() -> Result<()> {
@@ -123,13 +121,14 @@ mod tests {
 
         // These migration attempts should fail.
         for _ in 0..10 {
-            let res: Result<(), _> = connection_pool.deferred_transaction(|mut tx_conn| {
-                // Data migration
-                MigrationV0::run(&mut tx_conn, &keychain)?;
-                Err(Error::Retriable {
-                    error: "Make diesel roll back the transaction".into()
-                })
-            });
+            let res: Result<(), _> =
+                connection_pool.deferred_transaction(|mut tx_conn| {
+                    // Data migration
+                    MigrationV0::run(&mut tx_conn, &keychain)?;
+                    Err(Error::Retriable {
+                        error: "Make diesel roll back the transaction".into(),
+                    })
+                });
             assert!(res.is_err());
             MigrationV0::rollback(&keychain)?;
         }

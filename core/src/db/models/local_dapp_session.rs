@@ -2,19 +2,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::schema::{
-    accounts, addresses, asymmetric_keys, chains, dapps, local_dapp_sessions,
-};
-use crate::db::{DeferredTxConnection, JsonValue};
-
-use crate::Error;
 use diesel::prelude::*;
-
-use crate::db::models as m;
-
-use crate::protocols::eth;
-use crate::utils::{new_uuid, rfc3339_timestamp};
 use typed_builder::TypedBuilder;
+
+use crate::{
+    db::{
+        models as m,
+        schema::{
+            accounts, addresses, asymmetric_keys, chains, dapps, local_dapp_sessions,
+        },
+        DeferredTxConnection, JsonValue,
+    },
+    protocols::eth,
+    utils::{new_uuid, rfc3339_timestamp},
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
 pub struct LocalDappSession {

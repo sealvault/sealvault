@@ -2,20 +2,24 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::encryption::DataEncryptionKey;
-use crate::encryption::EncryptionOutput;
-use crate::signatures::elliptic_curve::EllipticCurve;
-use crate::Error;
+use std::fmt::{Debug, Formatter};
+
 // Must depend on k256 instead of elliptic_curve, because there are dependency resolution conflicts
 // when specificying elliptic_curve as dependency directly.
-
-use k256::elliptic_curve::{
-    sec1::{FromEncodedPoint, ModulusSize, ToEncodedPoint, ValidatePublicKey},
-    AffinePoint, Curve, FieldSize, ProjectiveArithmetic, PublicKey, SecretKey,
+use k256::{
+    elliptic_curve::{
+        sec1::{FromEncodedPoint, ModulusSize, ToEncodedPoint, ValidatePublicKey},
+        AffinePoint, Curve, FieldSize, ProjectiveArithmetic, PublicKey, SecretKey,
+    },
+    pkcs8::{AssociatedOid, EncodePublicKey},
 };
-use k256::pkcs8::{AssociatedOid, EncodePublicKey};
 use rand::thread_rng;
-use std::fmt::{Debug, Formatter};
+
+use crate::{
+    encryption::{DataEncryptionKey, EncryptionOutput},
+    signatures::elliptic_curve::EllipticCurve,
+    Error,
+};
 
 /// Elliptic curve key pair
 #[derive(PartialEq, Eq)]
@@ -101,10 +105,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use anyhow::Result;
     use k256::Secp256k1;
+
+    use super::*;
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {

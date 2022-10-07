@@ -2,13 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::utils::try_fill_random_bytes;
-use crate::Error;
-use std::default::Default;
-use std::fmt::{Debug, Formatter};
-use subtle::ConstantTimeEq;
+use std::{
+    default::Default,
+    fmt::{Debug, Formatter},
+};
 
+use subtle::ConstantTimeEq;
 use zeroize::ZeroizeOnDrop;
+
+use crate::{utils::try_fill_random_bytes, Error};
 
 const KEY_BYTES: usize = 32;
 pub type KeyArray = [u8; KEY_BYTES];

@@ -2,12 +2,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::{
+    fmt::{Debug, Formatter},
+    time::Duration,
+};
+
+use diesel::{
+    connection::SimpleConnection,
+    r2d2::{ConnectionManager, Pool, PooledConnection},
+    Connection, SqliteConnection,
+};
+
 use crate::{async_runtime as rt, config, Error};
-use diesel::connection::SimpleConnection;
-use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use diesel::{Connection, SqliteConnection};
-use std::fmt::{Debug, Formatter};
-use std::time::Duration;
 
 /// A Sqlite connection pool.
 #[derive(Debug)]
