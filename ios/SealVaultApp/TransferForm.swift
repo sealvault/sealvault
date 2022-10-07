@@ -170,7 +170,7 @@ struct ToSection: View {
                         ForEach(account.dappList) { dapp in
                             ForEach(dapp.addressList) { dappAddress in
                                 if canTransferTo(dappAddress) {
-                                    Text("\(dapp.humanIdentifier) \(dappAddress.addressDisplay)")
+                                    Text("\(dapp.humanIdentifier)")
                                         .tag(ToAddress.some(dappAddress.id))
                                 }
                             }
