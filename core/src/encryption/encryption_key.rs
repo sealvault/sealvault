@@ -15,12 +15,14 @@ use zeroize::Zeroizing;
 /// Some repetition could be saved with a proc macro, but not enough to warrant a separate crate for
 /// it.
 
+// Only exposed in the encryption module to simplify following data-flows.
 pub(super) trait ExposeKeyMaterial<'a> {
     fn expose_key_material(&'a self) -> &'a KeyMaterial;
 }
 
 /// Data encryption key.
 #[derive(Debug)]
+#[readonly::make]
 pub struct DataEncryptionKey(SymmetricKey);
 
 impl DataEncryptionKey {
@@ -89,6 +91,7 @@ impl<'a> ExposeKeyMaterial<'a> for DataEncryptionKey {
 
 /// Encryption key for data encryption keys.
 #[derive(Debug)]
+#[readonly::make]
 pub struct KeyEncryptionKey(SymmetricKey);
 
 impl KeyEncryptionKey {

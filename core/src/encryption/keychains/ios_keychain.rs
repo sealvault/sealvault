@@ -4,7 +4,7 @@
 
 // Based on: https://github.com/kornelski/rust-security-framework/
 use crate::encryption::key_material::KeyMaterial;
-use crate::encryption::keychains::keychain::KeychainImpl;
+use crate::encryption::keychains::keychain::{KeychainImpl, soft_delete_rename};
 use crate::encryption::KeyEncryptionKey;
 use crate::{config, Error};
 use core_foundation::base::CFType;
@@ -24,6 +24,8 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 
 pub(super) struct IOSKeychain {
+    // It's a Mutex, instead of a RwLock because we only want access from one thread for reads as
+    // well in order to zeroize the buffer returned from the keychain safely.
     internal: Arc<Mutex<IOSKeychainInternal>>,
 }
 
@@ -31,11 +33,6 @@ impl IOSKeychain {
     pub fn new() -> Self {
         let internal = Arc::new(Mutex::new(IOSKeychainInternal::new()));
         Self { internal }
-    }
-
-    fn put(&self, key: KeyEncryptionKey, storage: KeychainStorage) -> Result<(), Error> {
-        let keychain = self.internal.lock()?;
-        keychain.put(key, storage)
     }
 }
 
@@ -48,13 +45,31 @@ impl Debug for IOSKeychain {
 impl KeychainImpl for IOSKeychain {
     fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
         let keychain = self.internal.lock()?;
-        let key_material = keychain.get(name)?;
+        let key_material = keychain.get(name, KeychainStorage::WhenUnlockedLocal)?;
         Ok(KeyEncryptionKey::new(name.into(), key_material))
     }
 
+    /// Fails when a key by the same name already exists. This is on purpose to avoid overwriting
+    /// items by accident.
     fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
-        self.put(key, KeychainStorage::WhenUnlockedLocal)
+        let keychain = self.internal.lock()?;
+        keychain.put(key, KeychainStorage::WhenUnlockedLocal)
     }
+
+    fn soft_delete(&self, name: &str) -> Result<(), Error> {
+        let keychain = self.internal.lock()?;
+        let storage_class = KeychainStorage::WhenUnlockedLocal;
+
+        let key_material = keychain.get(name, storage_class)?;
+        let new_name = soft_delete_rename(name);
+        let key = KeyEncryptionKey::new(new_name, key_material);
+        keychain.put(key, storage_class)?;
+
+        keychain.delete(name, storage_class)?;
+
+        Ok(())
+    }
+
 }
 
 /// Helper that we mark as not sync due to unsafe calls.
@@ -71,8 +86,8 @@ impl IOSKeychainInternal {
         }
     }
 
-    fn get(&self, name: &str) -> Result<KeyMaterial, Error> {
-        let query = get_query(name);
+    fn get(&self, name: &str, storage_class: KeychainStorage) -> Result<KeyMaterial, Error> {
+        let query = storage_class.get_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
 
         let mut result: CFTypeRef = std::ptr::null();
@@ -133,10 +148,10 @@ impl IOSKeychainInternal {
         };
     }
 
-    fn put(&self, key: KeyEncryptionKey, class: KeychainStorage) -> Result<(), Error> {
+    fn put(&self, key: KeyEncryptionKey, storage_class: KeychainStorage) -> Result<(), Error> {
         let (name, key_material) = key.into_keychain();
         let wrapped_value = Arc::new(key_material);
-        let query = class.put_query(&name, wrapped_value);
+        let query = storage_class.put_query(&name, wrapped_value);
         let params = CFDictionary::from_CFType_pairs(&query);
 
         // We signal that we don't need the result by passing the null pointer.
@@ -154,46 +169,40 @@ impl IOSKeychainInternal {
             })
         }
     }
+
+    /// Delete the keychain entry for the name.
+    /// !!! Should be only called from soft delete. !!!
+    fn delete(&self, name: &str, storage_class: KeychainStorage) -> Result<(), Error> {
+        let query = storage_class.base_query(name);
+        let params = CFDictionary::from_CFType_pairs(&query);
+        let status = unsafe { SecItemDelete(params.as_concrete_TypeRef()) };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(Error::Retriable {
+                error: format!(
+                    "Deleting '{}' from keychain failed with error {}",
+                    name, status
+                ),
+            })
+        }
+    }
 }
 
-fn get_query(name: &str) -> Vec<(CFString, CFType)> {
-    // SAFETY:
-    // The query strings are static `CFStringRef`, but we need to pass `CFString`. The
-    // solution is to get a non-owning `CFString` reference with the Core Foundation's
-    // get rule. This is not safe by default, since a dynamic object could be released
-    // while we hold a non-owning reference to them, but it's safe in this case, because
-    // the wrapped objects are static.
-    vec![
-        (
-            unsafe { CFString::wrap_under_get_rule(kSecClass) },
-            unsafe {
-                CFString::wrap_under_get_rule(kSecClassGenericPassword).as_CFType()
-            },
-        ),
-        (
-            unsafe { CFString::wrap_under_get_rule(kSecAttrService) },
-            CFString::from(config::IOS_SERVICE).as_CFType(),
-        ),
-        (
-            unsafe { CFString::wrap_under_get_rule(kSecAttrAccount) },
-            CFString::from(name).as_CFType(),
-        ),
-        (
-            unsafe { CFString::wrap_under_get_rule(kSecReturnData) },
-            CFBoolean::from(true).as_CFType(),
-        ),
-    ]
-}
-
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum KeychainStorage {
     WhenUnlockedLocal,
 }
 
 impl KeychainStorage {
-    fn put_query(&self, name: &str, value: Arc<KeyMaterial>) -> Vec<(CFString, CFType)> {
+    fn base_query(&self, name: &str) -> Vec<(CFString, CFType)> {
         // SAFETY:
-        // See `get_query`.
-        let query = vec![
+        // The query strings are static `CFStringRef`, but we need to pass `CFString`. The
+        // solution is to get a non-owning `CFString` reference with the Core Foundation's
+        // get rule. This is not safe by default, since a dynamic object could be released
+        // while we hold a non-owning reference to them, but it's safe in this case, because
+        // the wrapped objects are static.
+        vec![
             (
                 unsafe { CFString::wrap_under_get_rule(kSecClass) },
                 unsafe {
@@ -208,6 +217,8 @@ impl KeychainStorage {
                 unsafe { CFString::wrap_under_get_rule(kSecAttrAccount) },
                 CFString::from(name).as_CFType(),
             ),
+            // The service and the name identify the item, we include the accessible and
+            // synchronize attributes as a defensive measure for soft delete.
             (
                 unsafe { CFString::wrap_under_get_rule(kSecAttrAccessible) },
                 unsafe {
@@ -218,6 +229,23 @@ impl KeychainStorage {
                 unsafe { CFString::wrap_under_get_rule(kSecAttrSynchronizable) },
                 CFBoolean::from(self.sec_attr_synchronizable()).as_CFType(),
             ),
+        ]
+    }
+
+    fn get_query(&self, name: &str) -> Vec<(CFString, CFType)> {
+        let mut query = self.base_query(name);
+        query.push(
+            (
+                unsafe { CFString::wrap_under_get_rule(kSecReturnData) },
+                CFBoolean::from(true).as_CFType(),
+            ),
+        );
+        query
+    }
+
+    fn put_query(&self, name: &str, value: Arc<KeyMaterial>) -> Vec<(CFString, CFType)> {
+        let mut query = self.base_query(name);
+        query.push(
             (
                 unsafe { CFString::wrap_under_get_rule(kSecValueData) },
                 // Best effort to create a `CFData` referencing buffer without creating a copy.
@@ -226,7 +254,7 @@ impl KeychainStorage {
                 // doesn't actually make a hard guarantee that there will be no copy.
                 CFData::from_arc(value).as_CFType(),
             ),
-        ];
+        );
         query
     }
 
@@ -269,4 +297,7 @@ extern "C" {
         query: CFDictionaryRef,
         result: *mut CFTypeRef,
     ) -> OSStatus;
+
+    /// Deletes items that match a search query.
+    pub fn SecItemDelete(query: CFDictionaryRef) -> OSStatus;
 }

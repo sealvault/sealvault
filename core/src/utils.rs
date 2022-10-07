@@ -21,6 +21,13 @@ pub fn rfc3339_timestamp() -> String {
     dt.to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
+/// Number of seconds since unix epoch
+pub fn unix_timestamp() -> i64 {
+    let now = SystemTime::now();
+    let dt: DateTime<Utc> = now.into();
+    dt.timestamp()
+}
+
 /// Generate a new v4 UUID.
 pub fn new_uuid() -> String {
     Uuid::new_v4().to_string()

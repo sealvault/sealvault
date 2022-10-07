@@ -272,18 +272,18 @@ pub mod tests {
     use std::sync::RwLock;
     use tempfile::TempDir;
 
-    /// Create an empty path in a temp directory for a Sqlite DB.
-    pub(crate) struct TmpCore {
-        pub core: AppCore,
+    #[readonly::make]
+    pub(crate) struct TmpCoreDir {
         // The TempDir is kept to keep it open for the lifetime of the backend as the db file is
         // deleted when in the TempDir dtor is invoked.
         #[allow(dead_code)]
-        tmp_dir: TempDir,
-        in_page_callback_state: Arc<InPageCallbackState>,
+        pub tmp_dir: TempDir,
+        pub cache_dir: String,
+        pub db_file_path: String
     }
 
-    impl TmpCore {
-        pub fn new() -> Result<Self, CoreError> {
+    impl TmpCoreDir {
+        pub fn new() -> Result<Self, Error> {
             // Important not to use in-memory DB as Sqlite has subtle differences in in memory
             // mode.
             let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
@@ -301,11 +301,37 @@ pub mod tests {
                 .into_string()
                 .unwrap();
 
+            let cache_dir = cache_dir.into_os_string().into_string().map_err(|err| Error::Fatal {
+                error: format!("{:?}", err)
+            })?;
+
+            Ok(Self {
+                tmp_dir,
+                cache_dir,
+                db_file_path
+            })
+        }
+    }
+
+    /// Create an empty path in a temp directory for a Sqlite DB.
+    pub(crate) struct TmpCore {
+        pub core: AppCore,
+        #[allow(dead_code)]
+        tmp_dir: TmpCoreDir,
+        in_page_callback_state: Arc<InPageCallbackState>,
+    }
+
+    impl TmpCore {
+        pub fn new() -> Result<Self, CoreError> {
+            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
+            // mode.
+            let tmp_dir = TmpCoreDir::new()?;
+
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
 
             let backend_args = CoreArgs {
-                cache_dir: cache_dir.into_os_string().into_string().unwrap(),
-                db_file_path,
+                cache_dir: tmp_dir.cache_dir.clone(),
+                db_file_path: tmp_dir.db_file_path.clone(),
             };
             let backend = AppCore::new_with_overrides(backend_args, rpc_manager)?;
             Ok(TmpCore {

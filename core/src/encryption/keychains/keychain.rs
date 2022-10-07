@@ -10,6 +10,7 @@ use crate::encryption::keychains::in_memory_keychain::InMemoryKeychain;
 use crate::encryption::keychains::ios_keychain::IOSKeychain;
 use crate::{config, Error};
 use std::fmt::Debug;
+use crate::utils::unix_timestamp;
 
 /// Keychain to securely store secrets on the operating system.
 /// Injected by the host language as a Uniffi callback interface.
@@ -22,9 +23,15 @@ pub(super) trait KeychainImpl: Debug + Send + Sync {
     /// Get an item from the local keychain.
     fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error>;
 
+    fn soft_delete(&self, name: &str) -> Result<(), Error>;
+
     /// Put an item on the local keychain that is only available when the device is unlocked.
     /// The item will NOT be synced.
     fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error>;
+}
+
+pub(super) fn soft_delete_rename(name: &str) -> String {
+    format!("{}-DELETED-{}", name, unix_timestamp())
 }
 
 #[derive(Debug)]
@@ -46,13 +53,12 @@ impl Keychain {
     }
 
     /// Get a symmetric key from the keychain.
-    pub fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
-        self.keychain.get(name)
+    pub fn get_sk_kek(&self) -> Result<KeyEncryptionKey, Error> {
+        self.keychain.get(config::SK_KEK_NAME)
     }
 
-    /// Get a symmetric key from the keychain.
-    pub fn get_sk_kek(&self) -> Result<KeyEncryptionKey, Error> {
-        self.get(config::SK_KEK_NAME)
+    pub fn soft_delete_sk_kek(&self) -> Result<(), Error> {
+        self.keychain.soft_delete(config::SK_KEK_NAME)
     }
 
     /// Store a symmetric key on the local keychain encoded that is available when the device is
