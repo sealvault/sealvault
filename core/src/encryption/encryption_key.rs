@@ -15,6 +15,7 @@ use zeroize::Zeroizing;
 /// Some repetition could be saved with a proc macro, but not enough to warrant a separate crate for
 /// it.
 
+// Only exposed in the encryption module to simplify following data-flows.
 pub(super) trait ExposeKeyMaterial<'a> {
     fn expose_key_material(&'a self) -> &'a KeyMaterial;
 }
