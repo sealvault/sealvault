@@ -36,7 +36,7 @@ impl KeyMaterial {
     }
 
     pub(super) fn random() -> Result<Self, Error> {
-        let mut buffer: Box<KeyArray> = Box::new(Default::default());
+        let mut buffer: Box<KeyArray> = Box::default();
         try_fill_random_bytes(&mut *buffer)?;
         Self::new(buffer)
     }
@@ -47,7 +47,7 @@ impl KeyMaterial {
                 error: INVARIANT_VIOLATION.into(),
             });
         }
-        let mut buffer: Box<KeyArray> = Box::new(Default::default());
+        let mut buffer: Box<KeyArray> = Box::default();
         buffer.copy_from_slice(bytes);
         Self::new(buffer)
     }
