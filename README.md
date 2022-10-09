@@ -6,9 +6,9 @@
   <p><i>Experiment freely with Web3</i></p>
 </div>
 
-## Features
-
 SealVault is the Web3 key manager that's got your back.
+
+## Features
 
 ### Automated burner wallets :fire:  
 

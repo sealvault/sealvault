@@ -9,9 +9,9 @@ title: Web3 Key Manager App
 <figcaption>Experiment freely with Web3</figcaption>
 </figure>
 
-## Features
-
 SealVault is the Web3 key manager that's got your back.
+
+## Features
 
 <div class="grid cards" markdown>
 
