@@ -1,5 +1,5 @@
 ---
-title: Automated Burner Wallets App
+title: Web3 Key Manager App
 ---
 
 <h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
@@ -10,6 +10,8 @@ title: Automated Burner Wallets App
 </figure>
 
 ## Features
+
+SealVault is the Web3 key manager that's got your back.
 
 <div class="grid cards" markdown>
 

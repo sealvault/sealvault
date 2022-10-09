@@ -8,6 +8,8 @@
 
 ## Features
 
+SealVault is the Web3 key manager that's got your back.
+
 ### Automated burner wallets :fire:  
 
 When you add a dapp to your account, a new key is generated just for this dapp.
