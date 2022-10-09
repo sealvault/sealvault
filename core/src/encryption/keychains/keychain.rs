@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use std::fmt::Debug;
+use rand::Rng;
 
 #[cfg(not(target_os = "ios"))]
 use crate::encryption::keychains::in_memory_keychain::InMemoryKeychain;
@@ -25,13 +26,18 @@ pub(super) trait KeychainImpl: Debug + Send + Sync {
 
     fn soft_delete(&self, name: &str) -> Result<(), Error>;
 
-    /// Put an item on the local keychain that is only available when the device is unlocked.
-    /// The item will NOT be synced.
+    /// Put an item on the local (not-synced) keychain that is only available when the device is
+    /// unlocked. The operation should return an error if a key by the same name already exists.
     fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error>;
 }
 
 pub(super) fn soft_delete_rename(name: &str) -> String {
-    format!("{}-DELETED-{}", name, unix_timestamp())
+    let mut rng = rand::thread_rng();
+
+    // Random suffix is needed for keys deleted in the same second (only an issue for tests).
+    // We don't use a uuid, because we want to have the timestamp in the name in case we have to
+    // recover later and timestamp + uuid might be too long for some keychains.
+    format!("{}-DELETED-{}-{}", name, unix_timestamp(), rng.gen::<u32>())
 }
 
 #[derive(Debug)]
@@ -62,7 +68,7 @@ impl Keychain {
     }
 
     /// Store a symmetric key on the local keychain encoded that is available when the device is
-    /// unlocked.
+    /// unlocked. The operation returns an error if a key by the same name already exists.
     pub fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
         self.keychain.put_local_unlocked(key)
     }
@@ -71,5 +77,23 @@ impl Keychain {
 impl Default for Keychain {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn error_on_duplicate_item() -> Result<()> {
+        let keychain = Keychain::new();
+        let name = "key-encryption-key";
+        let key_one = KeyEncryptionKey::random(name.into())?;
+        let key_two = KeyEncryptionKey::random(name.into())?;
+        keychain.put_local_unlocked(key_one)?;
+        let res = keychain.put_local_unlocked(key_two);
+        assert!(res.is_err());
+        Ok(())
     }
 }

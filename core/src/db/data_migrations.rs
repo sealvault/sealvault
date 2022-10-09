@@ -133,7 +133,7 @@ mod tests {
             MigrationV0::rollback(&keychain)?;
         }
         // This should succeed.
-        connection_pool.exclusive_transaction(|mut tx_conn| {
+        connection_pool.exclusive_transaction(|tx_conn| {
             // Data migration
             let mut tx_conn: DeferredTxConnection = tx_conn.into();
             MigrationV0::run(&mut tx_conn, &keychain)?;

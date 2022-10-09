@@ -57,10 +57,17 @@ impl KeychainImpl for InMemoryKeychain {
     }
 
     fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
+        use std::collections::hash_map::Entry;
         let mut d = self.data.write()?;
         let (name, key_material) = key.into_keychain();
-        d.insert(name, key_material);
-        Ok(())
+        if let Entry::Vacant(e) = d.entry(name) {
+            e.insert(key_material);
+            Ok(())
+        } else {
+            Err(Error::Fatal {
+                error: "A keychain item by this name already exists".into()
+            })
+        }
     }
 }
 
