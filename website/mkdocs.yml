@@ -4,7 +4,7 @@ site_name: SealVault
 docs_dir: src
 
 # Copyright for the website contents is CC 4.0
-copyright: <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2022. The website content is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+copyright: <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2022. "SealVault" is a registered trademark of SealVault Inc. The website content is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
 repo_url: https://github.com/sealvault/sealvault
 edit_uri: ""
