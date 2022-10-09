@@ -65,7 +65,7 @@ impl KeychainImpl for InMemoryKeychain {
             Ok(())
         } else {
             Err(Error::Fatal {
-                error: "A keychain item by this name already exists".into()
+                error: "A keychain item by this name already exists".into(),
             })
         }
     }

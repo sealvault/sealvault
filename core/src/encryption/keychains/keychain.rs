@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use std::fmt::Debug;
+
 use rand::Rng;
 
 #[cfg(not(target_os = "ios"))]
@@ -82,8 +83,9 @@ impl Default for Keychain {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn error_on_duplicate_item() -> Result<()> {
