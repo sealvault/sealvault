@@ -50,8 +50,30 @@ struct BrowserView: View {
     @ObservedObject var browserModel = BrowserModel()
 
     var body: some View {
+        BrowserViewInner(core: viewModel.core, browserModel: browserModel)
+        .sheet(item: $browserModel.dappApprovalRequest) { request in
+            DappApproval(request: request)
+                .presentationDetents([.medium])
+                .background(.ultraThinMaterial)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(browserModel.navTitle)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                AccountImageCircle(account: viewModel.activeAccount)
+            }
+        }
+
+    }
+}
+
+struct BrowserViewInner: View {
+    let core: AppCoreProtocol
+    @ObservedObject var browserModel: BrowserModel
+
+    var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: viewModel.core, stateModel: browserModel)
+            WebViewRepresentable(core: core, stateModel: browserModel)
 
             if !browserModel.navHidden || (browserModel.requestStatus != nil) {
                 HStack {
@@ -95,19 +117,6 @@ struct BrowserView: View {
 //                .background(Color(UIColor.quaternarySystemFill))
             }
         }
-        .sheet(item: $browserModel.dappApprovalRequest) { request in
-            DappApproval(request: request)
-                .presentationDetents([.medium])
-                .background(.ultraThinMaterial)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(browserModel.navTitle)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: viewModel.activeAccount)
-            }
-        }
-
     }
 }
 
