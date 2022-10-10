@@ -56,7 +56,6 @@ struct DappApprovalRequest: DappApprovalRequestI {
 struct DappApproval: View {
     @EnvironmentObject private var viewModel: GlobalModel
     @Environment(\.dismiss) var dismiss
-    @Environment(\.isPresented) private var isPresented
 
     @State var request: any DappApprovalRequestI
 

@@ -166,7 +166,6 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandler {
             guard let messageBody = message.body as? String else {
                 return
             }
-
             self.serialQueue.async { [weak self] in
                 do {
                     try self?.core.inPageRequest(context: context, rawRequest: messageBody)
@@ -231,7 +230,7 @@ class CoreInPageCallback: CoreInPageCallbackI {
     func requestDappApproval(dappApproval: DappApprovalParams) {
         DispatchQueue.main.async {
             let request = DappApprovalRequest(context: self.context, params: dappApproval)
-            self.context.stateModel.dappApprovalRequest = request
+            self.context.stateModel.setDappApproval(request)
         }
     }
 

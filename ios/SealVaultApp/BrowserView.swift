@@ -15,6 +15,7 @@ class BrowserModel: ObservableObject {
     @Published var goForward: Bool = false
     @Published var navHidden: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
+    @Published var dappApprovalPresented = false
 
     var url: URL? {
         URL(string: addressBarText.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
@@ -42,6 +43,17 @@ class BrowserModel: ObservableObject {
             return nil
         }
     }
+
+    func setDappApproval(_ request: DappApprovalRequest?) {
+        if let req = request {
+            self.dappApprovalRequest = request
+            self.dappApprovalPresented = true
+        } else {
+            self.dappApprovalRequest = nil
+            self.dappApprovalPresented = false
+
+        }
+    }
 }
 
 struct BrowserView: View {
@@ -50,8 +62,8 @@ struct BrowserView: View {
 
     var body: some View {
         BrowserViewInner(core: viewModel.core, browserModel: browserModel)
-        .sheet(item: $browserModel.dappApprovalRequest) { request in
-            DappApproval(request: request)
+        .sheet(isPresented: $browserModel.dappApprovalPresented) {
+            DappApproval(request: browserModel.dappApprovalRequest!)
                 .presentationDetents([.medium])
                 .background(.ultraThinMaterial)
         }
