@@ -3,6 +3,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use ethers::types::{Address, U256};
+#[cfg(not(test))]
+use jsonrpsee::core::client::CertificateStore;
 // Behind flag otherwise `cargo fix` removes it
 #[cfg(not(test))]
 use jsonrpsee::http_client::HttpClientBuilder;
@@ -103,6 +105,7 @@ pub struct AnkrRpc {
 impl AnkrRpc {
     pub fn new() -> Result<Self, Error> {
         let client = HttpClientBuilder::default()
+            .certificate_store(CertificateStore::WebPki)
             .build(ANKR_API)
             .map_err(|err| Error::Fatal {
                 error: err.to_string(),
