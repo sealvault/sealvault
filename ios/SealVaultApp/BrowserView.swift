@@ -46,8 +46,7 @@ class BrowserModel: ObservableObject {
 
 struct BrowserView: View {
     @EnvironmentObject private var viewModel: GlobalModel
-
-    @ObservedObject var browserModel = BrowserModel()
+    @StateObject var browserModel = BrowserModel()
 
     var body: some View {
         BrowserViewInner(core: viewModel.core, browserModel: browserModel)
