@@ -17,7 +17,7 @@ class BrowserModel: ObservableObject {
     @Published var dappApprovalRequest: DappApprovalRequest?
 
     var url: URL? {
-        URL(string: addressBarText)
+        URL(string: addressBarText.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
     }
 
     var navTitle: String {
