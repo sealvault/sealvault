@@ -284,11 +284,8 @@ class CoreInPageCallback: CoreInPageCallbackI {
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
     public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            that.stateModel.requestStatus = "Loading page..."
-            that.stateModel.loading = true
-        }
+        self.stateModel.requestStatus = "Loading page..."
+        self.stateModel.loading = true
     }
 
     public func webView(
@@ -296,40 +293,33 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         didFailProvisionalNavigation _: WKNavigation!,
         withError error: Error
     ) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            // Blocked http navigation, upgrade to https
-            if error._domain == "NSURLErrorDomain", error._code == -1022 {
-                if let info = error._userInfo as? [String: Any] {
-                    if let url = info["NSErrorFailingURLKey"] as? URL {
-                        let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
-                        components.scheme = "https"
-                        that.stateModel.addressBarText = components.url!.absoluteString
-                        that.stateModel.urlChanged = true
-                    }
+        // Blocked http navigation, upgrade to https
+        if error._domain == "NSURLErrorDomain", error._code == -1022 {
+            if let info = error._userInfo as? [String: Any] {
+                if let url = info["NSErrorFailingURLKey"] as? URL {
+                    let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
+                    components.scheme = "https"
+                    self.stateModel.addressBarText = components.url!.absoluteString
+                    self.stateModel.urlChanged = true
                 }
-            } else {
-                print("didFailProvisionalNavigation: \(error)")
-                that.stateModel.requestStatus = "Failed to load page"
-                that.stateModel.loading = false
-                that.stateModel.canGoBack = webView.canGoBack
-                that.stateModel.canGoForward = webView.canGoForward
             }
+        } else {
+            print("didFailProvisionalNavigation: \(error)")
+            self.stateModel.requestStatus = "Failed to load page"
+            self.stateModel.loading = false
+            self.stateModel.canGoBack = webView.canGoBack
+            self.stateModel.canGoForward = webView.canGoForward
         }
     }
 
     public func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            that.stateModel.loading = false
-            that.stateModel.canGoBack = webView.canGoBack
-            that.stateModel.canGoForward = webView.canGoForward
-            if let url = webView.url {
-                that.stateModel.addressBarText = url.absoluteString
-            }
-            that.stateModel.requestStatus = nil
+        self.stateModel.loading = false
+        self.stateModel.canGoBack = webView.canGoBack
+        self.stateModel.canGoForward = webView.canGoForward
+        if let url = webView.url {
+            self.stateModel.addressBarText = url.absoluteString
         }
-
+        self.stateModel.requestStatus = nil
     }
 
     public func webView(
@@ -337,15 +327,11 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         didFail _: WKNavigation!,
         withError error: Error
     ) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-
-            print("didFail: \(error)")
-            that.stateModel.requestStatus = "Failed to load page"
-            that.stateModel.loading = false
-            that.stateModel.canGoBack = webView.canGoBack
-            that.stateModel.canGoForward = webView.canGoForward
-        }
+        print("didFail: \(error)")
+        self.stateModel.requestStatus = "Failed to load page"
+        self.stateModel.loading = false
+        self.stateModel.canGoBack = webView.canGoBack
+        self.stateModel.canGoForward = webView.canGoForward
     }
 }
 
