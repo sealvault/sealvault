@@ -62,36 +62,49 @@ impl InPageProvider {
         rt::spawn(self.in_page_request_async(raw_request))
     }
 
+    /// Response to a `CoreInPageCallbackI.request_dapp_approval`
+    pub(super) fn user_approved_dapp(
+        self,
+        dapp_approval: DappApprovalParams,
+    ) -> tokio::task::JoinHandle<Result<(), Error>> {
+        rt::spawn(self.handle_user_approved_dapp(dapp_approval))
+    }
+
+    /// Respond to a `CoreInPageCallbackI.request_dapp_approval`
+    pub(super) fn user_rejected_dapp(
+        self,
+        dapp_approval: DappApprovalParams,
+    ) -> tokio::task::JoinHandle<Result<(), Error>> {
+        rt::spawn(self.handle_user_rejected_dapp(dapp_approval))
+    }
+
     async fn in_page_request_async(self, raw_request: String) -> Result<(), Error> {
-        let response = self.raw_json_rpc_request(raw_request).await?;
-        // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
-        // See the security model in the developer docs for more.
-        let hex_response = hex::encode(response.result.as_bytes());
-        let callbacks = self.request_context.callbacks();
-        callbacks.respond(hex_response);
+        match self.raw_json_rpc_request(raw_request).await? {
+            None => {
+                // We're waiting for a dapp approval callback from the UI, so no response.
+            }
+            Some(response) => self.respond_to_request(response).await?,
+        }
         Ok(())
     }
 
     async fn raw_json_rpc_request(
         &self,
         raw_request: String,
-    ) -> Result<MethodResponse, Error> {
-        if raw_request.as_bytes().len() > config::MAX_JSONRPC_REQUEST_SIZE_BYTES {
-            return Err(invalid_raw_request());
-        }
-        let req: Request =
-            serde_json::from_str(&raw_request).map_err(|_| invalid_raw_request())?;
+    ) -> Result<Option<MethodResponse>, Error> {
+        let req = parse_request(&raw_request)?;
         match self.dispatch(&req).await {
-            Ok(result) => Ok(MethodResponse::response(
+            Ok(None) => Ok(None),
+            Ok(Some(result)) => Ok(Some(MethodResponse::response(
                 req.id,
                 result,
                 config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
-            )),
+            ))),
             Err(Error::JsonRpc { code, message }) => {
                 // We need to select a data type even though data is none, <String>
                 let data: Option<String> = None;
                 let error_object = ErrorObject::owned(code.code(), message, data);
-                Ok(MethodResponse::error(req.id, error_object))
+                Ok(Some(MethodResponse::error(req.id, error_object)))
             }
             Err(error) => Err(error),
         }
@@ -101,16 +114,26 @@ impl InPageProvider {
     async fn dispatch<'a>(
         &self,
         request: &'a Request<'a>,
-    ) -> Result<serde_json::Value, Error> {
+    ) -> Result<Option<serde_json::Value>, Error> {
         let maybe_session = self.fetch_session_for_approved_dapp().await?;
         match &*request.method {
             // These methods request the user approval if the user hasn't added the dapp yet
             // in the account.
-            "eth_requestAccounts" | "eth_accounts" => {
-                self.eth_request_accounts(maybe_session).await
-            }
+            "eth_requestAccounts" | "eth_accounts" => match maybe_session {
+                Some(session) => {
+                    let accounts = self.eth_request_accounts(session).await?;
+                    Ok(Some(accounts))
+                }
+                None => {
+                    self.request_add_new_dapp(request).await?;
+                    Ok(None)
+                }
+            },
             _ => match maybe_session {
-                Some(session) => self.dispatch_authorized_methods(request, session).await,
+                Some(session) => {
+                    let res = self.dispatch_authorized_methods(request, session).await?;
+                    Ok(Some(res))
+                }
                 None => {
                     let err: Error = InPageErrorCode::Unauthorized.into();
                     Err(err)
@@ -141,6 +164,18 @@ impl InPageProvider {
             "web3_sha3" => self.web3_sha3(request.params).await,
             method => self.proxy_method(method, request.params, session).await,
         }
+    }
+
+    async fn respond_to_request(&self, response: MethodResponse) -> Result<(), Error> {
+        let callbacks = self.request_context.callbacks();
+        rt::spawn_blocking(move || {
+            // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
+            // See the security model in the developer docs for more.
+            let hex_response = hex::encode(response.result.as_bytes());
+            callbacks.respond(hex_response);
+            Ok(())
+        })
+        .await?
     }
 
     /// Notify the in-page JS about an event in the background.
@@ -238,23 +273,8 @@ impl InPageProvider {
 
     async fn eth_request_accounts(
         &self,
-        maybe_session: Option<m::LocalDappSession>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let session = match maybe_session {
-            // User has approved the dapp before in this account.
-            Some(session) => Ok(session),
-            // Request permission from user to add the dapp to the account.
-            None => match self.request_add_new_dapp().await? {
-                // User approved, return the newly created address.
-                Some(session) => Ok(session),
-                // User declined, return JSON-RPC error.
-                None => {
-                    let err: Error = InPageErrorCode::UserRejected.into();
-                    Err(err)
-                }
-            },
-        }?;
-
         let session = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
@@ -270,77 +290,66 @@ impl InPageProvider {
         Ok(result)
     }
 
-    async fn fetch_session_for_approved_dapp(
+    async fn request_add_new_dapp<'a>(
         &self,
-    ) -> Result<Option<m::LocalDappSession>, Error> {
-        let url = self.url.clone();
+        request: &'a Request<'a>,
+    ) -> Result<(), Error> {
         let resources = self.resources.clone();
-        self.connection_pool()
-            .deferred_transaction_async(move |mut tx_conn| {
-                let account_id =
-                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
-                let maybe_dapp_id = m::Dapp::fetch_id_for_account(
-                    tx_conn.as_mut(),
-                    url,
-                    &resources.public_suffix_list,
-                    &account_id,
-                )?;
-                // If the dapp has been added to the account, return an existing session or create one.
-                // It can happen that the dapp has been added, but no local session exists if the dapp
-                // was added on an other device.
-                let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
-                    Some(dapp_id) => {
-                        let params = m::DappSessionParams::builder()
-                            .dapp_id(&dapp_id)
-                            .account_id(&account_id)
-                            .build();
-                        let session =
-                            m::LocalDappSession::create_eth_session_if_not_exists(
-                                &mut tx_conn,
-                                &params,
-                            )?;
-                        Some(session)
-                    }
-                    None => None,
-                };
-                Ok(maybe_session)
-            })
-            .await
-    }
+        let account_id = rt::spawn_blocking(move || {
+            let mut conn = resources.connection_pool.connection()?;
+            m::LocalSettings::fetch_active_account_id(&mut conn)
+        })
+        .await??;
 
-    /// Add a new dapp to the account requesting the user's approval and return the new 1DK address
-    /// if the user approved it.
-    async fn request_add_new_dapp(&self) -> Result<Option<m::LocalDappSession>, Error> {
         let url = self.url.clone();
-        let resources = self.resources.clone();
         let callbacks = self.request_context.callbacks();
         let favicon = self.fetch_favicon().await?;
-        let result: Result<(bool, DappApprovalParams), Error> =
-            rt::spawn_blocking(move || {
-                // Drop connection once we fetched account id.
-                let account_id = {
-                    let mut conn = resources.connection_pool.connection()?;
-                    m::LocalSettings::fetch_active_account_id(&mut conn)
-                }?;
-                let dapp_identifier =
-                    m::Dapp::dapp_identifier(url, &resources.public_suffix_list)?;
-                let dapp_approval = DappApprovalParams::builder()
-                    .account_id(account_id)
-                    .dapp_identifier(dapp_identifier)
-                    .favicon(favicon)
-                    .build();
-                // TODO there should be a timeout here, but the blocking task is not cancellable
-                let user_approved = callbacks.approve_dapp(dapp_approval.clone());
-                Ok((user_approved, dapp_approval))
-            })
-            .await?;
-        let (user_approved, dapp_approval) = result?;
-        if user_approved {
-            let session = self.add_new_dapp(dapp_approval).await?;
-            Ok(Some(session))
-        } else {
-            Ok(None)
-        }
+        let dapp_identifier =
+            m::Dapp::dapp_identifier(url, &self.resources.public_suffix_list)?;
+        let raw_request =
+            serde_json::to_string(request).map_err(|_| Error::Retriable {
+                error: format!("Failed to serialize request id {:?}", request.id),
+            })?;
+        let dapp_approval = DappApprovalParams::builder()
+            .account_id(account_id)
+            .dapp_identifier(dapp_identifier)
+            .favicon(favicon)
+            .json_rpc_request(raw_request)
+            .build();
+
+        rt::spawn_blocking(move || {
+            callbacks.request_dapp_approval(dapp_approval);
+        })
+        .await?;
+
+        Ok(())
+    }
+
+    async fn handle_user_approved_dapp(
+        self,
+        dapp_approval: DappApprovalParams,
+    ) -> Result<(), Error> {
+        let request = parse_request(&dapp_approval.json_rpc_request)?;
+        let session = self.add_new_dapp(dapp_approval.clone()).await?;
+        let accounts = self.eth_request_accounts(session).await?;
+        let response = MethodResponse::response(
+            request.id,
+            accounts,
+            config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
+        );
+        self.respond_to_request(response).await?;
+        Ok(())
+    }
+
+    async fn handle_user_rejected_dapp(
+        self,
+        dapp_approval: DappApprovalParams,
+    ) -> Result<(), Error> {
+        let request = parse_request(&dapp_approval.json_rpc_request)?;
+        let err: ErrorObject = InPageErrorCode::UserRejected.into();
+        let response = MethodResponse::error(request.id, err);
+        self.respond_to_request(response).await?;
+        Ok(())
     }
 
     /// Add a new dapp to the account and return the dapp's deterministic id.
@@ -378,10 +387,10 @@ impl InPageProvider {
             })
             .await?;
 
+        // Transfer default dapp allotment to new dapp address from account wallet.
         self.transfer_default_dapp_allotment(session.clone())
             .await?;
 
-        // Transfer default dapp allotment to new dapp address from account wallet.
         Ok(session)
     }
 
@@ -449,6 +458,44 @@ impl InPageProvider {
                 Ok(())
             }
         }
+    }
+
+    async fn fetch_session_for_approved_dapp(
+        &self,
+    ) -> Result<Option<m::LocalDappSession>, Error> {
+        let url = self.url.clone();
+        let resources = self.resources.clone();
+        self.connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| {
+                let account_id =
+                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
+                let maybe_dapp_id = m::Dapp::fetch_id_for_account(
+                    tx_conn.as_mut(),
+                    url,
+                    &resources.public_suffix_list,
+                    &account_id,
+                )?;
+                // If the dapp has been added to the account, return an existing session or create one.
+                // It can happen that the dapp has been added, but no local session exists if the dapp
+                // was added on an other device.
+                let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
+                    Some(dapp_id) => {
+                        let params = m::DappSessionParams::builder()
+                            .dapp_id(&dapp_id)
+                            .account_id(&account_id)
+                            .build();
+                        let session =
+                            m::LocalDappSession::create_eth_session_if_not_exists(
+                                &mut tx_conn,
+                                &params,
+                            )?;
+                        Some(session)
+                    }
+                    None => None,
+                };
+                Ok(maybe_session)
+            })
+            .await
     }
 
     async fn eth_send_transaction(
@@ -625,13 +672,16 @@ pub struct DappApprovalParams {
     /// The dapps favicon
     #[builder(setter(into))]
     pub favicon: Option<Vec<u8>>,
+    /// The JSON-RPC request that requested adding this dapp.
+    #[builder(setter(into))]
+    pub json_rpc_request: String,
 }
 
 pub trait CoreInPageCallbackI: Send + Sync + Debug {
     /// Request a dapp approval from the user through the UI.
     /// After the user has approved the dapp for the first time, it'll be allowed to connect and
     /// execute transactions automatically.
-    fn approve_dapp(&self, dapp_approval: DappApprovalParams) -> bool;
+    fn request_dapp_approval(&self, dapp_approval: DappApprovalParams);
 
     /// Respond to an in-page provider request.
     fn respond(&self, response_hex: String);
@@ -687,6 +737,15 @@ struct AddEthereumChainParameter {
 #[serde(rename_all = "camelCase")]
 struct SwitchEthereumChainParameter {
     chain_id: String, // A 0x-prefixed hexadecimal string
+}
+
+fn parse_request(raw_request: &str) -> Result<Request, Error> {
+    if raw_request.as_bytes().len() > config::MAX_JSONRPC_REQUEST_SIZE_BYTES {
+        return Err(invalid_raw_request());
+    }
+    let req: Request =
+        serde_json::from_str(raw_request).map_err(|_| invalid_raw_request())?;
+    Ok(req)
 }
 
 fn strip_0x_hex_prefix(s: &str) -> Result<&str, Error> {
@@ -897,7 +956,6 @@ mod tests {
     use super::*;
     use crate::{app_core::tests::TmpCore, utils::new_uuid};
 
-    const TEST_URL: &str = "https://example.com";
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
     const ETH_CHAIN_ID: &str = "eth_chainId";
 
@@ -914,8 +972,9 @@ mod tests {
     }
 
     fn authorize_dapp(core: &TmpCore) -> Result<()> {
-        let provider = core.in_page_provider(TEST_URL, true);
+        let provider = core.in_page_provider(true);
         provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        core.wait_for_first_response();
         Ok(())
     }
 
@@ -936,19 +995,16 @@ mod tests {
     fn disallows_un_approved() -> Result<()> {
         let core = TmpCore::new()?;
 
-        let provider = core.in_page_provider(TEST_URL, false);
-        provider.call_no_arg(ETH_CHAIN_ID)?;
-
-        let provider = core.in_page_provider(TEST_URL, false);
+        let provider = core.in_page_provider(false);
         provider.call_no_arg(ETH_CHAIN_ID)?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_none());
-        assert_eq!(responses.len(), 2);
+        assert_eq!(responses.len(), 1);
         assert_eq!(core.notifications().len(), 0);
 
         let unauthorized = InPageErrorCode::Unauthorized.to_i32().to_string();
-        assert!(responses[1].contains(&unauthorized));
+        assert!(responses[0].contains(&unauthorized));
 
         Ok(())
     }
@@ -960,7 +1016,7 @@ mod tests {
         authorize_dapp(&core)?;
 
         // This request should be refused as it's an unsupported method
-        let provider = core.in_page_provider(TEST_URL, true);
+        let provider = core.in_page_provider(true);
         provider.call_no_arg("eth_coinbase")?;
 
         let responses = core.responses();
@@ -979,7 +1035,7 @@ mod tests {
 
         authorize_dapp(&core)?;
 
-        let provider = core.in_page_provider(TEST_URL, true);
+        let provider = core.in_page_provider(true);
         provider.call_no_arg("eth_gasPrice")?;
 
         let responses = core.responses();

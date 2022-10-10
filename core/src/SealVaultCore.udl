@@ -29,6 +29,12 @@ interface AppCore {
     void in_page_request(InPageRequestContextI context, string raw_request);
 
     [Throws=CoreError]
+    void user_approved_dapp(InPageRequestContextI context, DappApprovalParams params);
+
+    [Throws=CoreError]
+    void user_rejected_dapp(InPageRequestContextI context, DappApprovalParams params);
+
+    [Throws=CoreError]
     string eth_transfer_native_token(string from_address_id, string to_checksum_address, string amount);
 
     [Throws=CoreError]
@@ -101,10 +107,11 @@ dictionary DappApprovalParams {
     string account_id;
     string dapp_identifier;
     sequence<u8>? favicon;
+    string json_rpc_request;
 };
 
 callback interface CoreInPageCallbackI {
-    boolean approve_dapp(DappApprovalParams dapp_approval);
+    void request_dapp_approval(DappApprovalParams dapp_approval);
     void respond(string response_hex);
     void notify(string message_hex);
 };

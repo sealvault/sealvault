@@ -15,9 +15,10 @@ class BrowserModel: ObservableObject {
     @Published var goForward: Bool = false
     @Published var navHidden: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
+    @Published var dappApprovalPresented = false
 
     var url: URL? {
-        URL(string: addressBarText)
+        URL(string: addressBarText.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
     }
 
     var navTitle: String {
@@ -42,16 +43,48 @@ class BrowserModel: ObservableObject {
             return nil
         }
     }
+
+    func setDappApproval(_ request: DappApprovalRequest?) {
+        if let req = request {
+            self.dappApprovalRequest = request
+            self.dappApprovalPresented = true
+        } else {
+            self.dappApprovalRequest = nil
+            self.dappApprovalPresented = false
+
+        }
+    }
 }
 
 struct BrowserView: View {
     @EnvironmentObject private var viewModel: GlobalModel
+    @StateObject var browserModel = BrowserModel()
 
-    @ObservedObject var browserModel = BrowserModel()
+    var body: some View {
+        BrowserViewInner(core: viewModel.core, browserModel: browserModel)
+        .sheet(isPresented: $browserModel.dappApprovalPresented) {
+            DappApproval(request: browserModel.dappApprovalRequest!)
+                .presentationDetents([.medium])
+                .background(.ultraThinMaterial)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(browserModel.navTitle)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                AccountImageCircle(account: viewModel.activeAccount)
+            }
+        }
+
+    }
+}
+
+struct BrowserViewInner: View {
+    let core: AppCoreProtocol
+    @ObservedObject var browserModel: BrowserModel
 
     var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: viewModel.core, stateModel: browserModel)
+            WebViewRepresentable(core: core, stateModel: browserModel)
 
             if !browserModel.navHidden || (browserModel.requestStatus != nil) {
                 HStack {
@@ -95,19 +128,6 @@ struct BrowserView: View {
 //                .background(Color(UIColor.quaternarySystemFill))
             }
         }
-        .sheet(item: $browserModel.dappApprovalRequest) { request in
-            DappApproval(request: request)
-                .presentationDetents([.medium])
-                .background(.ultraThinMaterial)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(browserModel.navTitle)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: viewModel.activeAccount)
-            }
-        }
-
     }
 }
 

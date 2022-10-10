@@ -158,13 +158,14 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandler {
             return
         }
         if message.name == handlerName {
-            guard let context = InPageRequestContext.build(stateModel, message, rpcProviderName: rpcProviderName) else {
+            guard let context = InPageRequestContext.build(
+                core, stateModel, message, rpcProviderName: rpcProviderName
+            ) else {
                 return
             }
             guard let messageBody = message.body as? String else {
                 return
             }
-
             self.serialQueue.async { [weak self] in
                 do {
                     try self?.core.inPageRequest(context: context, rawRequest: messageBody)
@@ -180,12 +181,16 @@ final class WebViewScriptHandler: NSObject, WKScriptMessageHandler {
 }
 
 class InPageRequestContext: InPageRequestContextI {
+    var core: AppCoreProtocol
     var stateModel: BrowserModel
     var message: WKScriptMessage
     var webViewUrl: URL
     var rpcProviderName: String
 
-    init(_ stateModel: BrowserModel, _ message: WKScriptMessage, _ webViewUrl: URL, rpcProviderName: String) {
+    init(_ core: AppCoreProtocol, _ stateModel: BrowserModel, _ message: WKScriptMessage,
+         _ webViewUrl: URL, rpcProviderName: String
+    ) {
+        self.core = core
         self.stateModel = stateModel
         self.message = message
         self.webViewUrl = webViewUrl
@@ -193,7 +198,7 @@ class InPageRequestContext: InPageRequestContextI {
     }
 
     static func build(
-        _ stateModel: BrowserModel, _ message: WKScriptMessage, rpcProviderName: String
+        _ core: AppCoreProtocol, _ stateModel: BrowserModel, _ message: WKScriptMessage, rpcProviderName: String
     ) -> InPageRequestContext? {
         guard let webView = message.webView else {
             return nil
@@ -201,7 +206,7 @@ class InPageRequestContext: InPageRequestContextI {
         guard let url = webView.url else {
             return nil
         }
-        return InPageRequestContext(stateModel, message, url, rpcProviderName: rpcProviderName)
+        return InPageRequestContext(core, stateModel, message, url, rpcProviderName: rpcProviderName)
     }
 
     func pageUrl() -> String {
@@ -209,74 +214,47 @@ class InPageRequestContext: InPageRequestContextI {
     }
 
     func callbacks() -> CoreInPageCallbackI {
-        CoreInPageCallback(stateModel, message, rpcProviderName: rpcProviderName)
+        CoreInPageCallback(self)
     }
 }
 
 // TODO should check that it responds to the same dapp from where the message originated
 // The callbacks are dispatched on a background thread from `userContentController`
 class CoreInPageCallback: CoreInPageCallbackI {
-    var stateModel: BrowserModel
-    var message: WKScriptMessage
-    var rpcProviderName: String
+    var context: InPageRequestContext
 
-    init(_ stateModel: BrowserModel, _ message: WKScriptMessage, rpcProviderName: String) {
-        self.stateModel = stateModel
-        self.message = message
-        self.rpcProviderName = rpcProviderName
+    init(_ context: InPageRequestContext) {
+        self.context = context
     }
 
-    func approveDapp(dappApproval: DappApprovalParams) -> Bool {
-        var approved = false
-        let semaphore = DispatchSemaphore(value: 0)
-
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else {
-                return
-            }
-            let request = DappApprovalRequest(
-                accountId: dappApproval.accountId,
-                dappHumanIdentifier: dappApproval.dappIdentifier,
-                dappFavicon: dappApproval.favicon,
-                // These callbacks are called on the UI thread
-                approve: {
-                    approved = true
-                    semaphore.signal()
-                },
-                dismiss: {
-                    semaphore.signal()
-                }
-            )
-            that.stateModel.dappApprovalRequest = request
+    func requestDappApproval(dappApproval: DappApprovalParams) {
+        DispatchQueue.main.async {
+            let request = DappApprovalRequest(context: self.context, params: dappApproval)
+            self.context.stateModel.setDappApproval(request)
         }
-
-        // TODO should we add timeout? We'd have to be able to dismiss the modal though
-        // if it times out which we can't as is
-        semaphore.wait()
-        return approved
     }
 
     func respond(responseHex: String) {
         DispatchQueue.main.async {
             // Must capture self to prevent the callback object from being GCed before this has a chance to run
-            guard let webView = self.message.webView else {
+            guard let webView = self.context.message.webView else {
                 print("Returning early from notify: webview has been GCed")
                 return
             }
 
-            webView.evaluateJavaScript("window.\(self.rpcProviderName).respond('\(responseHex)')")
+            webView.evaluateJavaScript("window.\(self.context.rpcProviderName).respond('\(responseHex)')")
         }
     }
 
     func notify(messageHex: String) {
         DispatchQueue.main.async {
             // Must capture self to prevent the callback object from being GCed before this has a chance to run
-            guard let webView = self.message.webView else {
+            guard let webView = self.context.message.webView else {
                 print("Returning early from notify: webview has been GCed")
                 return
             }
 
-            webView.evaluateJavaScript("window.\(self.rpcProviderName).notify('\(messageHex)')")
+            webView.evaluateJavaScript("window.\(self.context.rpcProviderName).notify('\(messageHex)')")
         }
     }
 }
@@ -284,11 +262,8 @@ class CoreInPageCallback: CoreInPageCallbackI {
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
     public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            that.stateModel.requestStatus = "Loading page..."
-            that.stateModel.loading = true
-        }
+        self.stateModel.requestStatus = "Loading page..."
+        self.stateModel.loading = true
     }
 
     public func webView(
@@ -296,40 +271,33 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         didFailProvisionalNavigation _: WKNavigation!,
         withError error: Error
     ) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            // Blocked http navigation, upgrade to https
-            if error._domain == "NSURLErrorDomain", error._code == -1022 {
-                if let info = error._userInfo as? [String: Any] {
-                    if let url = info["NSErrorFailingURLKey"] as? URL {
-                        let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
-                        components.scheme = "https"
-                        that.stateModel.addressBarText = components.url!.absoluteString
-                        that.stateModel.urlChanged = true
-                    }
+        // Blocked http navigation, upgrade to https
+        if error._domain == "NSURLErrorDomain", error._code == -1022 {
+            if let info = error._userInfo as? [String: Any] {
+                if let url = info["NSErrorFailingURLKey"] as? URL {
+                    let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
+                    components.scheme = "https"
+                    self.stateModel.addressBarText = components.url!.absoluteString
+                    self.stateModel.urlChanged = true
                 }
-            } else {
-                print("didFailProvisionalNavigation: \(error)")
-                that.stateModel.requestStatus = "Failed to load page"
-                that.stateModel.loading = false
-                that.stateModel.canGoBack = webView.canGoBack
-                that.stateModel.canGoForward = webView.canGoForward
             }
+        } else {
+            print("didFailProvisionalNavigation: \(error)")
+            self.stateModel.requestStatus = "Failed to load page"
+            self.stateModel.loading = false
+            self.stateModel.canGoBack = webView.canGoBack
+            self.stateModel.canGoForward = webView.canGoForward
         }
     }
 
     public func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-            that.stateModel.loading = false
-            that.stateModel.canGoBack = webView.canGoBack
-            that.stateModel.canGoForward = webView.canGoForward
-            if let url = webView.url {
-                that.stateModel.addressBarText = url.absoluteString
-            }
-            that.stateModel.requestStatus = nil
+        self.stateModel.loading = false
+        self.stateModel.canGoBack = webView.canGoBack
+        self.stateModel.canGoForward = webView.canGoForward
+        if let url = webView.url {
+            self.stateModel.addressBarText = url.absoluteString
         }
-
+        self.stateModel.requestStatus = nil
     }
 
     public func webView(
@@ -337,15 +305,11 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         didFail _: WKNavigation!,
         withError error: Error
     ) {
-        DispatchQueue.main.async { [weak self] in
-            guard let that = self else { return }
-
-            print("didFail: \(error)")
-            that.stateModel.requestStatus = "Failed to load page"
-            that.stateModel.loading = false
-            that.stateModel.canGoBack = webView.canGoBack
-            that.stateModel.canGoForward = webView.canGoForward
-        }
+        print("didFail: \(error)")
+        self.stateModel.requestStatus = "Failed to load page"
+        self.stateModel.loading = false
+        self.stateModel.canGoBack = webView.canGoBack
+        self.stateModel.canGoForward = webView.canGoForward
     }
 }
 
