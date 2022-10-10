@@ -13,6 +13,7 @@ struct TransferForm: View {
     @State private var amount = ""
     @State private var toExternal: String = ""
     @State private var toAddress: ToAddress = ToAddress.none
+    @FocusState private var amountFocused: Bool
 
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
@@ -65,13 +66,23 @@ struct TransferForm: View {
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
                         .keyboardType(.decimalPad)
+                        .focused($amountFocused)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") {
+                                    amountFocused = false
+                                }
+                            }
+                        }
                 }
             }
 
             TransferButton(
                 core: model.core, token: token, fromAddressId: fromAddress.id, toChecksumAddress: toChecksumAddress,
-                amount: amount
-            ).padding()
+                disabled: amountFocused, amount: amount
+            )
+            .padding()
 
             Spacer()
 
@@ -110,7 +121,8 @@ struct FromSection: View {
                 Text("From")
                 Spacer()
                 AddressMenu(address: fromAddress)
-            }.frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -150,7 +162,6 @@ struct ToSection: View {
     }
 
     var body: some View {
-
         GroupBox("To") {
             VStack {
                 switch toAddressType {
@@ -209,6 +220,7 @@ struct TransferButton: View {
     var token: Token
     var fromAddressId: String
     var toChecksumAddress: String?
+    var disabled: Bool
     var amount: String
     @State private var txExplorerUrl: URL?
 
@@ -258,13 +270,12 @@ struct TransferButton: View {
                 Text("Send")
                     .frame(maxWidth: .infinity)
             })
-            .disabled(toChecksumAddress == nil)
+            .disabled(disabled || toChecksumAddress == nil)
             .padding()
             .background(Color.accentColor)
             .border(Color.accentColor)
             .foregroundColor(Color.white)
             .cornerRadius(8)
-
         }
     }
 }
