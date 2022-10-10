@@ -6,10 +6,11 @@ title: Web3 Key Manager App
 
 <figure markdown>
 ![SealVault Logo](./assets/images/logo-with-text.png)
-<figcaption>Experiment freely with Web3</figcaption>
+<figcaption></figcaption>
 </figure>
 
-SealVault is the Web3 key manager that's got your back.
+!!! tip "Experiment freely with Web3"
+    SealVault is the key manager that's got your back.
 
 ## Features
 
