@@ -165,10 +165,9 @@ impl CoreInPageCallbackMock {
 }
 
 impl CoreInPageCallbackI for CoreInPageCallbackMock {
-    fn approve_dapp(&self, _: DappApprovalParams) -> bool {
+    fn request_dapp_approval(&self, _: DappApprovalParams) {
         // Don't slow down tests noticeably, but simulate blocking.
         std::thread::sleep(std::time::Duration::from_millis(1));
-        true
     }
 
     fn respond(&self, response_hex: String) {
