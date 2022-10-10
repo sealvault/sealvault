@@ -2,9 +2,11 @@
 
 <div align="center">
   <img src="./website/src/assets/images/logo-with-text.png" alt="SealVault Logo">
-  
-  <p><i>Experiment freely with Web3</i></p>
 </div>
+
+> Experiment freely with Web3. 
+> 
+> SealVault is the Web3 key manager that's got your back.
 
 ## Features
 

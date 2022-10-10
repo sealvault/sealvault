@@ -56,9 +56,11 @@ struct AccountView: View {
     }
 }
 
+#if DEBUG
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         return AccountView(account: model.activeAccount)
     }
 }
+#endif

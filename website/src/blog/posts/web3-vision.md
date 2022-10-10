@@ -249,7 +249,7 @@ the [forum.](https://forum.sealvault.org/t/web3-vision-discussion/) We'd love to
 hear from you!
 
 <figure markdown>
-![SealVault Logo](../../assets/images/logo.png){ loading=lazy }
+[![SealVault Logo](../../assets/images/logo.png){ loading=lazy }](/)
 </figure>
 
 [^10]: 

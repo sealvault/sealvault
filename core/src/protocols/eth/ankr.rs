@@ -2,20 +2,26 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::protocols::eth::token::FungibleTokenBalance;
-use crate::protocols::eth::ChainId;
-use crate::protocols::TokenType;
-use crate::Error;
 use ethers::types::{Address, U256};
-use jsonrpsee::core::{async_trait, RpcResult};
-use jsonrpsee::http_client::HttpClient;
 // Behind flag otherwise `cargo fix` removes it
 #[cfg(not(test))]
 use jsonrpsee::http_client::HttpClientBuilder;
-use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::types::error::ErrorCode;
+use jsonrpsee::{
+    core::{async_trait, RpcResult},
+    http_client::HttpClient,
+    proc_macros::rpc,
+    types::error::ErrorCode,
+};
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+use crate::{
+    protocols::{
+        eth::{token::FungibleTokenBalance, ChainId},
+        TokenType,
+    },
+    Error,
+};
 
 // Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
 #[cfg(not(test))]
@@ -256,16 +262,21 @@ pub use tests::AnkrRpc;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::{net::SocketAddr, time::Instant};
 
-    use crate::async_runtime as rt;
-    use jsonrpsee::core::logger::{Body, HttpLogger, MethodKind, Params, Request};
-    use jsonrpsee::core::{async_trait, RpcResult};
-    use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
-    use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
+    use jsonrpsee::{
+        core::{
+            async_trait,
+            logger::{Body, HttpLogger, MethodKind, Params, Request},
+            RpcResult,
+        },
+        http_client::{HttpClient, HttpClientBuilder},
+        http_server::{HttpServerBuilder, HttpServerHandle},
+    };
     use serde_json::json;
-    use std::net::SocketAddr;
-    use std::time::Instant;
+
+    use super::*;
+    use crate::async_runtime as rt;
 
     pub struct AnkrRpc {
         client: HttpClient,

@@ -2,9 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::config::{PROFILE_PIC_EXTENSION, PROFILE_PIC_PREFIX};
-use crate::error::Error;
 use rust_embed::{EmbeddedFile, RustEmbed};
+
+use crate::{
+    config::{PROFILE_PIC_EXTENSION, PROFILE_PIC_PREFIX},
+    error::Error,
+};
 
 #[derive(RustEmbed)]
 #[folder = "assets/"]
@@ -65,9 +68,9 @@ pub(super) fn load_asset_with_replacements<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn lists_profile_pics() -> Result<()> {

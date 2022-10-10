@@ -2,16 +2,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::Error;
+use std::{collections::HashSet, time::SystemTime};
+
 use chacha20poly1305::aead::generic_array::{ArrayLength, GenericArray};
 use chrono::{DateTime, SecondsFormat, Utc};
 use email_address::EmailAddress;
 use lazy_static::lazy_static;
 use rand::{thread_rng, RngCore};
-use std::collections::HashSet;
-use std::time::SystemTime;
 use url::Url;
 use uuid::Uuid;
+
+use crate::Error;
 
 /// Create an RFC339 timestamp, eg.: "2018-01-26T18:30:09.453Z".
 /// From: https://stackoverflow.com/a/64148017
@@ -19,6 +20,13 @@ pub fn rfc3339_timestamp() -> String {
     let now = SystemTime::now();
     let dt: DateTime<Utc> = now.into();
     dt.to_rfc3339_opts(SecondsFormat::Millis, true)
+}
+
+/// Number of seconds since unix epoch
+pub fn unix_timestamp() -> i64 {
+    let now = SystemTime::now();
+    let dt: DateTime<Utc> = now.into();
+    dt.timestamp()
 }
 
 /// Generate a new v4 UUID.
@@ -111,10 +119,10 @@ fn domain_part_count(domain: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use anyhow::Result;
     use chacha20poly1305::aead::generic_array::typenum::U32;
+
+    use super::*;
 
     #[test]
     fn fills_random_bytes() -> Result<()> {

@@ -4,47 +4,67 @@
 
 import SwiftUI
 
-@MainActor
-struct DappApprovalRequest: Identifiable {
-    // It's important to have a unique id per request
-    var id = UUID()
-    let accountId: String
-    let dappHumanIdentifier: String
-    let dappFavicon: [UInt8]?
-    let approve: () -> Void
-    let dismiss: () -> Void
+protocol DappApprovalRequestI: Identifiable {
+    var accountId: String { get }
+
+    var dappHumanIdentifier: String { get }
+
+    var favicon: [UInt8]? { get }
+
+    func approve()
+
+    func reject()
+
 }
 
-#if DEBUG
-extension DappApprovalRequest {
-    static func buildForPreview(_ accountId: String) -> Self {
-        let dapp = Dapp.uniswap()
-        let favicon = [UInt8](dapp.favicon.pngData()!)
-        let request = DappApprovalRequest(
-            accountId: accountId,
-            dappHumanIdentifier: dapp.humanIdentifier,
-            dappFavicon: favicon,
-            approve: {},
-            dismiss: {}
-        )
-        return request
+struct DappApprovalRequest: DappApprovalRequestI {
+    // It's important to have a unique id per request
+    let id = UUID()
+    let context: InPageRequestContext
+    let params: DappApprovalParams
+
+    var accountId: String {
+        params.accountId
     }
+
+    var dappHumanIdentifier: String {
+        params.dappIdentifier
+    }
+
+    var favicon: [UInt8]? {
+        params.favicon
+    }
+
+    func approve() {
+        do {
+            try self.context.core.userApprovedDapp(context: self.context, params: self.params)
+        } catch {
+            print("userApprovedDapp threw: \(error)")
+        }
+    }
+
+    func reject() {
+        do {
+            try self.context.core.userRejectedDapp(context: context, params: self.params)
+        } catch {
+            print("userApprovedDapp threw: \(error)")
+        }
+    }
+
 }
-#endif
 
 struct DappApproval: View {
     @EnvironmentObject private var viewModel: GlobalModel
     @Environment(\.dismiss) var dismiss
-    @Environment(\.isPresented) private var isPresented
 
-    @State var request: DappApprovalRequest
+    @State var request: any DappApprovalRequestI
 
     private var account: Account {
         viewModel.accountList.first(where: { $0.id == request.accountId })!
     }
 
     private var dappIcon: Image {
-        let image = Dapp.faviconWithFallback(request.dappFavicon)
+        let image = Dapp.faviconWithFallback(request.favicon)
         return Image(uiImage: image)
     }
 
@@ -79,6 +99,7 @@ struct DappApproval: View {
 
             HStack(spacing: 0) {
                 Button(action: {
+                    request.reject()
                     dismiss()
                 }, label: {
                     Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
@@ -98,17 +119,44 @@ struct DappApproval: View {
                 .controlSize(.large)
             }
         }
-        .onDisappear {
-            // Make sure signal is called no matter how the view disappears (eg by swiping instead of tapping a button).
-            request.dismiss()
-        }
     }
+}
+
+#if DEBUG
+
+struct DappApprovalRequestPreview: DappApprovalRequestI {
+    var id = UUID()
+    var accountId: String
+    var dappHumanIdentifier: String
+    var favicon: [UInt8]?
+
+    func approve() {
+        print("dapp approval request approved")
+    }
+
+    func reject() {
+        print("dapp approval request rejected")
+    }
+
+    @MainActor
+    static func buildForPreview(_ accountId: String) -> Self {
+        let dapp = Dapp.uniswap()
+        let favicon = [UInt8](dapp.favicon.pngData()!)
+        let request = DappApprovalRequestPreview(
+            accountId: accountId,
+            dappHumanIdentifier: dapp.humanIdentifier,
+            favicon: favicon
+        )
+        return request
+    }
+
 }
 
 struct DappApproval_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let request = DappApprovalRequest.buildForPreview(model.activeAccountId!)
+        let request = DappApprovalRequestPreview.buildForPreview(model.activeAccountId!)
         DappApproval(request: request).environmentObject(model)
     }
 }
+#endif

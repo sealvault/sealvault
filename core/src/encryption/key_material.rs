@@ -2,16 +2,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::utils::try_fill_random_bytes;
-use crate::Error;
-use std::default::Default;
-use std::fmt::{Debug, Formatter};
-use subtle::ConstantTimeEq;
+use std::{
+    default::Default,
+    fmt::{Debug, Formatter},
+};
 
+use subtle::ConstantTimeEq;
 use zeroize::ZeroizeOnDrop;
+
+use crate::{utils::try_fill_random_bytes, Error};
 
 const KEY_BYTES: usize = 32;
 pub type KeyArray = [u8; KEY_BYTES];
+
+const INVARIANT_VIOLATION: &str = "Invariant violation";
 
 /// Encryption key material.
 /// We store the key in a boxed array so that when the struct gets moved, no copies are made of the
@@ -25,14 +29,14 @@ impl KeyMaterial {
         let default: KeyArray = Default::default();
         if buffer.ct_eq(&default).unwrap_u8() == 1 {
             return Err(Error::Fatal {
-                error: "Invariant violation".into(),
+                error: INVARIANT_VIOLATION.into(),
             });
         }
         Ok(Self(buffer))
     }
 
     pub(super) fn random() -> Result<Self, Error> {
-        let mut buffer: Box<KeyArray> = Box::new(Default::default());
+        let mut buffer: Box<KeyArray> = Box::default();
         try_fill_random_bytes(&mut *buffer)?;
         Self::new(buffer)
     }
@@ -40,10 +44,10 @@ impl KeyMaterial {
     pub(super) fn from_slice(bytes: &[u8]) -> Result<Self, Error> {
         if KEY_BYTES.ct_eq(&bytes.len()).unwrap_u8() == 0 {
             return Err(Error::Fatal {
-                error: "Invariant violation".into(),
+                error: INVARIANT_VIOLATION.into(),
             });
         }
-        let mut buffer: Box<KeyArray> = Box::new(Default::default());
+        let mut buffer: Box<KeyArray> = Box::default();
         buffer.copy_from_slice(bytes);
         Self::new(buffer)
     }
@@ -54,7 +58,7 @@ impl KeyMaterial {
     /// unreachable copies for zeroization, but it's implementation dependent, so it's best to not
     /// take chances.
     /// We restrict this methods visibility, mark it as deprecated, and only implement it for debug
-    /// targets to prevent its usage for cases other than the in-memory keychain.re won't be
+    /// targets to prevent its usage for cases other than the in-memory keychain.
     #[cfg(debug_assertions)]
     #[deprecated]
     #[allow(dead_code)]

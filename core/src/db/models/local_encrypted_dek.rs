@@ -2,15 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::schema::local_encrypted_deks;
-
-use crate::encryption::EncryptionOutput;
-
-use crate::utils::rfc3339_timestamp;
-use crate::Error;
 use diesel::prelude::*;
-
 use typed_builder::TypedBuilder;
+
+use crate::{
+    db::schema::local_encrypted_deks, encryption::EncryptionOutput,
+    utils::rfc3339_timestamp, Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 pub struct LocalEncryptedDek {

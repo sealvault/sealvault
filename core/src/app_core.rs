@@ -2,24 +2,29 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::models as m;
-use crate::db::schema_migrations::run_migrations;
-use crate::db::{data_migrations, ConnectionPool};
-use crate::encryption::Keychain;
-use crate::error::Error;
-use crate::http_client::HttpClient;
-use crate::in_page_provider::{InPageProvider, InPageRequestContextI};
-use crate::protocols::eth;
-use crate::public_suffix_list::PublicSuffixList;
-use crate::{dto, in_page_provider, CoreError};
-use std::fmt::Debug;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
+
+use crate::{
+    db::{
+        data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
+    },
+    dto,
+    encryption::Keychain,
+    error::Error,
+    http_client::HttpClient,
+    in_page_provider,
+    in_page_provider::{InPageProvider, InPageRequestContextI},
+    protocols::eth,
+    public_suffix_list::PublicSuffixList,
+    CoreError, DappApprovalParams,
+};
 
 /// Provides cross-platform key and transaction management.
 /// Exposed to host language via FFI.
 /// The methods take ownership of arguments, because FFI needs owning interfaces.
 /// All members are `Send + Sync + 'static`.
 /// No async interfaces, because concurrency is managed by the host languages.
+#[derive(Debug)]
 pub struct AppCore {
     resources: Arc<CoreResources>,
 }
@@ -159,6 +164,28 @@ impl AppCore {
         Ok(())
     }
 
+    pub fn user_approved_dapp(
+        &self,
+        context: Box<dyn InPageRequestContextI>,
+        dapp_approval: DappApprovalParams,
+    ) -> Result<(), CoreError> {
+        let resources = self.resources.clone();
+        let provider = InPageProvider::new(resources, context)?;
+        let _ = provider.user_approved_dapp(dapp_approval);
+        Ok(())
+    }
+
+    pub fn user_rejected_dapp(
+        &self,
+        context: Box<dyn InPageRequestContextI>,
+        dapp_approval: DappApprovalParams,
+    ) -> Result<(), CoreError> {
+        let resources = self.resources.clone();
+        let provider = InPageProvider::new(resources, context)?;
+        let _ = provider.user_rejected_dapp(dapp_approval);
+        Ok(())
+    }
+
     fn fetch_eth_signing_key_for_transfer(
         &self,
         from_address_id: &str,
@@ -264,26 +291,26 @@ pub struct CoreArgs {
 #[cfg(test)]
 pub mod tests {
 
-    use super::*;
-    use crate::protocols::ChecksumAddress;
-    use crate::{CoreInPageCallbackI, DappApprovalParams};
+    use std::{fs, sync::RwLock, thread, time::Duration};
+
     use anyhow::Result;
-    use std::fs;
-    use std::sync::RwLock;
     use tempfile::TempDir;
 
-    /// Create an empty path in a temp directory for a Sqlite DB.
-    pub(crate) struct TmpCore {
-        pub core: AppCore,
-        // The TempDir is kept to keep it open for the lifetime of the backend as the db file is
+    use super::*;
+    use crate::{protocols::ChecksumAddress, CoreInPageCallbackI, DappApprovalParams};
+
+    #[readonly::make]
+    pub(crate) struct TmpCoreDir {
+        // The TempDir is kept to keep it open for the lifetime of the core as the db file is
         // deleted when in the TempDir dtor is invoked.
         #[allow(dead_code)]
-        tmp_dir: TempDir,
-        in_page_callback_state: Arc<InPageCallbackState>,
+        pub tmp_dir: TempDir,
+        pub cache_dir: String,
+        pub db_file_path: String,
     }
 
-    impl TmpCore {
-        pub fn new() -> Result<Self, CoreError> {
+    impl TmpCoreDir {
+        pub fn new() -> Result<Self, Error> {
             // Important not to use in-memory DB as Sqlite has subtle differences in in memory
             // mode.
             let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
@@ -301,17 +328,47 @@ pub mod tests {
                 .into_string()
                 .unwrap();
 
+            let cache_dir =
+                cache_dir
+                    .into_os_string()
+                    .into_string()
+                    .map_err(|err| Error::Fatal {
+                        error: format!("{:?}", err),
+                    })?;
+
+            Ok(Self {
+                tmp_dir,
+                cache_dir,
+                db_file_path,
+            })
+        }
+    }
+
+    /// Create an empty path in a temp directory for a Sqlite DB.
+    pub(crate) struct TmpCore {
+        pub core: Arc<AppCore>,
+        #[allow(dead_code)]
+        tmp_dir: TmpCoreDir,
+        in_page_callback_state: Arc<InPageCallbackState>,
+    }
+
+    impl TmpCore {
+        pub fn new() -> Result<Self, CoreError> {
+            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
+            // mode.
+            let tmp_dir = TmpCoreDir::new()?;
+
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
 
-            let backend_args = CoreArgs {
-                cache_dir: cache_dir.into_os_string().into_string().unwrap(),
-                db_file_path,
+            let core_args = CoreArgs {
+                cache_dir: tmp_dir.cache_dir.clone(),
+                db_file_path: tmp_dir.db_file_path.clone(),
             };
-            let backend = AppCore::new_with_overrides(backend_args, rpc_manager)?;
+            let core = Arc::new(AppCore::new_with_overrides(core_args, rpc_manager)?);
             Ok(TmpCore {
-                core: backend,
+                core: core.clone(),
                 tmp_dir,
-                in_page_callback_state: Arc::new(Default::default()),
+                in_page_callback_state: Arc::new(InPageCallbackState::new(core)),
             })
         }
 
@@ -327,18 +384,25 @@ pub mod tests {
             accounts.into_iter().next().expect("no accounts")
         }
 
-        pub fn in_page_provider(
-            &self,
-            page_url: &str,
-            user_approves: bool,
-        ) -> InPageProvider {
+        pub fn in_page_provider(&self, user_approves: bool) -> InPageProvider {
             let context = Box::new(InPageRequestContextMock::new(
-                page_url,
                 user_approves,
                 self.in_page_callback_state.clone(),
             ));
 
             InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
+        }
+
+        pub fn wait_for_first_response(&self) {
+            const WAIT_FOR_MILLIS: usize = 1000;
+
+            for _ in 0..WAIT_FOR_MILLIS {
+                thread::sleep(Duration::from_millis(1));
+                // Don't hold the lock while sleeping.
+                if !self.responses().is_empty() {
+                    break;
+                }
+            }
         }
 
         pub fn dapp_approval(&self) -> Option<DappApprovalParams> {
@@ -366,16 +430,18 @@ pub mod tests {
         }
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug)]
     pub struct InPageCallbackState {
+        core: Arc<AppCore>,
         dapp_approval: Arc<RwLock<Option<DappApprovalParams>>>,
         responses: Arc<RwLock<Vec<String>>>,
         notifications: Arc<RwLock<Vec<String>>>,
     }
 
     impl InPageCallbackState {
-        pub fn new() -> Self {
+        pub fn new(core: Arc<AppCore>) -> Self {
             Self {
+                core,
                 dapp_approval: Arc::new(Default::default()),
                 responses: Arc::new(Default::default()),
                 notifications: Arc::new(Default::default()),
@@ -420,22 +486,14 @@ pub mod tests {
     }
 
     impl InPageRequestContextMock {
-        pub fn new(
-            page_url: &str,
-            user_approves: bool,
-            state: Arc<InPageCallbackState>,
-        ) -> Self {
+        pub fn new(user_approves: bool, state: Arc<InPageCallbackState>) -> Self {
             Self {
-                page_url: page_url.into(),
+                page_url: "https://example.com".into(),
                 callbacks: Box::new(CoreInPageCallbackMock::new(user_approves, state)),
             }
         }
         pub fn default_boxed(state: Arc<InPageCallbackState>) -> Box<Self> {
-            Box::new(InPageRequestContextMock::new(
-                "https://example.com",
-                true,
-                state,
-            ))
+            Box::new(InPageRequestContextMock::new(true, state))
         }
     }
 
@@ -465,9 +523,23 @@ pub mod tests {
     }
 
     impl CoreInPageCallbackI for CoreInPageCallbackMock {
-        fn approve_dapp(&self, dapp_approval: DappApprovalParams) -> bool {
-            self.state.update_dapp_approval(dapp_approval);
-            self.user_approves
+        fn request_dapp_approval(&self, dapp_approval: DappApprovalParams) {
+            self.state.update_dapp_approval(dapp_approval.clone());
+            let context = Box::new(InPageRequestContextMock::new(
+                self.user_approves,
+                self.state.clone(),
+            ));
+            if self.user_approves {
+                self.state
+                    .core
+                    .user_approved_dapp(context, dapp_approval)
+                    .expect("user_approved_dapp ok")
+            } else {
+                self.state
+                    .core
+                    .user_rejected_dapp(context, dapp_approval)
+                    .expect("user_rejected_dapp ok")
+            }
         }
 
         fn respond(&self, response_hex: String) {
@@ -482,11 +554,9 @@ pub mod tests {
     #[test]
     fn no_panic_on_invalid_in_page_request() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let state: Arc<InPageCallbackState> = Arc::new(Default::default());
         let context = Box::new(InPageRequestContextMock::new(
-            "https://example.com",
             true,
-            state.clone(),
+            tmp.in_page_callback_state.clone(),
         ));
 
         tmp.core

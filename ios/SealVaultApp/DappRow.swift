@@ -18,9 +18,11 @@ struct DappRow: View {
     }
 }
 
+#if DEBUG
 struct DappRow_Previews: PreviewProvider {
     static var previews: some View {
         let dapp = Dapp.uniswap()
         return DappRow(dapp: dapp)
     }
 }
+#endif

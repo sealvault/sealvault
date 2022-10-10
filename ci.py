@@ -15,6 +15,7 @@ IOS_DIR = REPO_ROOT / "ios"
 
 def main():
     mpl_header_check()
+    run_rustfmt_check()
     run_clippy()
     # Platform specific code only gets linted when compiled for that target.
     run_clippy("aarch64-apple-ios")
@@ -75,6 +76,13 @@ def run_clippy(target=None):
 
     sp.run(
         f"cargo clippy {target_arg}-- -D warnings {allow}".split(" "),
+        check=True,
+    )
+
+
+def run_rustfmt_check():
+    sp.run(
+        f"cargo fmt --check --all".split(" "),
         check=True,
     )
 

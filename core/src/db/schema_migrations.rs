@@ -2,10 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::ExclusiveTxConnection;
-use crate::Error;
 use diesel::SqliteConnection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
+use crate::{db::ExclusiveTxConnection, Error};
 
 // Ship Diesel migrations with the binary.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();

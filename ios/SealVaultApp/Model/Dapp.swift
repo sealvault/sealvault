@@ -33,7 +33,8 @@ class Dapp: Identifiable, ObservableObject {
 
     required init(
         _ core: AppCoreProtocol, id: String, humanIdentifier: String, url: URL?, addresses: [Address],
-        lastUsed: String?, favicon: UIImage) {
+        lastUsed: String?, favicon: UIImage
+    ) {
         self.core = core
         self.id = id
         self.humanIdentifier = humanIdentifier

@@ -131,7 +131,6 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-
     @MainActor
     static func toCoreAccount(_ account: Account) -> CoreAccount {
         let picture = [UInt8](account.picture.pngData()!)
@@ -280,6 +279,14 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func inPageRequest(context _: InPageRequestContextI, rawRequest _: String) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func userApprovedDapp(context: InPageRequestContextI, params: DappApprovalParams) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func userRejectedDapp(context: InPageRequestContextI, params: DappApprovalParams) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 }

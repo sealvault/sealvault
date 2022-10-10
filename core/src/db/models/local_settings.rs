@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::schema::local_settings;
-use crate::Error;
 use diesel::prelude::*;
+
+use crate::{db::schema::local_settings, Error};
 
 #[derive(Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(table_name = local_settings)]

@@ -2,8 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::signatures::AsymmetricKey;
 use k256::Secp256k1;
+
+use crate::signatures::AsymmetricKey;
 
 // Some names need to be be camel case in ankr for generated code.
 #[allow(non_snake_case)]

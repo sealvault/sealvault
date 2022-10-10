@@ -2,9 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use ethers::core::{types::Address, utils::to_checksum};
+
 use crate::Error;
-use ethers::core::types::Address;
-use ethers::core::utils::to_checksum;
 
 pub fn validate_checksum_address(check_sum_address: &str) -> Result<(), Error> {
     parse_checksum_address(check_sum_address)?;
@@ -27,8 +27,9 @@ pub(super) fn parse_checksum_address(check_sum_address: &str) -> Result<Address,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
+
+    use super::*;
 
     #[test]
     fn checksum_address_is_ok() -> Result<()> {

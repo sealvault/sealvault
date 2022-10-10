@@ -170,7 +170,7 @@ struct ToSection: View {
                         ForEach(account.dappList) { dapp in
                             ForEach(dapp.addressList) { dappAddress in
                                 if canTransferTo(dappAddress) {
-                                    Text("\(dapp.humanIdentifier) \(dappAddress.addressDisplay)")
+                                    Text("\(dapp.humanIdentifier)")
                                         .tag(ToAddress.some(dappAddress.id))
                                 }
                             }
@@ -269,6 +269,7 @@ struct TransferButton: View {
     }
 }
 
+#if DEBUG
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
@@ -295,3 +296,4 @@ struct TransferView_Previews: PreviewProvider {
         }
     }
 }
+#endif

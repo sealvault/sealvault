@@ -3,23 +3,23 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Based on: https://github.com/gakonst/ethers-rs/blob/239f559ca04b296a1b4cd1fc7588f29b125be565/ethers-middleware/src/signer.rs
-use ethers::core::types::{
-    transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-    Address, BlockId, Bytes, Signature as EthereumSignature, U256, U64,
-};
-use ethers::providers::{maybe, Http, Middleware, PendingTransaction, Provider};
-use k256::ecdsa::recoverable::Signature as RecoverableSignature;
-use std::convert::From;
-use std::fmt;
+use std::{convert::From, fmt};
 
-use crate::protocols::eth::chain_id::ChainId;
-use crate::protocols::eth::signing_key::SigningKey;
-use crate::Error;
 use async_trait::async_trait;
-
-use crate::protocols::eth::EthereumAsymmetricKey;
-use k256::FieldBytes;
+use ethers::{
+    core::types::{
+        transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+        Address, BlockId, Bytes, Signature as EthereumSignature, U256, U64,
+    },
+    providers::{maybe, Http, Middleware, PendingTransaction, Provider},
+};
+use k256::{ecdsa::recoverable::Signature as RecoverableSignature, FieldBytes};
 use sha3::{Digest, Keccak256};
+
+use crate::{
+    protocols::eth::{chain_id::ChainId, signing_key::SigningKey, EthereumAsymmetricKey},
+    Error,
+};
 
 pub struct Signer<'a> {
     signing_key: &'a SigningKey,
@@ -323,14 +323,17 @@ impl From<EIP155EthereumSignature> for EthereumSignature {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use anyhow::Result;
+    use ethers::core::{
+        types::{RecoveryMessage, TransactionRequest},
+        utils::{hex, keccak256},
+    };
+    use lazy_static::lazy_static;
+
     use super::*;
     use crate::protocols::ChecksumAddress;
-    use anyhow::Result;
-    use ethers::core::types::RecoveryMessage;
-    use ethers::core::utils::hex;
-    use ethers::core::{types::TransactionRequest, utils::keccak256};
-    use lazy_static::lazy_static;
-    use std::str::FromStr;
 
     struct PersonalSignTest {
         address: &'static str,

@@ -2,10 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::Error;
 use generic_array::{ArrayLength, GenericArray};
 use lazy_static::lazy_static;
 use strum_macros::{EnumIter, EnumString};
+
+use crate::Error;
 
 lazy_static! {
     static ref ENTITY_NAME_SPACE: &'static str = "org.sealvault.db.entity";
@@ -93,9 +94,10 @@ pub enum EntityName {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use anyhow::Result;
     use generic_array::GenericArray;
+
+    use super::*;
 
     struct UniqueValuesMock<'a, N: ArrayLength<&'a str>> {
         values: GenericArray<&'a str, N>,

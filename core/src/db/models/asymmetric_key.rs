@@ -2,21 +2,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::db::deterministic_id::{DeterministicId, EntityName};
-
-use crate::db::schema::asymmetric_keys;
-
-use crate::encryption::EncryptionOutput;
-
-use crate::signatures::EllipticCurve;
-use crate::utils::rfc3339_timestamp;
-use crate::Error;
-use diesel::prelude::*;
-use diesel::SqliteConnection;
-use generic_array::typenum::U1;
-use generic_array::GenericArray;
+use diesel::{prelude::*, SqliteConnection};
+use generic_array::{typenum::U1, GenericArray};
 use k256::pkcs8::DecodePublicKey;
 use typed_builder::TypedBuilder;
+
+use crate::{
+    db::{
+        deterministic_id::{DeterministicId, EntityName},
+        schema::asymmetric_keys,
+    },
+    encryption::EncryptionOutput,
+    signatures::EllipticCurve,
+    utils::rfc3339_timestamp,
+    Error,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]

@@ -47,9 +47,11 @@ struct AppTabNavigation: View {
     }
 }
 
+#if DEBUG
 struct AppTabNavigation_Previews: PreviewProvider {
     static var previews: some View {
         AppTabNavigation().environmentObject(GlobalModel.buildForPreview())
         AppTabNavigation(selection: .accountList).environmentObject(GlobalModel.buildForPreview())
     }
 }
+#endif
