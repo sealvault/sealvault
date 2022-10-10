@@ -96,8 +96,6 @@ struct BrowserViewInner: View {
                     .disabled(!browserModel.canGoBack)
                     .padding(.horizontal, 5)
                     TextField("url / search", text: $browserModel.addressBarText)
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .accessibility(identifier: "browserAddressBar")
@@ -113,6 +111,16 @@ struct BrowserViewInner: View {
                                 browserModel.urlChanged = true
                             } else {
                                 print("Unexpected: invalid url and search url \(browserModel.addressBarText)")
+                            }
+                        }
+                        .onReceive(NotificationCenter.default.publisher(
+                            for: UITextField.textDidBeginEditingNotification
+                        )) { obj in
+                            // Select text field on tap
+                            if let textField = obj.object as? UITextField {
+                                textField.selectedTextRange = textField.textRange(
+                                from: textField.beginningOfDocument, to: textField.endOfDocument
+                                )
                             }
                         }
                     Button(action: {

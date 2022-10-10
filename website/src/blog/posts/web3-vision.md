@@ -240,8 +240,8 @@ want to support all protocols and chains where people are building interesting
 dapps.
 
 After the iOS app, we're going to release an Android version followed by desktop
-apps (Windows, MacOS, Linux) with E2EE cross-platform sync and E2EE backups with
-social recovery methods.
+apps (Windows, MacOS, Linux) with E2EE cross-platform sync and self-custody
+backups with social recovery methods.
 
 You can sign up for the iOS beta
 [here](https://76u1o4gk7en.typeform.com/to/DxKsEMKM) and join the discussion on
