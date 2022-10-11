@@ -14,7 +14,9 @@ struct AccountListView: View {
                     NavigationLink {
                         AccountView(account: account)
                     } label: {
-                        AccountRow(account: account).padding(.vertical, 8).accessibilityIdentifier(account.displayName)
+                        AccountRow(account: account)
+                            .padding(.vertical, 8)
+                            .accessibilityIdentifier(account.displayName)
                     }
                 }
             }
