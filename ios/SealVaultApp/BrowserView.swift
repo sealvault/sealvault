@@ -69,6 +69,13 @@ struct BrowserView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(browserModel.navTitle)
         .toolbar {
+            ToolbarItem(placement: ToolbarItemPlacement.navigationBarLeading) {
+                if browserModel.loading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 AccountImageCircle(account: viewModel.activeAccount)
             }
