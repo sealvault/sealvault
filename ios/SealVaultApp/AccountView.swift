@@ -28,7 +28,7 @@ struct AccountView: View {
                     ForEach(account.dappList) { dapp in
                         ForEach(dapp.addressList) { dappAddress in
                             NavigationLink {
-                                AddressView(title: "Dapp", account: account, address: dappAddress)
+                                AddressView(title: dapp.humanIdentifier, account: account, address: dappAddress)
                             } label: {
                                 DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
                             }
