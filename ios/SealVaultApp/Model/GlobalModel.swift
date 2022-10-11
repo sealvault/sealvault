@@ -15,7 +15,7 @@ class GlobalModel: ObservableObject {
     }
 
     var accountList: [Account] {
-        accounts.values.sorted(by: {$0.displayName < $1.displayName})
+        accounts.values.sorted(by: {$0.displayName.lowercased() < $1.displayName.lowercased()})
     }
 
     let core: AppCoreProtocol
