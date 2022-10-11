@@ -106,7 +106,8 @@ struct FromSection: View {
         GroupBox {
             HStack {
                 if fromAddress.isWallet {
-                    Text("Wallet").font(.headline)
+                    Text("Wallet")
+                        .font(.headline)
                 } else if let dapp = account.dappForAddress(address: fromAddress) {
                     DappRow(dapp: dapp)
                 }
