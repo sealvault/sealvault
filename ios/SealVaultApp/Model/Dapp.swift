@@ -5,7 +5,6 @@
 import Foundation
 import SwiftUI
 
-@MainActor
 class Dapp: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     /// Database identifier
@@ -147,7 +146,7 @@ extension Dapp {
             let id = "uniswap.org"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "uniswap")!
-            let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
@@ -167,7 +166,7 @@ extension Dapp {
             let id = "opensea.io"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "opensea")!
-            let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
@@ -177,7 +176,7 @@ extension Dapp {
             let id = "ens.domains"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "ens")!
-            let addresses = [Address.ethereumDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
@@ -187,14 +186,14 @@ extension Dapp {
             let id = "aave.com"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "aave")!
-            let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
         }
 
         static func dnd() -> Self {
-            let id = "wizards.com"
+            let id = "raritymmo.com"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "dnd")!
             let addresses = [Address.polygonDapp()]
@@ -217,7 +216,7 @@ extension Dapp {
             let id = "dhedge.org"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "dhedge")!
-            let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )
@@ -227,7 +226,7 @@ extension Dapp {
             let id = "1inch.io"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "1inch")!
-            let addresses = [Address.ethereumDapp(), Address.polygonDapp()]
+            let addresses = [Address.polygonDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )

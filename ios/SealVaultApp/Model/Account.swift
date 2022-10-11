@@ -5,7 +5,6 @@
 import Foundation
 import SwiftUI
 
-@MainActor
 class Account: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     let id: String

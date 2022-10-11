@@ -5,7 +5,6 @@
 import Foundation
 import SwiftUI
 
-@MainActor
 class Token: Identifiable, ObservableObject {
     let id: String
     let symbol: String
@@ -88,21 +87,21 @@ extension Token {
             let symbol = "ETH"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "45.45122312", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "45.5122312", nativeToken: true)
         }
 
         static func matic(_ address: String) -> Token {
             let symbol = "MATIC"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "0.9123", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "236.9123", nativeToken: true)
         }
 
         static func usdc(_ address: String) -> Token {
             let symbol = "USDC"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "123.45", nativeToken: false)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "133.45", nativeToken: false)
         }
 
         static func dai(_ address: String) -> Token {
@@ -110,6 +109,13 @@ extension Token {
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
             return Token(id: id, symbol: symbol, icon: icon, amount: "4.321", nativeToken: false)
+        }
+
+        static func busd(_ address: String) -> Token {
+            let symbol = "BUSD"
+            let id = "\(symbol)-\(address)"
+            let icon = UIImage(named: symbol.lowercased())!
+            return Token(id: id, symbol: symbol, icon: icon, amount: "15.64", nativeToken: false)
         }
     }
 #endif
