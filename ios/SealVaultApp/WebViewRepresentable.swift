@@ -50,7 +50,6 @@ public struct WebViewRepresentable: UIViewRepresentable {
         let webView = WKWebView(frame: CGRect.zero, configuration: webViewConfiguration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
-        webView.scrollView.delegate = context.coordinator
         scriptHandler.webView = webView
 
         // Pull down to refresh
@@ -327,22 +326,5 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
             }
         }
         return nil
-    }
-}
-
-extension WebViewRepresentable.Coordinator: UIScrollViewDelegate {
-    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // This is dispatched to get around this issue: https://developer.apple.com/forums/thread/711899
-        DispatchQueue.main.async { [weak self] in
-            let yCoord = scrollView.panGestureRecognizer.translation(in: scrollView.superview).y
-            withAnimation {
-                // Margins are there to avoid hiding on simple tap by accident
-                if yCoord > 0.1 {
-                    self?.stateModel.navHidden = false
-                } else if yCoord < -0.1 {
-                    self?.stateModel.navHidden = true
-                }
-            }
-        }
     }
 }
