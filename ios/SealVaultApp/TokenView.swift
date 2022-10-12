@@ -11,7 +11,7 @@ struct TokenView: View {
     var body: some View {
         Section {
             NavigationLink {
-                TransferForm(account: account, fromAddress: address, token: address.nativeToken)
+                TransferForm(state: TransferState(account: account, token: address.nativeToken, fromAddress: address))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -32,7 +32,7 @@ struct TokenView: View {
         Section {
             ForEach(address.fungibleTokenList) { token in
                 NavigationLink {
-                    TransferForm(account: account, fromAddress: address, token: token)
+                    TransferForm(state: TransferState(account: account, token: token, fromAddress: address))
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {

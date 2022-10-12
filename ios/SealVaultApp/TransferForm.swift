@@ -4,16 +4,23 @@
 
 import SwiftUI
 
-struct TransferForm: View {
-    @EnvironmentObject private var model: GlobalModel
-    @ObservedObject var account: Account
-    @ObservedObject var fromAddress: Address
-    @ObservedObject var token: Token
+class TransferState: ObservableObject {
+    @Published var account: Account
+    @Published var fromAddress: Address
+    @Published var token: Token
 
-    @State private var amount = ""
-    @State private var toExternal: String = ""
-    @State private var toAddress: ToAddress = ToAddress.none
-    @FocusState private var amountFocused: Bool
+    @Published var toExternal: String = ""
+    @Published var toAddress: ToAddress = ToAddress.none
+
+    @Published var disableButton: Bool = false
+    @Published var amount: String = ""
+
+    @Published var processing: Bool = false
+    @Published var txExplorerUrl: URL?
+
+    var buttonDisabled: Bool {
+        return processing || disableButton || toChecksumAddress == nil || amount == ""
+    }
 
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
@@ -25,6 +32,21 @@ struct TransferForm: View {
         return toChecksumAddress
     }
 
+    required init(
+        account: Account, token: Token, fromAddress: Address
+    ) {
+        self.account = account
+        self.token = token
+        self.fromAddress = fromAddress
+    }
+}
+
+struct TransferForm: View {
+    @EnvironmentObject var model: GlobalModel
+    @ObservedObject var state: TransferState
+
+    @FocusState private var amountFocused: Bool
+
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -32,41 +54,37 @@ struct TransferForm: View {
             VStack(spacing: 0) {
                 HStack {
                     Text("Transfer")
-                    TokenLabel(token: token)
+                    TokenLabel(token: state.token)
                 }.font(.largeTitle)
                 HStack {
-                    Text("on \(fromAddress.chainDisplayName)")
+                    Text("on \(state.fromAddress.chainDisplayName)")
                 }.font(.title2)
             }
 
             Spacer()
 
-            FromSection(account: account, fromAddress: fromAddress, token: token)
+            FromSection(state: state)
 
-            ToSection(
-                account: account,
-                fromAddress: fromAddress,
-                token: token,
-                amount: $amount,
-                toExternal: $toExternal,
-                toAddress: $toAddress
-            )
+            ToSection(state: state)
 
             GroupBox("Amount") {
                 HStack {
                     Label {
-                        Text(token.symbol)
+                        Text(state.token.symbol)
                     }
                     icon: {
-                        IconView(image: token.image, iconSize: 24)
+                        IconView(image: state.token.image, iconSize: 24)
                             .accessibility(label: Text("Token icon"))
                     }
-                    TextField("amount", text: $amount)
+                    TextField("amount", text: $state.amount)
                         .multilineTextAlignment(.trailing)
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
                         .keyboardType(.decimalPad)
                         .focused($amountFocused)
+                        .onChange(of: amountFocused, perform: { newValue in
+                            state.disableButton = newValue
+                        })
                         .toolbar {
                             ToolbarItemGroup(placement: .keyboard) {
                                 Spacer()
@@ -79,8 +97,7 @@ struct TransferForm: View {
             }
 
             TransferButton(
-                core: model.core, token: token, fromAddressId: fromAddress.id, toChecksumAddress: toChecksumAddress,
-                disabled: amountFocused, amount: amount
+                core: model.core, state: state
             )
             .padding()
 
@@ -90,7 +107,7 @@ struct TransferForm: View {
         .padding()
         .task {
             async let accounts: () = self.model.refreshAccounts()
-            async let tokens: () = self.fromAddress.refreshTokens()
+            async let tokens: () = self.state.fromAddress.refreshTokens()
             // Refresh concurrently
             _ = await (accounts, tokens)
         }
@@ -98,22 +115,20 @@ struct TransferForm: View {
 }
 
 struct FromSection: View {
-    @ObservedObject var account: Account
-    @ObservedObject var fromAddress: Address
-    @ObservedObject var token: Token
+    @ObservedObject var state: TransferState
 
     var body: some View {
         GroupBox {
             HStack {
-                if fromAddress.isWallet {
+                if state.fromAddress.isWallet {
                     Text("Wallet")
                         .font(.headline)
-                } else if let dapp = account.dappForAddress(address: fromAddress) {
+                } else if let dapp = state.account.dappForAddress(address: state.fromAddress) {
                     DappRow(dapp: dapp)
                 }
                 Spacer()
-                TokenLabel(token: token)
-                TokenAmount(token: token)
+                TokenLabel(token: state.token)
+                TokenAmount(token: state.token)
             }
             .frame(maxWidth: .infinity)
             .padding(.top)
@@ -121,7 +136,7 @@ struct FromSection: View {
             HStack {
                 Text("From")
                 Spacer()
-                AddressMenu(address: fromAddress)
+                AddressMenu(address: state.fromAddress)
             }
             .frame(maxWidth: .infinity)
         }
@@ -135,14 +150,8 @@ enum ToAddress: Hashable {
 }
 
 struct ToSection: View {
+    @ObservedObject var state: TransferState
 
-    @ObservedObject var account: Account
-    @ObservedObject var fromAddress: Address
-    @ObservedObject var token: Token
-
-    @Binding var amount: String
-    @Binding var toExternal: String
-    @Binding var toAddress: ToAddress
     @State var toAddressType: ToAddressType = .dapp
 
     enum ToAddressType {
@@ -153,13 +162,13 @@ struct ToSection: View {
 
     private func setTo(_ toAddressType: ToAddressType) {
         self.toAddressType = toAddressType
-        toExternal = ""
-        toAddress = ToAddress.none
+        state.toExternal = ""
+        state.toAddress = ToAddress.none
     }
 
     private func canTransferTo(_ toAddress: Address) -> Bool {
         // TODO: use protocol + chain id and move to address
-        return toAddress.chainDisplayName == fromAddress.chainDisplayName && fromAddress.id != toAddress.id
+        return toAddress.chainDisplayName == state.fromAddress.chainDisplayName && state.fromAddress.id != toAddress.id
     }
 
     var body: some View {
@@ -167,9 +176,9 @@ struct ToSection: View {
             VStack {
                 switch toAddressType {
                 case .wallet:
-                    Picker("Wallet", selection: $toAddress) {
+                    Picker("Wallet", selection: $state.toAddress) {
                         Text("none").tag(ToAddress.none)
-                        ForEach(account.walletList) { wallet in
+                        ForEach(state.account.walletList) { wallet in
                             if canTransferTo(wallet) {
                                 Text("\(wallet.chainDisplayName) \(wallet.addressDisplay)")
                                     .tag(ToAddress.some(wallet.id))
@@ -177,9 +186,9 @@ struct ToSection: View {
                         }
                     }
                 case .dapp:
-                    Picker("Dapp", selection: $toAddress) {
+                    Picker("Dapp", selection: $state.toAddress) {
                         Text("none").tag(ToAddress.none)
-                        ForEach(account.dappList) { dapp in
+                        ForEach(state.account.dappList) { dapp in
                             ForEach(dapp.addressList) { dappAddress in
                                 if canTransferTo(dappAddress) {
                                     Text("\(dapp.humanIdentifier)")
@@ -189,7 +198,7 @@ struct ToSection: View {
                         }
                     }
                 case .external:
-                    TextField("Address", text: $toExternal)
+                    TextField("Address", text: $state.toExternal)
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
                         .keyboardType(.alphabet)
@@ -217,16 +226,47 @@ struct ToSection: View {
 }
 
 struct TransferButton: View {
-    var core: AppCoreProtocol
-    var token: Token
-    var fromAddressId: String
-    var toChecksumAddress: String?
-    var disabled: Bool
-    var amount: String
-    @State private var txExplorerUrl: URL?
+    let core: AppCoreProtocol
+    let cornerRadius: CGFloat = 8
+
+    @ObservedObject var state: TransferState
+
+    func makeTransfer() async {
+        state.txExplorerUrl = await dispatchBackground(.userInteractive) {
+            do {
+                if let toAddress = state.toChecksumAddress {
+                    var txHash: String
+                    if state.token.nativeToken {
+                        txHash = try core.ethTransferNativeToken(
+                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount
+                        )
+                    } else {
+                        txHash = try core.ethTransferFungibleToken(
+                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount,
+                            tokenId: state.token.id
+                        )
+                    }
+                    let rawUrl = try core.ethTransactionBlockExplorerUrl(
+                        fromAddressId: state.fromAddress.id, txHash: txHash
+                    )
+                    return URL(string: rawUrl)
+                } else {
+                    return nil
+                }
+            } catch {
+                // TODO: handle different errors
+                print("Error: \(error)")
+                return nil
+            }
+        }
+        // TODO we should update the balance in the transfer view after the transfer, but calling this here resets
+        // the view and makes the success button disappear.
+//        await state.fromAddress.refreshTokens()
+    }
 
     var body: some View {
-        if let url = txExplorerUrl {
+
+        if let url = state.txExplorerUrl {
             Button(action: {
                 UIApplication.shared.open(url)
             }, label: {
@@ -234,49 +274,37 @@ struct TransferButton: View {
                     .frame(maxWidth: .infinity)
             })
             .padding()
-            .background(Color.secondary)
-            .border(Color.secondary)
+            .background(Color.green)
             .foregroundColor(Color.white)
-            .cornerRadius(50)
+            .cornerRadius(cornerRadius)
         } else {
-            // TODO: turn this into a swipe button
             Button(action: {
-                do {
-                    if let toAddress = toChecksumAddress {
-                        var txHash: String
-                        if token.nativeToken {
-                            txHash = try core.ethTransferNativeToken(
-                                fromAddressId: fromAddressId, toChecksumAddress: toAddress, amount: amount
-                            )
-                        } else {
-                            txHash = try core.ethTransferFungibleToken(
-                                fromAddressId: fromAddressId, toChecksumAddress: toAddress, amount: amount,
-                                tokenId: token.id
-                            )
-                        }
-                        let rawUrl = try core.ethTransactionBlockExplorerUrl(
-                            fromAddressId: fromAddressId, txHash: txHash
-                        )
-                        if let url = URL(string: rawUrl) {
-                            txExplorerUrl = url
-                        } else {
-                            print("Invalid block explorer url: \(rawUrl)")
-                        }
-                    }
-                } catch {
-                    // TODO: handle different errors
-                    print("Error: \(error)")
+                if state.processing {
+                    return
+                }
+                Task {
+                    state.processing = true
+                    await makeTransfer()
+                    state.processing = false
                 }
             }, label: {
-                Text("Send")
-                    .frame(maxWidth: .infinity)
+                if state.processing {
+                        HStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                            Text("Sending")
+                        }
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Send")
+                            .frame(maxWidth: .infinity)
+                    }
             })
-            .disabled(disabled || toChecksumAddress == nil)
+            .disabled(state.buttonDisabled)
             .padding()
-            .background(Color.accentColor)
-            .border(Color.accentColor)
+            .background(state.buttonDisabled ? Color.secondary : Color.accentColor)
             .foregroundColor(Color.white)
-            .cornerRadius(8)
+            .cornerRadius(cornerRadius)
         }
     }
 }
@@ -292,19 +320,26 @@ struct TransferView_Previews: PreviewProvider {
         let dappAddress = dapp.addressList[0]
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
         return Group {
-            PreviewWrapper(model: model, account: account, fromAddress: dappAddress, token: dappToken)
-            PreviewWrapper(model: model, account: account, fromAddress: walletAddress, token: walletToken)
+            PreviewWrapper(
+                model: model,
+                state: TransferState(account: account, token: dappToken, fromAddress: dappAddress)
+            )
+            PreviewWrapper(
+                model: model,
+                state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+            )
         }
     }
 
     struct PreviewWrapper: View {
         var model: GlobalModel
-        @State var account: Account
-        @State var fromAddress: Address
-        @State var token: Token
+        var state: TransferState
 
         var body: some View {
-            TransferForm(account: account, fromAddress: fromAddress, token: token).environmentObject(model)
+            // Recreated on purpose every time the view is showed to reset the UI so that the user doesn't mistakenly
+            // send the wrong amount after continuing.
+
+            TransferForm(state: state).environmentObject(model)
         }
     }
 }
