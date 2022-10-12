@@ -7,7 +7,7 @@ import SwiftUI
 class BrowserModel: ObservableObject {
     @Published var urlRaw: String = Config.defaultHomePage
     @Published var addressBarText: String = Config.defaultHomePage
-    @Published var urlChanged: Bool = false
+    @Published var loadUrl: Bool = false
     @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
@@ -74,6 +74,12 @@ struct BrowserView: View {
                 if browserModel.loading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
+                } else {
+                    Button {
+                        browserModel.loadUrl = true
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                    }
 
                 }
             }
@@ -115,10 +121,10 @@ struct BrowserViewInner: View {
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
                             browserModel.urlRaw = url
-                            browserModel.urlChanged = true
+                            browserModel.loadUrl = true
                         } else if let searchUrl = browserModel.searchUrl() {
                             browserModel.urlRaw = searchUrl.absoluteString
-                            browserModel.urlChanged = true
+                            browserModel.loadUrl = true
                         } else {
                             print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
                         }
