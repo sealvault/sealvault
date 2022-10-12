@@ -115,6 +115,7 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    @MainActor
     func refreshTokens() async {
         self.loading = true
         defer { self.loading = false }
