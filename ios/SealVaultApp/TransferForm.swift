@@ -285,7 +285,7 @@ struct TransferButton: View {
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let account = model.activeAccount
+        let account = model.activeAccount!
         let walletAddress = account.walletList[0]
         let walletToken = Token.matic(walletAddress.checksumAddress)
         let dapp = account.dappList[0]

@@ -34,7 +34,7 @@ struct AccountRow: View {
 struct AccountRow_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return PreviewWrapper(account: model.activeAccount)
+        return PreviewWrapper(account: model.activeAccount!)
     }
 
     struct PreviewWrapper: View {

@@ -10,8 +10,8 @@ class GlobalModel: ObservableObject {
     /// The account currently used for dapp interactions
     @Published var activeAccountId: String?
 
-    var activeAccount: Account {
-        return accountList.first(where: { acc in acc.id == activeAccountId })!
+    var activeAccount: Account? {
+        return accountList.first(where: { acc in acc.id == activeAccountId })
     }
 
     var accountList: [Account] {

@@ -60,7 +60,7 @@ struct AccountView: View {
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return AccountView(account: model.activeAccount)
+        return AccountView(account: model.activeAccount!)
     }
 }
 #endif

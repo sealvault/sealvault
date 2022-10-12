@@ -77,7 +77,9 @@ struct BrowserView: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: viewModel.activeAccount)
+                if let activeAccount = viewModel.activeAccount {
+                    AccountImageCircle(account: activeAccount)
+                }
             }
         }
 
