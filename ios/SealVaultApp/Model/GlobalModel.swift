@@ -10,12 +10,12 @@ class GlobalModel: ObservableObject {
     /// The account currently used for dapp interactions
     @Published var activeAccountId: String?
 
-    var activeAccount: Account {
-        return accountList.first(where: { acc in acc.id == activeAccountId })!
+    var activeAccount: Account? {
+        return accountList.first(where: { acc in acc.id == activeAccountId })
     }
 
     var accountList: [Account] {
-        accounts.values.sorted(by: {$0.displayName < $1.displayName})
+        accounts.values.sorted(by: {$0.displayName.lowercased() < $1.displayName.lowercased()})
     }
 
     let core: AppCoreProtocol
@@ -131,7 +131,6 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-    @MainActor
     static func toCoreAccount(_ account: Account) -> CoreAccount {
         let picture = [UInt8](account.picture.pngData()!)
         let wallets = account.walletList.map(Self.toCoreAddress)
@@ -142,7 +141,6 @@ class PreviewAppCore: AppCoreProtocol {
         )
     }
 
-    @MainActor
     static func toCoreDapp(_ dapp: Dapp) -> CoreDapp {
         let icon = [UInt8](dapp.favicon.pngData()!)
         let url = dapp.url?.absoluteString ?? "https://ens.domains"
@@ -153,7 +151,6 @@ class PreviewAppCore: AppCoreProtocol {
         )
     }
 
-    @MainActor
     static func toCoreAddress(_ address: Address) -> CoreAddress {
         let icon = [UInt8](address.chainIcon.pngData()!)
         let nativeToken = Self.toCoreToken(address.nativeToken)
@@ -165,7 +162,6 @@ class PreviewAppCore: AppCoreProtocol {
         )
     }
 
-    @MainActor
     static func toCoreToken(_ token: Token) -> CoreToken {
         let icon = [UInt8](token.icon.pngData()!)
         return CoreToken(
@@ -176,7 +172,7 @@ class PreviewAppCore: AppCoreProtocol {
     func fungibleTokensForAddress(addressId: String) throws -> [CoreToken] {
         let tokens = DispatchQueue.main.sync {
             // Force update with new ids
-            [Token.dai(UUID().uuidString), Token.usdc(UUID().uuidString)]
+            [Token.dai(UUID().uuidString), Token.usdc(UUID().uuidString), Token.busd(UUID().uuidString)]
         }
         Thread.sleep(forTimeInterval: 1)
         return DispatchQueue.main.sync {
@@ -219,55 +215,54 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func listAccounts() throws -> [CoreAccount] {
-        return DispatchQueue.main.sync {
-            let wallets = [
-                Address.ethereumWallet(),
-                Address.polygonWallet()
-            ]
-            let activeAccountName = "alice.eth"
-            let activeAccountId = try! self.activeAccountId()
+        let wallets = [
+            Address.ethereumWallet(),
+            Address.polygonWallet()
+        ]
+        let activeAccountName = "alice.eth"
+        let activeAccountId = try! self.activeAccountId()
 
-            let accounts = [
-                Account(
-                    self,
-                    id: activeAccountId, name: activeAccountName, picture: UIImage(named: "cat-green")!,
-                    wallets: wallets,
-                    dapps: [
-                        Dapp.ens(),
-                        Dapp.opensea(),
-                        Dapp.uniswap(),
-                        Dapp.dhedge(),
-                        Dapp.sushi(),
-                        Dapp.aave(),
-                        Dapp.oneInch(),
-                        Dapp.quickswap(),
-                        Dapp.darkForest(),
-                        Dapp.dnd()
-                    ]
-                ),
-                Account(
-                    self,
-                    id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
-                    dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
-                ),
-                Account(
-                    self,
-                    id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
-                    dapps: [Dapp.darkForest()]
-                ),
-                Account(
-                    self,
-                    id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
-                    dapps: [Dapp.dnd()]
-                ),
-                Account(
-                    self,
-                    id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
-                    dapps: [Dapp.opensea()]
-                )
-            ]
-            return accounts.map(Self.toCoreAccount)
-        }
+        let accounts = [
+            Account(
+                self,
+                id: activeAccountId, name: activeAccountName, picture: UIImage(named: "cat-green")!,
+                wallets: wallets,
+                dapps: [
+                    Dapp.ens(),
+                    Dapp.opensea(),
+                    Dapp.uniswap(),
+                    Dapp.dhedge(),
+                    Dapp.sushi(),
+                    Dapp.aave(),
+                    Dapp.oneInch(),
+                    Dapp.quickswap(),
+                    Dapp.darkForest(),
+                    Dapp.dnd()
+                ]
+            ),
+            Account(
+                self,
+                id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
+                dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
+            ),
+            Account(
+                self,
+                id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
+                dapps: [Dapp.darkForest()]
+            ),
+            Account(
+                self,
+                id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
+                dapps: [Dapp.dnd()]
+            ),
+            Account(
+                self,
+                id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
+                dapps: [Dapp.opensea()]
+            )
+        ]
+
+        return accounts.map(Self.toCoreAccount)
     }
 
     func activeAccountId() throws -> String {

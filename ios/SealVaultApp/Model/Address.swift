@@ -5,7 +5,6 @@
 import Foundation
 import SwiftUI
 
-@MainActor
 class Address: Identifiable, ObservableObject {
     let core: AppCoreProtocol
 
@@ -169,21 +168,17 @@ extension Address {
         Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: true)
     }
 
-    static func ethereumDapp() -> Self {
-        Self.ethereum(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2", isWallet: false)
-    }
-
     static func polygonDapp() -> Self {
-        Self.polygon(checksumAddress: "0x696e931B0d3112FebAA9401A89C2658f96C725f2", isWallet: false)
+        Self.polygon(checksumAddress: "0x13Df6D6219C2CbbF01B4db01B58f28C5019B6D52", isWallet: false)
     }
 
     static func ethereum(checksumAddress: String, isWallet: Bool) -> Self {
         let nativeToken = Token.eth(checksumAddress)
         let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
-        let id = "eth-\(checksumAddress)"
+        let id = "ETH-\(checksumAddress)"
         return Self(
-            PreviewAppCore(), id: id, checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA",
+            PreviewAppCore(), id: id, checksumAddress: checksumAddress,
             isWallet: isWallet, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon,
             nativeToken: nativeToken
         )
@@ -193,7 +188,7 @@ extension Address {
         let nativeToken = Token.matic(checksumAddress)
         let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
-        let id = "polygon-pos-\(checksumAddress)"
+        let id = "POLYGON-\(checksumAddress)"
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet,
             blockchainExplorerLink: explorer, chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken

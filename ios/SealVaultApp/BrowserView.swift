@@ -13,7 +13,6 @@ class BrowserModel: ObservableObject {
     @Published var goBack: Bool = false
     @Published var canGoForward: Bool = false
     @Published var goForward: Bool = false
-    @Published var navHidden: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
 
@@ -70,8 +69,17 @@ struct BrowserView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(browserModel.navTitle)
         .toolbar {
+            ToolbarItem(placement: ToolbarItemPlacement.navigationBarLeading) {
+                if browserModel.loading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: viewModel.activeAccount)
+                if let activeAccount = viewModel.activeAccount {
+                    AccountImageCircle(account: activeAccount)
+                }
             }
         }
 
@@ -86,7 +94,6 @@ struct BrowserViewInner: View {
         VStack(spacing: 0) {
             WebViewRepresentable(core: core, stateModel: browserModel)
 
-            if !browserModel.navHidden || (browserModel.requestStatus != nil) {
                 HStack {
                     Button(action: {
                         browserModel.goBack = true
@@ -134,7 +141,6 @@ struct BrowserViewInner: View {
                 .padding(10)
                 // TODO this should match nav tab's background color
 //                .background(Color(UIColor.quaternarySystemFill))
-            }
         }
     }
 }

@@ -28,7 +28,7 @@ struct AccountView: View {
                     ForEach(account.dappList) { dapp in
                         ForEach(dapp.addressList) { dappAddress in
                             NavigationLink {
-                                AddressView(title: "Dapp", account: account, address: dappAddress)
+                                AddressView(title: dapp.humanIdentifier, account: account, address: dappAddress)
                             } label: {
                                 DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
                             }
@@ -60,7 +60,7 @@ struct AccountView: View {
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return AccountView(account: model.activeAccount)
+        return AccountView(account: model.activeAccount!)
     }
 }
 #endif

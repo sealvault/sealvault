@@ -31,6 +31,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 
 
+### ios pre_build_release
+
+```sh
+[bundle exec] fastlane ios pre_build_release
+```
+
+
+
 ### ios reset_simulators
 
 ```sh

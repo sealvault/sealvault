@@ -30,6 +30,14 @@ platform :ios do
     end
   end
 
+  lane :pre_build_release do
+    desc "Build universal Rust binary from core and generate Swift bindings and templates."
+    Dir.chdir("..") do
+      puts Dir.pwd
+      sh("python3", "pre_build.py", "--configuration", "release")
+    end
+  end
+
   lane :reset_simulators do
     reset_simulator_contents()
   end
