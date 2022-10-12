@@ -276,7 +276,7 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
                 if let url = info["NSErrorFailingURLKey"] as? URL {
                     let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
                     components.scheme = "https"
-                    self.stateModel.addressBarText = components.url!.absoluteString
+                    self.stateModel.urlRaw = components.url!.absoluteString
                     self.stateModel.urlChanged = true
                 }
             }
@@ -294,7 +294,7 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         self.stateModel.canGoBack = webView.canGoBack
         self.stateModel.canGoForward = webView.canGoForward
         if let url = webView.url {
-            self.stateModel.addressBarText = url.absoluteString
+            self.stateModel.urlRaw = url.absoluteString
         }
         self.stateModel.requestStatus = nil
     }
@@ -321,7 +321,7 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
     -> WKWebView? {
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url {
-                stateModel.addressBarText = url.absoluteString
+                stateModel.urlRaw = url.absoluteString
                 stateModel.urlChanged = true
             }
         }
