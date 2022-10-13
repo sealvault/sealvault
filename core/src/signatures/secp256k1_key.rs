@@ -37,6 +37,7 @@ mod tests {
 
     use super::*;
 
+    // Only parsing keys in tests.
     impl std::str::FromStr for AsymmetricKey<Secp256k1> {
         type Err = anyhow::Error;
 

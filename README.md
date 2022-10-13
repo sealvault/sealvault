@@ -95,11 +95,8 @@ running `fastlane pre_build` in the `ios` directory.
 - MacOS Monterey and an Apple Silicon Mac for iOS development. You may be able 
   to work on an Intel Mac, but we won't be able to help you with Rust-related 
   build issues as the maintainers are on Apple Silicon.
-- XCode 14 IDE and CLI tools
-  - Get the Xcode IDE from the app store and
-    then run `xcode-select --install` to install CLI tools.
-  - You can also install Xcode from the MacOS app store, but the download is
-    extremely slow.
+- XCode 14 IDE and CLI tools get the Xcode IDE from the app store and then run
+  `xcode-select --install` to install CLI tools.
 - The [Homebrew](https://brew.sh/) macOS package manager, then run `brew bundle`
   from the repo root to install the dependencies specified in the
   [`Brewfile`.](./Brewfile)
