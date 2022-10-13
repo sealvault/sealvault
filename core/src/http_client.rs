@@ -53,7 +53,7 @@ impl HttpClient {
                     }
                 }
             })
-            .buffer_unordered(config::MAX_ASYNC_CONCURRENT_REQUESTS)
+            .buffered(config::MAX_ASYNC_CONCURRENT_REQUESTS)
             .collect()
             .await;
         result
