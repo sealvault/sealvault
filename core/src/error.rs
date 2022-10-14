@@ -21,8 +21,7 @@ pub enum Error {
     /// The error will be sent to Sentry, so it should not contain any user data.
     #[error("Fatal Error: '{error}'")]
     Fatal { error: String },
-    /// Errors that user can make and we want to want to explain to them what's wrong.
-    /// The explanation can be presented directly to the user.
+    /// An error where the message can be presented directly to the user.
     #[error("{explanation}")]
     User { explanation: String },
 }

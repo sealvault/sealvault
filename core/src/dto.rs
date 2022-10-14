@@ -72,8 +72,7 @@ pub enum CoreError {
     /// The user should be prompted to restart the application.
     #[error("Fatal Error: '{error}'")]
     Fatal { error: String },
-    /// Errors that user can make and we want to want to explain to them what's wrong.
-    /// The explanation can be presented directly to the user.
+    // An error where the message can be presented to the user directly.
     #[error("{explanation}")]
     User { explanation: String },
 }
