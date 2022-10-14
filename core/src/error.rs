@@ -2,8 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::str::FromStr;
-
 use diesel::r2d2;
 use jsonrpsee::types::error::ErrorCode as JsonrpseeErrorCode;
 use lazy_static::lazy_static;
@@ -162,41 +160,51 @@ impl From<url::ParseError> for Error {
 }
 
 lazy_static! {
-    static ref ETHERS_JSONRPC_ERROR_CODE_REGEX: Regex =
-        Regex::new(r"\(code: (?P<code>-?\d+),").unwrap();
+    static ref ETHERS_JSONRPC_CODE_REGEX: Regex =
+        Regex::new(r"\(code: (?P<code>-?\d+),").expect("static is ok");
+    static ref ETHERS_JSONRPC_MESSAGE_REGEX: Regex =
+        Regex::new(r#"message: "?(?P<message>[\.:'!\?\-\d\w\s]+)"?,"#)
+            .expect("static is ok");
 }
 
 // This is a hack to get around the Ethers-rs provider returning opaque JSON-RPC client errors
 // and errors needing a static lifetime for downcasting: https://stackoverflow.com/a/48062162
-fn parse_eth_json_rpc_error(error_display: &str) -> Option<JsonrpseeErrorCode> {
-    ETHERS_JSONRPC_ERROR_CODE_REGEX
-        .captures(error_display)
-        .and_then(|captures| captures.name("code"))
-        .and_then(|code| <i32 as FromStr>::from_str(code.as_str()).ok())
-        .map(|code| code.into())
+fn parse_eth_json_rpc_error(error_display: &str) -> Option<(i32, Option<String>)> {
+    let code: i32 = ETHERS_JSONRPC_CODE_REGEX
+        .captures(error_display)?
+        .name("code")?
+        .as_str()
+        .parse()
+        .ok()?;
+    if let Some(captures) = ETHERS_JSONRPC_MESSAGE_REGEX.captures(error_display) {
+        let message = captures.name("message").map(|m| m.as_str().to_string());
+        Some((code, message))
+    } else {
+        Some((code, None))
+    }
 }
 
 impl From<ethers::providers::ProviderError> for Error {
     fn from(err: ethers::providers::ProviderError) -> Self {
         use ethers::providers::ProviderError;
         match err {
-            ProviderError::JsonRpcClientError(message) => {
-                let error_display = message.to_string();
-                if let Some(error_code) = parse_eth_json_rpc_error(&error_display) {
+            ProviderError::JsonRpcClientError(error) => {
+                let error_display = error.to_string();
+                if let Some((code, message)) = parse_eth_json_rpc_error(&error_display) {
                     Self::JsonRpc {
-                        code: error_code,
-                        message: error_display,
+                        code: code.into(),
+                        message: message.unwrap_or(error_display),
                     }
                 } else {
-                    Error::Retriable {
+                    Self::Retriable {
                         error: error_display,
                     }
                 }
             }
-            ProviderError::EnsError(message) => Error::User {
+            ProviderError::EnsError(message) => Self::User {
                 explanation: message,
             },
-            err => Error::Retriable {
+            err => Self::Retriable {
                 error: err.to_string(),
             },
         }
@@ -215,9 +223,12 @@ mod tests {
 
     #[test]
     fn parse_jronsrpc_client_error() {
-        let display = "(code: -32000, message: transaction underpriced, data: None)";
-        let code = parse_eth_json_rpc_error(display);
-        assert_eq!(code.unwrap(), JsonrpseeErrorCode::ServerError(-32000))
+        let error = "(code: -32000, message: transaction underpriced, data: None)";
+        let res = parse_eth_json_rpc_error(error);
+        assert!(res.is_some());
+        let (code, message) = res.unwrap();
+        assert_eq!(code, -32000);
+        assert_eq!(message, Some("transaction underpriced".into()));
     }
 
     #[test]

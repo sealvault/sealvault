@@ -17,6 +17,7 @@ class TransferState: ObservableObject {
 
     @Published var processing: Bool = false
     @Published var txExplorerUrl: URL?
+    @Published var errorMessage: BannerData?
 
     var buttonDisabled: Bool {
         return processing || disableButton || toChecksumAddress == nil || amount == ""
@@ -24,12 +25,16 @@ class TransferState: ObservableObject {
 
     var toChecksumAddress: String? {
         var toChecksumAddress: String?
-        if case .some(value: let toAddressId) = toAddress {
-            toChecksumAddress = account.addressForAddressId(addressId: toAddressId)?.checksumAddress
+        if case .some(value: let addr) = toAddress {
+            toChecksumAddress = addr.checksumAddress
         } else if toExternal != "" {
             toChecksumAddress = toExternal
         }
         return toChecksumAddress
+    }
+
+    func setErrorMessage(message: String) {
+        self.errorMessage = BannerData(title: "Error transferring token", detail: message, type: .error)
     }
 
     required init(
@@ -39,6 +44,11 @@ class TransferState: ObservableObject {
         self.token = token
         self.fromAddress = fromAddress
     }
+}
+
+enum ToAddress: Hashable {
+    case none
+    case some(Address)
 }
 
 struct TransferForm: View {
@@ -111,6 +121,7 @@ struct TransferForm: View {
             // Refresh concurrently
             _ = await (accounts, tokens)
         }
+        .banner(data: self.$state.errorMessage)
     }
 }
 
@@ -142,28 +153,17 @@ struct FromSection: View {
         }
     }
 }
-enum ToAddress: Hashable {
-    case none
-    // Holds address id. Can't put address in there, bc compiler can't figure out that it
-    // remains part of the Main Actor.
-    case some(String)
-}
 
 struct ToSection: View {
     @ObservedObject var state: TransferState
 
     @State var toAddressType: ToAddressType = .dapp
+    @FocusState private var toExternalFocused: Bool
 
     enum ToAddressType {
         case wallet
         case dapp
         case external
-    }
-
-    private func setTo(_ toAddressType: ToAddressType) {
-        self.toAddressType = toAddressType
-        state.toExternal = ""
-        state.toAddress = ToAddress.none
     }
 
     private func canTransferTo(_ toAddress: Address) -> Bool {
@@ -181,7 +181,7 @@ struct ToSection: View {
                         ForEach(state.account.walletList) { wallet in
                             if canTransferTo(wallet) {
                                 Text("\(wallet.chainDisplayName) \(wallet.addressDisplay)")
-                                    .tag(ToAddress.some(wallet.id))
+                                    .tag(ToAddress.some(wallet))
                             }
                         }
                     }
@@ -192,34 +192,34 @@ struct ToSection: View {
                             ForEach(dapp.addressList) { dappAddress in
                                 if canTransferTo(dappAddress) {
                                     Text("\(dapp.humanIdentifier)")
-                                        .tag(ToAddress.some(dappAddress.id))
+                                        .tag(ToAddress.some(dappAddress))
                                 }
                             }
                         }
                     }
                 case .external:
-                    TextField("Address", text: $state.toExternal)
+                    TextField("Checksum Address", text: $state.toExternal)
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
-                        .keyboardType(.alphabet)
+                        .autocorrectionDisabled(true)
+                        .autocapitalization(.none)
+                        .focused($toExternalFocused)
+                        .onChange(of: toExternalFocused, perform: { newValue in
+                            state.disableButton = newValue
+                        })
+
                 }
                 Picker("to", selection: $toAddressType) {
-                    Button(action: {
-                        setTo(ToAddressType.wallet)
-                    }, label: {
-                        Text("Wallet")
-                    }).tag(ToAddressType.wallet)
-                    Button(action: {
-                        setTo(ToAddressType.dapp)
-                    }, label: {
-                        Text("Dapp")
-                    }).tag(ToAddressType.dapp)
-                    Button(action: {
-                        setTo(ToAddressType.external)
-                    }, label: {
-                        Text("External")
-                    }).tag(ToAddressType.external)
-                }.pickerStyle(.segmented)
+                    Text("Wallet").tag(ToAddressType.wallet)
+                    Text("Dapp").tag(ToAddressType.dapp)
+                    Text("External").tag(ToAddressType.external)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: toAddressType) { _ in
+                    // Very important to reset otherwise user might mistakenly send to different address
+                    state.toExternal = ""
+                    state.toAddress = ToAddress.none
+                }
             }
         }
     }
@@ -253,9 +253,22 @@ struct TransferButton: View {
                 } else {
                     return nil
                 }
-            } catch {
-                // TODO: handle different errors
-                print("Error: \(error)")
+            } catch CoreError.User(let message) {
+                DispatchQueue.main.async {
+                    self.state.setErrorMessage(message: message)
+                }
+                return nil
+            } catch CoreError.Retriable(let message) {
+                DispatchQueue.main.async {
+                    self.state.setErrorMessage(message: "Something went wrong. Please try again!")
+                }
+                print("Retriable error while transferring token: \(message)")
+                return nil
+            } catch let error {
+                DispatchQueue.main.async {
+                    self.state.setErrorMessage(message: "An unexpected error occurred. Please restart the application!")
+                }
+                print("\(error)")
                 return nil
             }
         }
@@ -300,7 +313,6 @@ struct TransferButton: View {
                             .frame(maxWidth: .infinity)
                     }
             })
-            .disabled(state.buttonDisabled)
             .padding()
             .background(state.buttonDisabled ? Color.secondary : Color.accentColor)
             .foregroundColor(Color.white)
@@ -319,6 +331,8 @@ struct TransferView_Previews: PreviewProvider {
         let dapp = account.dappList[0]
         let dappAddress = dapp.addressList[0]
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
+        let errorState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+        errorState.setErrorMessage(message: "test message")
         return Group {
             PreviewWrapper(
                 model: model,
@@ -327,6 +341,10 @@ struct TransferView_Previews: PreviewProvider {
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+            )
+            PreviewWrapper(
+                model: model,
+                state: errorState
             )
         }
     }

@@ -4,6 +4,8 @@
 
 use std::{iter, sync::Arc};
 
+use lazy_static::lazy_static;
+use regex::Regex;
 use typed_builder::TypedBuilder;
 use url::Url;
 
@@ -76,15 +78,29 @@ pub enum CoreError {
     User { explanation: String },
 }
 
+lazy_static! {
+    // Hack to get errors that should be displayed to users.
+    static ref JSONRPC_USER_ERROR_REGEX: Regex =
+        Regex::new(r"funds|gas|underpriced").expect("static is ok");
+}
+
 impl From<Error> for CoreError {
     fn from(err: Error) -> Self {
         match err {
             Error::Fatal { error } => CoreError::Fatal { error },
             Error::User { explanation } => CoreError::User { explanation },
             Error::Retriable { error } => CoreError::Retriable { error },
-            Error::JsonRpc { code, message } => CoreError::Retriable {
-                error: format!("JSON-RPC error {} message '{}'", code, message),
-            },
+            Error::JsonRpc { code, message } => {
+                if JSONRPC_USER_ERROR_REGEX.is_match(&message) {
+                    CoreError::User {
+                        explanation: message,
+                    }
+                } else {
+                    CoreError::Retriable {
+                        error: format!("JSON-RPC error {} message '{}'", code, message),
+                    }
+                }
+            }
         }
     }
 }
