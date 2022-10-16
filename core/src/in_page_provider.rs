@@ -12,7 +12,7 @@ use jsonrpsee::{
     },
 };
 use lazy_static::lazy_static;
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use typed_builder::TypedBuilder;
@@ -295,11 +295,19 @@ impl InPageProvider {
         request: &'a Request<'a>,
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
-        let account_id = rt::spawn_blocking(move || {
-            let mut conn = resources.connection_pool.connection()?;
-            m::LocalSettings::fetch_active_account_id(&mut conn)
-        })
-        .await??;
+        let (account_id, chain_id, chain_settings) = resources
+            .connection_pool
+            .deferred_transaction_async(|mut tx_conn| {
+                let account_id =
+                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
+                let chain_id = eth::ChainId::default_dapp_chain();
+                let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
+                    tx_conn.as_mut(),
+                    chain_id,
+                )?;
+                Ok((account_id, chain_id, chain_settings))
+            })
+            .await?;
 
         let url = self.url.clone();
         let callbacks = self.request_context.callbacks();
@@ -314,6 +322,10 @@ impl InPageProvider {
             .account_id(account_id)
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
+            .amount(chain_settings.default_dapp_allotment.display_amount())
+            .token_symbol(chain_id.native_token().symbol())
+            .chain_display_name(chain_id.display_name())
+            .chain_id(chain_id)
             .json_rpc_request(raw_request)
             .build();
 
@@ -361,10 +373,10 @@ impl InPageProvider {
         // Add dapp to account and create local session
         let url = self.url.clone();
         let resources = self.resources.clone();
+        let chain_id: eth::ChainId = dapp_approval.chain_id.try_into()?;
         let session = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let chain_id = eth::ChainId::default_dapp_chain();
                 let dapp_id = m::Dapp::create_if_not_exists(
                     &mut tx_conn,
                     url,
@@ -709,6 +721,17 @@ pub struct DappApprovalParams {
     /// The dapps favicon
     #[builder(setter(into))]
     pub favicon: Option<Vec<u8>>,
+    /// The amount that is to be transferred.
+    #[builder(setter(into))]
+    pub amount: String,
+    /// The symbol of the token that was transferred.
+    #[builder(setter(into))]
+    pub token_symbol: String,
+    /// The displayable name of the chain where the token was transferred.
+    #[builder(setter(into))]
+    pub chain_display_name: String,
+    #[builder(setter(into))]
+    pub chain_id: u64,
     /// The JSON-RPC request that requested adding this dapp.
     #[builder(setter(into))]
     pub json_rpc_request: String,
@@ -811,11 +834,10 @@ fn parse_0x_chain_id(hex_chain_id: &str) -> Result<eth::ChainId, Error> {
                 message: "Invalid U64".into(),
             }
         })?;
-    let chain_id: eth::ChainId =
-        FromPrimitive::from_u64(chain_id.as_u64()).ok_or_else(|| Error::JsonRpc {
-            code: InPageErrorCode::InvalidParams.into(),
-            message: "Unsupported chain id".into(),
-        })?;
+    let chain_id: eth::ChainId = chain_id.try_into().map_err(|_| Error::JsonRpc {
+        code: InPageErrorCode::InvalidParams.into(),
+        message: "Unsupported chain id".into(),
+    })?;
     Ok(chain_id)
 }
 

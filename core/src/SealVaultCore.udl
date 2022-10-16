@@ -46,9 +46,9 @@ interface AppCore {
 
 [Error]
 enum CoreError{
-  "Fatal",
-  "Retriable",
-  "User",
+    "Fatal",
+    "Retriable",
+    "User",
 };
 
 dictionary CoreAccount {
@@ -125,5 +125,9 @@ dictionary DappApprovalParams {
     string account_id;
     string dapp_identifier;
     sequence<u8>? favicon;
+    string amount;
+    string token_symbol;
+    string chain_display_name;
+    u64 chain_id;
     string json_rpc_request;
 };
