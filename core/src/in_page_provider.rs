@@ -420,13 +420,15 @@ impl InPageProvider {
                 Ok((chain_settings, wallet_signing_key))
             })
             .await?;
-        // Call blockchain API in background.
-        rt::spawn(Self::make_default_dapp_allotment_transfer(
-            self.resources.clone(),
-            chain_settings,
-            wallet_signing_key,
-            session_clone,
-        ));
+        if !chain_settings.default_dapp_allotment.amount.is_zero() {
+            // Call blockchain API in background.
+            rt::spawn(Self::make_default_dapp_allotment_transfer(
+                self.resources.clone(),
+                chain_settings,
+                wallet_signing_key,
+                session_clone,
+            ));
+        }
         Ok(())
     }
 
