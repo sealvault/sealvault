@@ -5,13 +5,22 @@
 import SwiftUI
 
 struct AppTabNavigation: View {
+    @EnvironmentObject private var model: GlobalModel
+
+    var body: some View {
+        AppTabNavigationInner(callbackModel: model.callbackModel)
+    }
+}
+
+struct AppTabNavigationInner: View {
     enum Tab {
         case accountList
         case webBrowser
     }
 
-    @EnvironmentObject private var model: GlobalModel
+    @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .accountList
+    @State var dappAllotmentTransferBanner: BannerData?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -24,8 +33,6 @@ struct AppTabNavigation: View {
                 Label {
                     menuText
                 } icon: {
-                    // TODO: size isn't respected
-                    // IconView(image: model.activeAccount.image, iconSize: 16)
                     Image(systemName: "key")
                 }.accessibility(label: menuText)
             }
@@ -43,15 +50,52 @@ struct AppTabNavigation: View {
                 }.accessibility(label: menuText)
             }
             .tag(Tab.webBrowser)
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onChange(of: callbackModel.dappAllotmentResult) { val in
+            guard let res = val else {
+                return
+            }
+            if let errorMessage = res.errorMessage {
+                let title = "Failed to transfer to \(res.dappIdentifier)"
+                let detail = "Error: \(errorMessage)"
+                dappAllotmentTransferBanner = BannerData(title: title, detail: detail, type: .error)
+            } else {
+                let title = "Successfully transferred to \(res.dappIdentifier)"
+                let details = """
+                Transferred \(res.amount) \(res.tokenSymbol) on \(res.chainDisplayName) to \(res.dappIdentifier)
+                """
+                dappAllotmentTransferBanner = BannerData(title: title, detail: details, type: .success)
+            }
+        }
+        .banner(data: $dappAllotmentTransferBanner)
     }
 }
 
 #if DEBUG
 struct AppTabNavigation_Previews: PreviewProvider {
     static var previews: some View {
-        AppTabNavigation(selection: .webBrowser).environmentObject(GlobalModel.buildForPreview())
-        AppTabNavigation(selection: .accountList).environmentObject(GlobalModel.buildForPreview())
+        let model = GlobalModel.buildForPreview()
+        let callbackSuccess = CallbackModel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackSuccess.dappAllotmentResult = DappAllotmentTransferResult(
+                dappIdentifier: "example.com", amount: "0.1", tokenSymbol: "MATIC",
+                chainDisplayName: "Polygon PoS", errorMessage: nil
+            )
+        }
+
+        let callbackError = CallbackModel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackError.dappAllotmentResult = DappAllotmentTransferResult(
+                dappIdentifier: "example.com", amount: "0.1", tokenSymbol: "MATIC",
+                chainDisplayName: "Polygon PoS", errorMessage: "insufficient funds"
+            )
+        }
+
+        return Group {
+            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .webBrowser).environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackError, selection: .accountList).environmentObject(model)
+        }
     }
 }
 #endif

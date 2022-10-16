@@ -9,6 +9,7 @@ class GlobalModel: ObservableObject {
     @Published var accounts: [String: Account]
     /// The account currently used for dapp interactions
     @Published var activeAccountId: String?
+    @Published var callbackModel: CallbackModel
 
     var activeAccount: Account? {
         return accountList.first(where: { acc in acc.id == activeAccountId })
@@ -20,10 +21,11 @@ class GlobalModel: ObservableObject {
 
     let core: AppCoreProtocol
 
-    required init(core: AppCoreProtocol, accounts: [Account], activeAccountId: String?) {
+    required init(core: AppCoreProtocol, accounts: [Account], activeAccountId: String?, callbackModel: CallbackModel) {
         self.core = core
         self.accounts = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
         self.activeAccountId = activeAccountId
+        self.callbackModel = callbackModel
     }
 
     private func updateAccounts(_ coreAccounts: [CoreAccount]) {
@@ -45,14 +47,15 @@ class GlobalModel: ObservableObject {
 
     static func buildOnStartup() -> Self {
         let coreArgs = CoreArgs(cacheDir: cacheDir(), dbFilePath: ensureDbFilePath())
+        let callbackModel = CallbackModel()
         var core: AppCoreProtocol
         do {
-            core = try AppCore(args: coreArgs, uiCallback: CoreUICallback())
+            core = try AppCore(args: coreArgs, uiCallback: CoreUICallback(callbackModel))
         } catch {
             print("Failed to create core: \(error)")
             exit(1)
         }
-        return Self(core: core, accounts: [], activeAccountId: nil)
+        return Self(core: core, accounts: [], activeAccountId: nil, callbackModel: callbackModel)
     }
 
     private static func ensureDbFilePath() -> String {
@@ -291,7 +294,9 @@ extension GlobalModel {
         let core = PreviewAppCore()
         let accounts = try! core.listAccounts().map { Account.fromCore(core, $0) }
         let activeAccountId = try! core.activeAccountId()
-        return GlobalModel(core: core, accounts: accounts, activeAccountId: activeAccountId)
+        return GlobalModel(
+            core: core, accounts: accounts, activeAccountId: activeAccountId, callbackModel: CallbackModel()
+        )
     }
 }
 // swiftlint:enable force_try

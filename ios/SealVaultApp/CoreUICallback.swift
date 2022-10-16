@@ -5,8 +5,13 @@
 import Foundation
 
 class CoreUICallback: CoreUiCallbackI {
+    let model: CallbackModel
+
+    required init(_ model: CallbackModel) {
+        self.model = model
+    }
+
     func dappAllotmentTransferResult(result: DappAllotmentTransferResult) {
-        // TODO implement
-        print("dapp allotment transfer result: \(result)")
+        self.model.dappAllotmentResult = result
     }
 }
