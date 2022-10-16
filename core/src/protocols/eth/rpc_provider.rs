@@ -31,6 +31,7 @@ pub struct RpcProvider {
     chain_id: ChainId,
 }
 
+// TODO refactor so that keys aren't kept in memory while request is awaited
 impl RpcProvider {
     pub fn new(chain_id: ChainId, http_endpoint: Url) -> Self {
         let provider = Provider::new(Http::new(http_endpoint));
