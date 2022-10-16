@@ -24,7 +24,7 @@ use crate::{
     db::{models as m, ConnectionPool},
     favicon::fetch_favicon_async,
     protocols::eth,
-    Error,
+    CoreError, DappAllotmentTransferResult, Error,
 };
 
 #[derive(Debug)]
@@ -399,6 +399,7 @@ impl InPageProvider {
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
+        let session_clone = session.clone();
         let (chain_settings, wallet_signing_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
@@ -419,13 +420,12 @@ impl InPageProvider {
                 Ok((chain_settings, wallet_signing_key))
             })
             .await?;
-        let dapp_address = session.address.clone();
         // Call blockchain API in background.
         rt::spawn(Self::make_default_dapp_allotment_transfer(
             self.resources.clone(),
             chain_settings,
             wallet_signing_key,
-            dapp_address,
+            session_clone,
         ));
         Ok(())
     }
@@ -434,7 +434,7 @@ impl InPageProvider {
         resources: Arc<CoreResources>,
         chain_settings: eth::ChainSettings,
         wallet_signing_key: eth::SigningKey,
-        dapp_address: String,
+        session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let provider = resources
             .rpc_manager
@@ -443,21 +443,56 @@ impl InPageProvider {
         let res = provider
             .transfer_native_token_async(
                 &wallet_signing_key,
-                &dapp_address,
+                &session.address,
                 &chain_settings.default_dapp_allotment,
             )
             .await;
-        match res {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                // TODO display error message in ui instead
-                log::error!(
-                    "Failed to transfer allotment to new dapp due to error: {}",
-                    err
-                );
-                Ok(())
+        rt::spawn_blocking(move || {
+            let mut conn = resources.connection_pool.connection()?;
+            let dapp_identifier = session.fetch_dapp_identifier(&mut conn)?;
+
+            let eth::ChainSettings {
+                default_dapp_allotment: amount,
+                ..
+            } = chain_settings;
+            let mut callback_result = DappAllotmentTransferResult::builder()
+                .dapp_identifier(dapp_identifier)
+                .amount(amount.display_amount())
+                .token_symbol(amount.chain_id.native_token().symbol())
+                .chain_display_name(amount.chain_id.display_name())
+                .build();
+
+            match res {
+                Ok(_) => {
+                    resources
+                        .ui_callbacks
+                        .dapp_allotment_transfer_result(callback_result);
+                }
+                Err(err) => {
+                    log::error!(
+                        "Failed to transfer allotment to new dapp due to error: {}",
+                        err
+                    );
+                    // In CoreError RPC errors that can be displayed to users are converted to
+                    // CoreError::User.
+                    let error: CoreError = err.into();
+                    match error {
+                        CoreError::User { explanation } => {
+                            callback_result.error_message = Some(explanation)
+                        }
+                        _ => {
+                            callback_result.error_message =
+                                Some("An unexpected error occurred".into())
+                        }
+                    }
+                    resources
+                        .ui_callbacks
+                        .dapp_allotment_transfer_result(callback_result);
+                }
             }
-        }
+            Ok(())
+        })
+        .await?
     }
 
     async fn fetch_session_for_approved_dapp(
@@ -689,6 +724,7 @@ pub trait CoreInPageCallbackI: Send + Sync + Debug {
     /// Notify the in-page provider of an event.
     fn notify(&self, event_hex: String);
 }
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProviderMessage {
@@ -974,7 +1010,7 @@ mod tests {
     fn authorize_dapp(core: &TmpCore) -> Result<()> {
         let provider = core.in_page_provider(true);
         provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
-        core.wait_for_first_response();
+        core.wait_for_first_in_page_response();
         Ok(())
     }
 
@@ -987,6 +1023,15 @@ mod tests {
         assert!(core.dapp_approval().is_some());
         assert_eq!(core.responses().len(), 1);
         assert_eq!(core.notifications().len(), 1);
+        core.wait_for_dapp_allotment_transfer();
+        let dapp_allotment_results = core.dapp_allotment_transfer_results();
+        assert_eq!(dapp_allotment_results.len(), 1);
+        let dapp_host = core
+            .dapp_url()
+            .host()
+            .expect("dapp url has host")
+            .to_string();
+        assert_eq!(dapp_allotment_results[0].dapp_identifier, dapp_host);
 
         Ok(())
     }

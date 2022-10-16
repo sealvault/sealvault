@@ -238,6 +238,13 @@ impl LocalDappSession {
         Ok(session)
     }
 
+    pub fn fetch_dapp_identifier(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> Result<String, Error> {
+        m::Dapp::fetch_dapp_identifier(conn, &self.dapp_id)
+    }
+
     /// Update currently used address for a dapp session.
     pub fn update_session_address(
         self,

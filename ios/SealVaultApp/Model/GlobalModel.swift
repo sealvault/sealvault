@@ -47,7 +47,7 @@ class GlobalModel: ObservableObject {
         let coreArgs = CoreArgs(cacheDir: cacheDir(), dbFilePath: ensureDbFilePath())
         var core: AppCoreProtocol
         do {
-            core = try AppCore(args: coreArgs)
+            core = try AppCore(args: coreArgs, uiCallback: CoreUICallback())
         } catch {
             print("Failed to create core: \(error)")
             exit(1)

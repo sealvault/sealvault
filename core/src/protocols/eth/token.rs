@@ -37,6 +37,10 @@ impl NativeToken {
         );
         load_binary(&icon_path)
     }
+
+    pub fn symbol(&self) -> String {
+        self.to_string()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -226,6 +230,7 @@ mod tests {
     #[test]
     fn native_to_string() {
         assert_eq!(NativeToken::Eth.to_string(), "ETH");
+        assert_eq!(NativeToken::Eth.symbol(), "ETH");
     }
 
     #[test]

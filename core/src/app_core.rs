@@ -16,7 +16,7 @@ use crate::{
     in_page_provider::{InPageProvider, InPageRequestContextI},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
-    CoreError, DappApprovalParams,
+    CoreError, CoreUICallbackI, DappApprovalParams,
 };
 
 /// Provides cross-platform key and transaction management.
@@ -33,6 +33,7 @@ pub struct AppCore {
 #[derive(Debug)]
 #[readonly::make]
 pub struct CoreResources {
+    pub ui_callbacks: Box<dyn CoreUICallbackI>,
     pub connection_pool: ConnectionPool,
     pub keychain: Keychain,
     pub http_client: HttpClient,
@@ -40,10 +41,21 @@ pub struct CoreResources {
     pub public_suffix_list: PublicSuffixList,
 }
 
+#[derive(Debug)]
+pub struct CoreArgs {
+    pub cache_dir: String,
+    pub db_file_path: String,
+}
+
 impl AppCore {
-    pub fn new(args: CoreArgs) -> Result<Self, CoreError> {
+    // UI callbacks cannot be part of the args struct, because Uniffi expects it to be hashable
+    // then.
+    pub fn new(
+        args: CoreArgs,
+        ui_callbacks: Box<dyn CoreUICallbackI>,
+    ) -> Result<Self, CoreError> {
         let rpc_manager = Box::new(eth::RpcManager::new());
-        Self::new_with_overrides(args, rpc_manager)
+        Self::new_with_overrides(args, ui_callbacks, rpc_manager)
     }
 
     fn connection_pool(&self) -> &ConnectionPool {
@@ -65,6 +77,7 @@ impl AppCore {
     /// Let us mock functionality. Not exposed through FFI.
     pub fn new_with_overrides(
         args: CoreArgs,
+        ui_callbacks: Box<dyn CoreUICallbackI>,
         rpc_manager: Box<dyn eth::RpcManagerI>,
     ) -> Result<Self, CoreError> {
         let connection_pool = ConnectionPool::new(&args.db_file_path)?;
@@ -81,6 +94,7 @@ impl AppCore {
 
         let http_client = HttpClient::new(args.cache_dir);
         let resources = CoreResources {
+            ui_callbacks,
             rpc_manager,
             connection_pool,
             keychain,
@@ -282,12 +296,6 @@ impl AppCore {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CoreArgs {
-    pub cache_dir: String,
-    pub db_file_path: String,
-}
-
 #[cfg(test)]
 pub mod tests {
 
@@ -295,9 +303,13 @@ pub mod tests {
 
     use anyhow::Result;
     use tempfile::TempDir;
+    use url::Url;
 
     use super::*;
-    use crate::{protocols::ChecksumAddress, CoreInPageCallbackI, DappApprovalParams};
+    use crate::{
+        protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
+        DappApprovalParams,
+    };
 
     #[readonly::make]
     pub(crate) struct TmpCoreDir {
@@ -349,6 +361,7 @@ pub mod tests {
         pub core: Arc<AppCore>,
         #[allow(dead_code)]
         tmp_dir: TmpCoreDir,
+        ui_callback_state: Arc<UICallbackState>,
         in_page_callback_state: Arc<InPageCallbackState>,
     }
 
@@ -360,15 +373,28 @@ pub mod tests {
 
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
 
+            let ui_callback_state = Arc::new(UICallbackState::new());
+            let ui_callbacks =
+                Box::new(CoreUICallbackMock::new(ui_callback_state.clone()));
+
             let core_args = CoreArgs {
                 cache_dir: tmp_dir.cache_dir.clone(),
                 db_file_path: tmp_dir.db_file_path.clone(),
             };
-            let core = Arc::new(AppCore::new_with_overrides(core_args, rpc_manager)?);
+            let core = Arc::new(AppCore::new_with_overrides(
+                core_args,
+                ui_callbacks,
+                rpc_manager,
+            )?);
+
+            let page_url = Url::parse("https://example.com").expect("static url ok");
+            let in_page_callback_state =
+                Arc::new(InPageCallbackState::new(core.clone(), page_url));
             Ok(TmpCore {
-                core: core.clone(),
+                core,
                 tmp_dir,
-                in_page_callback_state: Arc::new(InPageCallbackState::new(core)),
+                ui_callback_state,
+                in_page_callback_state,
             })
         }
 
@@ -393,7 +419,7 @@ pub mod tests {
             InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
         }
 
-        pub fn wait_for_first_response(&self) {
+        pub fn wait_for_first_in_page_response(&self) {
             const WAIT_FOR_MILLIS: usize = 1000;
 
             for _ in 0..WAIT_FOR_MILLIS {
@@ -405,11 +431,24 @@ pub mod tests {
             }
         }
 
+        pub fn wait_for_dapp_allotment_transfer(&self) {
+            const WAIT_FOR_MILLIS: usize = 1000;
+
+            for _ in 0..WAIT_FOR_MILLIS {
+                thread::sleep(Duration::from_millis(1));
+                // Don't hold the lock while sleeping.
+                if !self.dapp_allotment_transfer_results().is_empty() {
+                    break;
+                }
+            }
+        }
+
         pub fn dapp_approval(&self) -> Option<DappApprovalParams> {
             self.in_page_callback_state
                 .dapp_approval
                 .read()
                 .unwrap()
+                // Must clone because of RwLock
                 .clone()
         }
 
@@ -428,6 +467,63 @@ pub mod tests {
                 .unwrap()
                 .clone()
         }
+
+        pub fn dapp_allotment_transfer_results(
+            &self,
+        ) -> Vec<DappAllotmentTransferResult> {
+            self.ui_callback_state
+                .dapp_allotment_transfer_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn dapp_url(&self) -> &Url {
+            &self.in_page_callback_state.page_url
+        }
+    }
+
+    #[derive(Debug, Default)]
+    pub struct UICallbackState {
+        dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
+    }
+
+    impl UICallbackState {
+        pub fn new() -> Self {
+            Self {
+                dapp_allotment_transfer_results: Arc::new(Default::default()),
+            }
+        }
+
+        fn add_dapp_allotment_transfer_result(
+            &self,
+            result: DappAllotmentTransferResult,
+        ) {
+            {
+                let mut results = self
+                    .dapp_allotment_transfer_results
+                    .write()
+                    .expect("no poison");
+                results.push(result)
+            }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct CoreUICallbackMock {
+        state: Arc<UICallbackState>,
+    }
+
+    impl CoreUICallbackMock {
+        pub fn new(state: Arc<UICallbackState>) -> Self {
+            Self { state }
+        }
+    }
+
+    impl CoreUICallbackI for CoreUICallbackMock {
+        fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
+            self.state.add_dapp_allotment_transfer_result(result)
+        }
     }
 
     #[derive(Debug)]
@@ -436,15 +532,17 @@ pub mod tests {
         dapp_approval: Arc<RwLock<Option<DappApprovalParams>>>,
         responses: Arc<RwLock<Vec<String>>>,
         notifications: Arc<RwLock<Vec<String>>>,
+        page_url: Url,
     }
 
     impl InPageCallbackState {
-        pub fn new(core: Arc<AppCore>) -> Self {
+        pub fn new(core: Arc<AppCore>, page_url: Url) -> Self {
             Self {
                 core,
                 dapp_approval: Arc::new(Default::default()),
                 responses: Arc::new(Default::default()),
                 notifications: Arc::new(Default::default()),
+                page_url,
             }
         }
 

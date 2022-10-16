@@ -8,7 +8,7 @@ namespace SealVaultCore {
 
 interface AppCore {
     [Throws=CoreError]
-    constructor(CoreArgs args);
+    constructor(CoreArgs args, CoreUICallbackI ui_callback);
 
     [Throws=CoreError]
     sequence<CoreAccount> list_accounts();
@@ -98,6 +98,24 @@ dictionary CoreArgs {
     string db_file_path;
 };
 
+dictionary DappAllotmentTransferResult {
+    string dapp_identifier;
+    string amount;
+    string token_symbol;
+    string chain_display_name;
+    string? error_message;
+};
+
+callback interface CoreUICallbackI {
+    void dapp_allotment_transfer_result(DappAllotmentTransferResult result);
+};
+
+callback interface CoreInPageCallbackI {
+    void request_dapp_approval(DappApprovalParams dapp_approval);
+    void respond(string response_hex);
+    void notify(string message_hex);
+};
+
 callback interface InPageRequestContextI {
     string page_url();
     CoreInPageCallbackI callbacks();
@@ -109,10 +127,3 @@ dictionary DappApprovalParams {
     sequence<u8>? favicon;
     string json_rpc_request;
 };
-
-callback interface CoreInPageCallbackI {
-    void request_dapp_approval(DappApprovalParams dapp_approval);
-    void respond(string response_hex);
-    void notify(string message_hex);
-};
-
