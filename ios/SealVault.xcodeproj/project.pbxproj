@@ -35,6 +35,9 @@
 		688C29EB284102FC00474900 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29EA284102FC00474900 /* Address.swift */; };
 		68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C3FC28426B040025BCEA /* DappRow.swift */; };
 		68B6C40128426C120025BCEA /* Dapp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C40028426C120025BCEA /* Dapp.swift */; };
+		68CCACFA28F85BC70043692D /* Banner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACF928F85BC70043692D /* Banner.swift */; };
+		68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFD28FC2A740043692D /* CoreUICallback.swift */; };
+		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
 		68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EE265028DB4A710058CE25 /* DappApproval.swift */; };
 		68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F6291128251A0900BDCD02 /* SealVaultApp.swift */; };
 		68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68F6291528251A0B00BDCD02 /* Assets.xcassets */; };
@@ -83,6 +86,9 @@
 		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
 		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
 		68B6C40028426C120025BCEA /* Dapp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dapp.swift; sourceTree = "<group>"; };
+		68CCACF928F85BC70043692D /* Banner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Banner.swift; sourceTree = "<group>"; };
+		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
+		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
 		68EE265028DB4A710058CE25 /* DappApproval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappApproval.swift; sourceTree = "<group>"; };
 		68F6290E28251A0900BDCD02 /* SealVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SealVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		68F6291128251A0900BDCD02 /* SealVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealVaultApp.swift; sourceTree = "<group>"; };
@@ -141,6 +147,7 @@
 			children = (
 				688C29E82840F69100474900 /* Account.swift */,
 				688C29EA284102FC00474900 /* Address.swift */,
+				68CCACFF28FC42670043692D /* CallbackModel.swift */,
 				68B6C40028426C120025BCEA /* Dapp.swift */,
 				688C29B3283FD78000474900 /* GlobalModel.swift */,
 				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
@@ -187,9 +194,11 @@
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
 				68F6291528251A0B00BDCD02 /* Assets.xcassets */,
+				68CCACF928F85BC70043692D /* Banner.swift */,
 				68745A7F2826E0F000E7B915 /* BrowserView.swift */,
 				5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */,
 				686C1D042827C9DC00011311 /* Config.swift */,
+				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
 				68B6C3FC28426B040025BCEA /* DappRow.swift */,
 				68C0C4FC28A2739600572668 /* Generated */,
@@ -338,7 +347,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */,
+				68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */,
 				688C29E92840F69100474900 /* Account.swift in Sources */,
+				68CCACFA28F85BC70043692D /* Banner.swift in Sources */,
 				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
 				686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */,
 				688C29BE283FF33A00474900 /* AccountRow.swift in Sources */,
@@ -358,6 +369,7 @@
 				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,
 				5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */,
 				5850CBD0176884BC3B64B08C /* IconView.swift in Sources */,
+				68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */,
 				5850C0FC7D0474EEB3ADFC21 /* TokenView.swift in Sources */,
 				5850C9CBC2E527BE683353DE /* WalletRow.swift in Sources */,
 				5850C5E7A11D7CBB7D50D89B /* AddressMenu.swift in Sources */,

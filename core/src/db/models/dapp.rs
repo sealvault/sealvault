@@ -75,6 +75,21 @@ impl Dapp {
         Ok(dapp_entity.identifier)
     }
 
+    /// Get the human-readable dapp identifier for a dapp id.
+    pub fn fetch_dapp_identifier(
+        conn: &mut SqliteConnection,
+        dapp_id: &str,
+    ) -> Result<String, Error> {
+        use dapps::dsl as d;
+
+        let identifier = dapps::table
+            .filter(d::deterministic_id.eq(dapp_id))
+            .select(d::identifier)
+            .first(conn)?;
+
+        Ok(identifier)
+    }
+
     /// Create a dapp entity and return its deterministic id.
     /// The operation is idempotent.
     pub fn create_if_not_exists(

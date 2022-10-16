@@ -12,7 +12,7 @@ use jsonrpsee::{
     },
 };
 use lazy_static::lazy_static;
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use typed_builder::TypedBuilder;
@@ -24,7 +24,7 @@ use crate::{
     db::{models as m, ConnectionPool},
     favicon::fetch_favicon_async,
     protocols::eth,
-    Error,
+    CoreError, DappAllotmentTransferResult, Error,
 };
 
 #[derive(Debug)]
@@ -295,11 +295,19 @@ impl InPageProvider {
         request: &'a Request<'a>,
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
-        let account_id = rt::spawn_blocking(move || {
-            let mut conn = resources.connection_pool.connection()?;
-            m::LocalSettings::fetch_active_account_id(&mut conn)
-        })
-        .await??;
+        let (account_id, chain_id, chain_settings) = resources
+            .connection_pool
+            .deferred_transaction_async(|mut tx_conn| {
+                let account_id =
+                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
+                let chain_id = eth::ChainId::default_dapp_chain();
+                let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
+                    tx_conn.as_mut(),
+                    chain_id,
+                )?;
+                Ok((account_id, chain_id, chain_settings))
+            })
+            .await?;
 
         let url = self.url.clone();
         let callbacks = self.request_context.callbacks();
@@ -314,6 +322,10 @@ impl InPageProvider {
             .account_id(account_id)
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
+            .amount(chain_settings.default_dapp_allotment.display_amount())
+            .token_symbol(chain_id.native_token().symbol())
+            .chain_display_name(chain_id.display_name())
+            .chain_id(chain_id)
             .json_rpc_request(raw_request)
             .build();
 
@@ -361,10 +373,10 @@ impl InPageProvider {
         // Add dapp to account and create local session
         let url = self.url.clone();
         let resources = self.resources.clone();
+        let chain_id: eth::ChainId = dapp_approval.chain_id.try_into()?;
         let session = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let chain_id = eth::ChainId::default_dapp_chain();
                 let dapp_id = m::Dapp::create_if_not_exists(
                     &mut tx_conn,
                     url,
@@ -399,6 +411,7 @@ impl InPageProvider {
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
+        let session_clone = session.clone();
         let (chain_settings, wallet_signing_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
@@ -419,14 +432,15 @@ impl InPageProvider {
                 Ok((chain_settings, wallet_signing_key))
             })
             .await?;
-        let dapp_address = session.address.clone();
-        // Call blockchain API in background.
-        rt::spawn(Self::make_default_dapp_allotment_transfer(
-            self.resources.clone(),
-            chain_settings,
-            wallet_signing_key,
-            dapp_address,
-        ));
+        if !chain_settings.default_dapp_allotment.amount.is_zero() {
+            // Call blockchain API in background.
+            rt::spawn(Self::make_default_dapp_allotment_transfer(
+                self.resources.clone(),
+                chain_settings,
+                wallet_signing_key,
+                session_clone,
+            ));
+        }
         Ok(())
     }
 
@@ -434,7 +448,7 @@ impl InPageProvider {
         resources: Arc<CoreResources>,
         chain_settings: eth::ChainSettings,
         wallet_signing_key: eth::SigningKey,
-        dapp_address: String,
+        session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let provider = resources
             .rpc_manager
@@ -443,21 +457,56 @@ impl InPageProvider {
         let res = provider
             .transfer_native_token_async(
                 &wallet_signing_key,
-                &dapp_address,
+                &session.address,
                 &chain_settings.default_dapp_allotment,
             )
             .await;
-        match res {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                // TODO display error message in ui instead
-                log::error!(
-                    "Failed to transfer allotment to new dapp due to error: {}",
-                    err
-                );
-                Ok(())
+        rt::spawn_blocking(move || {
+            let mut conn = resources.connection_pool.connection()?;
+            let dapp_identifier = session.fetch_dapp_identifier(&mut conn)?;
+
+            let eth::ChainSettings {
+                default_dapp_allotment: amount,
+                ..
+            } = chain_settings;
+            let mut callback_result = DappAllotmentTransferResult::builder()
+                .dapp_identifier(dapp_identifier)
+                .amount(amount.display_amount())
+                .token_symbol(amount.chain_id.native_token().symbol())
+                .chain_display_name(amount.chain_id.display_name())
+                .build();
+
+            match res {
+                Ok(_) => {
+                    resources
+                        .ui_callbacks
+                        .dapp_allotment_transfer_result(callback_result);
+                }
+                Err(err) => {
+                    log::error!(
+                        "Failed to transfer allotment to new dapp due to error: {}",
+                        err
+                    );
+                    // In CoreError RPC errors that can be displayed to users are converted to
+                    // CoreError::User.
+                    let error: CoreError = err.into();
+                    match error {
+                        CoreError::User { explanation } => {
+                            callback_result.error_message = Some(explanation)
+                        }
+                        _ => {
+                            callback_result.error_message =
+                                Some("An unexpected error occurred".into())
+                        }
+                    }
+                    resources
+                        .ui_callbacks
+                        .dapp_allotment_transfer_result(callback_result);
+                }
             }
-        }
+            Ok(())
+        })
+        .await?
     }
 
     async fn fetch_session_for_approved_dapp(
@@ -672,6 +721,17 @@ pub struct DappApprovalParams {
     /// The dapps favicon
     #[builder(setter(into))]
     pub favicon: Option<Vec<u8>>,
+    /// The amount that is to be transferred.
+    #[builder(setter(into))]
+    pub amount: String,
+    /// The symbol of the token that was transferred.
+    #[builder(setter(into))]
+    pub token_symbol: String,
+    /// The displayable name of the chain where the token was transferred.
+    #[builder(setter(into))]
+    pub chain_display_name: String,
+    #[builder(setter(into))]
+    pub chain_id: u64,
     /// The JSON-RPC request that requested adding this dapp.
     #[builder(setter(into))]
     pub json_rpc_request: String,
@@ -689,6 +749,7 @@ pub trait CoreInPageCallbackI: Send + Sync + Debug {
     /// Notify the in-page provider of an event.
     fn notify(&self, event_hex: String);
 }
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProviderMessage {
@@ -773,11 +834,10 @@ fn parse_0x_chain_id(hex_chain_id: &str) -> Result<eth::ChainId, Error> {
                 message: "Invalid U64".into(),
             }
         })?;
-    let chain_id: eth::ChainId =
-        FromPrimitive::from_u64(chain_id.as_u64()).ok_or_else(|| Error::JsonRpc {
-            code: InPageErrorCode::InvalidParams.into(),
-            message: "Unsupported chain id".into(),
-        })?;
+    let chain_id: eth::ChainId = chain_id.try_into().map_err(|_| Error::JsonRpc {
+        code: InPageErrorCode::InvalidParams.into(),
+        message: "Unsupported chain id".into(),
+    })?;
     Ok(chain_id)
 }
 
@@ -974,7 +1034,7 @@ mod tests {
     fn authorize_dapp(core: &TmpCore) -> Result<()> {
         let provider = core.in_page_provider(true);
         provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
-        core.wait_for_first_response();
+        core.wait_for_first_in_page_response();
         Ok(())
     }
 
@@ -987,6 +1047,15 @@ mod tests {
         assert!(core.dapp_approval().is_some());
         assert_eq!(core.responses().len(), 1);
         assert_eq!(core.notifications().len(), 1);
+        core.wait_for_dapp_allotment_transfer();
+        let dapp_allotment_results = core.dapp_allotment_transfer_results();
+        assert_eq!(dapp_allotment_results.len(), 1);
+        let dapp_host = core
+            .dapp_url()
+            .host()
+            .expect("dapp url has host")
+            .to_string();
+        assert_eq!(dapp_allotment_results[0].dapp_identifier, dapp_host);
 
         Ok(())
     }
