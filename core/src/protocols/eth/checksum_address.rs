@@ -13,7 +13,7 @@ pub fn validate_checksum_address(check_sum_address: &str) -> Result<(), Error> {
 
 pub(super) fn parse_checksum_address(check_sum_address: &str) -> Result<Address, Error> {
     let addr: Address = check_sum_address.parse().map_err(|_| Error::User {
-        explanation: "This doesn't look like an Ethereum address.".into(),
+        explanation: "This doesn't look like an Ethereum checksum address.".into(),
     })?;
 
     if to_checksum(&addr, None) != check_sum_address {

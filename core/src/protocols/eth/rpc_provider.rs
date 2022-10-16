@@ -31,6 +31,7 @@ pub struct RpcProvider {
     chain_id: ChainId,
 }
 
+// TODO refactor so that keys aren't kept in memory while request is awaited
 impl RpcProvider {
     pub fn new(chain_id: ChainId, http_endpoint: Url) -> Self {
         let provider = Provider::new(Http::new(http_endpoint));
@@ -81,7 +82,11 @@ impl RpcProvider {
         let pending_tx = signer
             .send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest)))
             .await?;
-        Ok(pending_tx.tx_hash())
+        let tx_receipt = pending_tx
+            .await
+            .map_err(tx_failed_with_error)?
+            .ok_or_else(tx_failed_error)?;
+        Ok(tx_receipt.transaction_hash)
     }
 
     fn verify_chain_ids(
@@ -187,7 +192,11 @@ impl RpcProvider {
         let pending_tx = contract_call.send().await.map_err(|err| Error::Retriable {
             error: err.to_string(),
         })?;
-        Ok(display_tx_hash(pending_tx.tx_hash()))
+        let tx_receipt = pending_tx
+            .await
+            .map_err(tx_failed_with_error)?
+            .ok_or_else(tx_failed_error)?;
+        Ok(display_tx_hash(tx_receipt.transaction_hash))
     }
 
     /// Fetch the native token balance for an address.
@@ -248,6 +257,19 @@ fn display_tx_hash(tx_hash: H256) -> String {
     // Custom formatting is needed, because default display implementation elides.
     // See: https://stackoverflow.com/a/57350190
     format!("{:#x}", tx_hash)
+}
+
+const TX_FAILED_MESSAGE: &str = "Transaction failed";
+
+fn tx_failed_with_error(err: ethers::providers::ProviderError) -> Error {
+    log::error!("{}: {:?}", TX_FAILED_MESSAGE, err);
+    tx_failed_error()
+}
+
+fn tx_failed_error() -> Error {
+    Error::User {
+        explanation: TX_FAILED_MESSAGE.into(),
+    }
 }
 
 #[cfg(test)]

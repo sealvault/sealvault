@@ -12,7 +12,8 @@ use actix_web::{
 use dotenv::dotenv;
 use ethers_core::utils::hex;
 use uniffi_sealvault_core::{
-    AppCore, CoreArgs, CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI,
+    AppCore, CoreArgs, CoreInPageCallbackI, CoreUICallbackI, DappAllotmentTransferResult,
+    DappApprovalParams, InPageRequestContextI,
 };
 
 const DB_PATH: &str = ":memory:";
@@ -33,7 +34,10 @@ async fn main() -> std::io::Result<()> {
         cache_dir: "./cache".into(),
         db_file_path: DB_PATH.into(),
     };
-    let backend_service = Arc::new(AppCore::new(backend_args).expect("core initializes"));
+    let backend_service = Arc::new(
+        AppCore::new(backend_args, Box::new(CoreUICallBackMock::new()))
+            .expect("core initializes"),
+    );
 
     HttpServer::new(move || {
         App::new()
@@ -123,6 +127,21 @@ async fn in_page_provider(backend_service: web::Data<Arc<AppCore>>) -> impl Resp
     HttpResponse::Ok()
         .content_type("application/javascript")
         .body(contents)
+}
+
+#[derive(Debug, Default)]
+pub struct CoreUICallBackMock {}
+
+impl CoreUICallBackMock {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl CoreUICallbackI for CoreUICallBackMock {
+    fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
+        log::info!("Dapp allotment transfer result: {:?}", result)
+    }
 }
 
 #[derive(Debug)]

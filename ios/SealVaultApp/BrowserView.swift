@@ -47,7 +47,7 @@ class BrowserModel: ObservableObject {
     @MainActor
     func setDappApproval(_ request: DappApprovalRequest?) {
         if let req = request {
-            self.dappApprovalRequest = request
+            self.dappApprovalRequest = req
             self.dappApprovalPresented = true
         } else {
             self.dappApprovalRequest = nil

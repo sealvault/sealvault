@@ -7,12 +7,16 @@ use ethers::core::{
     utils::parse_units,
 };
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use url::Url;
 
-use crate::protocols::eth::{
-    chain_settings::ChainSettings, token::NativeToken, NativeTokenAmount,
+use crate::{
+    protocols::eth::{
+        chain_settings::ChainSettings, token::NativeToken, NativeTokenAmount,
+    },
+    Error,
 };
 
 #[derive(
@@ -62,7 +66,7 @@ impl ChainId {
 
     /// Display chain id as hex string prefixed with 0x, eg "0x89"
     pub fn display_hex(self) -> String {
-        let hex_chain_id: ethers::types::U64 = self.into();
+        let hex_chain_id: U64 = self.into();
         let mut hex_chain_id = serde_json::to_string(&hex_chain_id)
             .expect("serde_json::Value can be always deserialized");
 
@@ -138,10 +142,28 @@ impl From<ChainId> for u64 {
     }
 }
 
+impl TryFrom<u64> for ChainId {
+    type Error = Error;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        FromPrimitive::from_u64(value).ok_or_else(|| Error::Retriable {
+            error: format!("Unsupported u64 chain id: {}", value),
+        })
+    }
+}
+
 impl From<ChainId> for U64 {
     fn from(chain_id: ChainId) -> Self {
         let chain_id: u64 = chain_id.into();
         chain_id.into()
+    }
+}
+
+impl TryFrom<U64> for ChainId {
+    type Error = Error;
+
+    fn try_from(value: U64) -> Result<Self, Self::Error> {
+        value.as_u64().try_into()
     }
 }
 
