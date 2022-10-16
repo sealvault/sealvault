@@ -12,6 +12,8 @@ class CoreUICallback: CoreUiCallbackI {
     }
 
     func dappAllotmentTransferResult(result: DappAllotmentTransferResult) {
-        self.model.dappAllotmentResult = result
+        DispatchQueue.main.async {
+            self.model.dappAllotmentResult = result
+        }
     }
 }

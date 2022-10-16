@@ -11,6 +11,11 @@ protocol DappApprovalRequestI: Identifiable {
 
     var favicon: [UInt8]? { get }
 
+    // Default dapp allotment transfer
+    var chainDisplayName: String { get }
+    var tokenSymbol: String { get }
+    var tokenAmount: String { get }
+
     func approve()
 
     func reject()
@@ -33,6 +38,18 @@ struct DappApprovalRequest: DappApprovalRequestI {
 
     var favicon: [UInt8]? {
         params.favicon
+    }
+
+    var chainDisplayName: String {
+        params.chainDisplayName
+    }
+
+    var tokenSymbol: String {
+        params.tokenSymbol
+    }
+
+    var tokenAmount: String {
+        params.amount
     }
 
     func approve() {
@@ -70,11 +87,22 @@ struct DappApproval: View {
 
     var body: some View {
         VStack(spacing: 20) {
+            HStack {
+                DisclosureGroup(content: {
+                    Text("""
+When approved, a transfer of \(request.tokenAmount) \(request.tokenSymbol) on \(request.chainDisplayName) is made to \
+the newly created dapp address for gas fees.
+""")
+                },
+                label: {
+                    Text("Add dapp").font(.title2)
+                })
+            }.padding(20)
+
             Spacer()
 
             VStack(spacing: 20) {
                 HStack {
-                    Text("Add").fontWeight(.light)
                     Label {
                         Text(request.dappHumanIdentifier)
                     } icon: {
@@ -84,7 +112,6 @@ struct DappApproval: View {
                 }
                 .font(.largeTitle)
                 HStack {
-                    Text("to").fontWeight(.light)
                     Label {
                         Text(account.displayName)
                     } icon: {
@@ -93,30 +120,34 @@ struct DappApproval: View {
                     Text("account").fontWeight(.light)
                 }
                 .font(.title2)
+
             }
+            .scaledToFit()
 
             Spacer()
 
-            HStack(spacing: 0) {
-                Button(action: {
-                    request.reject()
-                    dismiss()
-                }, label: {
-                    Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
-                })
-                .accessibilityLabel("rejectDapp")
-                .buttonStyle(.borderless)
-                .controlSize(.large)
+            VStack(spacing: 20) {
+                HStack(spacing: 0) {
+                    Button(action: {
+                        request.reject()
+                        dismiss()
+                    }, label: {
+                        Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    })
+                    .accessibilityLabel("rejectDapp")
+                    .buttonStyle(.borderless)
+                    .controlSize(.large)
 
-                Button(action: {
-                    request.approve()
-                    dismiss()
-                }, label: {
-                    Text("OK").frame(maxWidth: .infinity)
-                })
-                .accessibilityLabel("approveDapp")
-                .buttonStyle(.borderless)
-                .controlSize(.large)
+                    Button(action: {
+                        request.approve()
+                        dismiss()
+                    }, label: {
+                        Text("OK").frame(maxWidth: .infinity)
+                    })
+                    .accessibilityLabel("approveDapp")
+                    .buttonStyle(.borderless)
+                    .controlSize(.large)
+                }
             }
         }
     }
@@ -125,9 +156,13 @@ struct DappApproval: View {
 #if DEBUG
 
 struct DappApprovalRequestPreview: DappApprovalRequestI {
+
     var id = UUID()
     var accountId: String
     var dappHumanIdentifier: String
+    var chainDisplayName: String
+    var tokenSymbol: String
+    var tokenAmount: String
     var favicon: [UInt8]?
 
     func approve() {
@@ -140,11 +175,14 @@ struct DappApprovalRequestPreview: DappApprovalRequestI {
 
     @MainActor
     static func buildForPreview(_ accountId: String) -> Self {
-        let dapp = Dapp.uniswap()
+        let dapp = Dapp.quickswap()
         let favicon = [UInt8](dapp.favicon.pngData()!)
         let request = DappApprovalRequestPreview(
             accountId: accountId,
             dappHumanIdentifier: dapp.humanIdentifier,
+            chainDisplayName: "Polygon PoS",
+            tokenSymbol: "MATIC",
+            tokenAmount: "0.1",
             favicon: favicon
         )
         return request
