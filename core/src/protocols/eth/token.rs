@@ -145,9 +145,14 @@ fn display_amount(amount: U256, decimals: u8) -> String {
 fn parse_amount(amount: &str, decimals: u8) -> Result<U256, Error> {
     use rust_decimal::MathematicalOps;
 
-    let num: Decimal = amount.parse().map_err(|_| Error::Retriable {
-        error: format!("Invalid decimal string: '{}'", amount),
-    })?;
+    // Some locales use "," as the decimal separator instead of ".", hence the replace.
+    let num: Decimal =
+        amount
+            .replace(',', ".")
+            .parse()
+            .map_err(|_| Error::Retriable {
+                error: format!("Invalid decimal string: '{}'", amount),
+            })?;
 
     let multiplier: Decimal =
         Decimal::TEN
@@ -197,6 +202,31 @@ mod tests {
     use strum::IntoEnumIterator;
 
     use super::*;
+
+    #[test]
+    fn parse_amount_fractional() -> Result<()> {
+        // This should be covered by prop testing, but after reviewing the options, Quickcheck is
+        // poorly documented and difficult to work with, and Proptest is unmaintained.
+        // We should periodically reevaluate property-based testing options though.
+
+        assert!(parse_amount("", 2).is_err());
+        assert!(parse_amount(".", 2).is_err());
+        assert!(parse_amount(",", 2).is_err());
+
+        assert_eq!(parse_amount("12.", 0)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount("12,", 0)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount(".12", 2)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount(",12", 2)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount("0.12", 2)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount("0,12", 2)?, U256::from_dec_str("12")?);
+        assert_eq!(parse_amount("123.45", 2)?, U256::from_dec_str("12345")?);
+        assert_eq!(parse_amount("123,45", 2)?, U256::from_dec_str("12345")?);
+
+        assert!(parse_amount("12.34,56", 2).is_err());
+        assert!(parse_amount("12,34.56", 2).is_err());
+
+        Ok(())
+    }
 
     #[test]
     fn new_amount_from_decimal_str() -> Result<()> {
