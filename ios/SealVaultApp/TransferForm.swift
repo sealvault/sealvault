@@ -64,16 +64,11 @@ struct TransferForm: View {
             VStack(spacing: 20) {
                 Spacer()
 
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Transfer")
-                        TokenLabel(token: state.token)
-                    }.font(.largeTitle)
-                    HStack {
-                        Text("on \(state.fromAddress.chainDisplayName)")
-                    }.font(.title2)
+                if size >= .accessibility1 {
+                    TitleSection(state: state).scaledToFit()
+                } else {
+                    TitleSection(state: state)
                 }
-                .scaledToFit()
 
                 Spacer()
 
@@ -128,6 +123,22 @@ struct TransferForm: View {
             .banner(data: self.$state.errorMessage)
         }
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
+    }
+}
+
+struct TitleSection: View {
+    @ObservedObject var state: TransferState
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Transfer")
+                TokenLabel(token: state.token)
+            }.font(.largeTitle)
+            HStack {
+                Text("on \(state.fromAddress.chainDisplayName)")
+            }.font(.title2)
+        }
     }
 }
 
