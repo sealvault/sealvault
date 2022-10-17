@@ -123,6 +123,9 @@ struct TransferForm: View {
             .banner(data: self.$state.errorMessage)
         }
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
+        .refreshable {
+            await state.fromAddress.refreshTokens()
+        }
     }
 }
 
@@ -289,9 +292,6 @@ struct TransferButton: View {
                 return nil
             }
         }
-        // TODO we should update the balance in the transfer view after the transfer, but calling this here resets
-        // the view and makes the success button disappear.
-//        await state.fromAddress.refreshTokens()
     }
 
     var body: some View {
