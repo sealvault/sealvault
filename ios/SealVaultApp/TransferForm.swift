@@ -54,74 +54,80 @@ enum ToAddress: Hashable {
 struct TransferForm: View {
     @EnvironmentObject var model: GlobalModel
     @ObservedObject var state: TransferState
+    // Accessibility size
+    @Environment(\.dynamicTypeSize) var size
 
     @FocusState private var amountFocused: Bool
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 20) {
+                Spacer()
 
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Transfer")
-                    TokenLabel(token: state.token)
-                }.font(.largeTitle)
-                HStack {
-                    Text("on \(state.fromAddress.chainDisplayName)")
-                }.font(.title2)
-            }
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Transfer")
+                        TokenLabel(token: state.token)
+                    }.font(.largeTitle)
+                    HStack {
+                        Text("on \(state.fromAddress.chainDisplayName)")
+                    }.font(.title2)
+                }
+                .scaledToFit()
 
-            Spacer()
+                Spacer()
 
-            FromSection(state: state)
+                FromSection(state: state)
 
-            ToSection(state: state)
+                ToSection(state: state)
 
-            GroupBox("Amount") {
-                HStack {
-                    Label {
-                        Text(state.token.symbol)
-                    }
-                    icon: {
-                        IconView(image: state.token.image, iconSize: 24)
-                            .accessibility(label: Text("Token icon"))
-                    }
-                    TextField("amount", text: $state.amount)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.roundedBorder)
-                        .padding(.horizontal)
-                        .keyboardType(.decimalPad)
-                        .focused($amountFocused)
-                        .onChange(of: amountFocused, perform: { newValue in
-                            state.disableButton = newValue
-                        })
-                        .toolbar {
-                            ToolbarItemGroup(placement: .keyboard) {
-                                Spacer()
-                                Button("Done") {
-                                    amountFocused = false
+                GroupBox("Amount") {
+                    HStack {
+                        Label {
+                            Text(state.token.symbol)
+                        }
+                        icon: {
+                            IconView(image: state.token.image, iconSize: 24)
+                                .accessibility(label: Text("Token icon"))
+                        }
+                        TextField("amount", text: $state.amount)
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.roundedBorder)
+                            .padding(.horizontal)
+                            .keyboardType(.decimalPad)
+                            .focused($amountFocused)
+                            .onChange(of: amountFocused, perform: { newValue in
+                                state.disableButton = newValue
+                            })
+                            .toolbar {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    Spacer()
+                                    Button("Done") {
+                                        amountFocused = false
+                                    }
                                 }
                             }
-                        }
+                    }
                 }
+
+                TransferButton(
+                    core: model.core, state: state
+                )
+                .padding()
+
+                Spacer()
+
             }
-
-            TransferButton(
-                core: model.core, state: state
-            )
             .padding()
-
-            Spacer()
-
+            .task {
+                async let accounts: () = self.model.refreshAccounts()
+                async let tokens: () = self.state.fromAddress.refreshTokens()
+                // Refresh concurrently
+                _ = await (accounts, tokens)
+            }
+            .banner(data: self.$state.errorMessage)
         }
-        .padding()
-        .task {
-            async let accounts: () = self.model.refreshAccounts()
-            async let tokens: () = self.state.fromAddress.refreshTokens()
-            // Refresh concurrently
-            _ = await (accounts, tokens)
-        }
-        .banner(data: self.$state.errorMessage)
+        .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
     }
 }
 
@@ -337,27 +343,31 @@ struct TransferView_Previews: PreviewProvider {
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: dappToken, fromAddress: dappAddress)
-            )
+            ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
-            )
+            ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
                 state: errorState
-            )
+            ).environment(\.dynamicTypeSize, .medium)
+            PreviewWrapper(
+                model: model,
+                state: errorState
+            ).environment(\.dynamicTypeSize, .accessibility3)
+
         }
     }
 
     struct PreviewWrapper: View {
         var model: GlobalModel
         var state: TransferState
+        @Environment(\.dynamicTypeSize) var size
 
         var body: some View {
-            // Recreated on purpose every time the view is showed to reset the UI so that the user doesn't mistakenly
-            // send the wrong amount after continuing.
-
-            TransferForm(state: state).environmentObject(model)
+            TransferForm(state: state)
+                .environmentObject(model)
         }
     }
 }
