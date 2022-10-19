@@ -50,29 +50,13 @@ impl Account {
         )?;
         let account_id = Self::insert(tx_conn.as_mut(), params.name, &picture_id)?;
 
-        let mut chain_ids = eth::ChainId::default_wallet_chains().into_iter();
-        let chain_id = chain_ids
-            .next()
-            .expect("there is at least one default chain id");
         let create_params = m::CreateEthAddressParams::builder()
             .account_id(&account_id)
-            .chain_id(chain_id)
+            .chain_id(eth::ChainId::default_wallet_chain())
             .is_account_wallet(true)
             .build();
-
-        let address_id =
+        let _ =
             m::Address::create_eth_key_and_address(tx_conn, keychain, &create_params)?;
-        let asymmetric_key_id = m::Address::fetch_key_id(tx_conn.as_mut(), &address_id)?;
-        let address = m::Address::fetch_address(tx_conn.as_mut(), &address_id)?;
-
-        // Create wallet addresses for the rest of the Ethereum chains
-        for chain_id in chain_ids {
-            m::NewAddress::builder()
-                .asymmetric_key_id(&*asymmetric_key_id)
-                .address(&*address)
-                .build()
-                .insert_eth(tx_conn, chain_id)?;
-        }
 
         Ok(account_id)
     }

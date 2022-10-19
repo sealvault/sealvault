@@ -698,6 +698,14 @@ pub mod tests {
     }
 
     #[test]
+    fn account_has_a_wallet() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let first_account = tmp.first_account();
+        assert_eq!(first_account.wallets.len(), 1);
+        Ok(())
+    }
+
+    #[test]
     fn checks_account_profile_pic_name() -> Result<()> {
         let tmp = TmpCore::new()?;
 
