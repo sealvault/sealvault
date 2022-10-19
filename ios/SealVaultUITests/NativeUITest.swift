@@ -10,7 +10,7 @@ final class NativeUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let accountsButton = app.tabBars.buttons["Accounts"]
+        let accountsButton = app.tabBars.buttons["Dapps"]
         _ = accountsButton.waitForExistence(timeout: 5)
         accountsButton.tap()
 
@@ -22,7 +22,7 @@ final class NativeUITest: XCTestCase {
 //        // UI tests must launch the application that they test.
 //        let app = XCUIApplication()
 //        app.launch()
-//        app.tabBars.buttons["Accounts"].tap()
+//        app.tabBars.buttons["Dapps"].tap()
 //
 //        let cells = app.tables.element(boundBy: 0).cells
 //        let rowCount = cells.count
@@ -51,6 +51,6 @@ final class NativeUITest: XCTestCase {
 //
 //        // Check that account view was opened by existence of back button to accounts overview
 //        let firstNavBarButtonLabel = app.navigationBars.buttons.element(boundBy: 0).label
-//        XCTAssert(firstNavBarButtonLabel == "Accounts")
+//        XCTAssert(firstNavBarButtonLabel == "Dapps")
 //    }
 }

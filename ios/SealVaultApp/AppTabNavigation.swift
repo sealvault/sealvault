@@ -14,12 +14,12 @@ struct AppTabNavigation: View {
 
 struct AppTabNavigationInner: View {
     enum Tab {
-        case accountList
+        case dapps
         case webBrowser
     }
 
     @ObservedObject var callbackModel: CallbackModel
-    @State var selection: Tab = .accountList
+    @State var selection: Tab = .dapps
     @State var dappAllotmentTransferBanner: BannerData?
 
     var body: some View {
@@ -28,7 +28,7 @@ struct AppTabNavigationInner: View {
                 AccountListView()
             }
             .tabItem {
-                let menuText = Text("Accounts", comment: "Accounts tab title")
+                let menuText = Text("Dapps")
 
                 Label {
                     menuText
@@ -36,13 +36,13 @@ struct AppTabNavigationInner: View {
                     Image(systemName: "key")
                 }.accessibility(label: menuText)
             }
-            .tag(Tab.accountList)
+            .tag(Tab.dapps)
 
             NavigationView {
                 BrowserView()
             }
             .tabItem {
-                let menuText = Text("Browser", comment: "Web browser menu tab title")
+                let menuText = Text("Browser")
                 Label {
                     menuText
                 } icon: {
@@ -69,6 +69,7 @@ struct AppTabNavigationInner: View {
             }
         }
         .banner(data: $dappAllotmentTransferBanner)
+        .edgesIgnoringSafeArea(.bottom)
     }
 }
 
@@ -94,7 +95,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
 
         return Group {
             AppTabNavigationInner(callbackModel: callbackSuccess, selection: .webBrowser).environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackError, selection: .accountList).environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackError, selection: .dapps).environmentObject(model)
         }
     }
 }
