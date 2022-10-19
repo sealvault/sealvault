@@ -6,6 +6,7 @@ use std::{iter, sync::Arc};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use strum::IntoEnumIterator;
 use typed_builder::TypedBuilder;
 use url::Url;
 
@@ -62,6 +63,17 @@ pub struct CoreToken {
     pub icon: Option<Vec<u8>>,
 }
 
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct CoreEthChain {
+    /// Ethereum chain id.
+    /// Not using db ids here, because Ethereum chains are lazy-inserted into the DB, so not all
+    /// addable chains will have a DB id yet.
+    #[builder(setter(into))]
+    pub chain_id: u64,
+    #[builder(setter(into))]
+    pub display_name: String,
+}
+
 /// Errors passed to the UI.
 /// Fallible functions exposed through FFI should use this error type.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -75,33 +87,6 @@ pub enum CoreError {
     // An error where the message can be presented to the user directly.
     #[error("{explanation}")]
     User { explanation: String },
-}
-
-lazy_static! {
-    // Hack to get errors that should be displayed to users.
-    static ref JSONRPC_USER_ERROR_REGEX: Regex =
-        Regex::new(r"funds|gas|underpriced").expect("static is ok");
-}
-
-impl From<Error> for CoreError {
-    fn from(err: Error) -> Self {
-        match err {
-            Error::Fatal { error } => CoreError::Fatal { error },
-            Error::User { explanation } => CoreError::User { explanation },
-            Error::Retriable { error } => CoreError::Retriable { error },
-            Error::JsonRpc { code, message } => {
-                if JSONRPC_USER_ERROR_REGEX.is_match(&message) {
-                    CoreError::User {
-                        explanation: message,
-                    }
-                } else {
-                    CoreError::Retriable {
-                        error: format!("JSON-RPC error {} message '{}'", code, message),
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -378,5 +363,45 @@ impl Assembler {
             })
             .collect();
         result
+    }
+
+    /// List supported Ethereum chains
+    pub fn list_eth_chains(&self) -> Vec<CoreEthChain> {
+        eth::ChainId::iter()
+            .map(|chain_id| {
+                let display_name = chain_id.display_name();
+                CoreEthChain::builder()
+                    .chain_id(chain_id)
+                    .display_name(display_name)
+                    .build()
+            })
+            .collect()
+    }
+}
+
+lazy_static! {
+    // Hack to get errors that should be displayed to users.
+    static ref JSONRPC_USER_ERROR_REGEX: Regex =
+        Regex::new(r"funds|gas|underpriced").expect("static is ok");
+}
+
+impl From<Error> for CoreError {
+    fn from(err: Error) -> Self {
+        match err {
+            Error::Fatal { error } => CoreError::Fatal { error },
+            Error::User { explanation } => CoreError::User { explanation },
+            Error::Retriable { error } => CoreError::Retriable { error },
+            Error::JsonRpc { code, message } => {
+                if JSONRPC_USER_ERROR_REGEX.is_match(&message) {
+                    CoreError::User {
+                        explanation: message,
+                    }
+                } else {
+                    CoreError::Retriable {
+                        error: format!("JSON-RPC error {} message '{}'", code, message),
+                    }
+                }
+            }
+        }
     }
 }

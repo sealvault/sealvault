@@ -29,7 +29,6 @@ pub struct Chain {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[readonly::make]
 pub struct EthChain {
     pub db_id: String,
     pub chain_id: eth::ChainId,

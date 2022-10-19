@@ -294,6 +294,11 @@ impl AppCore {
         let url = eth::explorer::tx_url(chain_id, &tx_hash)?;
         Ok(url.to_string())
     }
+
+    /// List supported Ethereum chains.
+    pub fn list_eth_chains(&self) -> Vec<dto::CoreEthChain> {
+        self.assembler().list_eth_chains()
+    }
 }
 
 #[cfg(test)]
@@ -302,6 +307,7 @@ pub mod tests {
     use std::{fs, sync::RwLock, thread, time::Duration};
 
     use anyhow::Result;
+    use strum::IntoEnumIterator;
     use tempfile::TempDir;
     use url::Url;
 
@@ -776,6 +782,17 @@ pub mod tests {
         assert!(matches!(result, Err(CoreError::User {
                 explanation
             }) if explanation.to_lowercase().contains("privacy")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn lists_supported_eth_chains() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let supported_chains = tmp.core.list_eth_chains();
+
+        assert_eq!(supported_chains.len(), eth::ChainId::iter().len());
 
         Ok(())
     }
