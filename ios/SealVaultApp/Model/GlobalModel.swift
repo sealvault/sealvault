@@ -134,7 +134,6 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-
     static func toCoreAccount(_ account: Account) -> CoreAccount {
         let picture = [UInt8](account.picture.pngData()!)
         let wallets = account.walletList.map(Self.toCoreAddress)
@@ -286,6 +285,10 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func userRejectedDapp(context: InPageRequestContextI, params: DappApprovalParams) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func addEthChain(chainId: UInt64, addressId: String) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 

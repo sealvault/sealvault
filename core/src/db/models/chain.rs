@@ -96,6 +96,7 @@ impl Chain {
 
     /// Fetch the deterministic id for an Ethereum chain.
     /// Creates the chain entity if it's not in the db yet.
+    /// Returns the chain's DB id.
     pub fn fetch_or_create_eth_chain_id(
         conn: &mut DeferredTxConnection,
         chain_id: eth::ChainId,

@@ -44,6 +44,9 @@ interface AppCore {
     string eth_transaction_block_explorer_url(string from_address_id, string tx_hash);
 
     sequence<CoreEthChain> list_eth_chains();
+
+    [Throws=CoreError]
+    void add_eth_chain(u64 chain_id, string address_id);
 };
 
 [Error]

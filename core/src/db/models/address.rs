@@ -102,6 +102,25 @@ impl Address {
         Ok(addresses)
     }
 
+    /// Add an Ethereum chain for an address.
+    /// The operation is idempotent.
+    /// Returns the address DB id of the address on the chain.
+    pub fn add_eth_chain(
+        tx_conn: &mut DeferredTxConnection,
+        address_id: &str,
+        chain_id: eth::ChainId,
+    ) -> Result<String, Error> {
+        let chain_entity_id = m::Chain::fetch_or_create_eth_chain_id(tx_conn, chain_id)?;
+        let asymmetric_key_id = Self::fetch_key_id(tx_conn.as_mut(), address_id)?;
+        let address_entity = AddressEntity::builder()
+            .asymmetric_key_id(&asymmetric_key_id)
+            .chain_entity_id(&chain_entity_id)
+            .build();
+        let added_address_id =
+            Self::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+        Ok(added_address_id)
+    }
+
     /// Create an Ethereum signing key and derived address.
     /// Returns the address id.
     pub fn create_eth_key_and_address(
@@ -209,6 +228,7 @@ impl Address {
         Ok(account_id)
     }
 
+    /// Fet the asymmetric key's DB id for an address.
     pub fn fetch_key_id(
         conn: &mut SqliteConnection,
         address_id: &str,
@@ -419,6 +439,7 @@ pub struct ListAddressesForDappParams<'a> {
 #[readonly::make]
 pub struct CreateEthAddressParams<'a> {
     pub account_id: &'a str,
+    #[builder(setter(into))]
     pub chain_id: eth::ChainId,
     #[builder(default = None)]
     pub dapp_id: Option<&'a str>,

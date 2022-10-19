@@ -28,25 +28,6 @@ use crate::{
 pub struct AppCore {
     resources: Arc<CoreResources>,
 }
-
-// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
-#[derive(Debug)]
-#[readonly::make]
-pub struct CoreResources {
-    pub ui_callbacks: Box<dyn CoreUICallbackI>,
-    pub connection_pool: ConnectionPool,
-    pub keychain: Keychain,
-    pub http_client: HttpClient,
-    pub rpc_manager: Box<dyn eth::RpcManagerI>,
-    pub public_suffix_list: PublicSuffixList,
-}
-
-#[derive(Debug)]
-pub struct CoreArgs {
-    pub cache_dir: String,
-    pub db_file_path: String,
-}
-
 impl AppCore {
     // UI callbacks cannot be part of the args struct, because Uniffi expects it to be hashable
     // then.
@@ -299,6 +280,39 @@ impl AppCore {
     pub fn list_eth_chains(&self) -> Vec<dto::CoreEthChain> {
         self.assembler().list_eth_chains()
     }
+
+    /// Add a supported Ethereum chain to an address. The operation is idempotent.
+    pub fn add_eth_chain(
+        &self,
+        chain_id: u64,
+        address_id: String,
+    ) -> Result<(), CoreError> {
+        let chain_id: eth::ChainId = chain_id.try_into()?;
+        let _ = self
+            .connection_pool()
+            .deferred_transaction(move |mut tx_conn| {
+                m::Address::add_eth_chain(&mut tx_conn, &address_id, chain_id)
+            })?;
+        Ok(())
+    }
+}
+
+// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
+#[derive(Debug)]
+#[readonly::make]
+pub struct CoreResources {
+    pub ui_callbacks: Box<dyn CoreUICallbackI>,
+    pub connection_pool: ConnectionPool,
+    pub keychain: Keychain,
+    pub http_client: HttpClient,
+    pub rpc_manager: Box<dyn eth::RpcManagerI>,
+    pub public_suffix_list: PublicSuffixList,
+}
+
+#[derive(Debug)]
+pub struct CoreArgs {
+    pub cache_dir: String,
+    pub db_file_path: String,
 }
 
 #[cfg(test)]
@@ -805,6 +819,26 @@ pub mod tests {
         let supported_chains = tmp.core.list_eth_chains();
 
         assert_eq!(supported_chains.len(), eth::ChainId::iter().len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn adds_ethereum_chain() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let account_pre = tmp.first_account();
+        let wallets_pre = account_pre.wallets;
+        let wallet = wallets_pre.first().expect("there is a wallet address");
+
+        tmp.core
+            .add_eth_chain(eth::ChainId::EthGoerli.into(), wallet.id.clone())?;
+        // Check that it's idempotent
+        tmp.core
+            .add_eth_chain(eth::ChainId::EthGoerli.into(), wallet.id.clone())?;
+
+        let account_post = tmp.first_account();
+        let wallets_post = account_post.wallets;
+        assert_eq!(wallets_pre.len() + 1, wallets_post.len());
 
         Ok(())
     }
