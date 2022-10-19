@@ -722,21 +722,25 @@ pub mod tests {
         let account_id_two = &accounts[1].id;
 
         let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
+            let params_one = m::CreateEthAddressParams::builder()
+                .account_id(account_id_one)
+                .chain_id(eth::ChainId::EthMainnet)
+                .is_account_wallet(true)
+                .build();
             let from_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
                 keychain,
-                account_id_one,
-                eth::ChainId::EthMainnet,
-                None,
-                true,
+                &params_one,
             )?;
+            let params_two = m::CreateEthAddressParams::builder()
+                .account_id(account_id_two)
+                .chain_id(eth::ChainId::EthMainnet)
+                .is_account_wallet(true)
+                .build();
             let to_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
                 keychain,
-                account_id_two,
-                eth::ChainId::EthMainnet,
-                None,
-                true,
+                &params_two,
             )?;
             let to_address_data =
                 m::Address::fetch_eth_signing_key(&mut tx_conn, keychain, &to_id)?;

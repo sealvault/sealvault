@@ -382,13 +382,15 @@ impl InPageProvider {
                     url,
                     &resources.public_suffix_list,
                 )?;
+                let params = m::CreateEthAddressParams::builder()
+                    .account_id(&dapp_approval.account_id)
+                    .chain_id(chain_id)
+                    .dapp_id(Some(&dapp_id))
+                    .build();
                 m::Address::create_eth_key_and_address(
                     &mut tx_conn,
                     &resources.keychain,
-                    &dapp_approval.account_id,
-                    chain_id,
-                    Some(&dapp_id),
-                    false,
+                    &params,
                 )?;
                 let params = m::DappSessionParams::builder()
                     .dapp_id(&dapp_id)
