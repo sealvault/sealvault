@@ -6,14 +6,16 @@ import SwiftUI
 
 struct AddressView: View {
     let title: String
+    let core: AppCoreProtocol
     @ObservedObject var account: Account
     @ObservedObject var address: Address
+    @State var showAddChain: Bool = false
 
     var body: some View {
         ScrollViewReader { _ in
             // Need the `List` here for the `Section` in the `TokenView`
             List {
-                TokenView(account: account, address: address)
+                TokenView(account: account, address: address, showAddChain: $showAddChain)
             }
             .refreshable(action: {
                 await address.refreshTokens()
@@ -25,6 +27,11 @@ struct AddressView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 AccountImageCircle(account: account)
             }
+        }
+        .sheet(isPresented: $showAddChain) {
+            AddChain(address: address)
+                .presentationDetents([.medium])
+                .background(.ultraThinMaterial)
         }
         .task {
             await self.address.refreshTokens()
@@ -40,7 +47,7 @@ struct AddressView_Previews: PreviewProvider {
         let address = account.wallets.values.first!
         address.nativeToken.amount = nil
 
-        return AddressView(title: "Wallet", account: account, address: address)
+        return AddressView(title: "Wallet", core: model.core, account: account, address: address)
     }
 }
 #endif

@@ -7,6 +7,7 @@ import SwiftUI
 struct TokenView: View {
     @ObservedObject var account: Account
     @ObservedObject var address: Address
+    @Binding var showAddChain: Bool
 
     var body: some View {
         Section {
@@ -23,7 +24,14 @@ struct TokenView: View {
             }
         } header: {
             HStack {
-                Text(address.chainDisplayName)
+                HStack {
+                    Text(address.chainDisplayName)
+                    Button {
+                        showAddChain = true
+                    } label: {
+                        Image(systemName: "plus.circle")
+                    }
+                }
                 Spacer()
                 AddressMenu(address: address).textCase(.none)
             }

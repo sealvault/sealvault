@@ -15,7 +15,7 @@ struct AccountView: View {
                 Section {
                     ForEach(account.walletList) { wallet in
                         NavigationLink {
-                            AddressView(title: "Wallet", account: account, address: wallet)
+                            AddressView(title: "Wallet", core: model.core, account: account, address: wallet)
 
                         } label: {
                             WalletRow(address: wallet)
@@ -28,7 +28,10 @@ struct AccountView: View {
                     ForEach(account.dappList) { dapp in
                         ForEach(dapp.addressList) { dappAddress in
                             NavigationLink {
-                                AddressView(title: dapp.humanIdentifier, account: account, address: dappAddress)
+                                AddressView(
+                                    title: dapp.humanIdentifier, core: model.core, account: account,
+                                    address: dappAddress
+                                )
                             } label: {
                                 DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
                             }

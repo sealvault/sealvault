@@ -129,6 +129,21 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    func listEthChains() async -> [CoreEthChain] {
+        return await dispatchBackground(.userInteractive) {
+            self.core.listEthChains()
+        }
+    }
+
+    func addEthChain(chainId: UInt64) async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.addEthChain(chainId: chainId, addressId: self.id)
+            } catch {
+                print("Error adding eth chain \(chainId): \(error)")
+            }
+        }
+    }
 }
 
 // MARK: - Hashable
@@ -154,6 +169,14 @@ extension Address {
 
     var image: Image {
         Image(uiImage: chainIcon)
+    }
+}
+
+// MARK: - chain
+
+extension CoreEthChain: Identifiable {
+    public var id: UInt64 {
+        chainId
     }
 }
 
