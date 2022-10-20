@@ -21,3 +21,15 @@ struct TokenRow: View {
         }
     }
 }
+
+// Hack to only call refresh tokens once per address
+struct NativeTokenRow: View {
+    @ObservedObject var address: Address
+
+    var body: some View {
+        TokenRow(token: address.nativeToken)
+        .task {
+            await address.refreshTokens()
+        }
+    }
+}

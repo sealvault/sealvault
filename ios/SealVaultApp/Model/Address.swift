@@ -134,16 +134,6 @@ class Address: Identifiable, ObservableObject {
             self.core.listEthChains()
         }
     }
-
-    func addEthChain(chainId: UInt64) async {
-        await dispatchBackground(.userInteractive) {
-            do {
-                try self.core.addEthChain(chainId: chainId, addressId: self.id)
-            } catch {
-                print("Error adding eth chain \(chainId): \(error)")
-            }
-        }
-    }
 }
 
 // MARK: - Hashable
@@ -186,6 +176,10 @@ extension CoreEthChain: Identifiable {
 extension Address {
     static func ethereumWallet() -> Self {
         Self.ethereum(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: true)
+    }
+
+    static func ethereumDapp() -> Self {
+        Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: false)
     }
 
     static func polygonWallet() -> Self {

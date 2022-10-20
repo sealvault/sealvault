@@ -20,7 +20,7 @@ struct TokenView: View {
                         }
                     }
             } label: {
-                TokenRow(token: address.nativeToken)
+                NativeTokenRow(address: address)
             }
         } header: {
             HStack {
@@ -36,7 +36,7 @@ struct TokenView: View {
                 AddressMenu(address: address).textCase(.none)
             }
         }
-        .headerProminence(.standard)
+        .headerProminence(.increased)
         Section {
             ForEach(address.fungibleTokenList) { token in
                 NavigationLink {
@@ -57,7 +57,7 @@ struct TokenView: View {
             } else if !address.fungibleTokens.isEmpty {
                 Text("Fungible Tokens")
             } else {
-                Text("No Tokens")
+                Text("No \(address.chainDisplayName) Tokens")
             }
         }
     }

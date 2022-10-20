@@ -124,6 +124,18 @@ class GlobalModel: ObservableObject {
             self.activeAccountId = activeAccountId
         }
     }
+
+    func addEthChain(chainId: UInt64, addressId: String) async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.addEthChain(chainId: chainId, addressId: addressId)
+            } catch {
+                print("Error adding eth chain \(chainId): \(error)")
+            }
+        }
+        // Make sure newly added chain shows up
+        await self.refreshAccounts()
+    }
 }
 
 // MARK: - Development

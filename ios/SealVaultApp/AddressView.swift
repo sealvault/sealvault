@@ -4,21 +4,47 @@
 
 import SwiftUI
 
+// Hack to make the list of addresses update when a new address is added to a dapp
+class Addresses: ObservableObject {
+    @Published var dapp: Dapp?
+    @Published var wallet: Address?
+
+    var addresses: [Address] {
+        if let dapp = self.dapp {
+            return dapp.addressList
+        } else if let wallet = self.wallet {
+            return [wallet]
+        } else {
+            return []
+        }
+    }
+
+    required init(dapp: Dapp?, wallet: Address?) {
+        self.dapp = dapp
+        self.wallet = wallet
+    }
+}
+
 struct AddressView: View {
-    let title: String
+    var title: String
     let core: AppCoreProtocol
     @ObservedObject var account: Account
-    @ObservedObject var address: Address
+    @ObservedObject var addresses: Addresses
     @State var showAddChain: Bool = false
 
     var body: some View {
         ScrollViewReader { _ in
             // Need the `List` here for the `Section` in the `TokenView`
             List {
-                TokenView(account: account, address: address, showAddChain: $showAddChain)
+                ForEach(addresses.addresses) { address in
+                    TokenView(account: account, address: address, showAddChain: $showAddChain)
+                }
             }
             .refreshable(action: {
-                await address.refreshTokens()
+                for address in addresses.addresses {
+                    // TODO parallelize, but take care of not exceeding rate limits
+                    await address.refreshTokens()
+                }
             })
         }
         .navigationTitle(Text(title))
@@ -29,12 +55,13 @@ struct AddressView: View {
             }
         }
         .sheet(isPresented: $showAddChain) {
-            AddChain(address: address)
-                .presentationDetents([.medium])
-                .background(.ultraThinMaterial)
-        }
-        .task {
-            await self.address.refreshTokens()
+            if let address = addresses.addresses.first {
+                AddChain(address: address)
+                    .presentationDetents([.medium])
+                    .background(.ultraThinMaterial)
+            } else {
+                Text("No address")
+            }
         }
     }
 }
@@ -44,10 +71,12 @@ struct AddressView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         let account = model.activeAccount!
-        let address = account.wallets.values.first!
-        address.nativeToken.amount = nil
+        let dapp = Dapp.oneInch()
+        // Simulate loading
+        dapp.addressList[0].nativeToken.amount = nil
+        let addresses = Addresses(dapp: dapp, wallet: nil)
 
-        return AddressView(title: "Wallet", core: model.core, account: account, address: address)
+        return AddressView(title: "Wallet", core: model.core, account: account, addresses: addresses)
     }
 }
 #endif

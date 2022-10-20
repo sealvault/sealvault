@@ -5,6 +5,7 @@
 import SwiftUI
 
 struct AddChain: View {
+    @EnvironmentObject private var model: GlobalModel
     @State var address: Address
     @State var chains: [CoreEthChain] = []
     @State var selectedChain: CoreEthChain?
@@ -39,7 +40,7 @@ struct AddChain: View {
                     Button(action: {
                         Task {
                             if let chain = selectedChain {
-                                await address.addEthChain(chainId: chain.chainId)
+                                await model.addEthChain(chainId: chain.chainId, addressId: address.id)
                             } else {
                                 print("No chain selected")
                             }
@@ -85,11 +86,12 @@ struct ChainPicker: View {
 #if DEBUG
 struct AddChain_Previews: PreviewProvider {
     static var previews: some View {
+        let model = GlobalModel.buildForPreview()
         let address = Address.polygonWallet()
         let core = PreviewAppCore()
         let chains = core.listEthChains()
 
-        AddChain(address: address, chains: chains, selectedChain: chains.first)
+        AddChain(address: address, chains: chains, selectedChain: chains.first).environmentObject(model)
     }
 }
 #endif

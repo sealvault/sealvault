@@ -21,6 +21,9 @@ struct WalletRow: View {
 
             TokenAmount(token: address.nativeToken)
         }
+        .task {
+            await address.refreshTokens()
+        }
     }
 }
 
