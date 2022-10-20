@@ -37,8 +37,17 @@ struct AddressView: View {
             // Need the `List` here for the `Section` in the `TokenView`
             List {
                 ForEach(addresses.addresses) { address in
-                    TokenView(account: account, address: address, showAddChain: $showAddChain)
+                    TokenView(account: account, address: address)
                 }
+                Section {} header: {
+                    HStack {
+                        Button {
+                            showAddChain = true
+                        } label: {
+                            Text("Add Chain")
+                        }
+                    }
+                }.headerProminence(.increased)
             }
             .refreshable(action: {
                 for address in addresses.addresses {
