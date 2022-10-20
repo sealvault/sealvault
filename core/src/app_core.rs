@@ -28,25 +28,6 @@ use crate::{
 pub struct AppCore {
     resources: Arc<CoreResources>,
 }
-
-// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
-#[derive(Debug)]
-#[readonly::make]
-pub struct CoreResources {
-    pub ui_callbacks: Box<dyn CoreUICallbackI>,
-    pub connection_pool: ConnectionPool,
-    pub keychain: Keychain,
-    pub http_client: HttpClient,
-    pub rpc_manager: Box<dyn eth::RpcManagerI>,
-    pub public_suffix_list: PublicSuffixList,
-}
-
-#[derive(Debug)]
-pub struct CoreArgs {
-    pub cache_dir: String,
-    pub db_file_path: String,
-}
-
 impl AppCore {
     // UI callbacks cannot be part of the args struct, because Uniffi expects it to be hashable
     // then.
@@ -294,6 +275,44 @@ impl AppCore {
         let url = eth::explorer::tx_url(chain_id, &tx_hash)?;
         Ok(url.to_string())
     }
+
+    /// List supported Ethereum chains.
+    pub fn list_eth_chains(&self) -> Vec<dto::CoreEthChain> {
+        self.assembler().list_eth_chains()
+    }
+
+    /// Add a supported Ethereum chain to an address. The operation is idempotent.
+    pub fn add_eth_chain(
+        &self,
+        chain_id: u64,
+        address_id: String,
+    ) -> Result<(), CoreError> {
+        let chain_id: eth::ChainId = chain_id.try_into()?;
+        let _ = self
+            .connection_pool()
+            .deferred_transaction(move |mut tx_conn| {
+                m::Address::add_eth_chain(&mut tx_conn, &address_id, chain_id)
+            })?;
+        Ok(())
+    }
+}
+
+// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
+#[derive(Debug)]
+#[readonly::make]
+pub struct CoreResources {
+    pub ui_callbacks: Box<dyn CoreUICallbackI>,
+    pub connection_pool: ConnectionPool,
+    pub keychain: Keychain,
+    pub http_client: HttpClient,
+    pub rpc_manager: Box<dyn eth::RpcManagerI>,
+    pub public_suffix_list: PublicSuffixList,
+}
+
+#[derive(Debug)]
+pub struct CoreArgs {
+    pub cache_dir: String,
+    pub db_file_path: String,
 }
 
 #[cfg(test)]
@@ -302,6 +321,7 @@ pub mod tests {
     use std::{fs, sync::RwLock, thread, time::Duration};
 
     use anyhow::Result;
+    use strum::IntoEnumIterator;
     use tempfile::TempDir;
     use url::Url;
 
@@ -692,6 +712,14 @@ pub mod tests {
     }
 
     #[test]
+    fn account_has_a_wallet() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let first_account = tmp.first_account();
+        assert_eq!(first_account.wallets.len(), 1);
+        Ok(())
+    }
+
+    #[test]
     fn checks_account_profile_pic_name() -> Result<()> {
         let tmp = TmpCore::new()?;
 
@@ -716,21 +744,25 @@ pub mod tests {
         let account_id_two = &accounts[1].id;
 
         let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
+            let params_one = m::CreateEthAddressParams::builder()
+                .account_id(account_id_one)
+                .chain_id(eth::ChainId::EthMainnet)
+                .is_account_wallet(true)
+                .build();
             let from_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
                 keychain,
-                account_id_one,
-                eth::ChainId::EthMainnet,
-                None,
-                true,
+                &params_one,
             )?;
+            let params_two = m::CreateEthAddressParams::builder()
+                .account_id(account_id_two)
+                .chain_id(eth::ChainId::EthMainnet)
+                .is_account_wallet(true)
+                .build();
             let to_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
                 keychain,
-                account_id_two,
-                eth::ChainId::EthMainnet,
-                None,
-                true,
+                &params_two,
             )?;
             let to_address_data =
                 m::Address::fetch_eth_signing_key(&mut tx_conn, keychain, &to_id)?;
@@ -776,6 +808,37 @@ pub mod tests {
         assert!(matches!(result, Err(CoreError::User {
                 explanation
             }) if explanation.to_lowercase().contains("privacy")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn lists_supported_eth_chains() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let supported_chains = tmp.core.list_eth_chains();
+
+        assert_eq!(supported_chains.len(), eth::ChainId::iter().len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn adds_ethereum_chain() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let account_pre = tmp.first_account();
+        let wallets_pre = account_pre.wallets;
+        let wallet = wallets_pre.first().expect("there is a wallet address");
+
+        tmp.core
+            .add_eth_chain(eth::ChainId::EthGoerli.into(), wallet.id.clone())?;
+        // Check that it's idempotent
+        tmp.core
+            .add_eth_chain(eth::ChainId::EthGoerli.into(), wallet.id.clone())?;
+
+        let account_post = tmp.first_account();
+        let wallets_post = account_post.wallets;
+        assert_eq!(wallets_pre.len() + 1, wallets_post.len());
 
         Ok(())
     }

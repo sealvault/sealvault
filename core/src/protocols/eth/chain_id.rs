@@ -47,8 +47,10 @@ impl ChainId {
         Self::PolygonMainnet
     }
 
-    pub fn default_wallet_chains() -> [Self; 2] {
-        [Self::EthMainnet, Self::PolygonMainnet]
+    pub fn default_wallet_chain() -> Self {
+        // Important to match dapp chain because users will want to fund the wallet with tokens
+        // first that they use for dapps.
+        Self::default_dapp_chain()
     }
 
     // Does not necessarily match chain id

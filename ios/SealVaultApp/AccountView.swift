@@ -15,8 +15,10 @@ struct AccountView: View {
                 Section {
                     ForEach(account.walletList) { wallet in
                         NavigationLink {
-                            AddressView(title: "Wallet", account: account, address: wallet)
-
+                            AddressView(
+                                title: "Wallet", core: model.core, account: account,
+                                addresses: Addresses(dapp: nil, wallet: wallet)
+                            )
                         } label: {
                             WalletRow(address: wallet)
                         }
@@ -26,12 +28,13 @@ struct AccountView: View {
                 }
                 Section {
                     ForEach(account.dappList) { dapp in
-                        ForEach(dapp.addressList) { dappAddress in
-                            NavigationLink {
-                                AddressView(title: dapp.humanIdentifier, account: account, address: dappAddress)
-                            } label: {
-                                DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
-                            }
+                        NavigationLink {
+                            AddressView(
+                                title: dapp.humanIdentifier, core: model.core, account: account,
+                                addresses: Addresses(dapp: dapp, wallet: nil)
+                            )
+                        } label: {
+                            DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
                         }
                     }
                 } header: {
@@ -60,7 +63,7 @@ struct AccountView: View {
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return AccountView(account: model.activeAccount!)
+        return AccountView(account: model.activeAccount!).environmentObject(model)
     }
 }
 #endif

@@ -226,7 +226,7 @@ extension Dapp {
             let id = "1inch.io"
             let url = URL(string: "https://\(id)")
             let favicon = UIImage(named: "1inch")!
-            let addresses = [Address.polygonDapp()]
+            let addresses = [Address.polygonDapp(), Address.ethereumDapp()]
             return build(
                 id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
             )

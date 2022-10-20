@@ -297,16 +297,18 @@ struct TransferButton: View {
     var body: some View {
 
         if let url = state.txExplorerUrl {
-            Button(action: {
-                UIApplication.shared.open(url)
-            }, label: {
-                Text("View Transaction")
-                    .frame(maxWidth: .infinity)
-            })
-            .padding()
-            .background(Color.green)
-            .foregroundColor(Color.white)
-            .cornerRadius(cornerRadius)
+            VStack {
+                Button(action: {
+                    UIApplication.shared.open(url)
+                }, label: {
+                    Text("View Successful Transaction")
+                        .frame(maxWidth: .infinity)
+                })
+                .padding()
+                .background(Color.green)
+                .foregroundColor(Color.white)
+                .cornerRadius(cornerRadius)
+            }
         } else {
             Button(action: {
                 if state.processing {
@@ -350,6 +352,11 @@ struct TransferView_Previews: PreviewProvider {
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
         let errorState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
         errorState.setErrorMessage(message: "test message")
+        let sucessSate = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+        sucessSate.txExplorerUrl = URL(
+            string: "https://etherscan.io/tx/0x24d3df3ce3eab3578e6486ebd6b071da3cc715780a1d0870b19ce8fde8e0f22a"
+        )
+
         return Group {
             PreviewWrapper(
                 model: model,
@@ -358,6 +365,10 @@ struct TransferView_Previews: PreviewProvider {
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+            ).environment(\.dynamicTypeSize, .medium)
+            PreviewWrapper(
+                model: model,
+                state: sucessSate
             ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
