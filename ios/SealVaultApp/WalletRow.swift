@@ -8,12 +8,21 @@ struct WalletRow: View {
     var address: Address
 
     var body: some View {
-        Label {
-            Text(address.chainDisplayName)
-                .font(.headline)
-        } icon: {
-            IconView(image: address.image, iconSize: 24)
-                .accessibility(label: Text("Chain icon"))
+        HStack {
+            Label {
+                Text(address.chainDisplayName)
+                    .font(.headline)
+            } icon: {
+                IconView(image: address.image, iconSize: 24)
+                    .accessibility(label: Text("Chain icon"))
+            }
+
+            Spacer()
+
+            TokenAmount(token: address.nativeToken)
+        }
+        .task {
+            await address.refreshTokens()
         }
     }
 }

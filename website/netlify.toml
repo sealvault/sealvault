@@ -10,3 +10,9 @@ Strict-Transport-Security = '''
     max-age=63072000;
     includeSubDomains;
     preload'''
+
+[[redirects]]
+from = "/blog/web3-vision/"
+to = "/blog/web3/"
+status = 302
+force = false

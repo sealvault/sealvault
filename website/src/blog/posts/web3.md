@@ -1,5 +1,5 @@
 ---
-slug: web3-vision
+slug: web3
 date: 2022-09-19
 authors:
 - agostbiro

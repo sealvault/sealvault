@@ -54,74 +54,94 @@ enum ToAddress: Hashable {
 struct TransferForm: View {
     @EnvironmentObject var model: GlobalModel
     @ObservedObject var state: TransferState
+    // Accessibility size
+    @Environment(\.dynamicTypeSize) var size
 
     @FocusState private var amountFocused: Bool
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 20) {
+                Spacer()
 
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Transfer")
-                    TokenLabel(token: state.token)
-                }.font(.largeTitle)
-                HStack {
-                    Text("on \(state.fromAddress.chainDisplayName)")
-                }.font(.title2)
-            }
+                if size >= .accessibility1 {
+                    TitleSection(state: state).scaledToFit()
+                } else {
+                    TitleSection(state: state)
+                }
 
-            Spacer()
+                Spacer()
 
-            FromSection(state: state)
+                FromSection(state: state)
 
-            ToSection(state: state)
+                ToSection(state: state)
 
-            GroupBox("Amount") {
-                HStack {
-                    Label {
-                        Text(state.token.symbol)
-                    }
-                    icon: {
-                        IconView(image: state.token.image, iconSize: 24)
-                            .accessibility(label: Text("Token icon"))
-                    }
-                    TextField("amount", text: $state.amount)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.roundedBorder)
-                        .padding(.horizontal)
-                        .keyboardType(.decimalPad)
-                        .focused($amountFocused)
-                        .onChange(of: amountFocused, perform: { newValue in
-                            state.disableButton = newValue
-                        })
-                        .toolbar {
-                            ToolbarItemGroup(placement: .keyboard) {
-                                Spacer()
-                                Button("Done") {
-                                    amountFocused = false
+                GroupBox("Amount") {
+                    HStack {
+                        Label {
+                            Text(state.token.symbol)
+                        }
+                        icon: {
+                            IconView(image: state.token.image, iconSize: 24)
+                                .accessibility(label: Text("Token icon"))
+                        }
+                        TextField("amount", text: $state.amount)
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.roundedBorder)
+                            .padding(.horizontal)
+                            .keyboardType(.decimalPad)
+                            .focused($amountFocused)
+                            .onChange(of: amountFocused, perform: { newValue in
+                                state.disableButton = newValue
+                            })
+                            .toolbar {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    Spacer()
+                                    Button("Done") {
+                                        amountFocused = false
+                                    }
                                 }
                             }
-                        }
+                    }
                 }
+
+                TransferButton(
+                    core: model.core, state: state
+                )
+                .padding()
+
+                Spacer()
+
             }
-
-            TransferButton(
-                core: model.core, state: state
-            )
             .padding()
-
-            Spacer()
-
+            .task {
+                async let accounts: () = self.model.refreshAccounts()
+                async let tokens: () = self.state.fromAddress.refreshTokens()
+                // Refresh concurrently
+                _ = await (accounts, tokens)
+            }
+            .banner(data: self.$state.errorMessage)
         }
-        .padding()
-        .task {
-            async let accounts: () = self.model.refreshAccounts()
-            async let tokens: () = self.state.fromAddress.refreshTokens()
-            // Refresh concurrently
-            _ = await (accounts, tokens)
+        .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
+        .refreshable {
+            await state.fromAddress.refreshTokens()
         }
-        .banner(data: self.$state.errorMessage)
+    }
+}
+
+struct TitleSection: View {
+    @ObservedObject var state: TransferState
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Transfer")
+                TokenLabel(token: state.token)
+            }.font(.largeTitle)
+            HStack {
+                Text("on \(state.fromAddress.chainDisplayName)")
+            }.font(.title2)
+        }
     }
 }
 
@@ -272,24 +292,23 @@ struct TransferButton: View {
                 return nil
             }
         }
-        // TODO we should update the balance in the transfer view after the transfer, but calling this here resets
-        // the view and makes the success button disappear.
-//        await state.fromAddress.refreshTokens()
     }
 
     var body: some View {
 
         if let url = state.txExplorerUrl {
-            Button(action: {
-                UIApplication.shared.open(url)
-            }, label: {
-                Text("View Transaction")
-                    .frame(maxWidth: .infinity)
-            })
-            .padding()
-            .background(Color.green)
-            .foregroundColor(Color.white)
-            .cornerRadius(cornerRadius)
+            VStack {
+                Button(action: {
+                    UIApplication.shared.open(url)
+                }, label: {
+                    Text("View Successful Transaction")
+                        .frame(maxWidth: .infinity)
+                })
+                .padding()
+                .background(Color.green)
+                .foregroundColor(Color.white)
+                .cornerRadius(cornerRadius)
+            }
         } else {
             Button(action: {
                 if state.processing {
@@ -333,31 +352,44 @@ struct TransferView_Previews: PreviewProvider {
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
         let errorState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
         errorState.setErrorMessage(message: "test message")
+        let sucessSate = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+        sucessSate.txExplorerUrl = URL(
+            string: "https://etherscan.io/tx/0x24d3df3ce3eab3578e6486ebd6b071da3cc715780a1d0870b19ce8fde8e0f22a"
+        )
+
         return Group {
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: dappToken, fromAddress: dappAddress)
-            )
+            ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
                 state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
-            )
+            ).environment(\.dynamicTypeSize, .medium)
+            PreviewWrapper(
+                model: model,
+                state: sucessSate
+            ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
                 state: errorState
-            )
+            ).environment(\.dynamicTypeSize, .medium)
+            PreviewWrapper(
+                model: model,
+                state: errorState
+            ).environment(\.dynamicTypeSize, .accessibility3)
+
         }
     }
 
     struct PreviewWrapper: View {
         var model: GlobalModel
         var state: TransferState
+        @Environment(\.dynamicTypeSize) var size
 
         var body: some View {
-            // Recreated on purpose every time the view is showed to reset the UI so that the user doesn't mistakenly
-            // send the wrong amount after continuing.
-
-            TransferForm(state: state).environmentObject(model)
+            TransferForm(state: state)
+                .environmentObject(model)
         }
     }
 }

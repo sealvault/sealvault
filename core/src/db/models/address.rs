@@ -102,15 +102,31 @@ impl Address {
         Ok(addresses)
     }
 
+    /// Add an Ethereum chain for an address.
+    /// The operation is idempotent.
+    /// Returns the address DB id of the address on the chain.
+    pub fn add_eth_chain(
+        tx_conn: &mut DeferredTxConnection,
+        address_id: &str,
+        chain_id: eth::ChainId,
+    ) -> Result<String, Error> {
+        let chain_entity_id = m::Chain::fetch_or_create_eth_chain_id(tx_conn, chain_id)?;
+        let asymmetric_key_id = Self::fetch_key_id(tx_conn.as_mut(), address_id)?;
+        let address_entity = AddressEntity::builder()
+            .asymmetric_key_id(&asymmetric_key_id)
+            .chain_entity_id(&chain_entity_id)
+            .build();
+        let added_address_id =
+            Self::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+        Ok(added_address_id)
+    }
+
     /// Create an Ethereum signing key and derived address.
     /// Returns the address id.
     pub fn create_eth_key_and_address(
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
-        account_id: &str,
-        eth_chain_id: eth::ChainId,
-        dapp_id: Option<&str>,
-        is_account_wallet: bool,
+        params: &CreateEthAddressParams,
     ) -> Result<String, Error> {
         let sk_kek = keychain.get_sk_kek()?;
         let (dek_id, sk_dek) =
@@ -121,13 +137,13 @@ impl Address {
         let public_key = signing_key.public_key_der()?;
 
         let key_id = NewAsymmetricKey::builder()
-            .account_id(account_id)
+            .account_id(params.account_id)
             .dek_id(dek_id.as_str())
             .elliptic_curve(signing_key.curve)
             .public_key(public_key.as_ref())
             .encrypted_der(&encrypted_signing_key)
-            .dapp_id(dapp_id)
-            .is_account_wallet(is_account_wallet)
+            .dapp_id(params.dapp_id)
+            .is_account_wallet(params.is_account_wallet)
             .build()
             .insert(tx_conn.as_mut())?;
 
@@ -137,7 +153,7 @@ impl Address {
             .asymmetric_key_id(key_id.as_str())
             .address(&*checksum_address)
             .build()
-            .insert_eth(tx_conn, eth_chain_id)?;
+            .insert_eth(tx_conn, params.chain_id)?;
 
         Ok(address_id)
     }
@@ -212,6 +228,7 @@ impl Address {
         Ok(account_id)
     }
 
+    /// Fet the asymmetric key's DB id for an address.
     pub fn fetch_key_id(
         conn: &mut SqliteConnection,
         address_id: &str,
@@ -416,4 +433,16 @@ impl<'a> DeterministicId<'a, &'a str, U2> for AddressEntity<'a> {
 pub struct ListAddressesForDappParams<'a> {
     pub account_id: &'a str,
     pub dapp_id: &'a str,
+}
+
+#[derive(Clone, Debug, TypedBuilder)]
+#[readonly::make]
+pub struct CreateEthAddressParams<'a> {
+    pub account_id: &'a str,
+    #[builder(setter(into))]
+    pub chain_id: eth::ChainId,
+    #[builder(default = None)]
+    pub dapp_id: Option<&'a str>,
+    #[builder(default = false)]
+    pub is_account_wallet: bool,
 }

@@ -16,7 +16,10 @@ mod local_settings;
 
 pub use account::{Account, AccountParams};
 pub use account_picture::AccountPicture;
-pub use address::{Address, AddressEntity, ListAddressesForDappParams, NewAddress};
+pub use address::{
+    Address, AddressEntity, CreateEthAddressParams, ListAddressesForDappParams,
+    NewAddress,
+};
 pub use asymmetric_key::{AsymmetricKey, NewAsymmetricKey};
 pub use chain::{Chain, EthChain};
 pub use dapp::Dapp;

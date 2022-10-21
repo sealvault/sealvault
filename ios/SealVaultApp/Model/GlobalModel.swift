@@ -124,6 +124,18 @@ class GlobalModel: ObservableObject {
             self.activeAccountId = activeAccountId
         }
     }
+
+    func addEthChain(chainId: UInt64, addressId: String) async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.addEthChain(chainId: chainId, addressId: addressId)
+            } catch {
+                print("Error adding eth chain \(chainId): \(error)")
+            }
+        }
+        // Make sure newly added chain shows up
+        await self.refreshAccounts()
+    }
 }
 
 // MARK: - Development
@@ -286,6 +298,19 @@ class PreviewAppCore: AppCoreProtocol {
 
     func userRejectedDapp(context: InPageRequestContextI, params: DappApprovalParams) throws {
         throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func addEthChain(chainId: UInt64, addressId: String) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func listEthChains() -> [CoreEthChain] {
+        [
+            CoreEthChain(chainId: 1, displayName: "Ethereum"),
+            CoreEthChain(chainId: 5, displayName: "Ethereum Goerli Testnet"),
+            CoreEthChain(chainId: 137, displayName: "Polygon PoS"),
+            CoreEthChain(chainId: 80001, displayName: "Polygon PoS Mumbai Testnet")
+        ]
     }
 }
 

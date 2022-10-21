@@ -129,6 +129,11 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    func listEthChains() async -> [CoreEthChain] {
+        return await dispatchBackground(.userInteractive) {
+            self.core.listEthChains()
+        }
+    }
 }
 
 // MARK: - Hashable
@@ -157,12 +162,24 @@ extension Address {
     }
 }
 
+// MARK: - chain
+
+extension CoreEthChain: Identifiable {
+    public var id: UInt64 {
+        chainId
+    }
+}
+
 // MARK: - preview
 
 #if DEBUG
 extension Address {
     static func ethereumWallet() -> Self {
         Self.ethereum(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: true)
+    }
+
+    static func ethereumDapp() -> Self {
+        Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: false)
     }
 
     static func polygonWallet() -> Self {
