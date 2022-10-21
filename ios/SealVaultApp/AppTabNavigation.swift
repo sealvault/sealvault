@@ -39,7 +39,13 @@ struct AppTabNavigationInner: View {
             .tag(Tab.dapps)
 
             NavigationView {
-                BrowserView()
+                // Dual-tab browser
+                TabView {
+                    BrowserView()
+                    BrowserView()
+                }
+                .tabViewStyle(.page)
+                .indexViewStyle(.page(backgroundDisplayMode: .always))
             }
             .tabItem {
                 let menuText = Text("Browser")

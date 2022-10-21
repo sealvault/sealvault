@@ -68,29 +68,6 @@ struct BrowserView: View {
                 .presentationDetents([.medium])
                 .background(.ultraThinMaterial)
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(browserModel.navTitle)
-        .toolbar {
-            ToolbarItem(placement: ToolbarItemPlacement.navigationBarLeading) {
-                if browserModel.loading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                } else {
-                    Button {
-                        browserModel.loadUrl = true
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise")
-                    }
-
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if let activeAccount = viewModel.activeAccount {
-                    AccountImageCircle(account: activeAccount)
-                }
-            }
-        }
-
     }
 }
 
@@ -101,8 +78,6 @@ struct BrowserViewInner: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: core, stateModel: browserModel)
-
             HStack {
                 Button(action: {
                     browserModel.goBack = true
@@ -154,8 +129,7 @@ struct BrowserViewInner: View {
                 .padding(.horizontal, 5)
             }
             .padding(10)
-                // TODO this should match nav tab's background color
-//                .background(Color(UIColor.quaternarySystemFill))
+            WebViewRepresentable(core: core, stateModel: browserModel)
         }
     }
 }
