@@ -85,6 +85,8 @@ struct AppTabNavigationInner: View {
     }
 }
 
+// We can only display a custom image in a tab item with SwiftUI only if the source is a UIImage and the modifiers
+// must be set on the UIImage, as they have no effect when applied to the SwiftUI Image constructed from UIImage.
 struct TabIcon: View {
     var icon: UIImage
     var size: CGSize = CGSize(width: 30, height: 30)
@@ -107,6 +109,7 @@ struct TabIcon: View {
     }
 
     var body: some View {
+        // Must set to original, otherwise it's just grey.
         Image(uiImage: roundedIcon.withRenderingMode(.alwaysOriginal))
     }
 }
