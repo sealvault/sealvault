@@ -42,11 +42,6 @@ struct AccountView: View {
         }
         .navigationTitle(Text(account.displayName))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: account)
-            }
-        }
         .task {
             await self.model.refreshAccounts()
         }

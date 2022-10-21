@@ -64,11 +64,6 @@ struct AddressView: View {
         }
         .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                AccountImageCircle(account: account)
-            }
-        }
         .sheet(isPresented: $showAddChain) {
             if let address = addresses.addresses.first {
                 AddChain(address: address)

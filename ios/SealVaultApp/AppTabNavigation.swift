@@ -18,6 +18,7 @@ struct AppTabNavigationInner: View {
         case webBrowser
     }
 
+    @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .dapps
     @State var dappAllotmentTransferBanner: BannerData?
@@ -33,7 +34,12 @@ struct AppTabNavigationInner: View {
                 Label {
                     menuText
                 } icon: {
-                    Image(systemName: "key")
+                    if let account = model.activeAccount {
+                        // TODO add blue circle around icon when selected
+                        TabIcon(icon: account.picture)
+                    } else {
+                        Image(systemName: "person")
+                    }
                 }.accessibility(label: menuText)
             }
             .tag(Tab.dapps)
@@ -76,6 +82,32 @@ struct AppTabNavigationInner: View {
         }
         .banner(data: $dappAllotmentTransferBanner)
         .edgesIgnoringSafeArea(.bottom)
+    }
+}
+
+struct TabIcon: View {
+    var icon: UIImage
+    var size: CGSize = CGSize(width: 30, height: 30)
+
+    // Based on https://stackoverflow.com/a/32303467
+    var roundedIcon: UIImage {
+        let rect = CGRect(origin: CGPoint(x: 0, y: 0), size: self.size)
+        UIGraphicsBeginImageContextWithOptions(self.size, false, 1)
+        defer {
+            // End context after returning to avoid memory leak
+            UIGraphicsEndImageContext()
+        }
+
+        UIBezierPath(
+            roundedRect: rect,
+            cornerRadius: self.size.height
+            ).addClip()
+        icon.draw(in: rect)
+        return UIGraphicsGetImageFromCurrentImageContext()!
+    }
+
+    var body: some View {
+        Image(uiImage: roundedIcon.withRenderingMode(.alwaysOriginal))
     }
 }
 
