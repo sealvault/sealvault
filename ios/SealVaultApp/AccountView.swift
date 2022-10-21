@@ -12,26 +12,20 @@ struct AccountView: View {
     var body: some View {
         ScrollViewReader { _ in
             List {
-                Section {
-                    ForEach(account.walletList) { wallet in
-                        NavigationLink {
-                            AddressView(
-                                title: "Wallet", core: model.core, account: account,
-                                addresses: Addresses(dapp: nil, wallet: wallet)
-                            )
-                        } label: {
-                            WalletRow(address: wallet)
-                        }
-                    }
-                } header: {
-                    Text("Wallets")
+                NavigationLink {
+                    AddressView(
+                        title: "Wallet", core: model.core, account: account,
+                        addresses: Addresses(account: account)
+                    )
+                } label: {
+                    WalletRow(account: account)
                 }
                 Section {
                     ForEach(account.dappList) { dapp in
                         NavigationLink {
                             AddressView(
                                 title: dapp.humanIdentifier, core: model.core, account: account,
-                                addresses: Addresses(dapp: dapp, wallet: nil)
+                                addresses: Addresses(dapp: dapp)
                             )
                         } label: {
                             DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)

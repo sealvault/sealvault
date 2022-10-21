@@ -173,7 +173,7 @@ class PreviewAppCore: AppCoreProtocol {
         return CoreAddress(
             id: address.id, isWallet: address.isWallet, checksumAddress: address.checksumAddress,
             blockchainExplorerLink: blockchainExplorerLink, chainDisplayName: address.chainDisplayName,
-            chainIcon: icon, nativeToken: nativeToken
+            isTestNet: address.isTestNet, chainIcon: icon, nativeToken: nativeToken
         )
     }
 

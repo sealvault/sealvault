@@ -4,25 +4,31 @@
 
 import SwiftUI
 
-// Hack to make the list of addresses update when a new address is added to a dapp
+// Hack to make the list of addresses update when a new address is added to an account wallet or dapp
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
-    @Published var wallet: Address?
+    @Published var account: Account?
 
     var addresses: [Address] {
         if let dapp = self.dapp {
             return dapp.addressList
-        } else if let wallet = self.wallet {
-            return [wallet]
+        } else if let account = self.account {
+            return account.walletList
         } else {
             return []
         }
     }
 
-    required init(dapp: Dapp?, wallet: Address?) {
+    init(dapp: Dapp) {
         self.dapp = dapp
-        self.wallet = wallet
+        self.account = nil
     }
+
+    init(account: Account) {
+        self.dapp = nil
+        self.account = account
+    }
+
 }
 
 struct AddressView: View {
@@ -83,7 +89,7 @@ struct AddressView_Previews: PreviewProvider {
         let dapp = Dapp.oneInch()
         // Simulate loading
         dapp.addressList[0].nativeToken.amount = nil
-        let addresses = Addresses(dapp: dapp, wallet: nil)
+        let addresses = Addresses(dapp: dapp)
 
         return AddressView(title: "Wallet", core: model.core, account: account, addresses: addresses)
     }

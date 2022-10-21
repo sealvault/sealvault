@@ -14,7 +14,13 @@ class Account: Identifiable, ObservableObject {
     @Published var dapps: [String: Dapp]
 
     var walletList: [Address] {
-        self.wallets.values.sorted(by: { $0.chainDisplayName < $1.chainDisplayName })
+        self.wallets.values.sorted(by: {
+            if $0.isTestNet == $1.isTestNet {
+                return $0.chainDisplayName < $1.chainDisplayName
+            } else {
+                return !$0.isTestNet
+            }
+        })
     }
 
     var dappList: [Dapp] {
@@ -134,13 +140,20 @@ extension Account {
             return "No dapps yet"
         }
 
-        let maxDapps = 3
+        return displayList(dappList.map { $0.displayName })
+    }
 
-        var list = Array(dappList.prefix(maxDapps).map { $0.displayName })
-        if dapps.count > maxDapps {
+    var walletChains: String {
+        return displayList(walletList.map { $0.chainDisplayName })
+    }
+
+    private func displayList(_ items: [String], maxItems: Int = 3) -> String {
+        var list = Array(items.prefix(maxItems))
+        if items.count > maxItems {
             list.append("...")
         }
         return ListFormatter.localizedString(byJoining: list)
+
     }
 }
 
