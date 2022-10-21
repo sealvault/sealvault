@@ -7,7 +7,7 @@ import Foundation
 struct Config {
     static let dbFileDir = "database"
     static let dbFileName = "sealvault-db.sqlite3"
-    static let defaultHomePage = "https://search.brave.com"
+    static let defaultHomePage = "https://sealvault.org/discover/"
     static let searchProvider = URL(string: "https://search.brave.com/search")!
     static let searchQueryParamName = "q"
 }
