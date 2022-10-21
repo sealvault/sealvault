@@ -90,6 +90,16 @@ impl ChainId {
         .into()
     }
 
+    pub fn is_test_net(&self) -> bool {
+        match *self {
+            Self::EthMainnet => false,
+            Self::EthGoerli => true,
+
+            Self::PolygonMainnet => false,
+            Self::PolygonMumbai => true,
+        }
+    }
+
     pub fn native_token(&self) -> NativeToken {
         match *self {
             Self::EthMainnet => NativeToken::Eth,

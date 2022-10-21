@@ -50,6 +50,7 @@ pub struct CoreAddress {
     pub checksum_address: String,
     pub blockchain_explorer_link: String,
     pub chain_display_name: String,
+    pub is_test_net: bool,
     pub chain_icon: Vec<u8>,
     pub native_token: CoreToken,
 }
@@ -247,6 +248,7 @@ impl Assembler {
             .checksum_address(address)
             .blockchain_explorer_link(explorer_link)
             .chain_display_name(chain_id.display_name())
+            .is_test_net(chain_id.is_test_net())
             .chain_icon(chain_icon)
             .native_token(native_token)
             .build();
