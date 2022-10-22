@@ -28,7 +28,7 @@ struct AppTabNavigationInner: View {
         TabView(selection: $selection) {
 
             NavigationView {
-                BrowserView()
+                BrowserView(browserModel: BrowserModel(homePage: Config.browserOneHomePage))
             }
             .tabItem {
                 let menuText = Text("Browser 1")
@@ -60,7 +60,7 @@ struct AppTabNavigationInner: View {
             .tag(Tab.dapps)
 
             NavigationView {
-                BrowserView()
+                BrowserView(browserModel: BrowserModel(homePage: Config.browserTwoHomePage))
             }
             .tabItem {
                 let menuText = Text("Browser 2")

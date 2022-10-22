@@ -5,8 +5,8 @@
 import SwiftUI
 
 class BrowserModel: ObservableObject {
-    @Published var urlRaw: String = Config.defaultHomePage
-    @Published var addressBarText: String = Config.defaultHomePage
+    @Published var urlRaw: String
+    @Published var addressBarText: String
     @Published var loadUrl: Bool = false
     @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
@@ -16,6 +16,11 @@ class BrowserModel: ObservableObject {
     @Published var goForward: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
+
+    init(homePage: String) {
+        self.urlRaw = homePage
+        self.addressBarText = homePage
+    }
 
     var url: URL? {
         URL(string: urlRaw.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
@@ -59,7 +64,7 @@ class BrowserModel: ObservableObject {
 
 struct BrowserView: View {
     @EnvironmentObject private var viewModel: GlobalModel
-    @StateObject var browserModel = BrowserModel()
+    @StateObject var browserModel: BrowserModel
 
     var body: some View {
         BrowserViewInner(core: viewModel.core, browserModel: browserModel)
@@ -137,7 +142,8 @@ struct BrowserViewInner: View {
 #if DEBUG
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
-        BrowserView().environmentObject(GlobalModel.buildForPreview())
+        var browserModel = BrowserModel(homePage: Config.browserOneHomePage)
+        BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
     }
 }
 #endif
