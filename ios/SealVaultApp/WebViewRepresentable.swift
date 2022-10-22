@@ -10,14 +10,12 @@ import WebKit
  Bridge WKWebView from UIKit to SwiftUI.
  */
 public struct WebViewRepresentable: UIViewRepresentable {
-    var stateModel: BrowserModel
+    private var model: BrowserModel
+    private var scriptHandler: WebViewScriptHandler
 
-    let scriptHandler: WebViewScriptHandler
-
-    init(core: AppCoreProtocol, stateModel: BrowserModel) {
-        self.stateModel = stateModel
-
-        scriptHandler = WebViewScriptHandler(core: core, stateModel: stateModel)
+    init(core: AppCoreProtocol, model: BrowserModel) {
+        self.model = model
+        self.scriptHandler = WebViewScriptHandler(core: core, stateModel: model)
     }
 
     // TODO: deinit: https://stackoverflow.com/a/65270084/2650622
@@ -48,8 +46,6 @@ public struct WebViewRepresentable: UIViewRepresentable {
         webViewConfiguration.upgradeKnownHostsToHTTPS = true
 
         let webView = WKWebView(frame: CGRect.zero, configuration: webViewConfiguration)
-        webView.navigationDelegate = context.coordinator
-        webView.uiDelegate = context.coordinator
         scriptHandler.webView = webView
 
         // Pull down to refresh
@@ -63,6 +59,15 @@ public struct WebViewRepresentable: UIViewRepresentable {
         webView.configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
 #endif
 
+        context.coordinator.observer = webView.observe(\.estimatedProgress) { webView, _ in
+           DispatchQueue.main.async {
+               model.loadingProgress = webView.estimatedProgress
+           }
+        }
+
+        webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
+
         loadUrlIfValid(webView: webView)
 
         return webView
@@ -70,7 +75,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
 
     public func updateUIView(_ webView: WKWebView, context _: Context) {
         DispatchQueue.main.async {
-            let model = self.stateModel
+            let model = self.model
             if model.loadUrl {
                 loadUrlIfValid(webView: webView)
                 // Important to set to false even if the url is invalid,
@@ -87,19 +92,26 @@ public struct WebViewRepresentable: UIViewRepresentable {
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(stateModel: stateModel)
+        Coordinator(self.model)
+
     }
 
     public final class Coordinator: NSObject {
-        var stateModel: BrowserModel
+        var model: BrowserModel
+        var observer: NSKeyValueObservation?
 
-        init(stateModel: BrowserModel) {
-            self.stateModel = stateModel
+        init(_ model: BrowserModel) {
+            self.model = model
         }
+
+       deinit {
+           observer = nil
+       }
     }
 
     func loadUrlIfValid(webView: WKWebView) {
-        if let url = stateModel.url {
+        if let url = model.url {
+            print("load valid url \(url)")
             webView.load(URLRequest(url: url))
         }
     }
@@ -259,8 +271,8 @@ class CoreInPageCallback: CoreInPageCallbackI {
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
     public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-        self.stateModel.requestStatus = "Loading page..."
-        self.stateModel.loading = true
+        self.model.requestStatus = "Loading page..."
+        self.model.loading = true
     }
 
     public func webView(
@@ -274,27 +286,27 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
                 if let url = info["NSErrorFailingURLKey"] as? URL {
                     let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
                     components.scheme = "https"
-                    self.stateModel.urlRaw = components.url!.absoluteString
-                    self.stateModel.loadUrl = true
+                    self.model.urlRaw = components.url!.absoluteString
+                    self.model.loadUrl = true
                 }
             }
         } else {
             print("didFailProvisionalNavigation: \(error)")
-            self.stateModel.requestStatus = "Failed to load page"
-            self.stateModel.loading = false
-            self.stateModel.canGoBack = webView.canGoBack
-            self.stateModel.canGoForward = webView.canGoForward
+            self.model.requestStatus = "Failed to load page"
+            self.model.loading = false
+            self.model.canGoBack = webView.canGoBack
+            self.model.canGoForward = webView.canGoForward
         }
     }
 
     public func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
-        self.stateModel.loading = false
-        self.stateModel.canGoBack = webView.canGoBack
-        self.stateModel.canGoForward = webView.canGoForward
+        self.model.loading = false
+        self.model.canGoBack = webView.canGoBack
+        self.model.canGoForward = webView.canGoForward
         if let url = webView.url {
-            self.stateModel.urlRaw = url.absoluteString
+            self.model.urlRaw = url.absoluteString
         }
-        self.stateModel.requestStatus = nil
+        self.model.requestStatus = nil
     }
 
     public func webView(
@@ -303,10 +315,10 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         withError error: Error
     ) {
         print("didFail: \(error)")
-        self.stateModel.requestStatus = "Failed to load page"
-        self.stateModel.loading = false
-        self.stateModel.canGoBack = webView.canGoBack
-        self.stateModel.canGoForward = webView.canGoForward
+        self.model.requestStatus = "Failed to load page"
+        self.model.loading = false
+        self.model.canGoBack = webView.canGoBack
+        self.model.canGoForward = webView.canGoForward
     }
 }
 
@@ -319,8 +331,8 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
     -> WKWebView? {
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url {
-                stateModel.urlRaw = url.absoluteString
-                stateModel.loadUrl = true
+                self.model.urlRaw = url.absoluteString
+                self.model.loadUrl = true
             }
         }
         return nil

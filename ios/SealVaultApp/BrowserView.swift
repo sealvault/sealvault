@@ -16,6 +16,7 @@ class BrowserModel: ObservableObject {
     @Published var goForward: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
+    @Published var loadingProgress: Double = 0.0
 
     init(homePage: String) {
         self.urlRaw = homePage
@@ -79,11 +80,9 @@ struct BrowserView: View {
 struct BrowserViewInner: View {
     let core: AppCoreProtocol
     @ObservedObject var browserModel: BrowserModel
-    @FocusState private var isAddressBarFocused: Bool
-
     var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: core, stateModel: browserModel)
+            WebViewRepresentable(core: core, model: browserModel)
 
             HStack {
                 HStack {
@@ -102,39 +101,7 @@ struct BrowserViewInner: View {
                         })
                     }
                 }.padding(.horizontal, 5)
-                TextField("url / search", text: $browserModel.addressBarText)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .accessibility(identifier: "browserAddressBar")
-                    .multilineTextAlignment(.center)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isAddressBarFocused)
-                    .onSubmit {
-                        if let url = uriFixup(input: browserModel.addressBarText) {
-                            browserModel.urlRaw = url
-                            browserModel.loadUrl = true
-                        } else if let searchUrl = browserModel.searchUrl() {
-                            browserModel.urlRaw = searchUrl.absoluteString
-                            browserModel.loadUrl = true
-                        } else {
-                            print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
-                        }
-                    }
-                    .onChange(of: browserModel.urlRaw) { newQuery in
-                        if !isAddressBarFocused {
-                            browserModel.addressBarText = newQuery
-                        }
-                    }
-                    .onReceive(NotificationCenter.default.publisher(
-                        for: UITextField.textDidBeginEditingNotification
-                    )) { obj in
-                        // Select text field on tap
-                        if let textField = obj.object as? UITextField {
-                            textField.selectedTextRange = textField.textRange(
-                                from: textField.beginningOfDocument, to: textField.endOfDocument
-                            )
-                        }
-                    }
+                AddressBar(browserModel: browserModel)
                 HStack {
                     Button(action: {
                         browserModel.loadUrl = true
@@ -144,6 +111,68 @@ struct BrowserViewInner: View {
                 }.padding(.horizontal, 5)
             }
             .padding(10)
+        }
+    }
+}
+
+struct AddressBar: View {
+    @ObservedObject var browserModel: BrowserModel
+    @FocusState private var isAddressBarFocused: Bool
+    @State private var showProgressView: Bool = false
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            TextField("url / search", text: $browserModel.addressBarText)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .accessibility(identifier: "browserAddressBar")
+                .multilineTextAlignment(.center)
+                .textFieldStyle(.roundedBorder)
+                .focused($isAddressBarFocused)
+                .onSubmit {
+                    if let url = uriFixup(input: browserModel.addressBarText) {
+                        browserModel.urlRaw = url
+                        browserModel.loadUrl = true
+                    } else if let searchUrl = browserModel.searchUrl() {
+                        browserModel.urlRaw = searchUrl.absoluteString
+                        browserModel.loadUrl = true
+                    } else {
+                        print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
+                    }
+                }
+                .onChange(of: browserModel.urlRaw) { newQuery in
+                    if !isAddressBarFocused {
+                        browserModel.addressBarText = newQuery
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(
+                    for: UITextField.textDidBeginEditingNotification
+                )) { obj in
+                    // Select text field on tap
+                    if let textField = obj.object as? UITextField {
+                        textField.selectedTextRange = textField.textRange(
+                            from: textField.beginningOfDocument, to: textField.endOfDocument
+                        )
+                    }
+                }
+            if showProgressView {
+                ProgressView(value: browserModel.loadingProgress)
+            }
+        }
+        .onChange(of: browserModel.loading) { newValue in
+            if newValue {
+                // Show progress bar immediately on start
+                withAnimation {
+                    showProgressView = newValue
+                }
+            } else {
+                // Delay hiding progress bar after success, otherwise it's not allowed to complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    withAnimation {
+                        showProgressView = newValue
+                    }
+                }
+            }
         }
     }
 }
