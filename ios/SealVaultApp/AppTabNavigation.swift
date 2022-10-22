@@ -15,7 +15,8 @@ struct AppTabNavigation: View {
 struct AppTabNavigationInner: View {
     enum Tab {
         case dapps
-        case webBrowser
+        case browserOne
+        case browserTwo
     }
 
     @EnvironmentObject private var model: GlobalModel
@@ -25,6 +26,20 @@ struct AppTabNavigationInner: View {
 
     var body: some View {
         TabView(selection: $selection) {
+
+            NavigationView {
+                BrowserView()
+            }
+            .tabItem {
+                let menuText = Text("Browser 1")
+                Label {
+                    menuText
+                } icon: {
+                    Image(systemName: "network")
+                }.accessibility(label: menuText)
+            }
+            .tag(Tab.browserOne)
+
             NavigationView {
                 AccountListView()
             }
@@ -45,23 +60,17 @@ struct AppTabNavigationInner: View {
             .tag(Tab.dapps)
 
             NavigationView {
-                // Dual-tab browser
-                TabView {
-                    BrowserView()
-                    BrowserView()
-                }
-                .tabViewStyle(.page)
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
+                BrowserView()
             }
             .tabItem {
-                let menuText = Text("Browser")
+                let menuText = Text("Browser 2")
                 Label {
                     menuText
                 } icon: {
                     Image(systemName: "network")
                 }.accessibility(label: menuText)
             }
-            .tag(Tab.webBrowser)
+            .tag(Tab.browserTwo)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onChange(of: callbackModel.dappAllotmentResult) { val in
@@ -103,7 +112,7 @@ struct TabIcon: View {
         UIBezierPath(
             roundedRect: rect,
             cornerRadius: self.size.height
-            ).addClip()
+        ).addClip()
         icon.draw(in: rect)
         return UIGraphicsGetImageFromCurrentImageContext()!
     }
@@ -135,7 +144,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
         }
 
         return Group {
-            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .webBrowser).environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .browserOne).environmentObject(model)
             AppTabNavigationInner(callbackModel: callbackError, selection: .dapps).environmentObject(model)
         }
     }
