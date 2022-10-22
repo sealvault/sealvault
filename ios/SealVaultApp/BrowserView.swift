@@ -83,6 +83,8 @@ struct BrowserViewInner: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            WebViewRepresentable(core: core, stateModel: browserModel)
+
             HStack {
                 Button(action: {
                     browserModel.goBack = true
@@ -134,7 +136,6 @@ struct BrowserViewInner: View {
                 .padding(.horizontal, 5)
             }
             .padding(10)
-            WebViewRepresentable(core: core, stateModel: browserModel)
         }
     }
 }
