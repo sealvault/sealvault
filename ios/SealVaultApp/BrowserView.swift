@@ -86,20 +86,28 @@ struct BrowserViewInner: View {
             WebViewRepresentable(core: core, stateModel: browserModel)
 
             HStack {
-                Button(action: {
-                    browserModel.goBack = true
-                }, label: {
-                    Image(systemName: "arrow.left")
-                })
-                .disabled(!browserModel.canGoBack)
-                .padding(.horizontal, 5)
+                HStack {
+                    Button(action: {
+                        browserModel.goBack = true
+                    }, label: {
+                        Image(systemName: "arrow.left")
+                    })
+                    .disabled(!browserModel.canGoBack)
+
+                    if browserModel.canGoForward {
+                        Button(action: {
+                            browserModel.goForward = true
+                        }, label: {
+                            Image(systemName: "arrow.right")
+                        })
+                    }
+                }.padding(.horizontal, 5)
                 TextField("url / search", text: $browserModel.addressBarText)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
                     .multilineTextAlignment(.center)
                     .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, 5)
                     .focused($isAddressBarFocused)
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
@@ -127,13 +135,13 @@ struct BrowserViewInner: View {
                             )
                         }
                     }
-                Button(action: {
-                    browserModel.goForward = true
-                }, label: {
-                    Image(systemName: "arrow.right")
-                })
-                .disabled(!browserModel.canGoForward)
-                .padding(.horizontal, 5)
+                HStack {
+                    Button(action: {
+                        browserModel.loadUrl = true
+                    }, label: {
+                        Image(systemName: "arrow.clockwise")
+                    })
+                }.padding(.horizontal, 5)
             }
             .padding(10)
         }
