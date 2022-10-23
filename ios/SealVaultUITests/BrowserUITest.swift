@@ -65,7 +65,7 @@ final class BrowserUITest: XCTestCase {
 func startBrowserApp() throws -> XCUIApplication {
     let app = XCUIApplication()
     app.launch()
-    app.tabBars.buttons["Browser"].tap()
+    app.tabBars.buttons["Browser 1"].tap()
     return app
 }
 

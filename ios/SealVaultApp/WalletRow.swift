@@ -5,24 +5,19 @@
 import SwiftUI
 
 struct WalletRow: View {
-    var address: Address
+    @ObservedObject var account: Account
 
     var body: some View {
         HStack {
-            Label {
-                Text(address.chainDisplayName)
+            VStack(alignment: .leading) {
+                Text("Account Wallet")
                     .font(.headline)
-            } icon: {
-                IconView(image: address.image, iconSize: 24)
-                    .accessibility(label: Text("Chain icon"))
+
+                Text(account.walletChains)
+                    .lineLimit(2)
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
             }
-
-            Spacer()
-
-            TokenAmount(token: address.nativeToken)
-        }
-        .task {
-            await address.refreshTokens()
         }
     }
 }
@@ -30,8 +25,9 @@ struct WalletRow: View {
 #if DEBUG
 struct WalletRow_Previews: PreviewProvider {
     static var previews: some View {
-        let address = Address.ethereumWallet()
-        return WalletRow(address: address)
+        let model = GlobalModel.buildForPreview()
+        let account = model.activeAccount!
+        return WalletRow(account: account)
     }
 }
 #endif

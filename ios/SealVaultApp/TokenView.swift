@@ -13,11 +13,6 @@ struct TokenView: View {
             NavigationLink {
                 TransferForm(state: TransferState(account: account, token: address.nativeToken, fromAddress: address))
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            AccountImageCircle(account: account)
-                        }
-                    }
             } label: {
                 NativeTokenRow(address: address)
             }
@@ -36,11 +31,6 @@ struct TokenView: View {
                 NavigationLink {
                     TransferForm(state: TransferState(account: account, token: token, fromAddress: address))
                         .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                AccountImageCircle(account: account)
-                            }
-                        }
                 } label: {
                     TokenRow(token: token)
                 }

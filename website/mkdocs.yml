@@ -49,10 +49,11 @@ extra_javascript:
 
 
 nav:
-  - Home:
+  - App:
     - index.md
     - Automated Burner Wallets: burners.md
     - Privacy: privacy.md
+  - Discover: discover/index.md
   - Blog: blog/index.md
   - Developer Docs:
       - dev-docs/index.md

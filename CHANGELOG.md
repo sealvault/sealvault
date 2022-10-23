@@ -1,5 +1,25 @@
 # Changelog
 
+## 2022-10-21
+
+### iOS Beta v0.2.0
+
+#### Features
+
+- Dual-tab browsing. Swipe left and right to switch between browser tabs.
+- Add new chains to addresses. Only chains hard coded into the application can 
+be added. This is because we want to test chains ourselves before we offer them 
+to users in the app. We currently support Ethereum (+ Goerli testnet) and 
+Polygon Pos (+ Mumbai testnet) but expect more Ethereum chains soon.
+
+#### Improvements
+
+- Rename "Accounts" tab to "Dapps"
+- Nest wallet address on different chains under one "Account Wallet" row for
+consistent experience with dapp addresses.
+- Move current account icon to tab bar so that it's visible in browser mode.
+- Set [discover](https://sealvault.org/discover/) as the default home page.
+
 ## 2022-10-17
 
 ### iOS Beta v0.1.2

@@ -81,6 +81,7 @@ dictionary CoreAddress {
     string checksum_address;
     string blockchain_explorer_link;
     string chain_display_name;
+    boolean is_test_net;
     sequence<u8> chain_icon;
     CoreToken native_token;
 };

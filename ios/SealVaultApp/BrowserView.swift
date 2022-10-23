@@ -5,9 +5,11 @@
 import SwiftUI
 
 class BrowserModel: ObservableObject {
-    @Published var urlRaw: String = Config.defaultHomePage
-    @Published var addressBarText: String = Config.defaultHomePage
-    @Published var loadUrl: Bool = false
+    @Published var urlRaw: String
+    @Published var addressBarText: String
+    @Published var doLoad: Bool = false
+    @Published var doReload: Bool = false
+    @Published var doStop: Bool = false
     @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
@@ -16,6 +18,12 @@ class BrowserModel: ObservableObject {
     @Published var goForward: Bool = false
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
+    @Published var loadingProgress: Double = 0.0
+
+    init(homePage: String) {
+        self.urlRaw = homePage
+        self.addressBarText = homePage
+    }
 
     var url: URL? {
         URL(string: urlRaw.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
@@ -59,7 +67,7 @@ class BrowserModel: ObservableObject {
 
 struct BrowserView: View {
     @EnvironmentObject private var viewModel: GlobalModel
-    @StateObject var browserModel = BrowserModel()
+    @StateObject var browserModel: BrowserModel
 
     var body: some View {
         BrowserViewInner(core: viewModel.core, browserModel: browserModel)
@@ -68,41 +76,27 @@ struct BrowserView: View {
                 .presentationDetents([.medium])
                 .background(.ultraThinMaterial)
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(browserModel.navTitle)
-        .toolbar {
-            ToolbarItem(placement: ToolbarItemPlacement.navigationBarLeading) {
-                if browserModel.loading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                } else {
-                    Button {
-                        browserModel.loadUrl = true
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise")
-                    }
-
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if let activeAccount = viewModel.activeAccount {
-                    AccountImageCircle(account: activeAccount)
-                }
-            }
-        }
-
     }
 }
 
 struct BrowserViewInner: View {
     let core: AppCoreProtocol
     @ObservedObject var browserModel: BrowserModel
-    @FocusState private var isAddressBarFocused: Bool
-
     var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: core, stateModel: browserModel)
+            WebViewRepresentable(core: core, model: browserModel)
+            AddressBar(browserModel: browserModel)
+        }
+    }
+}
 
+struct AddressBar: View {
+    @ObservedObject var browserModel: BrowserModel
+    @FocusState private var isAddressBarFocused: Bool
+    @State private var showProgressView: Bool = false
+
+    var body: some View {
+        HStack {
             HStack {
                 Button(action: {
                     browserModel.goBack = true
@@ -110,29 +104,32 @@ struct BrowserViewInner: View {
                     Image(systemName: "arrow.left")
                 })
                 .disabled(!browserModel.canGoBack)
-                .padding(.horizontal, 5)
+
+                if browserModel.canGoForward {
+                    Button(action: {
+                        browserModel.goForward = true
+                    }, label: {
+                        Image(systemName: "arrow.right")
+                    })
+                }
+            }.padding(.horizontal, 5)
+            ZStack(alignment: .bottom) {
                 TextField("url / search", text: $browserModel.addressBarText)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
                     .multilineTextAlignment(.center)
                     .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, 5)
                     .focused($isAddressBarFocused)
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
                             browserModel.urlRaw = url
-                            browserModel.loadUrl = true
+                            browserModel.doLoad = true
                         } else if let searchUrl = browserModel.searchUrl() {
                             browserModel.urlRaw = searchUrl.absoluteString
-                            browserModel.loadUrl = true
+                            browserModel.doLoad = true
                         } else {
                             print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
-                        }
-                    }
-                    .onChange(of: browserModel.urlRaw) { newQuery in
-                        if !isAddressBarFocused {
-                            browserModel.addressBarText = newQuery
                         }
                     }
                     .onReceive(NotificationCenter.default.publisher(
@@ -145,17 +142,49 @@ struct BrowserViewInner: View {
                             )
                         }
                     }
-                Button(action: {
-                    browserModel.goForward = true
-                }, label: {
-                    Image(systemName: "arrow.right")
-                })
-                .disabled(!browserModel.canGoForward)
-                .padding(.horizontal, 5)
+                if showProgressView {
+                    ProgressView(value: browserModel.loadingProgress)
+                        // Make the bar thinner
+                        .scaleEffect(x: 1, y: 0.5, anchor: .center)
+                }
             }
-            .padding(10)
-                // TODO this should match nav tab's background color
-//                .background(Color(UIColor.quaternarySystemFill))
+            HStack {
+                if browserModel.loading {
+                    Button(action: {
+                        browserModel.doStop = true
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
+                } else {
+                    Button(action: {
+                        browserModel.doReload = true
+                    }, label: {
+                        Image(systemName: "arrow.clockwise")
+                    })
+                }
+            }
+            .padding(.horizontal, 5)
+        }
+        .padding(10)
+        .onChange(of: browserModel.urlRaw) { newQuery in
+            if !isAddressBarFocused {
+                browserModel.addressBarText = newQuery
+            }
+        }
+        .onChange(of: browserModel.loading) { newValue in
+            if newValue {
+                // Show progress bar immediately on start
+                withAnimation {
+                    showProgressView = newValue
+                }
+            } else {
+                // Delay hiding progress bar after success, otherwise it's not allowed to complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    withAnimation {
+                        showProgressView = newValue
+                    }
+                }
+            }
         }
     }
 }
@@ -163,7 +192,8 @@ struct BrowserViewInner: View {
 #if DEBUG
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
-        BrowserView().environmentObject(GlobalModel.buildForPreview())
+        var browserModel = BrowserModel(homePage: Config.browserOneHomePage)
+        BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
     }
 }
 #endif

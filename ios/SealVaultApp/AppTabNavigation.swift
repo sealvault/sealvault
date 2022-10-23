@@ -15,15 +15,31 @@ struct AppTabNavigation: View {
 struct AppTabNavigationInner: View {
     enum Tab {
         case dapps
-        case webBrowser
+        case browserOne
+        case browserTwo
     }
 
+    @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .dapps
     @State var dappAllotmentTransferBanner: BannerData?
 
     var body: some View {
         TabView(selection: $selection) {
+
+            NavigationView {
+                BrowserView(browserModel: BrowserModel(homePage: Config.browserOneHomePage))
+            }
+            .tabItem {
+                let menuText = Text("Browser 1")
+                Label {
+                    menuText
+                } icon: {
+                    Image(systemName: "network")
+                }.accessibility(label: menuText)
+            }
+            .tag(Tab.browserOne)
+
             NavigationView {
                 AccountListView()
             }
@@ -33,23 +49,28 @@ struct AppTabNavigationInner: View {
                 Label {
                     menuText
                 } icon: {
-                    Image(systemName: "key")
+                    if let account = model.activeAccount {
+                        // TODO add blue circle around icon when selected
+                        TabIcon(icon: account.picture)
+                    } else {
+                        Image(systemName: "person")
+                    }
                 }.accessibility(label: menuText)
             }
             .tag(Tab.dapps)
 
             NavigationView {
-                BrowserView()
+                BrowserView(browserModel: BrowserModel(homePage: Config.browserTwoHomePage))
             }
             .tabItem {
-                let menuText = Text("Browser")
+                let menuText = Text("Browser 2")
                 Label {
                     menuText
                 } icon: {
                     Image(systemName: "network")
                 }.accessibility(label: menuText)
             }
-            .tag(Tab.webBrowser)
+            .tag(Tab.browserTwo)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onChange(of: callbackModel.dappAllotmentResult) { val in
@@ -70,6 +91,35 @@ struct AppTabNavigationInner: View {
         }
         .banner(data: $dappAllotmentTransferBanner)
         .edgesIgnoringSafeArea(.bottom)
+    }
+}
+
+// We can only display a custom image in a tab item with SwiftUI only if the source is a UIImage and the modifiers
+// must be set on the UIImage, as they have no effect when applied to the SwiftUI Image constructed from UIImage.
+struct TabIcon: View {
+    var icon: UIImage
+    var size: CGSize = CGSize(width: 30, height: 30)
+
+    // Based on https://stackoverflow.com/a/32303467
+    var roundedIcon: UIImage {
+        let rect = CGRect(origin: CGPoint(x: 0, y: 0), size: self.size)
+        UIGraphicsBeginImageContextWithOptions(self.size, false, 1)
+        defer {
+            // End context after returning to avoid memory leak
+            UIGraphicsEndImageContext()
+        }
+
+        UIBezierPath(
+            roundedRect: rect,
+            cornerRadius: self.size.height
+        ).addClip()
+        icon.draw(in: rect)
+        return UIGraphicsGetImageFromCurrentImageContext()!
+    }
+
+    var body: some View {
+        // Must set to original, otherwise it's just grey.
+        Image(uiImage: roundedIcon.withRenderingMode(.alwaysOriginal))
     }
 }
 
@@ -94,7 +144,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
         }
 
         return Group {
-            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .webBrowser).environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .browserOne).environmentObject(model)
             AppTabNavigationInner(callbackModel: callbackError, selection: .dapps).environmentObject(model)
         }
     }

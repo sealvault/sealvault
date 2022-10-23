@@ -11,6 +11,7 @@ class Address: Identifiable, ObservableObject {
     let id: String
     let checksumAddress: String
     let isWallet: Bool
+    let isTestNet: Bool
     @Published var blockchainExplorerLink: URL?
     @Published var chainDisplayName: String
     @Published var chainIcon: UIImage
@@ -23,12 +24,13 @@ class Address: Identifiable, ObservableObject {
         self.fungibleTokens.values.sorted(by: {$0.symbol < $1.symbol})
     }
 
-    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool,
+    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
                   blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
         self.isWallet = isWallet
+        self.isTestNet = isTestNet
         self.blockchainExplorerLink = blockchainExplorerLink
         self.chainDisplayName = chainDisplayName
         self.chainIcon = chainIcon
@@ -42,8 +44,8 @@ class Address: Identifiable, ObservableObject {
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
             core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
-            blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName, chainIcon: chainIcon,
-            nativeToken: nativeToken
+            isTestNet: address.isTestNet, blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName,
+            chainIcon: chainIcon, nativeToken: nativeToken
         )
     }
 
@@ -179,7 +181,7 @@ extension Address {
     }
 
     static func ethereumDapp() -> Self {
-        Self.polygon(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: false)
+        Self.ethereum(checksumAddress: "0xb3f5354C4c4Ca1E9314302CcFcaDc9de5da53AdA", isWallet: false)
     }
 
     static func polygonWallet() -> Self {
@@ -197,8 +199,8 @@ extension Address {
         let id = "ETH-\(checksumAddress)"
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress,
-            isWallet: isWallet, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum", chainIcon: icon,
-            nativeToken: nativeToken
+            isWallet: isWallet, isTestNet: false, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum",
+            chainIcon: icon, nativeToken: nativeToken
         )
     }
 
@@ -208,7 +210,7 @@ extension Address {
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
         let id = "POLYGON-\(checksumAddress)"
         return Self(
-            PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet,
+            PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet, isTestNet: false,
             blockchainExplorerLink: explorer, chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken
         )
     }
