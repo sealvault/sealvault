@@ -10,7 +10,6 @@ class BrowserModel: ObservableObject {
     @Published var doLoad: Bool = false
     @Published var doReload: Bool = false
     @Published var doStop: Bool = false
-    @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
     @Published var goBack: Bool = false
@@ -27,16 +26,6 @@ class BrowserModel: ObservableObject {
 
     var url: URL? {
         URL(string: urlRaw.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
-    }
-
-    var navTitle: String {
-        if let status = requestStatus {
-            return status
-        } else if let host = url?.host {
-            return host
-        } else {
-            return ""
-        }
     }
 
     var urlValid: Bool {

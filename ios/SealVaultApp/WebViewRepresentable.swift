@@ -277,7 +277,6 @@ class CoreInPageCallback: CoreInPageCallbackI {
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
     public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-        self.model.requestStatus = "Loading page..."
         self.model.loading = true
     }
 
@@ -298,7 +297,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
             }
         } else {
             print("didFailProvisionalNavigation: \(error)")
-            self.model.requestStatus = "Failed to load page"
             self.model.loading = false
             self.model.canGoBack = webView.canGoBack
             self.model.canGoForward = webView.canGoForward
@@ -312,7 +310,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         if let url = webView.url {
             self.model.urlRaw = url.absoluteString
         }
-        self.model.requestStatus = nil
     }
 
     public func webView(
@@ -321,7 +318,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         withError error: Error
     ) {
         print("didFail: \(error)")
-        self.model.requestStatus = "Failed to load page"
         self.model.loading = false
         self.model.canGoBack = webView.canGoBack
         self.model.canGoForward = webView.canGoForward
