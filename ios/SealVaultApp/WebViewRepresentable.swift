@@ -76,11 +76,17 @@ public struct WebViewRepresentable: UIViewRepresentable {
     public func updateUIView(_ webView: WKWebView, context _: Context) {
         DispatchQueue.main.async {
             let model = self.model
-            if model.loadUrl {
+            if model.doStop {
+                webView.stopLoading()
+                model.doStop = false
+            } else if model.doReload {
+                webView.reload()
+                model.doReload = false
+            } else if model.doLoad {
                 loadUrlIfValid(webView: webView)
                 // Important to set to false even if the url is invalid,
                 // bc the semantics is that we tried to process the change.
-                model.loadUrl = false
+                model.doLoad = false
             } else if webView.canGoBack, model.goBack {
                 webView.goBack()
                 model.goBack = false
@@ -287,7 +293,7 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
                     let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
                     components.scheme = "https"
                     self.model.urlRaw = components.url!.absoluteString
-                    self.model.loadUrl = true
+                    self.model.doLoad = true
                 }
             }
         } else {
@@ -332,7 +338,7 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url {
                 self.model.urlRaw = url.absoluteString
-                self.model.loadUrl = true
+                self.model.doLoad = true
             }
         }
         return nil

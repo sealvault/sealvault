@@ -7,7 +7,9 @@ import SwiftUI
 class BrowserModel: ObservableObject {
     @Published var urlRaw: String
     @Published var addressBarText: String
-    @Published var loadUrl: Bool = false
+    @Published var doLoad: Bool = false
+    @Published var doReload: Bool = false
+    @Published var doStop: Bool = false
     @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
@@ -83,34 +85,7 @@ struct BrowserViewInner: View {
     var body: some View {
         VStack(spacing: 0) {
             WebViewRepresentable(core: core, model: browserModel)
-
-            HStack {
-                HStack {
-                    Button(action: {
-                        browserModel.goBack = true
-                    }, label: {
-                        Image(systemName: "arrow.left")
-                    })
-                    .disabled(!browserModel.canGoBack)
-
-                    if browserModel.canGoForward {
-                        Button(action: {
-                            browserModel.goForward = true
-                        }, label: {
-                            Image(systemName: "arrow.right")
-                        })
-                    }
-                }.padding(.horizontal, 5)
-                AddressBar(browserModel: browserModel)
-                HStack {
-                    Button(action: {
-                        browserModel.loadUrl = true
-                    }, label: {
-                        Image(systemName: "arrow.clockwise")
-                    })
-                }.padding(.horizontal, 5)
-            }
-            .padding(10)
+            AddressBar(browserModel: browserModel)
         }
     }
 }
@@ -121,42 +96,77 @@ struct AddressBar: View {
     @State private var showProgressView: Bool = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TextField("url / search", text: $browserModel.addressBarText)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-                .accessibility(identifier: "browserAddressBar")
-                .multilineTextAlignment(.center)
-                .textFieldStyle(.roundedBorder)
-                .focused($isAddressBarFocused)
-                .onSubmit {
-                    if let url = uriFixup(input: browserModel.addressBarText) {
-                        browserModel.urlRaw = url
-                        browserModel.loadUrl = true
-                    } else if let searchUrl = browserModel.searchUrl() {
-                        browserModel.urlRaw = searchUrl.absoluteString
-                        browserModel.loadUrl = true
-                    } else {
-                        print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
-                    }
+        HStack {
+            HStack {
+                Button(action: {
+                    browserModel.goBack = true
+                }, label: {
+                    Image(systemName: "arrow.left")
+                })
+                .disabled(!browserModel.canGoBack)
+
+                if browserModel.canGoForward {
+                    Button(action: {
+                        browserModel.goForward = true
+                    }, label: {
+                        Image(systemName: "arrow.right")
+                    })
                 }
-                .onChange(of: browserModel.urlRaw) { newQuery in
-                    if !isAddressBarFocused {
-                        browserModel.addressBarText = newQuery
+            }.padding(.horizontal, 5)
+            ZStack(alignment: .bottom) {
+                TextField("url / search", text: $browserModel.addressBarText)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .accessibility(identifier: "browserAddressBar")
+                    .multilineTextAlignment(.center)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isAddressBarFocused)
+                    .onSubmit {
+                        if let url = uriFixup(input: browserModel.addressBarText) {
+                            browserModel.urlRaw = url
+                            browserModel.doLoad = true
+                        } else if let searchUrl = browserModel.searchUrl() {
+                            browserModel.urlRaw = searchUrl.absoluteString
+                            browserModel.doLoad = true
+                        } else {
+                            print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
+                        }
                     }
-                }
-                .onReceive(NotificationCenter.default.publisher(
-                    for: UITextField.textDidBeginEditingNotification
-                )) { obj in
-                    // Select text field on tap
-                    if let textField = obj.object as? UITextField {
-                        textField.selectedTextRange = textField.textRange(
-                            from: textField.beginningOfDocument, to: textField.endOfDocument
-                        )
+                    .onReceive(NotificationCenter.default.publisher(
+                        for: UITextField.textDidBeginEditingNotification
+                    )) { obj in
+                        // Select text field on tap
+                        if let textField = obj.object as? UITextField {
+                            textField.selectedTextRange = textField.textRange(
+                                from: textField.beginningOfDocument, to: textField.endOfDocument
+                            )
+                        }
                     }
+                if showProgressView {
+                    ProgressView(value: browserModel.loadingProgress)
                 }
-            if showProgressView {
-                ProgressView(value: browserModel.loadingProgress)
+            }
+            HStack {
+                if browserModel.loading {
+                    Button(action: {
+                        browserModel.doStop = true
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
+                } else {
+                    Button(action: {
+                        browserModel.doReload = true
+                    }, label: {
+                        Image(systemName: "arrow.clockwise")
+                    })
+                }
+            }
+            .padding(.horizontal, 5)
+        }
+        .padding(10)
+        .onChange(of: browserModel.urlRaw) { newQuery in
+            if !isAddressBarFocused {
+                browserModel.addressBarText = newQuery
             }
         }
         .onChange(of: browserModel.loading) { newValue in
