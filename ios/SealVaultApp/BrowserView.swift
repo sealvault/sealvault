@@ -144,6 +144,8 @@ struct AddressBar: View {
                     }
                 if showProgressView {
                     ProgressView(value: browserModel.loadingProgress)
+                        // Make the bar thinner
+                        .scaleEffect(x: 1, y: 0.5, anchor: .center)
                 }
             }
             HStack {
