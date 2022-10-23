@@ -90,9 +90,13 @@ public struct WebViewRepresentable: UIViewRepresentable {
             } else if webView.canGoBack, model.goBack {
                 webView.goBack()
                 model.goBack = false
+                // didfinish is not called when going forward/backward
+                model.setRawUrl(webView.url)
             } else if webView.canGoForward, model.goForward {
                 webView.goForward()
                 model.goForward = false
+                // didfinish is not called when going forward/backward
+                model.setRawUrl(webView.url)
             }
         }
     }
@@ -297,6 +301,9 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
             }
         } else {
             print("didFailProvisionalNavigation: \(error)")
+            if let url = Bundle.main.url(forResource: "html/error-page", withExtension: "html") {
+                webView.loadFileURL(url, allowingReadAccessTo: url)
+            }
             self.model.loading = false
             self.model.canGoBack = webView.canGoBack
             self.model.canGoForward = webView.canGoForward
@@ -307,7 +314,7 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         self.model.loading = false
         self.model.canGoBack = webView.canGoBack
         self.model.canGoForward = webView.canGoForward
-        if let url = webView.url {
+        if let url = webView.url, url.scheme != "file" {
             self.model.urlRaw = url.absoluteString
         }
     }

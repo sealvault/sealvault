@@ -41,6 +41,13 @@ class BrowserModel: ObservableObject {
         }
     }
 
+    func setRawUrl(_ url: URL?) {
+        // File is used for the error page
+        if let url = url, url.scheme != "file" {
+            self.urlRaw = url.absoluteString
+        }
+    }
+
     @MainActor
     func setDappApproval(_ request: DappApprovalRequest?) {
         if let req = request {
