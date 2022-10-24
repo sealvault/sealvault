@@ -121,7 +121,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
 
     func loadUrlIfValid(webView: WKWebView) {
         if let url = model.url {
-            print("load valid url \(url)")
+            print("loading url \(url)")
             webView.load(URLRequest(url: url))
         }
     }
@@ -280,8 +280,9 @@ class CoreInPageCallback: CoreInPageCallbackI {
 
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
-    public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+    public func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
         self.model.loading = true
+        self.model.setRawUrl(webView.url)
     }
 
     public func webView(
@@ -295,8 +296,9 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
                 if let url = info["NSErrorFailingURLKey"] as? URL {
                     let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
                     components.scheme = "https"
-                    self.model.urlRaw = components.url!.absoluteString
-                    self.model.doLoad = true
+                    if let url = components.url {
+                        self.model.loadUrl(url)
+                    }
                 }
             }
         } else {
@@ -314,9 +316,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         self.model.loading = false
         self.model.canGoBack = webView.canGoBack
         self.model.canGoForward = webView.canGoForward
-        if let url = webView.url, url.scheme != "file" {
-            self.model.urlRaw = url.absoluteString
-        }
     }
 
     public func webView(
@@ -340,8 +339,7 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
     -> WKWebView? {
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url {
-                self.model.urlRaw = url.absoluteString
-                self.model.doLoad = true
+                self.model.loadUrl(url)
             }
         }
         return nil

@@ -31,7 +31,9 @@ struct AddChain: View {
                     Button(action: {
                         dismiss()
                     }, label: {
-                        Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
+                        Text("Cancel")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(.secondary)
                     })
                     .accessibilityLabel("rejectAddChain")
                     .buttonStyle(.borderless)

@@ -10,6 +10,8 @@ class GlobalModel: ObservableObject {
     /// The account currently used for dapp interactions
     @Published var activeAccountId: String?
     @Published var callbackModel: CallbackModel
+    @Published var browserOneUrl: URL?
+    @Published var browserTwoUrl: URL?
 
     var activeAccount: Account? {
         return accountList.first(where: { acc in acc.id == activeAccountId })

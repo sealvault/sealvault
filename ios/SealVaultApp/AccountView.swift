@@ -29,6 +29,22 @@ struct AccountView: View {
                             )
                         } label: {
                             DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
+                                .contextMenu {
+                                    Button(action: {
+                                        if let url = dapp.url {
+                                            model.browserOneUrl = url
+                                        }
+                                    }, label: {
+                                        Text("Open in Browser 1")
+                                    })
+                                    Button(action: {
+                                        if let url = dapp.url {
+                                            model.browserTwoUrl = url
+                                        }
+                                    }, label: {
+                                        Text("Open in Browser 2")
+                                    })
+                                }
                         }
                     }
                 } header: {

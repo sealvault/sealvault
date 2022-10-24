@@ -23,12 +23,14 @@ struct AppTabNavigationInner: View {
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .dapps
     @State var dappAllotmentTransferBanner: BannerData?
+    @StateObject var browserModelOne = BrowserModel(homePage: Config.browserOneHomePage)
+    @StateObject var browserModelTwo = BrowserModel(homePage: Config.browserTwoHomePage)
 
     var body: some View {
         TabView(selection: $selection) {
 
             NavigationView {
-                BrowserView(browserModel: BrowserModel(homePage: Config.browserOneHomePage))
+                BrowserView(browserModel: browserModelOne)
             }
             .tabItem {
                 let menuText = Text("Browser 1")
@@ -36,7 +38,8 @@ struct AppTabNavigationInner: View {
                     menuText
                 } icon: {
                     Image(systemName: "network")
-                }.accessibility(label: menuText)
+                }
+                .accessibility(label: menuText)
             }
             .tag(Tab.browserOne)
 
@@ -55,12 +58,13 @@ struct AppTabNavigationInner: View {
                     } else {
                         Image(systemName: "person")
                     }
-                }.accessibility(label: menuText)
+                }
+                .accessibility(label: menuText)
             }
             .tag(Tab.dapps)
 
             NavigationView {
-                BrowserView(browserModel: BrowserModel(homePage: Config.browserTwoHomePage))
+                BrowserView(browserModel: browserModelTwo)
             }
             .tabItem {
                 let menuText = Text("Browser 2")
@@ -68,7 +72,8 @@ struct AppTabNavigationInner: View {
                     menuText
                 } icon: {
                     Image(systemName: "network")
-                }.accessibility(label: menuText)
+                }
+                .accessibility(label: menuText)
             }
             .tag(Tab.browserTwo)
         }
@@ -91,6 +96,18 @@ struct AppTabNavigationInner: View {
         }
         .banner(data: $dappAllotmentTransferBanner)
         .edgesIgnoringSafeArea(.bottom)
+        .onChange(of: model.browserOneUrl) { newValue in
+            if let url = newValue {
+                browserModelOne.loadUrl(url)
+                selection = .browserOne
+            }
+        }
+        .onChange(of: model.browserTwoUrl) { newValue in
+            if let url = newValue {
+                browserModelTwo.loadUrl(url)
+                selection = .browserTwo
+            }
+        }
     }
 }
 
