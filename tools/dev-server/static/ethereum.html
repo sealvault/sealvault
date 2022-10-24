@@ -78,6 +78,10 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         assert(!!window.ethereum)
       })
 
+      test("Connected", () => {
+        assert(ethereum.isConnected)
+      })
+
       test("isMetaMask", () => assert(!!window.ethereum.isMetaMask))
 
       test("networkVersion", () => {
@@ -90,12 +94,26 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         assert(regex.test(window.ethereum.chainId))
       })
 
+      test("eth_chainId_unauthorized", async () => {
+        const chain_id = await window.ethereum.request({
+          method: "eth_chainId",
+        })
+        assert(chain_id.startsWith("0x"))
+      })
+
+      test("net_version_unauthorized", async () => {
+        const net_version = await window.ethereum.request({
+          method: "net_version",
+        })
+        assert(Number.isFinite(parseInt(net_version)))
+      })
+
       // TODO Test only succeeds on first page load after dev server was started.
       test("Unapproved rejects requests", async () => {
         let ok = false
         try {
           await window.ethereum.request({
-            method: "eth_chainId",
+            method: "personal_sign",
           })
         } catch (e) {
           assertEq(e.code, 4100)
@@ -105,7 +123,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       test("eth_requestAccounts", async (method) => {
-        let chainId = blockOnEvent("connect")
+        let accountsChanged = blockOnEvent("accountsChanged")
         const accounts = await window.ethereum.request({
           method,
         })
@@ -118,11 +136,10 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
           method,
         })
         assertArrayEq(accounts, accounts_second)
-        chainId = await chainId
-        assert(chainId.startsWith("0x"))
+        accountsChanged = await accountsChanged
+        assertArrayEq(accounts, accountsChanged)
 
         assertEq(accounts[0], ethereum.selectedAddress)
-        assert(ethereum.isConnected)
       })
 
       // Deprecated in favor of `eth_requestAccounts`
@@ -137,7 +154,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       // Deprecated in favor of `eth_requestAccounts`
-      test("enable", async (method) => {
+      test("enable", async () => {
         const accounts = await window.ethereum.enable()
         const requestAccounts = await window.ethereum.request({
           method: "eth_requestAccounts",

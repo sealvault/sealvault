@@ -325,7 +325,7 @@
        */
 
       const state = {
-        isConnected: false,
+        isConnected: true,
         chainId: SEALVAULT_DEFAULT_CHAIN_ID,
         networkVersion: SEALVAULT_DEFAULT_NETWORK_VERSION,
         selectedAddress: null,
@@ -465,21 +465,21 @@
       })
 
       ethereum.on("sealVaultConnect", ({ chainId, networkVersion, selectedAddress }) => {
-        if (!state.isConnected) {
-          state.isConnected = true
+        state.isConnected = true
 
-          if (state.chainId !== chainId) {
-            state.chainId = chainId
-            ethereum.emit("chainChanged", chainId)
-          }
+        if (state.chainId !== chainId) {
+          state.chainId = chainId
+          ethereum.emit("chainChanged", chainId)
+        }
 
-          if (state.networkVersion !== networkVersion) {
-            state.networkVersion = networkVersion
-            ethereum.emit("networkChanged", networkVersion)
-          }
+        if (state.networkVersion !== networkVersion) {
+          state.networkVersion = networkVersion
+          ethereum.emit("networkChanged", networkVersion)
+        }
 
+        if (state.selectedAddress !== selectedAddress) {
           state.selectedAddress = selectedAddress
-          ethereum.emit("connect", chainId)
+          ethereum.emit("accountsChanged", [selectedAddress])
         }
       })
 
