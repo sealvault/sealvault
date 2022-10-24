@@ -137,6 +137,7 @@ dictionary DappApprovalParams {
     string dapp_identifier;
     sequence<u8>? favicon;
     string amount;
+    boolean transfer_allotment;
     string token_symbol;
     string chain_display_name;
     u64 chain_id;

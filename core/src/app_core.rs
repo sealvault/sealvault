@@ -323,6 +323,7 @@ pub mod tests {
     use anyhow::Result;
     use strum::IntoEnumIterator;
     use tempfile::TempDir;
+    use typed_builder::TypedBuilder;
     use url::Url;
 
     use super::*;
@@ -385,6 +386,11 @@ pub mod tests {
         in_page_callback_state: Arc<InPageCallbackState>,
     }
 
+    // For polling callback responses.
+    // 101 ms in case a future polls at every 100ms
+    const SLEEP_DURATION_MS: u64 = 101;
+    const SLEEP_TIMES: u64 = 5;
+
     impl TmpCore {
         pub fn new() -> Result<Self, CoreError> {
             // Important not to use in-memory DB as Sqlite has subtle differences in in memory
@@ -430,9 +436,21 @@ pub mod tests {
             accounts.into_iter().next().expect("no accounts")
         }
 
-        pub fn in_page_provider(&self, user_approves: bool) -> InPageProvider {
+        pub fn in_page_provider(&self) -> InPageProvider {
             let context = Box::new(InPageRequestContextMock::new(
-                user_approves,
+                Default::default(),
+                self.in_page_callback_state.clone(),
+            ));
+
+            InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
+        }
+
+        pub fn in_page_provider_with_args(
+            &self,
+            args: InPageRequestContextMockArgs,
+        ) -> InPageProvider {
+            let context = Box::new(InPageRequestContextMock::new(
+                args,
                 self.in_page_callback_state.clone(),
             ));
 
@@ -440,10 +458,8 @@ pub mod tests {
         }
 
         pub fn wait_for_first_in_page_response(&self) {
-            const WAIT_FOR_MILLIS: usize = 1000;
-
-            for _ in 0..WAIT_FOR_MILLIS {
-                thread::sleep(Duration::from_millis(1));
+            for _ in 0..SLEEP_TIMES {
+                thread::sleep(Duration::from_millis(SLEEP_DURATION_MS));
                 // Don't hold the lock while sleeping.
                 if !self.responses().is_empty() {
                     break;
@@ -452,10 +468,8 @@ pub mod tests {
         }
 
         pub fn wait_for_dapp_allotment_transfer(&self) {
-            const WAIT_FOR_MILLIS: usize = 1000;
-
-            for _ in 0..WAIT_FOR_MILLIS {
-                thread::sleep(Duration::from_millis(1));
+            for _ in 0..SLEEP_TIMES {
+                thread::sleep(Duration::from_millis(SLEEP_DURATION_MS));
                 // Don't hold the lock while sleeping.
                 if !self.dapp_allotment_transfer_results().is_empty() {
                     break;
@@ -596,6 +610,20 @@ pub mod tests {
         }
     }
 
+    #[derive(Debug, Clone, TypedBuilder)]
+    pub struct InPageRequestContextMockArgs {
+        #[builder(default = true)]
+        pub user_approves: bool,
+        #[builder(default = true)]
+        pub transfer_allotment: bool,
+    }
+
+    impl Default for InPageRequestContextMockArgs {
+        fn default() -> Self {
+            InPageRequestContextMockArgs::builder().build()
+        }
+    }
+
     // Implement for all targets, not only testing to let the dev server use it too.
     #[derive(Debug)]
     pub struct InPageRequestContextMock {
@@ -604,14 +632,14 @@ pub mod tests {
     }
 
     impl InPageRequestContextMock {
-        pub fn new(user_approves: bool, state: Arc<InPageCallbackState>) -> Self {
+        pub fn new(
+            args: InPageRequestContextMockArgs,
+            state: Arc<InPageCallbackState>,
+        ) -> Self {
             Self {
                 page_url: "https://example.com".into(),
-                callbacks: Box::new(CoreInPageCallbackMock::new(user_approves, state)),
+                callbacks: Box::new(CoreInPageCallbackMock::new(args, state)),
             }
-        }
-        pub fn default_boxed(state: Arc<InPageCallbackState>) -> Box<Self> {
-            Box::new(InPageRequestContextMock::new(true, state))
         }
     }
 
@@ -627,27 +655,28 @@ pub mod tests {
 
     #[derive(Debug, Clone)]
     pub struct CoreInPageCallbackMock {
-        user_approves: bool,
+        args: InPageRequestContextMockArgs,
         state: Arc<InPageCallbackState>,
     }
 
     impl CoreInPageCallbackMock {
-        pub fn new(user_approves: bool, state: Arc<InPageCallbackState>) -> Self {
-            Self {
-                state,
-                user_approves,
-            }
+        pub fn new(
+            args: InPageRequestContextMockArgs,
+            state: Arc<InPageCallbackState>,
+        ) -> Self {
+            Self { state, args }
         }
     }
 
     impl CoreInPageCallbackI for CoreInPageCallbackMock {
-        fn request_dapp_approval(&self, dapp_approval: DappApprovalParams) {
+        fn request_dapp_approval(&self, mut dapp_approval: DappApprovalParams) {
             self.state.update_dapp_approval(dapp_approval.clone());
             let context = Box::new(InPageRequestContextMock::new(
-                self.user_approves,
+                self.args.clone(),
                 self.state.clone(),
             ));
-            if self.user_approves {
+            dapp_approval.transfer_allotment = self.args.transfer_allotment;
+            if self.args.user_approves {
                 self.state
                     .core
                     .user_approved_dapp(context, dapp_approval)
@@ -673,7 +702,7 @@ pub mod tests {
     fn no_panic_on_invalid_in_page_request() -> Result<()> {
         let tmp = TmpCore::new()?;
         let context = Box::new(InPageRequestContextMock::new(
-            true,
+            Default::default(),
             tmp.in_page_callback_state.clone(),
         ));
 
