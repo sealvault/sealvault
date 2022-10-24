@@ -19,6 +19,7 @@
 		5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* AccountImage.swift */; };
 		68091D4D2900859E00CC4A54 /* AddChain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68091D4C2900859E00CC4A54 /* AddChain.swift */; };
 		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
+		6853B4D6290591B400397279 /* html in Resources */ = {isa = PBXBuildFile; fileRef = 6853B4D5290591B400397279 /* html */; };
 		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
 		686C1D052827C9DC00011311 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C1D042827C9DC00011311 /* Config.swift */; };
 		686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686D8BB328E4B91F00031375 /* dispatchBackground.swift */; };
@@ -71,6 +72,7 @@
 		6811E25828E2430B0044F9FE /* BrowserUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserUITest.swift; sourceTree = "<group>"; };
 		6811E25B28E243F30044F9FE /* FullTest.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = FullTest.xctestplan; sourceTree = "<group>"; };
 		6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NativeUI.xctestplan; sourceTree = "<group>"; };
+		6853B4D5290591B400397279 /* html */ = {isa = PBXFileReference; lastKnownFileType = folder; path = html; sourceTree = "<group>"; };
 		685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SealVaultCore.swift; path = Generated/SealVaultCore.swift; sourceTree = "<group>"; };
 		686C1D042827C9DC00011311 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		686D8BB328E4B91F00031375 /* dispatchBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dispatchBackground.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
+				6853B4D5290591B400397279 /* html */,
 				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
 				688C29B5283FE73E00474900 /* AccountListView.swift */,
 				688C29BD283FF33A00474900 /* AccountRow.swift */,
@@ -331,6 +334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				68F6291928251A0B00BDCD02 /* Preview Assets.xcassets in Resources */,
+				6853B4D6290591B400397279 /* html in Resources */,
 				68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -538,7 +542,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
 				PRODUCT_NAME = SealVault;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -566,7 +570,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
 				PRODUCT_NAME = SealVault;
 				SWIFT_EMIT_LOC_STRINGS = YES;

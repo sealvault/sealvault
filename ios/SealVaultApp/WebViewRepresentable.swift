@@ -90,9 +90,13 @@ public struct WebViewRepresentable: UIViewRepresentable {
             } else if webView.canGoBack, model.goBack {
                 webView.goBack()
                 model.goBack = false
+                // didfinish is not called when going forward/backward
+                model.setRawUrl(webView.url)
             } else if webView.canGoForward, model.goForward {
                 webView.goForward()
                 model.goForward = false
+                // didfinish is not called when going forward/backward
+                model.setRawUrl(webView.url)
             }
         }
     }
@@ -117,7 +121,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
 
     func loadUrlIfValid(webView: WKWebView) {
         if let url = model.url {
-            print("load valid url \(url)")
+            print("loading url \(url)")
             webView.load(URLRequest(url: url))
         }
     }
@@ -276,9 +280,9 @@ class CoreInPageCallback: CoreInPageCallbackI {
 
 // TODO: implement all WKNavigationDelegate methods
 extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
-    public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-        self.model.requestStatus = "Loading page..."
+    public func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
         self.model.loading = true
+        self.model.setRawUrl(webView.url)
     }
 
     public func webView(
@@ -292,13 +296,16 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
                 if let url = info["NSErrorFailingURLKey"] as? URL {
                     let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true)!
                     components.scheme = "https"
-                    self.model.urlRaw = components.url!.absoluteString
-                    self.model.doLoad = true
+                    if let url = components.url {
+                        self.model.loadUrl(url)
+                    }
                 }
             }
         } else {
             print("didFailProvisionalNavigation: \(error)")
-            self.model.requestStatus = "Failed to load page"
+            if let url = Bundle.main.url(forResource: "html/error-page", withExtension: "html") {
+                webView.loadFileURL(url, allowingReadAccessTo: url)
+            }
             self.model.loading = false
             self.model.canGoBack = webView.canGoBack
             self.model.canGoForward = webView.canGoForward
@@ -309,10 +316,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         self.model.loading = false
         self.model.canGoBack = webView.canGoBack
         self.model.canGoForward = webView.canGoForward
-        if let url = webView.url {
-            self.model.urlRaw = url.absoluteString
-        }
-        self.model.requestStatus = nil
     }
 
     public func webView(
@@ -321,7 +324,6 @@ extension WebViewRepresentable.Coordinator: WKNavigationDelegate {
         withError error: Error
     ) {
         print("didFail: \(error)")
-        self.model.requestStatus = "Failed to load page"
         self.model.loading = false
         self.model.canGoBack = webView.canGoBack
         self.model.canGoForward = webView.canGoForward
@@ -337,8 +339,7 @@ extension WebViewRepresentable.Coordinator: WKUIDelegate {
     -> WKWebView? {
         if navigationAction.targetFrame == nil {
             if let url = navigationAction.request.url {
-                self.model.urlRaw = url.absoluteString
-                self.model.doLoad = true
+                self.model.loadUrl(url)
             }
         }
         return nil

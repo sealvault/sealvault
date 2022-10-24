@@ -4,65 +4,36 @@
 
 import SwiftUI
 
-protocol DappApprovalRequestI: Identifiable {
-    var accountId: String { get }
-
-    var dappHumanIdentifier: String { get }
-
-    var favicon: [UInt8]? { get }
-
-    // Default dapp allotment transfer
-    var chainDisplayName: String { get }
-    var tokenSymbol: String { get }
-    var tokenAmount: String { get }
-
-    func approve()
-
-    func reject()
-
-}
-
-struct DappApprovalRequest: DappApprovalRequestI {
+class DappApprovalRequest: Identifiable, ObservableObject {
     // It's important to have a unique id per request
     let id = UUID()
-    let context: InPageRequestContext
-    let params: DappApprovalParams
+    // Optional for preview
+    let context: InPageRequestContext?
+    var params: DappApprovalParams
 
-    var accountId: String {
-        params.accountId
-    }
-
-    var dappHumanIdentifier: String {
-        params.dappIdentifier
-    }
-
-    var favicon: [UInt8]? {
-        params.favicon
-    }
-
-    var chainDisplayName: String {
-        params.chainDisplayName
-    }
-
-    var tokenSymbol: String {
-        params.tokenSymbol
-    }
-
-    var tokenAmount: String {
-        params.amount
+    init(context: InPageRequestContext?, params: DappApprovalParams) {
+        self.context = context
+        self.params = params
     }
 
     func approve() {
+        guard let context = self.context else {
+            return
+        }
         do {
-            try self.context.core.userApprovedDapp(context: self.context, params: self.params)
+            try context.core.userApprovedDapp(context: context, params: self.params)
         } catch {
             print("userApprovedDapp threw: \(error)")
         }
     }
 
     func reject() {
+        guard let context = self.context else {
+            print("No context, returning")
+            return
+        }
         do {
-            try self.context.core.userRejectedDapp(context: context, params: self.params)
+            try context.core.userRejectedDapp(context: context, params: self.params)
         } catch {
             print("userApprovedDapp threw: \(error)")
         }
@@ -74,37 +45,34 @@ struct DappApproval: View {
     @EnvironmentObject private var viewModel: GlobalModel
     @Environment(\.dismiss) var dismiss
 
-    @State var request: any DappApprovalRequestI
+    @ObservedObject var request: DappApprovalRequest
 
     private var account: Account {
-        viewModel.accountList.first(where: { $0.id == request.accountId })!
+        viewModel.accountList.first(where: { $0.id == request.params.accountId })!
+    }
+
+    private var showDisclosure: Bool {
+        // Start with the disclosure open the first three times the user adds a dapp
+        account.dappList.count <= 3
     }
 
     private var dappIcon: Image {
-        let image = Dapp.faviconWithFallback(request.favicon)
+        let image = Dapp.faviconWithFallback(request.params.favicon)
         return Image(uiImage: image)
     }
 
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                DisclosureGroup(content: {
-                    Text("""
-When approved, a transfer of \(request.tokenAmount) \(request.tokenSymbol) on \(request.chainDisplayName) is made to \
-the newly created dapp address for gas fees.
-""")
-                },
-                label: {
-                    Text("Add dapp").font(.title2)
-                })
-            }.padding(20)
+            DappApprovalHeader(
+                request: request, showDisclosure: showDisclosure, transferAllotment: request.params.transferAllotment
+            )
 
             Spacer()
 
             VStack(spacing: 20) {
                 HStack {
                     Label {
-                        Text(request.dappHumanIdentifier)
+                        Text(request.params.dappIdentifier)
                     } icon: {
                         IconView(image: dappIcon, iconSize: 40)
                                 .accessibility(label: Text("Dapp icon"))
@@ -112,6 +80,7 @@ the newly created dapp address for gas fees.
                 }
                 .font(.largeTitle)
                 HStack {
+                    Text("to").fontWeight(.light)
                     Label {
                         Text(account.displayName)
                     } icon: {
@@ -153,47 +122,50 @@ the newly created dapp address for gas fees.
     }
 }
 
-#if DEBUG
+struct DappApprovalHeader: View {
+    @ObservedObject var request: DappApprovalRequest
+    @State var showDisclosure: Bool
+    @State var transferAllotment: Bool
 
-struct DappApprovalRequestPreview: DappApprovalRequestI {
-
-    var id = UUID()
-    var accountId: String
-    var dappHumanIdentifier: String
-    var chainDisplayName: String
-    var tokenSymbol: String
-    var tokenAmount: String
-    var favicon: [UInt8]?
-
-    func approve() {
-        print("dapp approval request approved")
-    }
-
-    func reject() {
-        print("dapp approval request rejected")
-    }
-
-    @MainActor
-    static func buildForPreview(_ accountId: String) -> Self {
-        let dapp = Dapp.quickswap()
-        let favicon = [UInt8](dapp.favicon.pngData()!)
-        let request = DappApprovalRequestPreview(
-            accountId: accountId,
-            dappHumanIdentifier: dapp.humanIdentifier,
-            chainDisplayName: "Polygon PoS",
-            tokenSymbol: "MATIC",
-            tokenAmount: "0.1",
-            favicon: favicon
-        )
-        return request
+    var body: some View {
+        HStack {
+            DisclosureGroup(isExpanded: $showDisclosure, content: {
+                Toggle(isOn: $transferAllotment) {
+                    Text("""
+    Transfer \(request.params.amount) \(request.params.tokenSymbol) on \(request.params.chainDisplayName) to new
+    dapp address.
+    """).font(.callout)
+                }
+                .padding()
+            },
+            label: {
+                Text("Add dapp")
+                    .font(.title2)
+            })
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .onChange(of: transferAllotment) { newValue in
+            request.params.transferAllotment = newValue
+        }
     }
 
 }
 
+#if DEBUG
+
 struct DappApproval_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let request = DappApprovalRequestPreview.buildForPreview(model.activeAccountId!)
+        let accountId = model.activeAccountId!
+        let dapp = Dapp.quickswap()
+        let favicon = [UInt8](dapp.favicon.pngData()!)
+        let params = DappApprovalParams(
+            accountId: accountId, dappIdentifier: dapp.humanIdentifier, favicon: favicon, amount: "0.1",
+            transferAllotment: true, tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS", chainId: 137,
+            jsonRpcRequest: ""
+        )
+        let request = DappApprovalRequest(context: nil, params: params)
         DappApproval(request: request).environmentObject(model)
     }
 }

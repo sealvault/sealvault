@@ -318,11 +318,13 @@ impl InPageProvider {
             serde_json::to_string(request).map_err(|_| Error::Retriable {
                 error: format!("Failed to serialize request id {:?}", request.id),
             })?;
+        let dapp_allotment = chain_settings.default_dapp_allotment;
         let dapp_approval = DappApprovalParams::builder()
             .account_id(account_id)
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
-            .amount(chain_settings.default_dapp_allotment.display_amount())
+            .amount(dapp_allotment.display_amount())
+            .transfer_allotment(!dapp_allotment.amount.is_zero())
             .token_symbol(chain_id.native_token().symbol())
             .chain_display_name(chain_id.display_name())
             .chain_id(chain_id)
@@ -402,8 +404,10 @@ impl InPageProvider {
             .await?;
 
         // Transfer default dapp allotment to new dapp address from account wallet.
-        self.transfer_default_dapp_allotment(session.clone())
-            .await?;
+        if dapp_approval.transfer_allotment {
+            self.transfer_default_dapp_allotment(session.clone())
+                .await?;
+        }
 
         Ok(session)
     }
@@ -434,15 +438,13 @@ impl InPageProvider {
                 Ok((chain_settings, wallet_signing_key))
             })
             .await?;
-        if !chain_settings.default_dapp_allotment.amount.is_zero() {
-            // Call blockchain API in background.
-            rt::spawn(Self::make_default_dapp_allotment_transfer(
-                self.resources.clone(),
-                chain_settings,
-                wallet_signing_key,
-                session_clone,
-            ));
-        }
+        // Call blockchain API in background.
+        rt::spawn(Self::make_default_dapp_allotment_transfer(
+            self.resources.clone(),
+            chain_settings,
+            wallet_signing_key,
+            session_clone,
+        ));
         Ok(())
     }
 
@@ -723,9 +725,12 @@ pub struct DappApprovalParams {
     /// The dapps favicon
     #[builder(setter(into))]
     pub favicon: Option<Vec<u8>>,
-    /// The amount that is to be transferred.
+    /// The amount that is to be transferred to the dapp address.
     #[builder(setter(into))]
     pub amount: String,
+    /// Whether to transfer the dapp allotment.
+    #[builder(setter(into))]
+    pub transfer_allotment: bool,
     /// The symbol of the token that was transferred.
     #[builder(setter(into))]
     pub token_symbol: String,
@@ -1016,7 +1021,10 @@ mod tests {
     use strum::IntoEnumIterator;
 
     use super::*;
-    use crate::{app_core::tests::TmpCore, utils::new_uuid};
+    use crate::{
+        app_core::tests::{InPageRequestContextMockArgs, TmpCore},
+        utils::new_uuid,
+    };
 
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
     const ETH_CHAIN_ID: &str = "eth_chainId";
@@ -1034,7 +1042,7 @@ mod tests {
     }
 
     fn authorize_dapp(core: &TmpCore) -> Result<()> {
-        let provider = core.in_page_provider(true);
+        let provider = core.in_page_provider();
         provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
         core.wait_for_first_in_page_response();
         Ok(())
@@ -1047,7 +1055,8 @@ mod tests {
         authorize_dapp(&core)?;
 
         assert!(core.dapp_approval().is_some());
-        assert_eq!(core.responses().len(), 1);
+        let responses = core.responses();
+        assert_eq!(responses.len(), 1);
         assert_eq!(core.notifications().len(), 1);
         core.wait_for_dapp_allotment_transfer();
         let dapp_allotment_results = core.dapp_allotment_transfer_results();
@@ -1059,6 +1068,54 @@ mod tests {
             .to_string();
         assert_eq!(dapp_allotment_results[0].dapp_identifier, dapp_host);
 
+        assert!(!responses[0].to_lowercase().contains("error"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn respects_no_transfer_allotment() -> Result<()> {
+        let core = TmpCore::new()?;
+        let mock_args = InPageRequestContextMockArgs::builder()
+            .user_approves(true)
+            .transfer_allotment(false)
+            .build();
+        let provider = core.in_page_provider_with_args(mock_args);
+        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        core.wait_for_first_in_page_response();
+
+        assert!(core.dapp_approval().is_some());
+        let responses = core.responses();
+        assert_eq!(responses.len(), 1);
+        core.wait_for_dapp_allotment_transfer();
+        let dapp_allotment_results = core.dapp_allotment_transfer_results();
+        assert_eq!(dapp_allotment_results.len(), 0);
+
+        assert!(!responses[0].to_lowercase().contains("error"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn responds_on_user_reject() -> Result<()> {
+        let core = TmpCore::new()?;
+        let mock_args = InPageRequestContextMockArgs::builder()
+            .user_approves(false)
+            .build();
+        let provider = core.in_page_provider_with_args(mock_args);
+        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        core.wait_for_first_in_page_response();
+
+        assert!(core.dapp_approval().is_some());
+        let responses = core.responses();
+        assert_eq!(responses.len(), 1);
+        core.wait_for_dapp_allotment_transfer();
+        let dapp_allotment_results = core.dapp_allotment_transfer_results();
+        assert_eq!(dapp_allotment_results.len(), 0);
+
+        let user_rejected = InPageErrorCode::UserRejected.to_i32().to_string();
+        assert!(responses[0].contains(&user_rejected));
+
         Ok(())
     }
 
@@ -1066,7 +1123,10 @@ mod tests {
     fn disallows_un_approved() -> Result<()> {
         let core = TmpCore::new()?;
 
-        let provider = core.in_page_provider(false);
+        let mock_args = InPageRequestContextMockArgs::builder()
+            .user_approves(false)
+            .build();
+        let provider = core.in_page_provider_with_args(mock_args);
         provider.call_no_arg(ETH_CHAIN_ID)?;
 
         let responses = core.responses();
@@ -1087,7 +1147,7 @@ mod tests {
         authorize_dapp(&core)?;
 
         // This request should be refused as it's an unsupported method
-        let provider = core.in_page_provider(true);
+        let provider = core.in_page_provider();
         provider.call_no_arg("eth_coinbase")?;
 
         let responses = core.responses();
@@ -1106,7 +1166,7 @@ mod tests {
 
         authorize_dapp(&core)?;
 
-        let provider = core.in_page_provider(true);
+        let provider = core.in_page_provider();
         provider.call_no_arg("eth_gasPrice")?;
 
         let responses = core.responses();

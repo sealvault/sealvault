@@ -60,6 +60,16 @@ final class BrowserUITest: XCTestCase {
         let finishedOk = app.webViews.staticTexts["Example Domain"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
     }
+
+    func testErrorLoadingPage() throws {
+        let app = try! startBrowserApp()
+
+        let urlField = app.textFields[browserAddressBar]
+        urlField.clearAndEnterText(text: "https://doesntexist.sealvault.org")
+
+        let finishedOk = app.webViews.staticTexts["Failed to load page"]
+        XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
+    }
 }
 
 func startBrowserApp() throws -> XCUIApplication {

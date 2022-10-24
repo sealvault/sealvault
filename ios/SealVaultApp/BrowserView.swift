@@ -5,12 +5,11 @@
 import SwiftUI
 
 class BrowserModel: ObservableObject {
-    @Published var urlRaw: String
+    @Published fileprivate var urlRaw: String
     @Published var addressBarText: String
     @Published var doLoad: Bool = false
     @Published var doReload: Bool = false
     @Published var doStop: Bool = false
-    @Published var requestStatus: String? = "Loading..."
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
     @Published var goBack: Bool = false
@@ -19,6 +18,7 @@ class BrowserModel: ObservableObject {
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
     @Published var loadingProgress: Double = 0.0
+    var isAddressBarFocused = false
 
     init(homePage: String) {
         self.urlRaw = homePage
@@ -27,16 +27,6 @@ class BrowserModel: ObservableObject {
 
     var url: URL? {
         URL(string: urlRaw.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
-    }
-
-    var navTitle: String {
-        if let status = requestStatus {
-            return status
-        } else if let host = url?.host {
-            return host
-        } else {
-            return ""
-        }
     }
 
     var urlValid: Bool {
@@ -52,6 +42,21 @@ class BrowserModel: ObservableObject {
         }
     }
 
+    func loadUrl(_ url: URL) {
+        self.setRawUrl(url)
+        self.doLoad = true
+    }
+
+    func setRawUrl(_ url: URL?) {
+        // File is used for the error page
+        if let url = url, url.scheme != "file" {
+            self.urlRaw = url.absoluteString
+            if !self.isAddressBarFocused {
+                self.addressBarText = self.urlRaw
+            }
+        }
+    }
+
     @MainActor
     func setDappApproval(_ request: DappApprovalRequest?) {
         if let req = request {
@@ -60,7 +65,6 @@ class BrowserModel: ObservableObject {
         } else {
             self.dappApprovalRequest = nil
             self.dappApprovalPresented = false
-
         }
     }
 }
@@ -166,10 +170,8 @@ struct AddressBar: View {
             .padding(.horizontal, 5)
         }
         .padding(10)
-        .onChange(of: browserModel.urlRaw) { newQuery in
-            if !isAddressBarFocused {
-                browserModel.addressBarText = newQuery
-            }
+        .onChange(of: isAddressBarFocused) { newValue in
+            browserModel.isAddressBarFocused = newValue
         }
         .onChange(of: browserModel.loading) { newValue in
             if newValue {
@@ -192,7 +194,7 @@ struct AddressBar: View {
 #if DEBUG
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
-        var browserModel = BrowserModel(homePage: Config.browserOneHomePage)
+        let browserModel = BrowserModel(homePage: Config.browserOneHomePage)
         BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
     }
 }
