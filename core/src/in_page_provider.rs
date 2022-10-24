@@ -129,6 +129,13 @@ impl InPageProvider {
                     Ok(None)
                 }
             },
+            // MetaMask exposes chain id and net version even if the user didn't authorize the dapp.
+            "eth_chainId" if maybe_session.is_none() => {
+                Ok(Some(self.eth_chain_id_unauthorized()?))
+            }
+            "net_version" if maybe_session.is_none() => {
+                Ok(Some(self.net_version_unauthorized()?))
+            }
             _ => match maybe_session {
                 Some(session) => {
                     let res = self.dispatch_authorized_methods(request, session).await?;
@@ -268,6 +275,23 @@ impl InPageProvider {
     ) -> Result<serde_json::Value, Error> {
         let chain_id: ethers::core::types::U64 = session.chain_id.into();
         let result = to_value(chain_id)?;
+        Ok(result)
+    }
+
+    // Only ok to expose unauthorized if we respond to all requests with the same response,
+    // otherwise it's a privacy leak.
+    fn eth_chain_id_unauthorized(&self) -> Result<serde_json::Value, Error> {
+        let chain_id = eth::ChainId::default_dapp_chain();
+        let chain_id: ethers::core::types::U64 = chain_id.into();
+        let result = to_value(chain_id)?;
+        Ok(result)
+    }
+
+    // Only ok to expose unauthorized if we respond to all requests with the same response,
+    // otherwise it's a privacy leak.
+    fn net_version_unauthorized(&self) -> Result<serde_json::Value, Error> {
+        let chain_id = eth::ChainId::default_dapp_chain();
+        let result = to_value(chain_id.network_version())?;
         Ok(result)
     }
 
@@ -1027,7 +1051,7 @@ mod tests {
     };
 
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
-    const ETH_CHAIN_ID: &str = "eth_chainId";
+    const PERSONAL_SIGN: &str = "personal_sign";
 
     impl InPageProvider {
         fn call_no_arg(self, method: &str) -> Result<()> {
@@ -1127,7 +1151,7 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.call_no_arg(ETH_CHAIN_ID)?;
+        provider.call_no_arg(PERSONAL_SIGN)?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_none());
