@@ -1,5 +1,29 @@
 # Changelog
 
+## 2022-10-24
+
+### iOS Beta v0.2.1
+
+#### Improvements
+
+- Open dapps in browser from account view with long press.
+- Add checkbox to disable sending default dapp allotment. Checkbox is hidden
+  behind reveal button by default, but it's shown the first three times a user
+  adds a dapp.
+- Move browser address bar back to bottom as it's more ergonomic.
+- Add browser reload and cancel button and only show go forward if available to
+  save space.
+- Add progress bar to address bar.
+- Set Browser 1 home page to [SealVault Discovery
+  Page](https://sealvault.org/discover/) and Browser 2 home page to Brave
+  Search.
+- Add error page to browser.
+
+#### Fixes
+
+- Move dual-tab browsing control to bottom tray and disable swipe to switch
+browser windows in order to avoid interfering with website navigation.
+
 ## 2022-10-21
 
 ### iOS Beta v0.2.0
