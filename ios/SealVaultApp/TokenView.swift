@@ -20,12 +20,9 @@ struct TokenView: View {
         } header: {
             HStack {
                 Text(address.chainDisplayName)
-
-                Spacer()
-
-                AddressMenu(address: address).textCase(.none)
             }
             .padding(.top, paddingTop)
+            .scaledToFit()
         }
         .headerProminence(.increased)
         Section {
