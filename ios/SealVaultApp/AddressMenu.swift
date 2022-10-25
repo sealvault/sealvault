@@ -6,6 +6,7 @@ import SwiftUI
 
 struct AddressMenu: View {
     @ObservedObject var address: Address
+    var middleButton: (() -> Button<Text>)?
 
     var body: some View {
         Menu(address.addressDisplay) {
@@ -15,6 +16,9 @@ struct AddressMenu: View {
                 }, label: {
                     Text("Open in Block Explorer")
                 })
+            }
+            if let button = middleButton {
+                button()
             }
             Button(action: {
                 UIPasteboard.general.string = address.checksumAddress

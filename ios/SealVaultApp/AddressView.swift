@@ -9,6 +9,10 @@ class Addresses: ObservableObject {
     @Published var dapp: Dapp?
     @Published var account: Account?
 
+    var firstAddress: Address? {
+        self.addresses.first
+    }
+
     var addresses: [Address] {
         if let dapp = self.dapp {
             return dapp.addressList
@@ -37,38 +41,42 @@ struct AddressView: View {
     @ObservedObject var account: Account
     @ObservedObject var addresses: Addresses
     @State var showAddChain: Bool = false
+    var paddingTop: CGFloat = 50
 
     var body: some View {
         ScrollViewReader { _ in
-            // Need the `List` here for the `Section` in the `TokenView`
-            List {
-                ForEach(addresses.addresses) { address in
-                    TokenView(account: account, address: address)
-                }
-                Section {} header: {
-                    HStack {
-                        Button {
-                            showAddChain = true
-                        } label: {
-                            Text("Add Chain")
-                        }
+                List {
+                    ForEach(Array(addresses.addresses.enumerated()), id: \.offset) { index, address in
+                        TokenView(account: account, address: address, paddingTop: index == 0 ? 30 : paddingTop)
                     }
-                }.headerProminence(.increased)
-            }
-            .refreshable(action: {
-                for address in addresses.addresses {
-                    // TODO parallelize, but take care of not exceeding rate limits
-                    await address.refreshTokens()
                 }
-            })
+                .refreshable(action: {
+                    for address in addresses.addresses {
+                        // TODO parallelize, but take care of not exceeding rate limits
+                        await address.refreshTokens()
+                    }
+                })
+
         }
         .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let address = addresses.firstAddress {
+                AddressMenu(address: address) {
+                    Button {
+                        showAddChain = true
+                    } label: {
+                        Text("Add Chain")
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showAddChain) {
             if let address = addresses.addresses.first {
                 AddChain(address: address)
                     .presentationDetents([.medium])
                     .background(.ultraThinMaterial)
+
             } else {
                 Text("No address")
             }
