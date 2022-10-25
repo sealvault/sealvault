@@ -37,13 +37,13 @@ struct AddressView: View {
     @ObservedObject var account: Account
     @ObservedObject var addresses: Addresses
     @State var showAddChain: Bool = false
+    var paddingTop: CGFloat = 50
 
     var body: some View {
         ScrollViewReader { _ in
-            // Need the `List` here for the `Section` in the `TokenView`
             List {
-                ForEach(addresses.addresses) { address in
-                    TokenView(account: account, address: address)
+                ForEach(Array(addresses.addresses.enumerated()), id: \.offset) { index, address in
+                    TokenView(account: account, address: address, paddingTop: index == 0 ? 30 : paddingTop)
                 }
                 Section {} header: {
                     HStack {
@@ -53,6 +53,7 @@ struct AddressView: View {
                             Text("Add Chain")
                         }
                     }
+                    .padding(.top, paddingTop)
                 }.headerProminence(.increased)
             }
             .refreshable(action: {

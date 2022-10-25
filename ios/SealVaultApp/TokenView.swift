@@ -7,6 +7,7 @@ import SwiftUI
 struct TokenView: View {
     @ObservedObject var account: Account
     @ObservedObject var address: Address
+    var paddingTop: CGFloat
 
     var body: some View {
         Section {
@@ -24,6 +25,7 @@ struct TokenView: View {
 
                 AddressMenu(address: address).textCase(.none)
             }
+            .padding(.top, paddingTop)
         }
         .headerProminence(.increased)
         Section {
@@ -41,7 +43,7 @@ struct TokenView: View {
             } else if !address.fungibleTokens.isEmpty {
                 Text("Fungible Tokens")
             } else {
-                Text("No \(address.chainDisplayName) Tokens")
+                Text("No other tokens")
             }
         }
     }
