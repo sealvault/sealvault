@@ -19,7 +19,7 @@ class Dapp: Identifiable, ObservableObject {
     @Published var favicon: UIImage
 
     var addressList: [Address] {
-        self.addresses.values.sorted(by: {$0.chainDisplayName < $1.chainDisplayName })
+        self.addresses.values.sorted(by: sortAddressesBy(_:_:))
     }
 
     var addressesByChain: [String: [Address]] {

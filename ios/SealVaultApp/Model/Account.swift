@@ -14,13 +14,7 @@ class Account: Identifiable, ObservableObject {
     @Published var dapps: [String: Dapp]
 
     var walletList: [Address] {
-        self.wallets.values.sorted(by: {
-            if $0.isTestNet == $1.isTestNet {
-                return $0.chainDisplayName < $1.chainDisplayName
-            } else {
-                return !$0.isTestNet
-            }
-        })
+        self.wallets.values.sorted(by: sortAddressesBy(_:_:))
     }
 
     var dappList: [Dapp] {
