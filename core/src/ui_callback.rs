@@ -9,6 +9,9 @@ use typed_builder::TypedBuilder;
 pub trait CoreUICallbackI: Send + Sync + Debug {
     /// Whether the default dapp allotment was successfully transferred after adding a dapp.
     fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult);
+    fn signed_message_for_dapp(&self, result: DappSignatureResult);
+    // fn approved_transaction_for_dapp(&self, result: DappSignatureResult);
+    // fn dapp_transaction_result(&self, result: DappTransactionResult);
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -30,3 +33,33 @@ pub struct DappAllotmentTransferResult {
     #[builder(default = None)]
     pub error_message: Option<String>,
 }
+
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct DappSignatureResult {
+    /// A human readable dapp identifier that can be presented to the user.
+    #[builder(setter(into))]
+    pub dapp_identifier: String,
+}
+
+// #[derive(Clone, Debug, TypedBuilder)]
+// pub struct ApprovedTransactionForDapp {
+//     /// A human readable dapp identifier that can be presented to the user.
+//     #[builder(setter(into))]
+//     pub dapp_identifier: String,
+//     /// The displayable name of the chain where the transaction was approved.
+//     #[builder(setter(into))]
+//     pub chain_display_name: String,
+// }
+//
+// #[derive(Clone, Debug, TypedBuilder)]
+// pub struct DappTransactionResult {
+//     /// A human readable dapp identifier that can be presented to the user.
+//     #[builder(setter(into))]
+//     pub dapp_identifier: String,
+//     #[builder(setter(into))]
+//     pub chain_display_name: String,
+//     /// Error message is none on success.
+//     /// Uniffi doesn't support Result enum as argument unfortunately.
+//     #[builder(default = None)]
+//     pub error_message: Option<String>,
+// }

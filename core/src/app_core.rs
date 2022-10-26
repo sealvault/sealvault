@@ -329,7 +329,7 @@ pub mod tests {
     use super::*;
     use crate::{
         protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
-        DappApprovalParams,
+        DappApprovalParams, DappSignatureResult,
     };
 
     #[readonly::make]
@@ -467,11 +467,11 @@ pub mod tests {
             }
         }
 
-        pub fn wait_for_dapp_allotment_transfer(&self) {
+        pub fn wait_for_ui_callbacks(&self, count: usize) {
             for _ in 0..SLEEP_TIMES {
                 thread::sleep(Duration::from_millis(SLEEP_DURATION_MS));
                 // Don't hold the lock while sleeping.
-                if !self.dapp_allotment_transfer_results().is_empty() {
+                if self.ui_callback_state.count() == count {
                     break;
                 }
             }
@@ -512,6 +512,14 @@ pub mod tests {
                 .clone()
         }
 
+        pub fn dapp_signature_results(&self) -> Vec<DappSignatureResult> {
+            self.ui_callback_state
+                .dapp_signature_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
         pub fn dapp_url(&self) -> &Url {
             &self.in_page_callback_state.page_url
         }
@@ -520,13 +528,20 @@ pub mod tests {
     #[derive(Debug, Default)]
     pub struct UICallbackState {
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
+        dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
     }
 
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
+                dapp_signature_results: Arc::new(Default::default()),
             }
+        }
+
+        fn count(&self) -> usize {
+            self.dapp_allotment_transfer_results.read().unwrap().len()
+                + self.dapp_signature_results.read().unwrap().len()
         }
 
         fn add_dapp_allotment_transfer_result(
@@ -538,6 +553,13 @@ pub mod tests {
                     .dapp_allotment_transfer_results
                     .write()
                     .expect("no poison");
+                results.push(result)
+            }
+        }
+
+        fn add_dapp_signature_result(&self, result: DappSignatureResult) {
+            {
+                let mut results = self.dapp_signature_results.write().expect("no poison");
                 results.push(result)
             }
         }
@@ -557,6 +579,10 @@ pub mod tests {
     impl CoreUICallbackI for CoreUICallbackMock {
         fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
             self.state.add_dapp_allotment_transfer_result(result)
+        }
+
+        fn signed_message_for_dapp(&self, result: DappSignatureResult) {
+            self.state.add_dapp_signature_result(result)
         }
     }
 

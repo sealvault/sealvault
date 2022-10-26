@@ -16,4 +16,9 @@ class CoreUICallback: CoreUiCallbackI {
             self.model.dappAllotmentResult = result
         }
     }
+
+    func signedMessageForDapp(result: DappSignatureResult) {
+        // TODO
+        print("signedMessageForDapp \(result)")
+    }
 }

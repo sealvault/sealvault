@@ -13,7 +13,7 @@ use dotenv::dotenv;
 use ethers_core::utils::hex;
 use uniffi_sealvault_core::{
     AppCore, CoreArgs, CoreInPageCallbackI, CoreUICallbackI, DappAllotmentTransferResult,
-    DappApprovalParams, InPageRequestContextI,
+    DappApprovalParams, DappSignatureResult, InPageRequestContextI,
 };
 
 const DB_PATH: &str = ":memory:";
@@ -141,6 +141,10 @@ impl CoreUICallBackMock {
 impl CoreUICallbackI for CoreUICallBackMock {
     fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
         log::info!("Dapp allotment transfer result: {:?}", result)
+    }
+
+    fn signed_message_for_dapp(&self, result: DappSignatureResult) {
+        log::info!("Dapp signature result: {:?}", result)
     }
 }
 
