@@ -18,17 +18,20 @@ class CoreUICallback: CoreUiCallbackI {
     }
 
     func signedMessageForDapp(result: DappSignatureResult) {
-        // TODO
-        print("signedMessageForDapp \(result)")
+        DispatchQueue.main.async {
+            self.model.dappSignatureResult = result
+        }
     }
 
     func sentTransactionForDapp(result: DappTransactionSent) {
-        // TODO
-        print("sentTransactionForDapp \(result)")
+        DispatchQueue.main.async {
+            self.model.dappTransactionSent = result
+        }
     }
 
     func dappTransactionResult(result: DappTransactionResult) {
-        // TODO
-        print("dappTransactionResult \(result)")
+        DispatchQueue.main.async {
+            self.model.dappTransactionResult = result
+        }
     }
 }
