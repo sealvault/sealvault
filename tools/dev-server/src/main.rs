@@ -13,7 +13,8 @@ use dotenv::dotenv;
 use ethers_core::utils::hex;
 use uniffi_sealvault_core::{
     AppCore, CoreArgs, CoreInPageCallbackI, CoreUICallbackI, DappAllotmentTransferResult,
-    DappApprovalParams, DappSignatureResult, InPageRequestContextI,
+    DappApprovalParams, DappSignatureResult, DappTransactionResult, DappTransactionSent,
+    InPageRequestContextI,
 };
 
 const DB_PATH: &str = ":memory:";
@@ -145,6 +146,14 @@ impl CoreUICallbackI for CoreUICallBackMock {
 
     fn signed_message_for_dapp(&self, result: DappSignatureResult) {
         log::info!("Dapp signature result: {:?}", result)
+    }
+
+    fn sent_transaction_for_dapp(&self, result: DappTransactionSent) {
+        log::info!("Sent transactions for dapp result: {:?}", result)
+    }
+
+    fn dapp_transaction_result(&self, result: DappTransactionResult) {
+        log::info!("Dapp transaction result: {:?}", result)
     }
 }
 

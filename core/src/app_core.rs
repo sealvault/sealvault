@@ -329,7 +329,8 @@ pub mod tests {
     use super::*;
     use crate::{
         protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
-        DappApprovalParams, DappSignatureResult,
+        DappApprovalParams, DappSignatureResult, DappTransactionResult,
+        DappTransactionSent,
     };
 
     #[readonly::make]
@@ -366,7 +367,7 @@ pub mod tests {
                     .into_os_string()
                     .into_string()
                     .map_err(|err| Error::Fatal {
-                        error: format!("{:?}", err),
+                        error: format!("{err:?}"),
                     })?;
 
             Ok(Self {
@@ -528,20 +529,26 @@ pub mod tests {
     #[derive(Debug, Default)]
     pub struct UICallbackState {
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
+        dapp_transaction_sent: Arc<RwLock<Vec<DappTransactionSent>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
+        dapp_transaction_results: Arc<RwLock<Vec<DappTransactionResult>>>,
     }
 
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
+                dapp_transaction_sent: Arc::new(Default::default()),
                 dapp_signature_results: Arc::new(Default::default()),
+                dapp_transaction_results: Arc::new(Default::default()),
             }
         }
 
         fn count(&self) -> usize {
             self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
+                + self.dapp_transaction_sent.read().unwrap().len()
+                + self.dapp_transaction_results.read().unwrap().len()
         }
 
         fn add_dapp_allotment_transfer_result(
@@ -560,6 +567,21 @@ pub mod tests {
         fn add_dapp_signature_result(&self, result: DappSignatureResult) {
             {
                 let mut results = self.dapp_signature_results.write().expect("no poison");
+                results.push(result)
+            }
+        }
+
+        fn add_dapp_transaction_sent(&self, result: DappTransactionSent) {
+            {
+                let mut results = self.dapp_transaction_sent.write().expect("no poison");
+                results.push(result)
+            }
+        }
+
+        fn add_dapp_transaction_result(&self, result: DappTransactionResult) {
+            {
+                let mut results =
+                    self.dapp_transaction_results.write().expect("no poison");
                 results.push(result)
             }
         }
@@ -583,6 +605,14 @@ pub mod tests {
 
         fn signed_message_for_dapp(&self, result: DappSignatureResult) {
             self.state.add_dapp_signature_result(result)
+        }
+
+        fn sent_transaction_for_dapp(&self, result: DappTransactionSent) {
+            self.state.add_dapp_transaction_sent(result)
+        }
+
+        fn dapp_transaction_result(&self, result: DappTransactionResult) {
+            self.state.add_dapp_transaction_result(result)
         }
     }
 

@@ -9,7 +9,7 @@ use std::{
 
 use ethers::{
     core::types::{Address, BlockNumber, TransactionRequest, H256},
-    providers::{Http, Middleware, Provider},
+    providers::{Http, Middleware, PendingTransaction, Provider},
     types::BlockId,
 };
 use serde::Serialize;
@@ -217,6 +217,15 @@ impl RpcProvider {
         let balance = self.provider.get_balance(address, block_id).await?;
         let amount = NativeTokenAmount::new(self.chain_id, balance);
         Ok(amount)
+    }
+
+    pub async fn wait_for_confirmation(&self, tx_hash: H256) -> Result<String, Error> {
+        let pending_tx = PendingTransaction::new(tx_hash, &self.provider);
+        let tx_receipt = pending_tx
+            .await
+            .map_err(tx_failed_with_error)?
+            .ok_or_else(tx_failed_error)?;
+        Ok(display_tx_hash(tx_receipt.transaction_hash))
     }
 }
 

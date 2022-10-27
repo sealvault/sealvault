@@ -121,9 +121,23 @@ dictionary DappSignatureResult {
     string dapp_identifier;
 };
 
+dictionary DappTransactionSent {
+    string dapp_identifier;
+    string chain_display_name;
+};
+
+dictionary DappTransactionResult {
+    string dapp_identifier;
+    string chain_display_name;
+    string? explorer_url;
+    string? error_message;
+};
+
 callback interface CoreUICallbackI {
     void dapp_allotment_transfer_result(DappAllotmentTransferResult result);
     void signed_message_for_dapp(DappSignatureResult result);
+    void sent_transaction_for_dapp(DappTransactionSent result);
+    void dapp_transaction_result(DappTransactionResult result);
 };
 
 callback interface CoreInPageCallbackI {

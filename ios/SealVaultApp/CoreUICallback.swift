@@ -21,4 +21,14 @@ class CoreUICallback: CoreUiCallbackI {
         // TODO
         print("signedMessageForDapp \(result)")
     }
+
+    func sentTransactionForDapp(result: DappTransactionSent) {
+        // TODO
+        print("sentTransactionForDapp \(result)")
+    }
+
+    func dappTransactionResult(result: DappTransactionResult) {
+        // TODO
+        print("dappTransactionResult \(result)")
+    }
 }
