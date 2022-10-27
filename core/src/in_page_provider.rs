@@ -4,6 +4,7 @@
 
 use std::{collections::HashSet, fmt::Debug, str::FromStr, sync::Arc};
 
+use ethers::types::H256;
 use jsonrpsee::{
     core::server::helpers::MethodResponse,
     types::{
@@ -24,6 +25,7 @@ use crate::{
     db::{models as m, ConnectionPool},
     favicon::fetch_favicon_async,
     protocols::eth,
+    ui_callback::{DappSignatureResult, DappTransactionResult, DappTransactionSent},
     CoreError, DappAllotmentTransferResult, Error,
 };
 
@@ -490,15 +492,17 @@ impl InPageProvider {
             )
             .await;
         rt::spawn_blocking(move || {
-            let mut conn = resources.connection_pool.connection()?;
-            let dapp_identifier = session.fetch_dapp_identifier(&mut conn)?;
-
             let eth::ChainSettings {
                 default_dapp_allotment: amount,
                 ..
             } = chain_settings;
+            let m::LocalDappSession {
+                dapp_human_identifier,
+                ..
+            } = session;
+
             let mut callback_result = DappAllotmentTransferResult::builder()
-                .dapp_identifier(dapp_identifier)
+                .dapp_identifier(dapp_human_identifier)
                 .amount(amount.display_amount())
                 .token_symbol(amount.chain_id.native_token().symbol())
                 .chain_display_name(amount.chain_id.display_name())
@@ -580,7 +584,7 @@ impl InPageProvider {
         params: Option<&serde_json::value::RawValue>,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let signing_key = self.fetch_eth_signing_key(session).await?;
+        let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
 
         let params = Params::new(params.map(|params| params.get()));
         // TODO use EIP-1559 once we can get reliable max_priority_fee_per_gas estimates on all
@@ -598,9 +602,101 @@ impl InPageProvider {
             .resources
             .rpc_manager
             .eth_api_provider(signing_key.chain_id);
-        let tx_hash = provider.send_transaction_async(&signing_key, tx).await?;
+
+        let tx_hash_fut = provider.send_transaction_async(&signing_key, tx);
+
+        let resources = self.resources.clone();
+        let sent_callback_future = Self::sent_transaction_callback(resources, session);
+
+        let tx_hash = tx_hash_fut.await?;
+
+        let resources = self.resources.clone();
+        // Call in background.
+        rt::spawn(async move {
+            match sent_callback_future.await {
+                Ok(session) => {
+                    Self::dapp_transaction_result(resources, session, tx_hash).await
+                }
+                Err(err) => {
+                    log::error!("Sent tx dapp callback failed with error: {err:?}");
+                }
+            }
+        });
 
         to_value(tx_hash)
+    }
+
+    async fn sent_transaction_callback(
+        resources: Arc<CoreResources>,
+        session: m::LocalDappSession,
+    ) -> Result<m::LocalDappSession, Error> {
+        let result = DappTransactionSent::builder()
+            .dapp_identifier(session.dapp_human_identifier.clone())
+            .chain_display_name(session.chain_id.display_name())
+            .build();
+        rt::spawn_blocking(move || {
+            resources
+                .ui_callbacks
+                .sent_transaction_for_dapp(result.clone());
+        })
+        .await?;
+        Ok(session)
+    }
+
+    async fn dapp_transaction_result(
+        resources: Arc<CoreResources>,
+        session: m::LocalDappSession,
+        tx_hash: H256,
+    ) {
+        let chain_display_name = session.chain_id.display_name();
+        let m::LocalDappSession {
+            dapp_human_identifier,
+            ..
+        } = session;
+
+        let rpc_provider = resources.rpc_manager.eth_api_provider(session.chain_id);
+        let result = match rpc_provider.wait_for_confirmation(tx_hash).await {
+            Ok(tx_hash) => {
+                eth::explorer::tx_url(session.chain_id, &tx_hash)
+                    .ok()
+                    .map(|url| {
+                        DappTransactionResult::builder()
+                            .dapp_identifier(dapp_human_identifier)
+                            .chain_display_name(chain_display_name)
+                            .explorer_url(url.to_string())
+                            .build()
+                    })
+            }
+            Err(err) => {
+                let error: CoreError = err.into();
+                match error {
+                    CoreError::User { explanation } => {
+                        let result = DappTransactionResult::builder()
+                            .dapp_identifier(dapp_human_identifier)
+                            .chain_display_name(chain_display_name)
+                            .explorer_url(None)
+                            .error_message(Some(explanation))
+                            .build();
+                        Some(result)
+                    }
+                    err => {
+                        log::error!(
+                    "Dapp tx result callback failed for dapp '{dapp_human_identifier}' with error: {err:?}"
+                );
+                        None
+                    }
+                }
+            }
+        };
+        if let Some(result) = result {
+            let joined = rt::spawn_blocking(move || {
+                resources.ui_callbacks.dapp_transaction_result(result);
+            })
+            .await;
+            if joined.is_err() {
+                log::error!("Failed to join dapp_transaction_result callback future.")
+            }
+        };
     }
 
     async fn personal_sign(
@@ -626,13 +722,39 @@ impl InPageProvider {
         // Password argument is ignored.
         let _password: Option<String> = params.optional_next()?;
 
-        let signing_key = self.fetch_eth_signing_key(session).await?;
-        rt::spawn_blocking(move || {
+        let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
+        let signature = rt::spawn_blocking(move || {
             let signer = eth::Signer::new(&signing_key);
             let signature = signer.personal_sign(message)?;
             to_value(signature.to_string())
         })
-        .await?
+        .await??;
+
+        let resources = self.resources.clone();
+        // Call in background
+        rt::spawn(Self::personal_sign_callback(resources, session));
+
+        Ok(signature)
+    }
+
+    async fn personal_sign_callback(
+        resources: Arc<CoreResources>,
+        session: m::LocalDappSession,
+    ) {
+        let m::LocalDappSession {
+            dapp_human_identifier,
+            ..
+        } = session;
+        let result = DappSignatureResult::builder()
+            .dapp_identifier(dapp_human_identifier)
+            .build();
+        let joined = rt::spawn_blocking(move || {
+            resources.ui_callbacks.signed_message_for_dapp(result);
+        })
+        .await;
+        if joined.is_err() {
+            log::error!("Failed to join signed_message_for_dapp callback future.")
+        }
     }
 
     /// We don't support adding chains that aren't supported already, so this is a noop if the chain
@@ -711,19 +833,20 @@ impl InPageProvider {
     async fn fetch_eth_signing_key(
         &self,
         session: m::LocalDappSession,
-    ) -> Result<eth::SigningKey, Error> {
+    ) -> Result<(m::LocalDappSession, eth::SigningKey), Error> {
         let resources = self.resources.clone();
-        let signing_key: eth::SigningKey = self
+        let (session, signing_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                m::Address::fetch_eth_signing_key(
+                let signing_key = m::Address::fetch_eth_signing_key(
                     &mut tx_conn,
                     &resources.keychain,
                     &session.address_id,
-                )
+                )?;
+                Ok((session, signing_key))
             })
             .await?;
-        Ok(signing_key)
+        Ok((session, signing_key))
     }
 
     async fn fetch_favicon(&self) -> Result<Option<Vec<u8>>, Error> {
@@ -1041,7 +1164,11 @@ lazy_static! {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use jsonrpsee::types::Id;
+    use jsonrpsee::{
+        core::{params::ArrayParams, traits::ToRpcParams},
+        rpc_params,
+        types::{Id, RequestSer, Response},
+    };
     use strum::IntoEnumIterator;
 
     use super::*;
@@ -1050,13 +1177,17 @@ mod tests {
         utils::new_uuid,
     };
 
+    const ETH_COINBASE: &str = "eth_coinbase";
+    const ETH_GASPRICE: &str = "eth_gasPrice";
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
     const PERSONAL_SIGN: &str = "personal_sign";
 
     impl InPageProvider {
-        fn call_no_arg(self, method: &str) -> Result<()> {
-            let id = new_uuid();
-            let request = Request::new(method.into(), None, Id::Str(id.into()));
+        /// `call("method_name", rpc_params!["arg1", "arg2"])`
+        fn test_call(self, method: &str, params: ArrayParams) -> Result<()> {
+            let id = Id::Str(new_uuid().into());
+            let params = params.to_rpc_params().expect("rpc params serialize");
+            let request = RequestSer::new(&id, method, params);
             let raw_request =
                 serde_json::to_string(&request).expect("request serializes");
             let handle = self.in_page_request(raw_request);
@@ -1065,24 +1196,27 @@ mod tests {
         }
     }
 
-    fn authorize_dapp(core: &TmpCore) -> Result<()> {
+    fn authorize_dapp(core: &TmpCore) -> Result<String> {
         let provider = core.in_page_provider();
-        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
         core.wait_for_first_in_page_response();
-        Ok(())
+        let responses = core.responses();
+        let response = responses.first().unwrap();
+        let response: Response<Vec<String>> = serde_json::from_str(response).unwrap();
+        Ok(response.result.into_iter().next().unwrap())
     }
 
     #[test]
     fn responds_on_allowed() -> Result<()> {
         let core = TmpCore::new()?;
 
-        authorize_dapp(&core)?;
+        let _ = authorize_dapp(&core)?;
 
         assert!(core.dapp_approval().is_some());
         let responses = core.responses();
         assert_eq!(responses.len(), 1);
         assert_eq!(core.notifications().len(), 1);
-        core.wait_for_dapp_allotment_transfer();
+        core.wait_for_ui_callbacks(1);
         let dapp_allotment_results = core.dapp_allotment_transfer_results();
         assert_eq!(dapp_allotment_results.len(), 1);
         let dapp_host = core
@@ -1105,13 +1239,13 @@ mod tests {
             .transfer_allotment(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
         core.wait_for_first_in_page_response();
 
         assert!(core.dapp_approval().is_some());
         let responses = core.responses();
         assert_eq!(responses.len(), 1);
-        core.wait_for_dapp_allotment_transfer();
+        core.wait_for_ui_callbacks(1);
         let dapp_allotment_results = core.dapp_allotment_transfer_results();
         assert_eq!(dapp_allotment_results.len(), 0);
 
@@ -1127,13 +1261,13 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.call_no_arg(ETH_REQUEST_ACCOUNTS)?;
+        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
         core.wait_for_first_in_page_response();
 
         assert!(core.dapp_approval().is_some());
         let responses = core.responses();
         assert_eq!(responses.len(), 1);
-        core.wait_for_dapp_allotment_transfer();
+        core.wait_for_ui_callbacks(1);
         let dapp_allotment_results = core.dapp_allotment_transfer_results();
         assert_eq!(dapp_allotment_results.len(), 0);
 
@@ -1151,7 +1285,7 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.call_no_arg(PERSONAL_SIGN)?;
+        provider.test_call(PERSONAL_SIGN, rpc_params![])?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_none());
@@ -1168,11 +1302,11 @@ mod tests {
     fn proxy_checks_allowed_methods() -> Result<()> {
         let core = TmpCore::new()?;
 
-        authorize_dapp(&core)?;
+        let _ = authorize_dapp(&core)?;
 
         // This request should be refused as it's an unsupported method
         let provider = core.in_page_provider();
-        provider.call_no_arg("eth_coinbase")?;
+        provider.test_call(ETH_COINBASE, rpc_params![""])?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_some());
@@ -1185,13 +1319,55 @@ mod tests {
     }
 
     #[test]
+    fn personal_sign_callback() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        let address = authorize_dapp(&core)?;
+
+        let message = hex::encode("message");
+        let message = format!("0x{message}");
+
+        let provider = core.in_page_provider();
+        provider.test_call(PERSONAL_SIGN, rpc_params![&message, &address])?;
+        core.wait_for_ui_callbacks(2);
+
+        let responses = core.responses();
+        assert!(core.dapp_approval().is_some());
+        assert_eq!(responses.len(), 2);
+        assert_eq!(core.dapp_signature_results().len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn send_transactions_callback() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        let address = authorize_dapp(&core)?;
+
+        let message = hex::encode("message");
+        let message = format!("0x{message}");
+
+        let provider = core.in_page_provider();
+        provider.test_call(PERSONAL_SIGN, rpc_params![&message, &address])?;
+        core.wait_for_ui_callbacks(2);
+
+        let responses = core.responses();
+        assert!(core.dapp_approval().is_some());
+        assert_eq!(responses.len(), 2);
+        assert_eq!(core.dapp_signature_results().len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
     fn proxied_method_ok() -> Result<()> {
         let core = TmpCore::new()?;
 
-        authorize_dapp(&core)?;
+        let _ = authorize_dapp(&core)?;
 
         let provider = core.in_page_provider();
-        provider.call_no_arg("eth_gasPrice")?;
+        provider.test_call(ETH_GASPRICE, rpc_params![])?;
 
         let responses = core.responses();
         assert_eq!(responses.len(), 2);

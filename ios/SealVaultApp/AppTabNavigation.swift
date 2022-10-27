@@ -22,7 +22,7 @@ struct AppTabNavigationInner: View {
     @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .dapps
-    @State var dappAllotmentTransferBanner: BannerData?
+    @State var banner: BannerData?
     @StateObject var browserModelOne = BrowserModel(homePage: Config.browserOneHomePage)
     @StateObject var browserModelTwo = BrowserModel(homePage: Config.browserTwoHomePage)
 
@@ -83,18 +83,49 @@ struct AppTabNavigationInner: View {
                 return
             }
             if let errorMessage = res.errorMessage {
-                let title = "Failed to transfer to \(res.dappIdentifier)"
+                let title = "Failed to transfer to \(res.dappIdentifier) address"
                 let detail = "Error: \(errorMessage)"
-                dappAllotmentTransferBanner = BannerData(title: title, detail: detail, type: .error)
+                banner = BannerData(title: title, detail: detail, type: .error)
             } else {
-                let title = "Successfully transferred to \(res.dappIdentifier)"
+                let title = "Successfully transferred to \(res.dappIdentifier) address"
                 let details = """
-                Transferred \(res.amount) \(res.tokenSymbol) on \(res.chainDisplayName) to \(res.dappIdentifier)
+                \(res.amount) \(res.tokenSymbol) on \(res.chainDisplayName)
                 """
-                dappAllotmentTransferBanner = BannerData(title: title, detail: details, type: .success)
+                banner = BannerData(title: title, detail: details, type: .success)
             }
         }
-        .banner(data: $dappAllotmentTransferBanner)
+        .onChange(of: callbackModel.dappSignatureResult) { val in
+            guard let res = val else {
+                return
+            }
+            let title = "Approved signature for \(res.dappIdentifier)"
+            let detail = "Automatic approval is safe because it has its own address."
+            banner = BannerData(title: title, detail: detail, type: .success)
+        }
+        .onChange(of: callbackModel.dappTransactionSent) { val in
+            guard let res = val else {
+                return
+            }
+            let title = "Approved transaction for \(res.dappIdentifier)"
+            let detail = "Automatic approval is safe because it has its own address."
+            banner = BannerData(title: title, detail: detail, type: .success)
+        }
+        .onChange(of: callbackModel.dappTransactionResult) { val in
+            guard let res = val else {
+                return
+            }
+            if let errorMessage = res.errorMessage {
+                let title = "Transaction failed for \(res.dappIdentifier)"
+                let detail = "Error: \(errorMessage)"
+                banner = BannerData(title: title, detail: detail, type: .error)
+            } else {
+                // TODO add blockchain explorer url once it's tappable.
+                let title = "Transaction succesful for \(res.dappIdentifier)"
+                let detail = ""
+                banner = BannerData(title: title, detail: detail, type: .success)
+            }
+        }
+        .banner(data: $banner)
         .edgesIgnoringSafeArea(.bottom)
         .onChange(of: model.browserOneUrl) { newValue in
             if let url = newValue {
@@ -144,25 +175,67 @@ struct TabIcon: View {
 struct AppTabNavigation_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let callbackSuccess = CallbackModel()
+
+        let callbackDappAllotmentSuccess = CallbackModel()
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
-            callbackSuccess.dappAllotmentResult = DappAllotmentTransferResult(
+            callbackDappAllotmentSuccess.dappAllotmentResult = DappAllotmentTransferResult(
                 dappIdentifier: "example.com", amount: "0.1", tokenSymbol: "MATIC",
                 chainDisplayName: "Polygon PoS", errorMessage: nil
             )
         }
 
-        let callbackError = CallbackModel()
+        let callbackDappAllotmentError = CallbackModel()
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
-            callbackError.dappAllotmentResult = DappAllotmentTransferResult(
+            callbackDappAllotmentError.dappAllotmentResult = DappAllotmentTransferResult(
                 dappIdentifier: "example.com", amount: "0.1", tokenSymbol: "MATIC",
                 chainDisplayName: "Polygon PoS", errorMessage: "insufficient funds"
             )
         }
 
+        let callbackSignedMessage = CallbackModel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackSignedMessage.dappSignatureResult = DappSignatureResult(
+                dappIdentifier: "example.com"
+            )
+        }
+
+        let callbackSentTransaction = CallbackModel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackSentTransaction.dappTransactionSent = DappTransactionSent(
+                dappIdentifier: "example.com", chainDisplayName: "Polygon PoS"
+            )
+        }
+
+        let callbackDappTxResult = CallbackModel()
+        let explorerUrl = "https://etherscan.io/tx/0x24d3df3ce3eab3578e6486ebd6b071da3cc715780a1d0870b19ce8fde8e0f22a"
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackDappTxResult.dappTransactionResult = DappTransactionResult(
+                dappIdentifier: "example.com", chainDisplayName: "Ethereum",
+                explorerUrl: explorerUrl, errorMessage: nil
+            )
+        }
+
+        let callbackDappTxError = CallbackModel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            callbackDappTxError.dappTransactionResult = DappTransactionResult(
+                dappIdentifier: "example.com", chainDisplayName: "Polygon PoS",
+                explorerUrl: nil, errorMessage: "insufficient funds"
+            )
+        }
+
         return Group {
-            AppTabNavigationInner(callbackModel: callbackSuccess, selection: .browserOne).environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackError, selection: .dapps).environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackDappAllotmentSuccess, selection: .browserOne)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackDappAllotmentError, selection: .dapps)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackSignedMessage, selection: .dapps)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackSentTransaction, selection: .dapps)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackDappTxResult, selection: .dapps)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackDappTxError, selection: .dapps)
+                .environmentObject(model)
         }
     }
 }

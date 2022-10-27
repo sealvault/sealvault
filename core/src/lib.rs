@@ -36,7 +36,10 @@ pub use crate::{
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
     protocols::TokenType,
-    ui_callback::{CoreUICallbackI, DappAllotmentTransferResult},
+    ui_callback::{
+        CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
+        DappTransactionResult, DappTransactionSent,
+    },
     utils::uri_fixup,
 };
 

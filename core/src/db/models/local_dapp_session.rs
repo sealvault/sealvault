@@ -21,12 +21,16 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
 pub struct LocalDappSession {
     pub uuid: String,
+
+    pub account_id: String,
+
     pub address_id: String,
+    pub address: String,
+
     pub dapp_id: String,
+    pub dapp_human_identifier: String,
 
     pub chain_id: eth::ChainId,
-    pub account_id: String,
-    pub address: String,
 }
 
 #[derive(TypedBuilder)]
@@ -102,6 +106,13 @@ impl LocalDappSessionEntity {
 
     pub fn fetch_address(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
         m::Address::fetch_address(conn, &self.address_id)
+    }
+
+    pub fn fetch_dapp_identifier(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> Result<String, Error> {
+        m::Dapp::fetch_dapp_identifier(conn, &self.dapp_id)
     }
 }
 
@@ -220,6 +231,7 @@ impl LocalDappSession {
         let chain_id = entity.fetch_eth_chain_id(tx_conn.as_mut())?;
         let account_id = entity.fetch_account_id(tx_conn.as_mut())?;
         let address = entity.fetch_address(tx_conn.as_mut())?;
+        let dapp_human_identifier = entity.fetch_dapp_identifier(tx_conn.as_mut())?;
 
         let LocalDappSessionEntity {
             uuid,
@@ -231,18 +243,12 @@ impl LocalDappSession {
             .uuid(uuid)
             .address_id(address_id)
             .dapp_id(dapp_id)
+            .dapp_human_identifier(dapp_human_identifier)
             .chain_id(chain_id)
             .account_id(account_id)
             .address(address)
             .build();
         Ok(session)
-    }
-
-    pub fn fetch_dapp_identifier(
-        &self,
-        conn: &mut SqliteConnection,
-    ) -> Result<String, Error> {
-        m::Dapp::fetch_dapp_identifier(conn, &self.dapp_id)
     }
 
     /// Update currently used address for a dapp session.

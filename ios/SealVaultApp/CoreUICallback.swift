@@ -16,4 +16,22 @@ class CoreUICallback: CoreUiCallbackI {
             self.model.dappAllotmentResult = result
         }
     }
+
+    func signedMessageForDapp(result: DappSignatureResult) {
+        DispatchQueue.main.async {
+            self.model.dappSignatureResult = result
+        }
+    }
+
+    func sentTransactionForDapp(result: DappTransactionSent) {
+        DispatchQueue.main.async {
+            self.model.dappTransactionSent = result
+        }
+    }
+
+    func dappTransactionResult(result: DappTransactionResult) {
+        DispatchQueue.main.async {
+            self.model.dappTransactionResult = result
+        }
+    }
 }

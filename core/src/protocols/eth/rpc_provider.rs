@@ -9,7 +9,7 @@ use std::{
 
 use ethers::{
     core::types::{Address, BlockNumber, TransactionRequest, H256},
-    providers::{Http, Middleware, Provider},
+    providers::{Http, Middleware, PendingTransaction, Provider},
     types::BlockId,
 };
 use serde::Serialize;
@@ -27,8 +27,8 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct RpcProvider {
-    provider: Provider<Http>,
-    chain_id: ChainId,
+    pub(super) provider: Provider<Http>,
+    pub(super) chain_id: ChainId,
 }
 
 impl RpcProvider {
@@ -218,6 +218,15 @@ impl RpcProvider {
         let amount = NativeTokenAmount::new(self.chain_id, balance);
         Ok(amount)
     }
+
+    pub async fn wait_for_confirmation(&self, tx_hash: H256) -> Result<String, Error> {
+        let pending_tx = PendingTransaction::new(tx_hash, &self.provider);
+        let tx_receipt = pending_tx
+            .await
+            .map_err(tx_failed_with_error)?
+            .ok_or_else(tx_failed_error)?;
+        Ok(display_tx_hash(tx_receipt.transaction_hash))
+    }
 }
 
 /// A trait to let us inject dynamic Anvil url at test time.
@@ -276,11 +285,26 @@ pub mod anvil {
     use std::{
         fmt::Formatter,
         sync::{Arc, RwLock},
+        time::Duration,
     };
 
-    use ethers::core::utils::{Anvil, AnvilInstance};
+    use ethers::{
+        core::utils::{Anvil, AnvilInstance},
+        signers::{coins_bip39::English, LocalWallet, MnemonicBuilder},
+        types::U256,
+    };
 
     use super::*;
+
+    const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    const POLL_INTERVAL_MS: u64 = 10;
+
+    impl RpcProvider {
+        pub(super) fn set_poll_interval(mut self, duration: Duration) -> Self {
+            self.provider = self.provider.interval(duration);
+            self
+        }
+    }
 
     pub struct AnvilRpcManager {
         // Lazy initialized Anvil instance.
@@ -293,20 +317,51 @@ pub mod anvil {
             Self { anvil_instance }
         }
 
-        fn anvil_endpoint(&self) -> Url {
+        pub(super) fn anvil_endpoint(&self, chain_id: ChainId) -> Url {
             let is_started: bool = {
                 let maybe_anvil = self.anvil_instance.read().unwrap();
                 maybe_anvil.is_some()
             };
             if !is_started {
-                let av = Anvil::new().spawn();
+                let av = Anvil::new()
+                    .chain_id(chain_id as u64)
+                    .mnemonic(MNEMONIC)
+                    .spawn();
                 let _ = self.anvil_instance.write().unwrap().insert(av);
             }
             let endpoint = {
                 let surely_anvil = self.anvil_instance.read().unwrap();
                 surely_anvil.as_ref().unwrap().endpoint()
             };
-            Url::parse(&*endpoint).expect("valid url")
+            Url::parse(&endpoint).expect("valid url")
+        }
+
+        pub fn wallet(&self) -> LocalWallet {
+            MnemonicBuilder::<English>::default()
+                .phrase(MNEMONIC)
+                .build()
+                .unwrap()
+        }
+
+        pub fn send_native_token(
+            &self,
+            chain_id: ChainId,
+            to_checksum_address: &str,
+            amount_eth: u64,
+        ) {
+            let provider = self.eth_api_provider(chain_id);
+            let accounts =
+                rt::block_on(provider.provider.get_accounts()).expect("get_accounts ok");
+            let value = U256::exp10(18) * amount_eth;
+            let address: Address =
+                to_checksum_address.parse().expect("valid checksum address");
+            let tx = TransactionRequest::new()
+                .to(address)
+                .value(value)
+                .from(accounts[0]);
+            let pending_tx = rt::block_on(provider.provider.send_transaction(tx, None))
+                .expect("send_transaction ok");
+            rt::block_on(pending_tx).expect("pending tx ok");
         }
     }
 
@@ -318,16 +373,20 @@ pub mod anvil {
 
     impl RpcManagerI for AnvilRpcManager {
         fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider {
-            let http_endpoint = self.anvil_endpoint();
-            RpcProvider::new(chain_id, http_endpoint)
+            let http_endpoint = self.anvil_endpoint(chain_id);
+            let mut provider = RpcProvider::new(chain_id, http_endpoint);
+            provider =
+                provider.set_poll_interval(Duration::from_millis(POLL_INTERVAL_MS));
+            provider
         }
     }
 
     impl Debug for AnvilRpcManager {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            let anvil_endpoint = self.anvil_endpoint();
+            let anvil_instance = self.anvil_instance.read().unwrap();
+            let endpoint = anvil_instance.as_ref().map(|a| a.endpoint());
             f.debug_struct("TestAnvilRpcManager")
-                .field("anvil_endpoint", &anvil_endpoint)
+                .field("anvil_endpoint", &endpoint)
                 .finish()
         }
     }
@@ -339,9 +398,7 @@ mod tests {
 
     use anyhow::Result;
     use ethers::{
-        core::{types::U256, utils::Anvil},
-        providers::{PendingTransaction, Provider},
-        signers::Signer,
+        core::types::U256, providers::PendingTransaction, signers::Signer,
         utils::to_checksum,
     };
 
@@ -349,7 +406,7 @@ mod tests {
     use crate::protocols::{
         eth::{
             contracts::test_util::TestContractDeployer, signing_key::checksum_address,
-            EthereumAsymmetricKey,
+            AnvilRpcManager, EthereumAsymmetricKey,
         },
         ChecksumAddress,
     };
@@ -369,7 +426,7 @@ mod tests {
 
     #[test]
     fn native_token_balance() -> Result<()> {
-        let rpc_manager = anvil::AnvilRpcManager::new();
+        let rpc_manager = AnvilRpcManager::new();
         let chain_id = ChainId::EthMainnet;
         let provider = rpc_manager.eth_api_provider(chain_id);
         let accounts = rt::block_on(provider.provider.get_accounts())?;
@@ -384,51 +441,37 @@ mod tests {
 
     #[test]
     fn sends_native_token() -> Result<()> {
-        let poll_interval = std::time::Duration::from_millis(10);
         let chain_id = ChainId::EthMainnet;
-        let anvil = Anvil::new().chain_id(chain_id as u64).spawn();
-        let anvil_provider =
-            Provider::<Http>::try_from(anvil.endpoint())?.interval(poll_interval);
-
-        let amount_wei = U256::exp10(18);
+        let rpc_manager = AnvilRpcManager::new();
+        let rpc_provider = rpc_manager.eth_api_provider(chain_id);
 
         let sender_key = EthereumAsymmetricKey::random()?;
         let sender_signing = SigningKey::new(sender_key, ChainId::EthMainnet)?;
 
         // Send some coin to the address with which we want to test the transfer.
-        let accounts = rt::block_on(anvil_provider.get_accounts())?;
-        let tx = TransactionRequest::new()
-            .to(sender_signing.address)
-            // Headroom for gas fees
-            .value(amount_wei.saturating_mul(2.into()))
-            .from(accounts[0]);
-        let pending_tx = rt::block_on(anvil_provider.send_transaction(tx, None))?;
-        // Await the returned pending transaction to make sure it's completed before we move on.
-        rt::block_on(pending_tx)?;
+        rpc_manager.send_native_token(chain_id, &sender_signing.checksum_address(), 2);
+        let sender_address = sender_signing.address;
+        rt::block_on(rpc_provider.provider.get_balance(sender_address, None))?;
 
-        let receiver_key = EthereumAsymmetricKey::random()?;
-        let receiver_signing = SigningKey::new(receiver_key, ChainId::EthMainnet)?;
+        let receiver_address = Address::random();
+        let receiver_checksum = to_checksum(&receiver_address, None);
 
-        let receiver_checksum = receiver_signing.checksum_address();
+        let amount_wei = U256::exp10(18);
         let amount = NativeTokenAmount::new(sender_signing.chain_id, amount_wei);
 
-        let rpc_provider = RpcProvider::new(
-            sender_signing.chain_id,
-            Url::parse(&*anvil.endpoint()).unwrap(),
-        );
         let tx_hash = rpc_provider.transfer_native_token(
             &sender_signing,
             &receiver_checksum,
             &amount,
         )?;
 
-        rt::block_on(
-            PendingTransaction::new(tx_hash.parse()?, &anvil_provider)
-                .interval(poll_interval),
-        )?;
+        rt::block_on(PendingTransaction::new(
+            tx_hash.parse()?,
+            &rpc_provider.provider,
+        ))?;
 
         let balance_receiver =
-            rt::block_on(anvil_provider.get_balance(receiver_signing.address, None))?;
+            rt::block_on(rpc_provider.provider.get_balance(receiver_address, None))?;
         assert_eq!(balance_receiver, amount_wei);
 
         Ok(())
@@ -439,9 +482,7 @@ mod tests {
         // Deploy ERC20 test contract on Anvil dev node
         let chain_id = ChainId::EthMainnet;
         let contract_deployer = TestContractDeployer::init(chain_id);
-        let contract_address =
-            rt::block_on(contract_deployer.deploy_fungible_token_test_contract())?;
-        let deployer_wallet = contract_deployer.deployer_wallet();
+        let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
         let provider = Arc::new(contract_deployer.provider());
         let contract = ERC20Contract::new(contract_address, provider.clone());
 
@@ -449,14 +490,11 @@ mod tests {
         let sender_signing = SigningKey::new(sender_key, ChainId::EthMainnet)?;
 
         // Send native token to address that is using our key & tx management for tx fee
-        let tx = TransactionRequest::new()
-            .to(sender_signing.address)
-            // Headroom for gas fees
-            .value(U256::exp10(18))
-            .from(deployer_wallet.address());
-        let pending_tx = rt::block_on(provider.send_transaction(tx, None))?;
-        // Await the returned pending transaction to make sure it's completed before we move on.
-        rt::block_on(pending_tx)?;
+        contract_deployer.anvil_rpc.send_native_token(
+            chain_id,
+            &sender_signing.checksum_address(),
+            1,
+        );
 
         // Send fungible token to our address
         let amount = U256::exp10(18);
@@ -470,17 +508,14 @@ mod tests {
 
         // Save the balance of the address that we send the tokens back to prior to transfer with
         // our address.
-        let call = contract.balance_of(deployer_wallet.address());
+        let deployer_address = contract_deployer.deployer_wallet().address();
+        let call = contract.balance_of(deployer_address);
         let prev_balance = rt::block_on(call.call())?;
 
         // Send back fungible token transfer from our address
-        let rpc_provider = RpcProvider::new(
-            sender_signing.chain_id,
-            Url::parse(&*contract_deployer.endpoint()).unwrap(),
-        );
-        let to_checksum_adress = to_checksum(&deployer_wallet.address(), None);
+        let to_checksum_adress = to_checksum(&deployer_address, None);
         let contract_checksum_address = to_checksum(&contract_address, None);
-        let tx_hash = rpc_provider.transfer_fungible_token(
+        let tx_hash = contract_deployer.rpc_provider.transfer_fungible_token(
             &sender_signing,
             &to_checksum_adress,
             "1",
@@ -491,7 +526,7 @@ mod tests {
         let _receipt = rt::block_on(pending_tx)?;
 
         // Check that after sending back the tokens the balance is as expected.
-        let call = contract.balance_of(deployer_wallet.address());
+        let call = contract.balance_of(deployer_address);
         let post_balance = rt::block_on(call.call())?;
         assert_eq!(amount.add(prev_balance), post_balance);
 
