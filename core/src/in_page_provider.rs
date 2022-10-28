@@ -484,13 +484,18 @@ impl InPageProvider {
             .rpc_manager
             .eth_api_provider(wallet_signing_key.chain_id);
         // Call fails if there are insufficient funds.
-        let res = provider
-            .transfer_native_token_async(
-                &wallet_signing_key,
-                &session.address,
-                &chain_settings.default_dapp_allotment,
-            )
-            .await;
+        let res = async {
+            let tx_hash = provider
+                .transfer_native_token_async(
+                    &wallet_signing_key,
+                    &session.address,
+                    &chain_settings.default_dapp_allotment,
+                )
+                .await?;
+            provider.wait_for_confirmation_async(tx_hash).await?;
+            Ok::<(), Error>(())
+        }
+        .await;
         rt::spawn_blocking(move || {
             let eth::ChainSettings {
                 default_dapp_allotment: amount,
@@ -655,7 +660,7 @@ impl InPageProvider {
         } = session;
 
         let rpc_provider = resources.rpc_manager.eth_api_provider(session.chain_id);
-        let result = match rpc_provider.wait_for_confirmation(tx_hash).await {
+        let result = match rpc_provider.wait_for_confirmation_async(tx_hash).await {
             Ok(tx_hash) => {
                 eth::explorer::tx_url(session.chain_id, &tx_hash)
                     .ok()

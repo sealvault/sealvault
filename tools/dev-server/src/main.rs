@@ -14,7 +14,7 @@ use ethers_core::utils::hex;
 use uniffi_sealvault_core::{
     AppCore, CoreArgs, CoreInPageCallbackI, CoreUICallbackI, DappAllotmentTransferResult,
     DappApprovalParams, DappSignatureResult, DappTransactionResult, DappTransactionSent,
-    InPageRequestContextI,
+    InPageRequestContextI, TokenTransferResult,
 };
 
 const DB_PATH: &str = ":memory:";
@@ -140,6 +140,14 @@ impl CoreUICallBackMock {
 }
 
 impl CoreUICallbackI for CoreUICallBackMock {
+    fn sent_token_transfer(&self, result: TokenTransferResult) {
+        log::info!("Sent token transfer: {:?}", result)
+    }
+
+    fn token_transfer_result(&self, result: TokenTransferResult) {
+        log::info!("Token transfer result: {:?}", result)
+    }
+
     fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
         log::info!("Dapp allotment transfer result: {:?}", result)
     }

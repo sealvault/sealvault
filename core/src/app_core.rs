@@ -4,7 +4,10 @@
 
 use std::{fmt::Debug, sync::Arc};
 
+use typed_builder::TypedBuilder;
+
 use crate::{
+    async_runtime as rt,
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
@@ -16,6 +19,7 @@ use crate::{
     in_page_provider::{InPageProvider, InPageRequestContextI},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
+    ui_callback::TokenTransferResult,
     CoreError, CoreUICallbackI, DappApprovalParams,
 };
 
@@ -215,28 +219,133 @@ impl AppCore {
     }
 
     /// Transfer native token on an Ethereum protocol network.
-    /// Returns the tx hash that can be used to poll for the result.
     pub fn eth_transfer_native_token(
         &self,
-        from_address_id: String,
-        to_checksum_address: String,
-        amount_decimal: String,
-    ) -> Result<String, CoreError> {
-        let signing_key = self
-            .fetch_eth_signing_key_for_transfer(&from_address_id, &to_checksum_address)?;
+        args: EthTransferNativeTokenArgs,
+    ) -> Result<(), CoreError> {
+        let signing_key = self.fetch_eth_signing_key_for_transfer(
+            &args.from_address_id,
+            &args.to_checksum_address,
+        )?;
 
         let amount = eth::NativeTokenAmount::new_from_decimal(
             signing_key.chain_id,
-            &amount_decimal,
+            &args.amount_decimal,
         )?;
         let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
-        let tx_hash = rpc_provider.transfer_native_token(
+        let tx_hash_res = rpc_provider.transfer_native_token(
             &signing_key,
-            &to_checksum_address,
+            &args.to_checksum_address,
             &amount,
-        )?;
+        );
 
-        Ok(tx_hash)
+        let resources = self.resources.clone();
+        rt::spawn_blocking(move || {
+            let res = Self::token_transfer_callbacks(resources, args, tx_hash_res);
+            if let Some(err) = res.err() {
+                log::error!(
+                    "Failed to call token transfer callbacks due to error: {err:?}"
+                )
+            }
+        });
+
+        Ok(())
+    }
+
+    fn token_transfer_callbacks(
+        resources: Arc<CoreResources>,
+        args: EthTransferNativeTokenArgs,
+        tx_hash_res: Result<ethers::types::H256, Error>,
+    ) -> Result<(), Error> {
+        let EthTransferNativeTokenArgs {
+            amount_decimal,
+            from_address_id,
+            to_checksum_address,
+        } = args;
+        let (chain_id, mut transfer_res) = resources
+            .connection_pool
+            .deferred_transaction(move |mut tx_conn| {
+                let chain_id =
+                    m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
+                let maybe_to_id = m::Address::fetch_id_by_checksum_address(
+                    tx_conn.as_mut(),
+                    &to_checksum_address,
+                )?;
+                let to_display_name = if let Some(to_id) = maybe_to_id {
+                    if m::Address::is_account_wallet(tx_conn.as_mut(), &to_id)? {
+                        let account_name =
+                            m::Address::fetch_account_name(tx_conn.as_mut(), &to_id)?;
+                        Ok(format!("{account_name} Account Wallet"))
+                    } else if let Some(dapp_identifier) =
+                        m::Address::dapp_identifier(tx_conn.as_mut(), &to_id)?
+                    {
+                        Ok(dapp_identifier)
+                    } else {
+                        Err(Error::Fatal {
+                            error: format!(
+                                "Address id {to_id} is neither wallet nor dapp address"
+                            ),
+                        })
+                    }
+                } else {
+                    Ok(to_checksum_address)
+                }?;
+                let token_symbol = chain_id.native_token().symbol();
+                let chain_display_name = chain_id.display_name();
+                let res = TokenTransferResult::builder()
+                    .amount(amount_decimal)
+                    .token_symbol(token_symbol)
+                    .chain_display_name(chain_display_name)
+                    .to_display_name(to_display_name)
+                    .build();
+                Ok((chain_id, res))
+            })?;
+        match tx_hash_res {
+            Ok(tx_hash) => {
+                let sent_res = transfer_res.clone();
+                resources.ui_callbacks.sent_token_transfer(sent_res);
+
+                let rpc_provider = resources.rpc_manager.eth_api_provider(chain_id);
+                let confirmation = rpc_provider.wait_for_confirmation(tx_hash);
+                match confirmation {
+                    Ok(tx_hash_str) => {
+                        let explorer_url = eth::explorer::tx_url(chain_id, &tx_hash_str)?;
+                        transfer_res.explorer_url = Some(explorer_url.to_string());
+                        resources.ui_callbacks.sent_token_transfer(transfer_res);
+                    }
+                    Err(err) => {
+                        Self::handle_token_callback_error(resources, transfer_res, err)
+                    }
+                }
+            }
+            Err(err) => Self::handle_token_callback_error(resources, transfer_res, err),
+        };
+        Ok(())
+    }
+
+    fn handle_token_callback_error(
+        resources: Arc<CoreResources>,
+        mut result: TokenTransferResult,
+        err: Error,
+    ) {
+        let error_message = Self::error_message_for_ui_callback(err);
+        result.error_message = Some(error_message);
+        resources.ui_callbacks.token_transfer_result(result);
+    }
+
+    fn error_message_for_ui_callback(err: Error) -> String {
+        let err: CoreError = err.into();
+        match err {
+            CoreError::User { explanation } => explanation,
+            CoreError::Retriable { error } => {
+                log::error!("Retriable error sending token: {error:?}");
+                "An unexpected error occurred. Please try again!".into()
+            }
+            CoreError::Fatal { error } => {
+                log::error!("Fatal error sending token: {error:?}");
+                "An unexpected error occurred. Please restart the application and try again!".into()
+            }
+        }
     }
 
     /// Transfer fungible native token on an Ethereum protocol network.
@@ -313,6 +422,13 @@ pub struct CoreResources {
 pub struct CoreArgs {
     pub cache_dir: String,
     pub db_file_path: String,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct EthTransferNativeTokenArgs {
+    pub from_address_id: String,
+    pub to_checksum_address: String,
+    pub amount_decimal: String,
 }
 
 #[cfg(test)]
@@ -528,6 +644,7 @@ pub mod tests {
 
     #[derive(Debug, Default)]
     pub struct UICallbackState {
+        token_transfer_results: Arc<RwLock<Vec<TokenTransferResult>>>,
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
         dapp_transaction_sent: Arc<RwLock<Vec<DappTransactionSent>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
@@ -537,6 +654,7 @@ pub mod tests {
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
+                token_transfer_results: Arc::new(Default::default()),
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
                 dapp_transaction_sent: Arc::new(Default::default()),
                 dapp_signature_results: Arc::new(Default::default()),
@@ -545,10 +663,18 @@ pub mod tests {
         }
 
         fn count(&self) -> usize {
-            self.dapp_allotment_transfer_results.read().unwrap().len()
+            self.token_transfer_results.read().unwrap().len()
+                + self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
                 + self.dapp_transaction_sent.read().unwrap().len()
                 + self.dapp_transaction_results.read().unwrap().len()
+        }
+
+        fn add_token_transfer_result(&self, result: TokenTransferResult) {
+            {
+                let mut results = self.token_transfer_results.write().expect("no poison");
+                results.push(result)
+            }
         }
 
         fn add_dapp_allotment_transfer_result(
@@ -599,6 +725,14 @@ pub mod tests {
     }
 
     impl CoreUICallbackI for CoreUICallbackMock {
+        fn sent_token_transfer(&self, result: TokenTransferResult) {
+            self.state.add_token_transfer_result(result)
+        }
+
+        fn token_transfer_result(&self, result: TokenTransferResult) {
+            self.state.add_token_transfer_result(result)
+        }
+
         fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
             self.state.add_dapp_allotment_transfer_result(result)
         }
@@ -863,10 +997,13 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let (from_id, to_address) = setup_accounts(&tmp.core)?;
+        let args = EthTransferNativeTokenArgs::builder()
+            .from_address_id(from_id)
+            .to_checksum_address(to_address)
+            .amount_decimal("1".into())
+            .build();
 
-        let result = tmp
-            .core
-            .eth_transfer_native_token(from_id, to_address, "1".into());
+        let result = tmp.core.eth_transfer_native_token(args);
 
         assert!(matches!(result, Err(CoreError::User {
                 explanation

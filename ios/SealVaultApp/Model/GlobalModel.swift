@@ -222,8 +222,7 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
-    func ethTransferNativeToken(fromAddressId _: String, toChecksumAddress _: String, amount _: String) throws
-    -> String {
+    func ethTransferNativeToken(args: EthTransferNativeTokenArgs) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 

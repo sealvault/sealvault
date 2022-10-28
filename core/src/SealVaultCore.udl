@@ -35,7 +35,7 @@ interface AppCore {
     void user_rejected_dapp(InPageRequestContextI context, DappApprovalParams params);
 
     [Throws=CoreError]
-    string eth_transfer_native_token(string from_address_id, string to_checksum_address, string amount);
+    void eth_transfer_native_token(EthTransferNativeTokenArgs args);
 
     [Throws=CoreError]
     string eth_transfer_fungible_token(string from_address_id, string to_checksum_address, string amount, string token_id);
@@ -109,6 +109,33 @@ dictionary CoreEthChain {
     string display_name;
 };
 
+dictionary DappApprovalParams {
+    string account_id;
+    string dapp_identifier;
+    sequence<u8>? favicon;
+    string amount;
+    boolean transfer_allotment;
+    string token_symbol;
+    string chain_display_name;
+    u64 chain_id;
+    string json_rpc_request;
+};
+
+dictionary EthTransferNativeTokenArgs {
+    string from_address_id;
+    string to_checksum_address;
+    string amount_decimal;
+};
+
+dictionary TokenTransferResult {
+    string amount;
+    string token_symbol;
+    string chain_display_name;
+    string to_display_name;
+    string? explorer_url;
+    string? error_message;
+};
+
 dictionary DappAllotmentTransferResult {
     string dapp_identifier;
     string amount;
@@ -134,6 +161,8 @@ dictionary DappTransactionResult {
 };
 
 callback interface CoreUICallbackI {
+    void sent_token_transfer(TokenTransferResult result);
+    void token_transfer_result(TokenTransferResult result);
     void dapp_allotment_transfer_result(DappAllotmentTransferResult result);
     void signed_message_for_dapp(DappSignatureResult result);
     void sent_transaction_for_dapp(DappTransactionSent result);
@@ -149,16 +178,4 @@ callback interface CoreInPageCallbackI {
 callback interface InPageRequestContextI {
     string page_url();
     CoreInPageCallbackI callbacks();
-};
-
-dictionary DappApprovalParams {
-    string account_id;
-    string dapp_identifier;
-    sequence<u8>? favicon;
-    string amount;
-    boolean transfer_allotment;
-    string token_symbol;
-    string chain_display_name;
-    u64 chain_id;
-    string json_rpc_request;
 };
