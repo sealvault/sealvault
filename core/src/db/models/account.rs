@@ -110,7 +110,8 @@ impl<'a> DeterministicId<'a, &'a str, U1> for AccountEntity<'a> {
 
     fn unique_columns(&'a self) -> GenericArray<&'a str, U1> {
         // When a user creates accounts on different devices those should be different entities,
-        // hence the uuid as deterministic id.
+        // hence the uuid as deterministic id. The name should be changeable without creating a new
+        // entity.
         [self.uuid].into()
     }
 }

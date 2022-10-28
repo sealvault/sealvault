@@ -356,6 +356,8 @@ impl Assembler {
                 let contract_address = token.display_contract_address();
                 let eth::FungibleTokenBalance { symbol, .. } = token;
                 Ok(CoreToken::builder()
+                    // The id being the contract address is relied on in the core
+                    // `eth_transfer_fungible_token` interface.
                     .id(contract_address)
                     .symbol(symbol)
                     .amount(Some(amount))
