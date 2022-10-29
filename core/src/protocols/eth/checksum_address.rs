@@ -11,7 +11,7 @@ pub fn validate_checksum_address(check_sum_address: &str) -> Result<(), Error> {
     Ok(())
 }
 
-pub(super) fn parse_checksum_address(check_sum_address: &str) -> Result<Address, Error> {
+pub fn parse_checksum_address(check_sum_address: &str) -> Result<Address, Error> {
     let addr: Address = check_sum_address.parse().map_err(|_| Error::User {
         explanation: "This doesn't look like an Ethereum checksum address.".into(),
     })?;

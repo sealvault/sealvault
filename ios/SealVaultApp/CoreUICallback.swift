@@ -35,9 +35,9 @@ class CoreUICallback: CoreUiCallbackI {
         }
     }
 
-    func sentTransactionForDapp(result: DappTransactionSent) {
+    func approvedDappTransaction(result: DappTransactionApproved) {
         DispatchQueue.main.async {
-            self.model.dappTransactionSent = result
+            self.model.dappTransactionApproved = result
         }
     }
 

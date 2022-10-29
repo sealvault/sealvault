@@ -326,24 +326,9 @@ impl AppCore {
         mut result: TokenTransferResult,
         err: Error,
     ) {
-        let error_message = Self::error_message_for_ui_callback(err);
+        let error_message = err.message_for_ui_callback();
         result.error_message = Some(error_message);
         resources.ui_callbacks().token_transfer_result(result);
-    }
-
-    fn error_message_for_ui_callback(err: Error) -> String {
-        let err: CoreError = err.into();
-        match err {
-            CoreError::User { explanation } => explanation,
-            CoreError::Retriable { error } => {
-                log::error!("Retriable error sending token: {error:?}");
-                "An unexpected error occurred. Please try again!".into()
-            }
-            CoreError::Fatal { error } => {
-                log::error!("Fatal error sending token: {error:?}");
-                "An unexpected error occurred. Please restart the application and try again!".into()
-            }
-        }
     }
 
     /// Transfer fungible native token on an Ethereum protocol network.
@@ -431,8 +416,8 @@ pub mod tests {
     use super::*;
     use crate::{
         protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
-        DappApprovalParams, DappSignatureResult, DappTransactionResult,
-        DappTransactionSent,
+        DappApprovalParams, DappSignatureResult, DappTransactionApproved,
+        DappTransactionResult,
     };
 
     #[readonly::make]
@@ -582,6 +567,15 @@ pub mod tests {
             accounts.into_iter().next().expect("no accounts")
         }
 
+        pub fn fund_account_wallets(&self, chain_id: eth::ChainId) -> Result<()> {
+            let rpc_manager = &self.resources.rpc_manager;
+            let account = self.first_account();
+            for wallet in account.wallets {
+                rpc_manager.send_native_token(chain_id, &wallet.checksum_address, 10);
+            }
+            Ok(())
+        }
+
         pub fn in_page_provider(&self) -> InPageProvider {
             let context = Box::new(InPageRequestContextMock::new(
                 Default::default(),
@@ -648,11 +642,35 @@ pub mod tests {
                 .clone()
         }
 
+        pub fn token_transfer_results(&self) -> Vec<TokenTransferResult> {
+            self.ui_callback_state
+                .token_transfer_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
         pub fn dapp_allotment_transfer_results(
             &self,
         ) -> Vec<DappAllotmentTransferResult> {
             self.ui_callback_state
                 .dapp_allotment_transfer_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn dapp_tx_approvals(&self) -> Vec<DappTransactionApproved> {
+            self.ui_callback_state
+                .dapp_transaction_approved
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn dapp_tx_results(&self) -> Vec<DappTransactionResult> {
+            self.ui_callback_state
+                .dapp_transaction_results
                 .read()
                 .unwrap()
                 .clone()
@@ -675,8 +693,8 @@ pub mod tests {
     pub struct UICallbackState {
         token_transfer_results: Arc<RwLock<Vec<TokenTransferResult>>>,
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
-        dapp_transaction_sent: Arc<RwLock<Vec<DappTransactionSent>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
+        dapp_transaction_approved: Arc<RwLock<Vec<DappTransactionApproved>>>,
         dapp_transaction_results: Arc<RwLock<Vec<DappTransactionResult>>>,
     }
 
@@ -685,7 +703,7 @@ pub mod tests {
             Self {
                 token_transfer_results: Arc::new(Default::default()),
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
-                dapp_transaction_sent: Arc::new(Default::default()),
+                dapp_transaction_approved: Arc::new(Default::default()),
                 dapp_signature_results: Arc::new(Default::default()),
                 dapp_transaction_results: Arc::new(Default::default()),
             }
@@ -695,7 +713,7 @@ pub mod tests {
             self.token_transfer_results.read().unwrap().len()
                 + self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
-                + self.dapp_transaction_sent.read().unwrap().len()
+                + self.dapp_transaction_approved.read().unwrap().len()
                 + self.dapp_transaction_results.read().unwrap().len()
         }
 
@@ -726,9 +744,10 @@ pub mod tests {
             }
         }
 
-        fn add_dapp_transaction_sent(&self, result: DappTransactionSent) {
+        fn add_dapp_transaction_approved(&self, result: DappTransactionApproved) {
             {
-                let mut results = self.dapp_transaction_sent.write().expect("no poison");
+                let mut results =
+                    self.dapp_transaction_approved.write().expect("no poison");
                 results.push(result)
             }
         }
@@ -770,8 +789,8 @@ pub mod tests {
             self.state.add_dapp_signature_result(result)
         }
 
-        fn sent_transaction_for_dapp(&self, result: DappTransactionSent) {
-            self.state.add_dapp_transaction_sent(result)
+        fn approved_dapp_transaction(&self, result: DappTransactionApproved) {
+            self.state.add_dapp_transaction_approved(result)
         }
 
         fn dapp_transaction_result(&self, result: DappTransactionResult) {

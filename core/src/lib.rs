@@ -39,7 +39,7 @@ pub use crate::{
     protocols::TokenType,
     ui_callback::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
-        DappTransactionResult, DappTransactionSent, TokenTransferResult,
+        DappTransactionApproved, DappTransactionResult, TokenTransferResult,
     },
     utils::uri_fixup,
 };

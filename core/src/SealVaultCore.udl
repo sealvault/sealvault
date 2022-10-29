@@ -148,7 +148,7 @@ dictionary DappSignatureResult {
     string dapp_identifier;
 };
 
-dictionary DappTransactionSent {
+dictionary DappTransactionApproved {
     string dapp_identifier;
     string chain_display_name;
 };
@@ -165,7 +165,7 @@ callback interface CoreUICallbackI {
     void token_transfer_result(TokenTransferResult result);
     void dapp_allotment_transfer_result(DappAllotmentTransferResult result);
     void signed_message_for_dapp(DappSignatureResult result);
-    void sent_transaction_for_dapp(DappTransactionSent result);
+    void approved_dapp_transaction(DappTransactionApproved result);
     void dapp_transaction_result(DappTransactionResult result);
 };
 

@@ -16,7 +16,7 @@ pub trait CoreUICallbackI: Send + Sync + Debug {
     /// The in-page provider created an off-chain signature automatically for a dapp.
     fn signed_message_for_dapp(&self, result: DappSignatureResult);
     /// The in-page provider approved a transaction automatically for a dapp.
-    fn sent_transaction_for_dapp(&self, result: DappTransactionSent);
+    fn approved_dapp_transaction(&self, result: DappTransactionApproved);
     /// The result of a transaction that was auto-approved by the in-page provider.
     fn dapp_transaction_result(&self, result: DappTransactionResult);
 }
@@ -72,7 +72,7 @@ pub struct DappSignatureResult {
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
-pub struct DappTransactionSent {
+pub struct DappTransactionApproved {
     /// A human readable dapp identifier that can be presented to the user.
     #[builder(setter(into))]
     pub dapp_identifier: String,
@@ -89,7 +89,7 @@ pub struct DappTransactionResult {
     #[builder(setter(into))]
     pub chain_display_name: String,
     /// The transaction's explorer url. None on error
-    #[builder(setter(into))]
+    #[builder(default = None)]
     pub explorer_url: Option<String>,
     /// Error message is none on success.
     /// Uniffi doesn't support Result enum as argument unfortunately.
