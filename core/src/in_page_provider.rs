@@ -22,12 +22,11 @@ use url::Url;
 use crate::{
     assets, async_runtime as rt, config,
     db::{models as m, ConnectionPool},
-    encryption::Keychain,
     favicon::fetch_favicon_async,
     http_client::HttpClient,
     protocols::eth,
     public_suffix_list::PublicSuffixList,
-    resources::{CoreResources, CoreResourcesI},
+    resources::CoreResourcesI,
     ui_callback::{DappSignatureResult, DappTransactionResult, DappTransactionSent},
     CoreError, DappAllotmentTransferResult, Error,
 };
@@ -55,10 +54,6 @@ impl InPageProvider {
 
     fn connection_pool(&self) -> &ConnectionPool {
         self.resources.connection_pool()
-    }
-
-    fn keychain(&self) -> &Keychain {
-        self.resources.keychain()
     }
 
     fn rpc_manager(&self) -> &dyn eth::RpcManagerI {

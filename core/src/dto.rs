@@ -18,7 +18,7 @@ use crate::{
     favicon::fetch_favicons,
     http_client::HttpClient,
     protocols::{eth, eth::ankr, TokenType},
-    resources::{CoreResources, CoreResourcesI},
+    resources::CoreResourcesI,
     Error,
 };
 
