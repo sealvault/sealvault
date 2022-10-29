@@ -13,12 +13,12 @@ use url::Url;
 /// Data transfer objects passed through FFI to host languages.
 use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
 use crate::{
-    app_core::CoreResources,
     async_runtime as rt,
     db::models::ListAddressesForDappParams,
     favicon::fetch_favicons,
     http_client::HttpClient,
     protocols::{eth, eth::ankr, TokenType},
+    resources::{CoreResources, CoreResourcesI},
     Error,
 };
 
@@ -92,24 +92,24 @@ pub enum CoreError {
 
 #[derive(Debug)]
 pub struct Assembler {
-    resources: Arc<CoreResources>,
+    resources: Arc<dyn CoreResourcesI>,
 }
 
 impl Assembler {
-    pub fn new(resources: Arc<CoreResources>) -> Self {
+    pub fn new(resources: Arc<dyn CoreResourcesI>) -> Self {
         Self { resources }
     }
 
     fn connection_pool(&self) -> &ConnectionPool {
-        &self.resources.connection_pool
+        self.resources.connection_pool()
     }
 
     fn http_client(&self) -> &HttpClient {
-        &self.resources.http_client
+        self.resources.http_client()
     }
 
     fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
-        &*self.resources.rpc_manager
+        self.resources.rpc_manager()
     }
 
     /// Combine data from multiple sources to create Account data transfer objects.
@@ -260,13 +260,11 @@ impl Assembler {
         &self,
         address_id: &str,
     ) -> Result<(eth::ChainId, m::Address), Error> {
-        self.resources
-            .connection_pool
-            .deferred_transaction(|mut tx_conn| {
-                let address = m::Address::fetch(tx_conn.as_mut(), address_id)?;
-                let chain_id = self.chain_id_for_address(&mut tx_conn, &address)?;
-                Ok((chain_id, address))
-            })
+        self.connection_pool().deferred_transaction(|mut tx_conn| {
+            let address = m::Address::fetch(tx_conn.as_mut(), address_id)?;
+            let chain_id = self.chain_id_for_address(&mut tx_conn, &address)?;
+            Ok((chain_id, address))
+        })
     }
 
     pub fn native_token_for_address(&self, address_id: &str) -> Result<CoreToken, Error> {

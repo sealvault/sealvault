@@ -20,11 +20,14 @@ use typed_builder::TypedBuilder;
 use url::Url;
 
 use crate::{
-    app_core::CoreResources,
     assets, async_runtime as rt, config,
     db::{models as m, ConnectionPool},
+    encryption::Keychain,
     favicon::fetch_favicon_async,
+    http_client::HttpClient,
     protocols::eth,
+    public_suffix_list::PublicSuffixList,
+    resources::{CoreResources, CoreResourcesI},
     ui_callback::{DappSignatureResult, DappTransactionResult, DappTransactionSent},
     CoreError, DappAllotmentTransferResult, Error,
 };
@@ -32,14 +35,14 @@ use crate::{
 #[derive(Debug)]
 #[readonly::make]
 pub(super) struct InPageProvider {
-    resources: Arc<CoreResources>,
+    resources: Arc<dyn CoreResourcesI>,
     request_context: Box<dyn InPageRequestContextI>,
     url: Url,
 }
 
 impl InPageProvider {
     pub(super) fn new(
-        resources: Arc<CoreResources>,
+        resources: Arc<dyn CoreResourcesI>,
         request_context: Box<dyn InPageRequestContextI>,
     ) -> Result<Self, Error> {
         let url = Url::parse(&request_context.page_url())?;
@@ -51,7 +54,23 @@ impl InPageProvider {
     }
 
     fn connection_pool(&self) -> &ConnectionPool {
-        &self.resources.connection_pool
+        self.resources.connection_pool()
+    }
+
+    fn keychain(&self) -> &Keychain {
+        self.resources.keychain()
+    }
+
+    fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
+        self.resources.rpc_manager()
+    }
+
+    fn public_suffix_list(&self) -> &PublicSuffixList {
+        self.resources.public_suffix_list()
+    }
+
+    fn http_client(&self) -> &HttpClient {
+        self.resources.http_client()
     }
 
     // TODO add rate limiting
@@ -264,10 +283,7 @@ impl InPageProvider {
             });
         }
 
-        let provider = self
-            .resources
-            .rpc_manager
-            .eth_api_provider(session.chain_id);
+        let provider = self.rpc_manager().eth_api_provider(session.chain_id);
         provider.proxy_rpc_request_async(method, params).await
     }
 
@@ -322,7 +338,7 @@ impl InPageProvider {
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
         let (account_id, chain_id, chain_settings) = resources
-            .connection_pool
+            .connection_pool()
             .deferred_transaction_async(|mut tx_conn| {
                 let account_id =
                     m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
@@ -338,8 +354,7 @@ impl InPageProvider {
         let url = self.url.clone();
         let callbacks = self.request_context.callbacks();
         let favicon = self.fetch_favicon().await?;
-        let dapp_identifier =
-            m::Dapp::dapp_identifier(url, &self.resources.public_suffix_list)?;
+        let dapp_identifier = m::Dapp::dapp_identifier(url, self.public_suffix_list())?;
         let raw_request =
             serde_json::to_string(request).map_err(|_| Error::Retriable {
                 error: format!("Failed to serialize request id {:?}", request.id),
@@ -408,7 +423,7 @@ impl InPageProvider {
                 let dapp_id = m::Dapp::create_if_not_exists(
                     &mut tx_conn,
                     url,
-                    &resources.public_suffix_list,
+                    resources.public_suffix_list(),
                 )?;
                 let params = m::CreateEthAddressParams::builder()
                     .account_id(&dapp_approval.account_id)
@@ -417,7 +432,7 @@ impl InPageProvider {
                     .build();
                 m::Address::create_eth_key_and_address(
                     &mut tx_conn,
-                    &resources.keychain,
+                    resources.keychain(),
                     &params,
                 )?;
                 let params = m::DappSessionParams::builder()
@@ -458,7 +473,7 @@ impl InPageProvider {
                 )?;
                 let wallet_signing_key = m::Address::fetch_eth_signing_key(
                     &mut tx_conn,
-                    &resources.keychain,
+                    resources.keychain(),
                     &wallet_address_id,
                 )?;
                 Ok((chain_settings, wallet_signing_key))
@@ -475,13 +490,13 @@ impl InPageProvider {
     }
 
     async fn make_default_dapp_allotment_transfer(
-        resources: Arc<CoreResources>,
+        resources: Arc<dyn CoreResourcesI>,
         chain_settings: eth::ChainSettings,
         wallet_signing_key: eth::SigningKey,
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let provider = resources
-            .rpc_manager
+            .rpc_manager()
             .eth_api_provider(wallet_signing_key.chain_id);
         // Call fails if there are insufficient funds.
         let res = async {
@@ -516,7 +531,7 @@ impl InPageProvider {
             match res {
                 Ok(_) => {
                     resources
-                        .ui_callbacks
+                        .ui_callbacks()
                         .dapp_allotment_transfer_result(callback_result);
                 }
                 Err(err) => {
@@ -537,7 +552,7 @@ impl InPageProvider {
                         }
                     }
                     resources
-                        .ui_callbacks
+                        .ui_callbacks()
                         .dapp_allotment_transfer_result(callback_result);
                 }
             }
@@ -558,7 +573,7 @@ impl InPageProvider {
                 let maybe_dapp_id = m::Dapp::fetch_id_for_account(
                     tx_conn.as_mut(),
                     url,
-                    &resources.public_suffix_list,
+                    resources.public_suffix_list(),
                     &account_id,
                 )?;
                 // If the dapp has been added to the account, return an existing session or create one.
@@ -603,10 +618,7 @@ impl InPageProvider {
         // current. MetaMask does this too.
         tx.nonce = None;
 
-        let provider = self
-            .resources
-            .rpc_manager
-            .eth_api_provider(signing_key.chain_id);
+        let provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
 
         let tx_hash_fut = provider.send_transaction_async(&signing_key, tx);
 
@@ -632,7 +644,7 @@ impl InPageProvider {
     }
 
     async fn sent_transaction_callback(
-        resources: Arc<CoreResources>,
+        resources: Arc<dyn CoreResourcesI>,
         session: m::LocalDappSession,
     ) -> Result<m::LocalDappSession, Error> {
         let result = DappTransactionSent::builder()
@@ -641,7 +653,7 @@ impl InPageProvider {
             .build();
         rt::spawn_blocking(move || {
             resources
-                .ui_callbacks
+                .ui_callbacks()
                 .sent_transaction_for_dapp(result.clone());
         })
         .await?;
@@ -649,7 +661,7 @@ impl InPageProvider {
     }
 
     async fn dapp_transaction_result(
-        resources: Arc<CoreResources>,
+        resources: Arc<dyn CoreResourcesI>,
         session: m::LocalDappSession,
         tx_hash: H256,
     ) {
@@ -659,7 +671,7 @@ impl InPageProvider {
             ..
         } = session;
 
-        let rpc_provider = resources.rpc_manager.eth_api_provider(session.chain_id);
+        let rpc_provider = resources.rpc_manager().eth_api_provider(session.chain_id);
         let result = match rpc_provider.wait_for_confirmation_async(tx_hash).await {
             Ok(tx_hash) => {
                 eth::explorer::tx_url(session.chain_id, &tx_hash)
@@ -695,7 +707,7 @@ impl InPageProvider {
         };
         if let Some(result) = result {
             let joined = rt::spawn_blocking(move || {
-                resources.ui_callbacks.dapp_transaction_result(result);
+                resources.ui_callbacks().dapp_transaction_result(result);
             })
             .await;
             if joined.is_err() {
@@ -743,7 +755,7 @@ impl InPageProvider {
     }
 
     async fn personal_sign_callback(
-        resources: Arc<CoreResources>,
+        resources: Arc<dyn CoreResourcesI>,
         session: m::LocalDappSession,
     ) {
         let m::LocalDappSession {
@@ -754,7 +766,7 @@ impl InPageProvider {
             .dapp_identifier(dapp_human_identifier)
             .build();
         let joined = rt::spawn_blocking(move || {
-            resources.ui_callbacks.signed_message_for_dapp(result);
+            resources.ui_callbacks().signed_message_for_dapp(result);
         })
         .await;
         if joined.is_err() {
@@ -787,8 +799,7 @@ impl InPageProvider {
         // If we can parse the chain, then it's supported.
         let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_id.chain_id)?;
 
-        self.resources
-            .connection_pool
+        self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
                 let chain_entity_id =
                     m::Chain::fetch_or_create_eth_chain_id(&mut tx_conn, new_chain_id)?;
@@ -845,7 +856,7 @@ impl InPageProvider {
             .deferred_transaction_async(move |mut tx_conn| {
                 let signing_key = m::Address::fetch_eth_signing_key(
                     &mut tx_conn,
-                    &resources.keychain,
+                    resources.keychain(),
                     &session.address_id,
                 )?;
                 Ok((session, signing_key))
@@ -855,7 +866,7 @@ impl InPageProvider {
     }
 
     async fn fetch_favicon(&self) -> Result<Option<Vec<u8>>, Error> {
-        let client = &self.resources.http_client;
+        let client = self.http_client();
         let favicon = fetch_favicon_async(client, self.url.clone()).await?;
         Ok(favicon)
     }

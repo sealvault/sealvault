@@ -25,6 +25,7 @@ mod error;
 mod favicon;
 mod http_client;
 mod public_suffix_list;
+mod resources;
 mod signatures;
 mod ui_callback;
 mod utils;
