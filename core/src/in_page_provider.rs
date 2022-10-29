@@ -1241,7 +1241,7 @@ mod tests {
     #[test]
     fn responds_on_allowed() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_account_wallets(eth::ChainId::default_dapp_chain())?;
+        core.fund_first_account_wallet(eth::ChainId::default_dapp_chain());
 
         let _ = authorize_dapp(&core)?;
         core.wait_for_ui_callbacks(1);
@@ -1375,7 +1375,7 @@ mod tests {
     #[test]
     fn send_transactions_callback() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_account_wallets(eth::ChainId::default_dapp_chain())?;
+        core.fund_first_account_wallet(eth::ChainId::default_dapp_chain());
 
         let dapp_address = authorize_dapp(&core)?;
         let dapp_address: Address = dapp_address.parse().expect("checksum address");

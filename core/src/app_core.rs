@@ -564,16 +564,22 @@ pub mod tests {
 
         pub fn first_account(&self) -> dto::CoreAccount {
             let accounts = self.core.list_accounts().expect("cannot list accounts");
-            accounts.into_iter().next().expect("no accounts")
+            accounts.into_iter().next().expect("there is one account")
         }
 
-        pub fn fund_account_wallets(&self, chain_id: eth::ChainId) -> Result<()> {
-            let rpc_manager = &self.resources.rpc_manager;
+        pub fn first_account_wallet(&self) -> dto::CoreAddress {
             let account = self.first_account();
-            for wallet in account.wallets {
-                rpc_manager.send_native_token(chain_id, &wallet.checksum_address, 10);
-            }
-            Ok(())
+            account
+                .wallets
+                .into_iter()
+                .next()
+                .expect("there is an account wallet")
+        }
+
+        pub fn fund_first_account_wallet(&self, chain_id: eth::ChainId) {
+            let rpc_manager = &self.resources.rpc_manager;
+            let wallet = self.first_account_wallet();
+            rpc_manager.send_native_token(chain_id, &wallet.checksum_address, 10);
         }
 
         pub fn in_page_provider(&self) -> InPageProvider {
@@ -1109,6 +1115,55 @@ pub mod tests {
         let account_post = tmp.first_account();
         let wallets_post = account_post.wallets;
         assert_eq!(wallets_pre.len() + 1, wallets_post.len());
+
+        Ok(())
+    }
+
+    fn transfer_native_token_args(tmp: &TmpCore) -> EthTransferNativeTokenArgs {
+        let wallet_address = tmp.first_account_wallet();
+        let to_address = ethers::types::Address::random();
+        let to_checksum_address = ethers::utils::to_checksum(&to_address, None);
+        EthTransferNativeTokenArgs::builder()
+            .from_address_id(wallet_address.id)
+            .to_checksum_address(to_checksum_address)
+            .amount_decimal("1".into())
+            .build()
+    }
+
+    #[test]
+    fn eth_transfer_native_token_success_callbacks() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let chain_id = eth::ChainId::default_wallet_chain();
+        tmp.fund_first_account_wallet(chain_id);
+
+        let args = transfer_native_token_args(&tmp);
+        tmp.core.eth_transfer_native_token(args)?;
+
+        tmp.wait_for_ui_callbacks(2);
+        let results = tmp.token_transfer_results();
+        assert_eq!(results.len(), 2);
+        assert!(results[0].error_message.is_none());
+        assert!(results[1].error_message.is_none());
+        assert!(results[1].explorer_url.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn eth_transfer_native_token_error_callbacks() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let args = transfer_native_token_args(&tmp);
+        tmp.core.eth_transfer_native_token(args)?;
+
+        tmp.wait_for_ui_callbacks(1);
+        let results = tmp.token_transfer_results();
+        // This only tests if the tx is outright rejected.
+        assert_eq!(results.len(), 1);
+        assert!(results[0].error_message.is_some());
+        let error_message = results[0].error_message.as_ref().unwrap();
+        assert!(error_message.to_lowercase().contains("funds"));
 
         Ok(())
     }
