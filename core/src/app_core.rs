@@ -253,18 +253,6 @@ impl AppCore {
         Ok(())
     }
 
-    /// Get the block explorer link for a transaction
-    pub fn eth_transaction_block_explorer_url(
-        &self,
-        from_address_id: String,
-        tx_hash: String,
-    ) -> Result<String, CoreError> {
-        let mut conn = self.connection_pool().connection()?;
-        let chain_id = m::Address::fetch_eth_chain_id(&mut conn, &from_address_id)?;
-        let url = eth::explorer::tx_url(chain_id, &tx_hash)?;
-        Ok(url.to_string())
-    }
-
     /// List supported Ethereum chains.
     pub fn list_eth_chains(&self) -> Vec<dto::CoreEthChain> {
         self.assembler().list_eth_chains()

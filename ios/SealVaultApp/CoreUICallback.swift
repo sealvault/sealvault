@@ -13,13 +13,13 @@ class CoreUICallback: CoreUiCallbackI {
 
     func sentTokenTransfer(result: TokenTransferResult) {
         DispatchQueue.main.async {
-            self.model.tokenTransferResult = result
+            self.model.tokenTransferSent = result
         }
     }
 
     func tokenTransferResult(result: TokenTransferResult) {
         DispatchQueue.main.async {
-            self.model.tokenTransferResult = result
+            self.model.tokenTransferConfirmed = result
         }
     }
 

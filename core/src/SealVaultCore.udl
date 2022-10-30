@@ -40,9 +40,6 @@ interface AppCore {
     [Throws=CoreError]
     void eth_transfer_fungible_token(EthTransferFungibleTokenArgs args);
 
-    [Throws=CoreError]
-    string eth_transaction_block_explorer_url(string from_address_id, string tx_hash);
-
     sequence<CoreEthChain> list_eth_chains();
 
     [Throws=CoreError]

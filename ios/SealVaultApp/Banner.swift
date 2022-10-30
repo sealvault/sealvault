@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct BannerData {
+struct BannerData: Equatable {
     var title: String
     var detail: String
     var type: BannerType
@@ -62,19 +62,22 @@ struct BannerModifier: ViewModifier {
                 .padding()
                 .animation(.easeInOut, value: 1.2)
                 .transition(AnyTransition.move(edge: .top).combined(with: .opacity))
-
                 .onTapGesture {
                     withAnimation {
                         self.data = nil
                     }
-                }.onAppear {
+                }
+                .onChange(of: self.data) { newValue in
+                    if let task = self.task, newValue != nil {
+                        task.cancel()
+                    }
                     self.task = DispatchWorkItem {
                         withAnimation {
                             self.data = nil
                         }
                     }
                     // Auto dismiss after 5 seconds, and cancel the task if view disappear before the auto dismiss
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: self.task!)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: self.task!)
                 }
                 .onDisappear {
                     self.task?.cancel()

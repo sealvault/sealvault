@@ -5,7 +5,8 @@
 import Foundation
 
 class CallbackModel: ObservableObject {
-    @Published var tokenTransferResult: TokenTransferResult?
+    @Published var tokenTransferConfirmed: TokenTransferResult?
+    @Published var tokenTransferSent: TokenTransferResult?
     @Published var dappAllotmentResult: DappAllotmentTransferResult?
     @Published var dappSignatureResult: DappSignatureResult?
     @Published var dappTransactionApproved: DappTransactionApproved?
