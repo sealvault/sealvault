@@ -145,7 +145,7 @@ impl RpcProvider {
         to_checksum_address: &str,
         amount_decimal: &str,
         contract_checksum_address: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<H256, Error> {
         let future = self.transfer_fungible_token_async(
             signing_key,
             to_checksum_address,
@@ -161,7 +161,7 @@ impl RpcProvider {
         to_checksum_address: &str,
         amount_decimal: &str,
         contract_checksum_address: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<H256, Error> {
         let contract_address = parse_contract_address(contract_checksum_address)?;
         let to_address: Address = parse_checksum_address(to_checksum_address)?;
 
@@ -182,11 +182,7 @@ impl RpcProvider {
         let pending_tx = contract_call.send().await.map_err(|err| Error::Retriable {
             error: err.to_string(),
         })?;
-        let tx_receipt = pending_tx
-            .await
-            .map_err(tx_failed_with_error)?
-            .ok_or_else(tx_failed_error)?;
-        Ok(display_tx_hash(tx_receipt.transaction_hash))
+        Ok(pending_tx.tx_hash())
     }
 
     pub fn fungible_token_symbol(
@@ -548,7 +544,6 @@ mod tests {
             "1",
             &contract_checksum_address,
         )?;
-        let tx_hash: H256 = tx_hash.parse().unwrap();
         let pending_tx = PendingTransaction::new(tx_hash, &provider);
         let _receipt = rt::block_on(pending_tx)?;
 

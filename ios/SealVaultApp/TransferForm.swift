@@ -255,7 +255,6 @@ struct TransferButton: View {
         state.txExplorerUrl = await dispatchBackground(.userInteractive) {
             do {
                 if let toAddress = state.toChecksumAddress {
-                    var txHash: String?
                     if state.token.nativeToken {
                         let args = EthTransferNativeTokenArgs(
                             fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress,
@@ -263,18 +262,13 @@ struct TransferButton: View {
                         )
                         try core.ethTransferNativeToken(args: args)
                     } else {
-                        txHash = try core.ethTransferFungibleToken(
-                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount,
-                            tokenId: state.token.id
+                        let args = EthTransferFungibleTokenArgs(
+                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress,
+                            amountDecimal: state.amount, tokenId: state.token.id
                         )
+                        try core.ethTransferFungibleToken(args: args)
                     }
-                    guard let txHash = txHash else {
-                        return nil
-                    }
-                    let rawUrl = try core.ethTransactionBlockExplorerUrl(
-                        fromAddressId: state.fromAddress.id, txHash: txHash
-                    )
-                    return URL(string: rawUrl)
+                    return nil
                 } else {
                     return nil
                 }

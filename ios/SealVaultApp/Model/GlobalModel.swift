@@ -217,8 +217,8 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func ethTransferFungibleToken(
-        fromAddressId: String, toChecksumAddress: String, amount: String, tokenId: String
-    ) throws -> String {
+        args: EthTransferFungibleTokenArgs
+    ) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 
