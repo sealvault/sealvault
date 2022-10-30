@@ -401,7 +401,7 @@ fn token_transfer_callbacks(
                 Ok(tx_hash_str) => {
                     let explorer_url = eth::explorer::tx_url(chain_id, &tx_hash_str)?;
                     transfer_res.explorer_url = Some(explorer_url.to_string());
-                    resources.ui_callbacks().sent_token_transfer(transfer_res);
+                    resources.ui_callbacks().token_transfer_result(transfer_res);
                 }
                 Err(err) => handle_token_callback_error(resources, transfer_res, err),
             }
@@ -728,6 +728,14 @@ pub mod tests {
                 .clone()
         }
 
+        pub fn sent_token_transfers(&self) -> Vec<TokenTransferResult> {
+            self.ui_callback_state
+                .sent_token_transfers
+                .read()
+                .unwrap()
+                .clone()
+        }
+
         pub fn token_transfer_results(&self) -> Vec<TokenTransferResult> {
             self.ui_callback_state
                 .token_transfer_results
@@ -777,6 +785,7 @@ pub mod tests {
 
     #[derive(Debug, Default)]
     pub struct UICallbackState {
+        sent_token_transfers: Arc<RwLock<Vec<TokenTransferResult>>>,
         token_transfer_results: Arc<RwLock<Vec<TokenTransferResult>>>,
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
@@ -787,6 +796,7 @@ pub mod tests {
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
+                sent_token_transfers: Arc::new(Default::default()),
                 token_transfer_results: Arc::new(Default::default()),
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
                 dapp_transaction_approved: Arc::new(Default::default()),
@@ -796,11 +806,19 @@ pub mod tests {
         }
 
         fn count(&self) -> usize {
-            self.token_transfer_results.read().unwrap().len()
+            self.sent_token_transfers.read().unwrap().len()
+                + self.token_transfer_results.read().unwrap().len()
                 + self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
                 + self.dapp_transaction_approved.read().unwrap().len()
                 + self.dapp_transaction_results.read().unwrap().len()
+        }
+
+        fn add_token_transfer_sent(&self, result: TokenTransferResult) {
+            {
+                let mut results = self.sent_token_transfers.write().expect("no poison");
+                results.push(result)
+            }
         }
 
         fn add_token_transfer_result(&self, result: TokenTransferResult) {
@@ -860,7 +878,7 @@ pub mod tests {
 
     impl CoreUICallbackI for CoreUICallbackMock {
         fn sent_token_transfer(&self, result: TokenTransferResult) {
-            self.state.add_token_transfer_result(result)
+            self.state.add_token_transfer_sent(result)
         }
 
         fn token_transfer_result(&self, result: TokenTransferResult) {
@@ -1222,11 +1240,12 @@ pub mod tests {
         tmp.core.eth_transfer_native_token(args)?;
 
         tmp.wait_for_ui_callbacks(2);
-        let results = tmp.token_transfer_results();
-        assert_eq!(results.len(), 2);
-        assert!(results[0].error_message.is_none());
-        assert!(results[1].error_message.is_none());
-        assert!(results[1].explorer_url.is_some());
+        let sent_results = tmp.sent_token_transfers();
+        assert_eq!(sent_results.len(), 1);
+        assert!(sent_results[0].error_message.is_none());
+        let transfer_results = tmp.token_transfer_results();
+        assert!(transfer_results[0].error_message.is_none());
+        assert!(transfer_results[0].explorer_url.is_some());
 
         Ok(())
     }
@@ -1238,12 +1257,12 @@ pub mod tests {
         let args = transfer_native_token_args(&tmp);
         tmp.core.eth_transfer_native_token(args)?;
 
-        tmp.wait_for_ui_callbacks(1);
-        let results = tmp.token_transfer_results();
         // This only tests if the tx is outright rejected.
-        assert_eq!(results.len(), 1);
-        assert!(results[0].error_message.is_some());
-        let error_message = results[0].error_message.as_ref().unwrap();
+        tmp.wait_for_ui_callbacks(1);
+        let sent_results = tmp.token_transfer_results();
+        assert_eq!(sent_results.len(), 1);
+        assert!(sent_results[0].error_message.is_some());
+        let error_message = sent_results[0].error_message.as_ref().unwrap();
         assert!(error_message.to_lowercase().contains("funds"));
 
         Ok(())
