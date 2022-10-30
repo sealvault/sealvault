@@ -123,7 +123,6 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       test("eth_requestAccounts", async (method) => {
-        let accountsChanged = blockOnEvent("accountsChanged")
         const accounts = await window.ethereum.request({
           method,
         })
@@ -136,8 +135,6 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
           method,
         })
         assertArrayEq(accounts, accounts_second)
-        accountsChanged = await accountsChanged
-        assertArrayEq(accounts, accountsChanged)
 
         assertEq(accounts[0], ethereum.selectedAddress)
       })

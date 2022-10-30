@@ -471,22 +471,17 @@
       })
 
       ethereum.on("sealVaultConnect", ({ chainId, networkVersion, selectedAddress }) => {
-        state.isConnected = true
-
         if (state.chainId !== chainId) {
-          state.chainId = chainId
           ethereum.emit("chainChanged", chainId)
         }
 
         if (state.networkVersion !== networkVersion) {
-          state.networkVersion = networkVersion
           ethereum.emit("networkChanged", networkVersion)
         }
 
-        if (state.selectedAddress !== selectedAddress) {
-          state.selectedAddress = selectedAddress
-          ethereum.emit("accountsChanged", [selectedAddress])
-        }
+        // Don't trigger "accountsChanged" event as that causes infinite reload
+        // on https://fi.woo.org/
+        state.selectedAddress = selectedAddress
       })
 
       // We never send this event in the current implementation, only here for
@@ -507,6 +502,8 @@
         state.networkVersion = networkVersion
       })
 
+      // We never send this in the current implementation, only here for
+      // completeness.
       ethereum.on("accountsChanged", (accounts) => {
         state.selectedAddress = accounts[0]
       })
