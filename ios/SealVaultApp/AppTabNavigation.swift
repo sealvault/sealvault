@@ -84,7 +84,7 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
-                let detail = "Error: \(errorMessage) on \(res.chainDisplayName)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Sent \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
@@ -98,7 +98,7 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
-                let detail = "Error: \(errorMessage) on \(res.chainDisplayName)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
