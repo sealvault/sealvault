@@ -162,12 +162,7 @@ impl RpcProvider {
         amount_decimal: &str,
         contract_checksum_address: &str,
     ) -> Result<String, Error> {
-        let contract_address: Address = parse_checksum_address(contract_checksum_address)
-            .map_err(|err| match err {
-                // Contract address isn't provided by the user
-                Error::User { explanation } => Error::Retriable { error: explanation },
-                _ => err,
-            })?;
+        let contract_address = parse_contract_address(contract_checksum_address)?;
         let to_address: Address = parse_checksum_address(to_checksum_address)?;
 
         let signer = Arc::new(SignerMiddleware::new(&self.provider, signing_key));
@@ -192,6 +187,30 @@ impl RpcProvider {
             .map_err(tx_failed_with_error)?
             .ok_or_else(tx_failed_error)?;
         Ok(display_tx_hash(tx_receipt.transaction_hash))
+    }
+
+    pub fn fungible_token_symbol(
+        &self,
+        contract_checksum_address: &str,
+    ) -> Result<String, Error> {
+        rt::block_on(self.fungible_token_symbol_async(contract_checksum_address))
+    }
+
+    pub async fn fungible_token_symbol_async(
+        &self,
+        contract_checksum_address: &str,
+    ) -> Result<String, Error> {
+        let contract_address = parse_contract_address(contract_checksum_address)?;
+
+        let provider = Arc::new(self.provider.clone());
+        let contract = ERC20Contract::new(contract_address, provider);
+
+        let contract_call = contract.symbol();
+        let symbol: String =
+            contract_call.call().await.map_err(|err| Error::Retriable {
+                error: err.to_string(),
+            })?;
+        Ok(symbol)
     }
 
     /// Fetch the native token balance for an address.
@@ -262,6 +281,14 @@ impl RpcManagerI for RpcManager {
         let http_endpoint = chain_id.http_rpc_endpoint();
         RpcProvider::new(chain_id, http_endpoint)
     }
+}
+
+fn parse_contract_address(checksum_address: &str) -> Result<Address, Error> {
+    parse_checksum_address(checksum_address).map_err(|err| match err {
+        // Contract address isn't provided by the user
+        Error::User { explanation } => Error::Retriable { error: explanation },
+        _ => err,
+    })
 }
 
 fn display_tx_hash(tx_hash: H256) -> String {
@@ -529,6 +556,21 @@ mod tests {
         let call = contract.balance_of(deployer_address);
         let post_balance = rt::block_on(call.call())?;
         assert_eq!(amount.add(prev_balance), post_balance);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fungible_token_symbol() -> Result<()> {
+        // Deploy ERC20 test contract on Anvil dev node
+        let chain_id = ChainId::EthMainnet;
+        let contract_deployer = TestContractDeployer::init(chain_id);
+        let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
+        let contract_address = to_checksum(&contract_address, None);
+
+        let rpc_provider = contract_deployer.anvil_rpc.eth_api_provider(chain_id);
+        let symbol = rpc_provider.fungible_token_symbol(&contract_address)?;
+        assert_eq!(symbol, "FTT");
 
         Ok(())
     }
