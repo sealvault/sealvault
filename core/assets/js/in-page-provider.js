@@ -429,6 +429,12 @@
           value: true,
           enumerable: true,
         },
+        // Metamask exposes experimental APIs here.
+        // The bnc-onboard package uses this property to test for MM: https://github.com/blocknative/web3-onboard/blob/4ecba80f215c55aeb9fd3903936bdcee7200758e/src/utilities.ts#L378
+        _metamask: {
+          value: {},
+          enumerable: true,
+        },
         chainId: {
           get() {
             return state.chainId
