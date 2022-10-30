@@ -178,7 +178,10 @@ impl InPageProvider {
                 self.eth_send_transaction(request.params, session).await
             }
             "personal_sign" => self.personal_sign(request.params, session).await,
-            "wallet_addEthereumChain" => self.wallet_add_ethereum_chain(request.params),
+            "wallet_addEthereumChain" => {
+                self.wallet_add_ethereum_chain(request.params, session)
+                    .await
+            }
             "wallet_switchEthereumChain" => {
                 self.wallet_switch_ethereum_chain(request.params, session)
                     .await
@@ -760,14 +763,25 @@ impl InPageProvider {
 
     /// We don't support adding chains that aren't supported already, so this is a noop if the chain
     /// is already supported and an error if it isn't.
-    fn wallet_add_ethereum_chain(
+    /// It changes the current chain to the "added" one to follow MetaMask behaviour.
+    async fn wallet_add_ethereum_chain(
         &self,
         params: Option<&serde_json::value::RawValue>,
+        session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         let params = Params::new(params.map(|params| params.get()));
         let chain_params: AddEthereumChainParameter = params.sequence().next()?;
         // If we can parse it, it's a supported chain id which means it was "added".
-        let _chain_id: eth::ChainId = parse_0x_chain_id(&chain_params.chain_id)?;
+        let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_params.chain_id)?;
+
+        // We change the chain automatically, because MM requests user approval to change the chain
+        // after a new one was added:
+        // https://github.com/MetaMask/metamask-mobile/blob/bdb7f37c90e4fc923881a07fca38d4e77c73a579/app/core/RPCMethods/wallet_addEthereumChain.js#L303
+        // This is safe, because we don't allow adding arbitrary chains.
+        // Some dapps depend on this behaviour. See https://github.com/sealvault/sealvault/issues/24
+        // for example.
+        self.change_eth_chain(session, new_chain_id).await?;
+
         // Result should be null on success. We need type annotations for serde.
         let result: Option<String> = None;
         to_value(result)
@@ -781,8 +795,22 @@ impl InPageProvider {
         let params = Params::new(params.map(|params| params.get()));
         let chain_id: SwitchEthereumChainParameter = params.sequence().next()?;
         // If we can parse the chain, then it's supported.
+        // MetaMask returns error code 4902 if the chain has not been added yet so that the dapp can
+        // request adding it. We don't do that, because we don't support adding arbitrary chains.
         let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_id.chain_id)?;
 
+        self.change_eth_chain(session, new_chain_id).await?;
+
+        // Result should be null on success. We need type annotations for serde.
+        let result: Option<String> = None;
+        to_value(result)
+    }
+
+    async fn change_eth_chain(
+        &self,
+        session: m::LocalDappSession,
+        new_chain_id: eth::ChainId,
+    ) -> Result<(), Error> {
         self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
                 let chain_entity_id =
@@ -805,9 +833,7 @@ impl InPageProvider {
 
         self.notify_chain_changed(new_chain_id).await?;
 
-        // Result should be null on success. We need type annotations for serde.
-        let result: Option<String> = None;
-        to_value(result)
+        Ok(())
     }
 
     fn web3_client_version(&self) -> Result<serde_json::Value, Error> {

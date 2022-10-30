@@ -174,8 +174,11 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
       })
 
       test("wallet_addEthereumChain", async (method) => {
+        // MetaMask also changes the chain after adding a new one.
+        let chainChanged = blockOnEvent("chainChanged")
+        const chainId = "0x1"
         let args = {
-          chainId: "0x1",
+          chainId,
           rpcUrls: ["https://mainnet.infura.io/v3/"],
           chainName: "Ethereum",
           nativeCurrency: { name: "Ethereum", decimals: 18, symbol: "ETH" },
@@ -188,6 +191,9 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         })
         // Null means success
         assertEq(result, null)
+
+        const newChainId = await chainChanged
+        assertEq(chainId, newChainId)
       })
 
       test("wallet_switchEthereumChain", async (method) => {
