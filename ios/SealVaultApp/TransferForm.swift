@@ -16,8 +16,6 @@ class TransferState: ObservableObject {
     @Published var amount: String = ""
 
     @Published var processing: Bool = false
-    @Published var txExplorerUrl: URL?
-    @Published var errorMessage: BannerData?
 
     var buttonDisabled: Bool {
         return processing || disableButton || toChecksumAddress == nil || amount == ""
@@ -31,10 +29,6 @@ class TransferState: ObservableObject {
             toChecksumAddress = toExternal
         }
         return toChecksumAddress
-    }
-
-    func setErrorMessage(message: String) {
-        self.errorMessage = BannerData(title: "Error transferring token", detail: message, type: .error)
     }
 
     required init(
@@ -120,7 +114,6 @@ struct TransferForm: View {
                 // Refresh concurrently
                 _ = await (accounts, tokens)
             }
-            .banner(data: self.$state.errorMessage)
         }
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
         .refreshable {
@@ -251,11 +244,10 @@ struct TransferButton: View {
 
     @ObservedObject var state: TransferState
 
-    func makeTransfer() async {
-        state.txExplorerUrl = await dispatchBackground(.userInteractive) {
+    func makeTransfer() async -> Bool {
+        await dispatchBackground(.userInteractive) {
             do {
                 if let toAddress = state.toChecksumAddress {
-                    var txHash: String?
                     if state.token.nativeToken {
                         let args = EthTransferNativeTokenArgs(
                             fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress,
@@ -263,85 +255,54 @@ struct TransferButton: View {
                         )
                         try core.ethTransferNativeToken(args: args)
                     } else {
-                        txHash = try core.ethTransferFungibleToken(
-                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount,
-                            tokenId: state.token.id
+                        let args = EthTransferFungibleTokenArgs(
+                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress,
+                            amountDecimal: state.amount, tokenId: state.token.id
                         )
+                        try core.ethTransferFungibleToken(args: args)
                     }
-                    guard let txHash = txHash else {
-                        return nil
-                    }
-                    let rawUrl = try core.ethTransactionBlockExplorerUrl(
-                        fromAddressId: state.fromAddress.id, txHash: txHash
-                    )
-                    return URL(string: rawUrl)
-                } else {
-                    return nil
                 }
-            } catch CoreError.User(let message) {
-                DispatchQueue.main.async {
-                    self.state.setErrorMessage(message: message)
-                }
-                return nil
-            } catch CoreError.Retriable(let message) {
-                DispatchQueue.main.async {
-                    self.state.setErrorMessage(message: "Something went wrong. Please try again!")
-                }
-                print("Retriable error while transferring token: \(message)")
-                return nil
+                return true
             } catch let error {
-                DispatchQueue.main.async {
-                    self.state.setErrorMessage(message: "An unexpected error occurred. Please restart the application!")
-                }
                 print("\(error)")
-                return nil
+                return false
             }
         }
     }
 
     var body: some View {
-
-        if let url = state.txExplorerUrl {
-            VStack {
-                Button(action: {
-                    UIApplication.shared.open(url)
-                }, label: {
-                    Text("View Successful Transaction")
-                        .frame(maxWidth: .infinity)
-                })
-                .padding()
-                .background(Color.green)
-                .foregroundColor(Color.white)
-                .cornerRadius(cornerRadius)
+        Button(action: {
+            if state.processing {
+                return
             }
-        } else {
-            Button(action: {
-                if state.processing {
-                    return
+            state.processing = true
+            Task {
+                let success = await makeTransfer()
+                // Reset amount so that user doesn't submit twice by accident
+                state.amount = ""
+                state.processing = false
+                if success {
+                    await state.fromAddress.refreshTokens()
                 }
-                Task {
-                    state.processing = true
-                    await makeTransfer()
-                    state.processing = false
-                }
-            }, label: {
-                if state.processing {
-                        HStack {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                            Text("Sending")
-                        }
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Send")
-                            .frame(maxWidth: .infinity)
+            }
+        }, label: {
+            if state.processing {
+                    HStack {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                        Text("Sending")
                     }
-            })
-            .padding()
-            .background(state.buttonDisabled ? Color.secondary : Color.accentColor)
-            .foregroundColor(Color.white)
-            .cornerRadius(cornerRadius)
-        }
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Send")
+                        .frame(maxWidth: .infinity)
+                }
+        })
+        .padding()
+        .background(state.buttonDisabled ? Color.secondary : Color.accentColor)
+        .disabled(state.buttonDisabled)
+        .foregroundColor(Color.white)
+        .cornerRadius(cornerRadius)
     }
 }
 
@@ -356,11 +317,7 @@ struct TransferView_Previews: PreviewProvider {
         let dappAddress = dapp.addressList[0]
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
         let errorState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
-        errorState.setErrorMessage(message: "test message")
-        let sucessSate = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
-        sucessSate.txExplorerUrl = URL(
-            string: "https://etherscan.io/tx/0x24d3df3ce3eab3578e6486ebd6b071da3cc715780a1d0870b19ce8fde8e0f22a"
-        )
+        let sucessState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
         return Group {
             PreviewWrapper(
                 model: model,
@@ -372,7 +329,7 @@ struct TransferView_Previews: PreviewProvider {
             ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
-                state: sucessSate
+                state: sucessState
             ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,

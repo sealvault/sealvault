@@ -7,8 +7,9 @@ abigen!(
     ERC20Contract,
     r#"[
         function balanceOf(address account) external view returns (uint256)
-        function decimals() public view virtual override returns (uint8)
-        function transfer(address to, uint256 amount) public virtual override returns (bool)
+        function decimals() external view returns (uint8)
+        function symbol() external view returns (string memory)
+        function transfer(address to, uint256 amount) external returns (bool)
         event Transfer(address indexed from, address indexed to, uint256 value)
     ]"#,
     event_derives(serde::Deserialize, serde::Serialize)

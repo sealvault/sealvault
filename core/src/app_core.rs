@@ -183,45 +183,13 @@ impl AppCore {
         Ok(())
     }
 
-    fn fetch_eth_signing_key_for_transfer(
-        &self,
-        from_address_id: &str,
-        to_checksum_address: &str,
-    ) -> Result<eth::SigningKey, Error> {
-        let signing_key = self.connection_pool().deferred_transaction(|mut tx_conn| {
-            // Returns NotFoundError if the address is not in the db.
-            let from_account_id =
-                m::Address::fetch_account_id(tx_conn.as_mut(), from_address_id)?;
-            let maybe_to_account_id = m::Address::fetch_account_id_for_eth_address(
-                tx_conn.as_mut(),
-                to_checksum_address,
-            )?;
-
-            // See privacy in developer docs fore more.
-            if maybe_to_account_id.is_some()
-                && Some(from_account_id) != maybe_to_account_id
-            {
-                return Err(Error::User {
-                    explanation: "Cannot transfer between accounts for privacy reasons."
-                        .into(),
-                })?;
-            }
-
-            m::Address::fetch_eth_signing_key(
-                &mut tx_conn,
-                self.keychain(),
-                from_address_id,
-            )
-        })?;
-        Ok(signing_key)
-    }
-
     /// Transfer native token on an Ethereum protocol network.
     pub fn eth_transfer_native_token(
         &self,
         args: EthTransferNativeTokenArgs,
     ) -> Result<(), CoreError> {
-        let signing_key = self.fetch_eth_signing_key_for_transfer(
+        let signing_key = fetch_eth_signing_key_for_transfer(
+            &*self.resources,
             &args.from_address_id,
             &args.to_checksum_address,
         )?;
@@ -239,10 +207,10 @@ impl AppCore {
 
         let resources = self.resources.clone();
         rt::spawn_blocking(move || {
-            let res = Self::token_transfer_callbacks(resources, args, tx_hash_res);
+            let res = token_transfer_callbacks(resources, args.into(), tx_hash_res);
             if let Some(err) = res.err() {
                 log::error!(
-                    "Failed to call token transfer callbacks due to error: {err:?}"
+                    "Failed to call native token transfer callbacks due to error: {err:?}"
                 )
             }
         });
@@ -250,122 +218,39 @@ impl AppCore {
         Ok(())
     }
 
-    fn token_transfer_callbacks(
-        resources: Arc<dyn CoreResourcesI>,
-        args: EthTransferNativeTokenArgs,
-        tx_hash_res: Result<ethers::types::H256, Error>,
-    ) -> Result<(), Error> {
-        let EthTransferNativeTokenArgs {
-            amount_decimal,
-            from_address_id,
-            to_checksum_address,
-        } = args;
-        let (chain_id, mut transfer_res) = resources
-            .connection_pool()
-            .deferred_transaction(move |mut tx_conn| {
-                let chain_id =
-                    m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
-                let maybe_to_id = m::Address::fetch_id_by_checksum_address(
-                    tx_conn.as_mut(),
-                    &to_checksum_address,
-                )?;
-                let to_display_name = if let Some(to_id) = maybe_to_id {
-                    if m::Address::is_account_wallet(tx_conn.as_mut(), &to_id)? {
-                        let account_name =
-                            m::Address::fetch_account_name(tx_conn.as_mut(), &to_id)?;
-                        Ok(format!("{account_name} Account Wallet"))
-                    } else if let Some(dapp_identifier) =
-                        m::Address::dapp_identifier(tx_conn.as_mut(), &to_id)?
-                    {
-                        Ok(dapp_identifier)
-                    } else {
-                        Err(Error::Fatal {
-                            error: format!(
-                                "Address id {to_id} is neither wallet nor dapp address"
-                            ),
-                        })
-                    }
-                } else {
-                    Ok(to_checksum_address)
-                }?;
-                let token_symbol = chain_id.native_token().symbol();
-                let chain_display_name = chain_id.display_name();
-                let res = TokenTransferResult::builder()
-                    .amount(amount_decimal)
-                    .token_symbol(token_symbol)
-                    .chain_display_name(chain_display_name)
-                    .to_display_name(to_display_name)
-                    .build();
-                Ok((chain_id, res))
-            })?;
-        match tx_hash_res {
-            Ok(tx_hash) => {
-                let sent_res = transfer_res.clone();
-                resources.ui_callbacks().sent_token_transfer(sent_res);
-
-                let rpc_provider = resources.rpc_manager().eth_api_provider(chain_id);
-                let confirmation = rpc_provider.wait_for_confirmation(tx_hash);
-                match confirmation {
-                    Ok(tx_hash_str) => {
-                        let explorer_url = eth::explorer::tx_url(chain_id, &tx_hash_str)?;
-                        transfer_res.explorer_url = Some(explorer_url.to_string());
-                        resources.ui_callbacks().sent_token_transfer(transfer_res);
-                    }
-                    Err(err) => {
-                        Self::handle_token_callback_error(resources, transfer_res, err)
-                    }
-                }
-            }
-            Err(err) => Self::handle_token_callback_error(resources, transfer_res, err),
-        };
-        Ok(())
-    }
-
-    fn handle_token_callback_error(
-        resources: Arc<dyn CoreResourcesI>,
-        mut result: TokenTransferResult,
-        err: Error,
-    ) {
-        let error_message = err.message_for_ui_callback();
-        result.error_message = Some(error_message);
-        resources.ui_callbacks().token_transfer_result(result);
-    }
-
     /// Transfer fungible native token on an Ethereum protocol network.
     /// Returns the tx hash that can be used to poll for the result.
     pub fn eth_transfer_fungible_token(
         &self,
-        from_address_id: String,
-        to_checksum_address: String,
-        amount_decimal: String,
-        token_id: String,
-    ) -> Result<String, CoreError> {
+        args: EthTransferFungibleTokenArgs,
+    ) -> Result<(), CoreError> {
         // TODO we use contract address as token id for now, but it should be chain specific
-        let contract_address = &token_id;
-        let signing_key = self
-            .fetch_eth_signing_key_for_transfer(&from_address_id, &to_checksum_address)?;
-
-        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
-        let tx_hash = rpc_provider.transfer_fungible_token(
-            &signing_key,
-            &to_checksum_address,
-            &amount_decimal,
-            contract_address,
+        let contract_address = &args.token_id;
+        let signing_key = fetch_eth_signing_key_for_transfer(
+            &*self.resources,
+            &args.from_address_id,
+            &args.to_checksum_address,
         )?;
 
-        Ok(tx_hash)
-    }
+        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
+        let tx_hash_res = rpc_provider.transfer_fungible_token(
+            &signing_key,
+            &args.to_checksum_address,
+            &args.amount_decimal,
+            contract_address,
+        );
 
-    /// Get the block explorer link for a transaction
-    pub fn eth_transaction_block_explorer_url(
-        &self,
-        from_address_id: String,
-        tx_hash: String,
-    ) -> Result<String, CoreError> {
-        let mut conn = self.connection_pool().connection()?;
-        let chain_id = m::Address::fetch_eth_chain_id(&mut conn, &from_address_id)?;
-        let url = eth::explorer::tx_url(chain_id, &tx_hash)?;
-        Ok(url.to_string())
+        let resources = self.resources.clone();
+        rt::spawn_blocking(move || {
+            let res = token_transfer_callbacks(resources, args.into(), tx_hash_res);
+            if let Some(err) = res.err() {
+                log::error!(
+                    "Failed to call native token transfer callbacks due to error: {err:?}"
+                )
+            }
+        });
+
+        Ok(())
     }
 
     /// List supported Ethereum chains.
@@ -400,6 +285,189 @@ pub struct EthTransferNativeTokenArgs {
     pub from_address_id: String,
     pub to_checksum_address: String,
     pub amount_decimal: String,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct EthTransferFungibleTokenArgs {
+    pub from_address_id: String,
+    pub to_checksum_address: String,
+    pub amount_decimal: String,
+    pub token_id: String,
+}
+
+#[derive(Debug, Clone)]
+struct EthTokenTransferCallbackArgs {
+    pub from_address_id: String,
+    pub to_checksum_address: String,
+    pub amount_decimal: String,
+    pub token_id: Option<String>,
+}
+
+impl From<EthTransferNativeTokenArgs> for EthTokenTransferCallbackArgs {
+    fn from(value: EthTransferNativeTokenArgs) -> Self {
+        let EthTransferNativeTokenArgs {
+            from_address_id,
+            to_checksum_address,
+            amount_decimal,
+        } = value;
+        EthTokenTransferCallbackArgs {
+            from_address_id,
+            to_checksum_address,
+            amount_decimal,
+            token_id: None,
+        }
+    }
+}
+
+impl From<EthTransferFungibleTokenArgs> for EthTokenTransferCallbackArgs {
+    fn from(value: EthTransferFungibleTokenArgs) -> Self {
+        let EthTransferFungibleTokenArgs {
+            from_address_id,
+            to_checksum_address,
+            amount_decimal,
+            token_id,
+        } = value;
+        EthTokenTransferCallbackArgs {
+            from_address_id,
+            to_checksum_address,
+            amount_decimal,
+            token_id: Some(token_id),
+        }
+    }
+}
+
+fn fetch_eth_signing_key_for_transfer(
+    resources: &dyn CoreResourcesI,
+    from_address_id: &str,
+    to_checksum_address: &str,
+) -> Result<eth::SigningKey, Error> {
+    let signing_key = resources.connection_pool().deferred_transaction(
+        |mut tx_conn| {
+            // Returns NotFoundError if the address is not in the db.
+            let from_account_id =
+                m::Address::fetch_account_id(tx_conn.as_mut(), from_address_id)?;
+            let maybe_to_account_id = m::Address::fetch_account_id_for_eth_address(
+                tx_conn.as_mut(),
+                to_checksum_address,
+            )?;
+
+            // See privacy in developer docs fore more.
+            if maybe_to_account_id.is_some()
+                && Some(from_account_id) != maybe_to_account_id
+            {
+                return Err(Error::User {
+                    explanation: "Cannot transfer between accounts for privacy reasons."
+                        .into(),
+                })?;
+            }
+
+            m::Address::fetch_eth_signing_key(
+                &mut tx_conn,
+                resources.keychain(),
+                from_address_id,
+            )
+        },
+    )?;
+    Ok(signing_key)
+}
+
+fn token_transfer_callbacks(
+    resources: Arc<dyn CoreResourcesI>,
+    args: EthTokenTransferCallbackArgs,
+    tx_hash_res: Result<ethers::types::H256, Error>,
+) -> Result<(), Error> {
+    let (chain_id, mut transfer_res) =
+        build_partial_token_transfer_result(resources.clone(), args)?;
+    match tx_hash_res {
+        Ok(tx_hash) => {
+            let sent_res = transfer_res.clone();
+            resources.ui_callbacks().sent_token_transfer(sent_res);
+
+            let rpc_provider = resources.rpc_manager().eth_api_provider(chain_id);
+            let confirmation = rpc_provider.wait_for_confirmation(tx_hash);
+            match confirmation {
+                Ok(tx_hash_str) => {
+                    let explorer_url = eth::explorer::tx_url(chain_id, &tx_hash_str)?;
+                    transfer_res.explorer_url = Some(explorer_url.to_string());
+                    resources.ui_callbacks().token_transfer_result(transfer_res);
+                }
+                Err(err) => handle_token_callback_error(resources, transfer_res, err),
+            }
+        }
+        Err(err) => handle_token_callback_error(resources, transfer_res, err),
+    };
+    Ok(())
+}
+
+fn build_partial_token_transfer_result(
+    resources: Arc<dyn CoreResourcesI>,
+    args: EthTokenTransferCallbackArgs,
+) -> Result<(eth::ChainId, TokenTransferResult), Error> {
+    let EthTokenTransferCallbackArgs {
+        amount_decimal,
+        from_address_id,
+        to_checksum_address,
+        token_id,
+    } = args;
+    let (chain_id, to_display_name) =
+        resources
+            .connection_pool()
+            .deferred_transaction(move |mut tx_conn| {
+                let chain_id =
+                    m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
+                let maybe_to_id = m::Address::fetch_id_by_checksum_address(
+                    tx_conn.as_mut(),
+                    &to_checksum_address,
+                )?;
+                let to_display_name = if let Some(to_id) = maybe_to_id {
+                    if m::Address::is_account_wallet(tx_conn.as_mut(), &to_id)? {
+                        let account_name =
+                            m::Address::fetch_account_name(tx_conn.as_mut(), &to_id)?;
+                        Ok(format!("{account_name} Account Wallet"))
+                    } else if let Some(dapp_identifier) =
+                        m::Address::dapp_identifier(tx_conn.as_mut(), &to_id)?
+                    {
+                        Ok(dapp_identifier)
+                    } else {
+                        Err(Error::Fatal {
+                            error: format!(
+                                "Address id {to_id} is neither wallet nor dapp address"
+                            ),
+                        })
+                    }
+                } else {
+                    Ok(to_checksum_address)
+                }?;
+                Ok((chain_id, to_display_name))
+            })?;
+    let res = if let Some(contract_address) = token_id {
+        let rpc = resources.rpc_manager().eth_api_provider(chain_id);
+        let token_symbol = rpc.fungible_token_symbol(&contract_address)?;
+        TokenTransferResult::builder()
+            .amount(amount_decimal)
+            .token_symbol(token_symbol)
+            .chain_display_name(chain_id.display_name())
+            .to_display_name(to_display_name)
+            .build()
+    } else {
+        TokenTransferResult::builder()
+            .amount(amount_decimal)
+            .token_symbol(chain_id.native_token().symbol())
+            .chain_display_name(chain_id.display_name())
+            .to_display_name(to_display_name)
+            .build()
+    };
+    Ok((chain_id, res))
+}
+
+fn handle_token_callback_error(
+    resources: Arc<dyn CoreResourcesI>,
+    mut result: TokenTransferResult,
+    err: Error,
+) {
+    let error_message = err.message_for_ui_callback();
+    result.error_message = Some(error_message);
+    resources.ui_callbacks().token_transfer_result(result);
 }
 
 #[cfg(test)]
@@ -648,6 +716,14 @@ pub mod tests {
                 .clone()
         }
 
+        pub fn sent_token_transfers(&self) -> Vec<TokenTransferResult> {
+            self.ui_callback_state
+                .sent_token_transfers
+                .read()
+                .unwrap()
+                .clone()
+        }
+
         pub fn token_transfer_results(&self) -> Vec<TokenTransferResult> {
             self.ui_callback_state
                 .token_transfer_results
@@ -697,6 +773,7 @@ pub mod tests {
 
     #[derive(Debug, Default)]
     pub struct UICallbackState {
+        sent_token_transfers: Arc<RwLock<Vec<TokenTransferResult>>>,
         token_transfer_results: Arc<RwLock<Vec<TokenTransferResult>>>,
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
@@ -707,6 +784,7 @@ pub mod tests {
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
+                sent_token_transfers: Arc::new(Default::default()),
                 token_transfer_results: Arc::new(Default::default()),
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
                 dapp_transaction_approved: Arc::new(Default::default()),
@@ -716,11 +794,19 @@ pub mod tests {
         }
 
         fn count(&self) -> usize {
-            self.token_transfer_results.read().unwrap().len()
+            self.sent_token_transfers.read().unwrap().len()
+                + self.token_transfer_results.read().unwrap().len()
                 + self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
                 + self.dapp_transaction_approved.read().unwrap().len()
                 + self.dapp_transaction_results.read().unwrap().len()
+        }
+
+        fn add_token_transfer_sent(&self, result: TokenTransferResult) {
+            {
+                let mut results = self.sent_token_transfers.write().expect("no poison");
+                results.push(result)
+            }
         }
 
         fn add_token_transfer_result(&self, result: TokenTransferResult) {
@@ -780,7 +866,7 @@ pub mod tests {
 
     impl CoreUICallbackI for CoreUICallbackMock {
         fn sent_token_transfer(&self, result: TokenTransferResult) {
-            self.state.add_token_transfer_result(result)
+            self.state.add_token_transfer_sent(result)
         }
 
         fn token_transfer_result(&self, result: TokenTransferResult) {
@@ -1074,12 +1160,13 @@ pub mod tests {
 
         let contract_address: String =
             "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".into();
-        let result = tmp.core.eth_transfer_fungible_token(
-            from_id,
-            to_address,
-            "1".into(),
-            contract_address,
-        );
+        let args = EthTransferFungibleTokenArgs::builder()
+            .from_address_id(from_id)
+            .to_checksum_address(to_address)
+            .amount_decimal("1.".into())
+            .token_id(contract_address)
+            .build();
+        let result = tmp.core.eth_transfer_fungible_token(args);
 
         assert!(matches!(result, Err(CoreError::User {
                 explanation
@@ -1141,11 +1228,12 @@ pub mod tests {
         tmp.core.eth_transfer_native_token(args)?;
 
         tmp.wait_for_ui_callbacks(2);
-        let results = tmp.token_transfer_results();
-        assert_eq!(results.len(), 2);
-        assert!(results[0].error_message.is_none());
-        assert!(results[1].error_message.is_none());
-        assert!(results[1].explorer_url.is_some());
+        let sent_results = tmp.sent_token_transfers();
+        assert_eq!(sent_results.len(), 1);
+        assert!(sent_results[0].error_message.is_none());
+        let transfer_results = tmp.token_transfer_results();
+        assert!(transfer_results[0].error_message.is_none());
+        assert!(transfer_results[0].explorer_url.is_some());
 
         Ok(())
     }
@@ -1157,12 +1245,12 @@ pub mod tests {
         let args = transfer_native_token_args(&tmp);
         tmp.core.eth_transfer_native_token(args)?;
 
-        tmp.wait_for_ui_callbacks(1);
-        let results = tmp.token_transfer_results();
         // This only tests if the tx is outright rejected.
-        assert_eq!(results.len(), 1);
-        assert!(results[0].error_message.is_some());
-        let error_message = results[0].error_message.as_ref().unwrap();
+        tmp.wait_for_ui_callbacks(1);
+        let sent_results = tmp.token_transfer_results();
+        assert_eq!(sent_results.len(), 1);
+        assert!(sent_results[0].error_message.is_some());
+        let error_message = sent_results[0].error_message.as_ref().unwrap();
         assert!(error_message.to_lowercase().contains("funds"));
 
         Ok(())

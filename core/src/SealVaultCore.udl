@@ -38,10 +38,7 @@ interface AppCore {
     void eth_transfer_native_token(EthTransferNativeTokenArgs args);
 
     [Throws=CoreError]
-    string eth_transfer_fungible_token(string from_address_id, string to_checksum_address, string amount, string token_id);
-
-    [Throws=CoreError]
-    string eth_transaction_block_explorer_url(string from_address_id, string tx_hash);
+    void eth_transfer_fungible_token(EthTransferFungibleTokenArgs args);
 
     sequence<CoreEthChain> list_eth_chains();
 
@@ -125,6 +122,13 @@ dictionary EthTransferNativeTokenArgs {
     string from_address_id;
     string to_checksum_address;
     string amount_decimal;
+};
+
+dictionary EthTransferFungibleTokenArgs {
+    string from_address_id;
+    string to_checksum_address;
+    string amount_decimal;
+    string token_id;
 };
 
 dictionary TokenTransferResult {

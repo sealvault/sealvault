@@ -156,7 +156,7 @@ extension Address: Equatable, Hashable {
 
 extension Address {
     var addressDisplay: String {
-        "\(checksumAddress.prefix(5))...\(checksumAddress.suffix(3))"
+        displayChecksumAddress(checksumAddress)
     }
 
     var image: Image {
