@@ -25,20 +25,21 @@ mod error;
 mod favicon;
 mod http_client;
 mod public_suffix_list;
+mod resources;
 mod signatures;
 mod ui_callback;
 mod utils;
 
 // Interfaces defined in SealVaultCore.udl must be exposed directly.
 pub use crate::{
-    app_core::{AppCore, CoreArgs},
+    app_core::{AppCore, CoreArgs, EthTransferNativeTokenArgs},
     dto::{CoreAccount, CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreToken},
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
     protocols::TokenType,
     ui_callback::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
-        DappTransactionResult, DappTransactionSent,
+        DappTransactionApproved, DappTransactionResult, TokenTransferResult,
     },
     utils::uri_fixup,
 };

@@ -7,7 +7,9 @@ use jsonrpsee::types::error::ErrorCode as JsonrpseeErrorCode;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-#[derive(Debug, PartialEq, thiserror::Error)]
+use crate::CoreError;
+
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum Error {
     #[error("Jsonrpc error code: {code} message:\n {message}")]
     JsonRpc {
@@ -24,6 +26,25 @@ pub enum Error {
     /// An error where the message can be presented directly to the user.
     #[error("{explanation}")]
     User { explanation: String },
+}
+
+impl Error {
+    pub fn message_for_ui_callback(self) -> String {
+        // JSON-RPC errors are turned into user errors in CoreError if they're
+        // presentable to users.
+        let err: CoreError = self.into();
+        match err {
+            CoreError::User { explanation } => explanation,
+            CoreError::Retriable { error } => {
+                log::error!("Retriable error sending token: {error:?}");
+                "An unexpected error occurred. Please try again!".into()
+            }
+            CoreError::Fatal { error } => {
+                log::error!("Fatal error sending token: {error:?}");
+                "An unexpected error occurred. Please restart the application and try again!".into()
+            }
+        }
+    }
 }
 
 // We don't use anyhow for `UnexpectedError` in order to have a single place where

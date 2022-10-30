@@ -132,7 +132,7 @@ struct DappApprovalHeader: View {
             DisclosureGroup(isExpanded: $showDisclosure, content: {
                 Toggle(isOn: $transferAllotment) {
                     Text("""
-    Transfer \(request.params.amount) \(request.params.tokenSymbol) on \(request.params.chainDisplayName) to new
+    Transfer \(request.params.amount) \(request.params.tokenSymbol) on \(request.params.chainDisplayName) to new \
     dapp address.
     """).font(.callout)
                 }

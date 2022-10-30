@@ -11,6 +11,18 @@ class CoreUICallback: CoreUiCallbackI {
         self.model = model
     }
 
+    func sentTokenTransfer(result: TokenTransferResult) {
+        DispatchQueue.main.async {
+            self.model.tokenTransferResult = result
+        }
+    }
+
+    func tokenTransferResult(result: TokenTransferResult) {
+        DispatchQueue.main.async {
+            self.model.tokenTransferResult = result
+        }
+    }
+
     func dappAllotmentTransferResult(result: DappAllotmentTransferResult) {
         DispatchQueue.main.async {
             self.model.dappAllotmentResult = result
@@ -23,9 +35,9 @@ class CoreUICallback: CoreUiCallbackI {
         }
     }
 
-    func sentTransactionForDapp(result: DappTransactionSent) {
+    func approvedDappTransaction(result: DappTransactionApproved) {
         DispatchQueue.main.async {
-            self.model.dappTransactionSent = result
+            self.model.dappTransactionApproved = result
         }
     }
 

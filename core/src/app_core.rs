@@ -4,7 +4,10 @@
 
 use std::{fmt::Debug, sync::Arc};
 
+use typed_builder::TypedBuilder;
+
 use crate::{
+    async_runtime as rt,
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
@@ -16,6 +19,8 @@ use crate::{
     in_page_provider::{InPageProvider, InPageRequestContextI},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
+    resources::{CoreResources, CoreResourcesI},
+    ui_callback::TokenTransferResult,
     CoreError, CoreUICallbackI, DappApprovalParams,
 };
 
@@ -26,8 +31,9 @@ use crate::{
 /// No async interfaces, because concurrency is managed by the host languages.
 #[derive(Debug)]
 pub struct AppCore {
-    resources: Arc<CoreResources>,
+    resources: Arc<dyn CoreResourcesI>,
 }
+
 impl AppCore {
     // UI callbacks cannot be part of the args struct, because Uniffi expects it to be hashable
     // then.
@@ -36,19 +42,33 @@ impl AppCore {
         ui_callbacks: Box<dyn CoreUICallbackI>,
     ) -> Result<Self, CoreError> {
         let rpc_manager = Box::new(eth::RpcManager::new());
-        Self::new_with_overrides(args, ui_callbacks, rpc_manager)
+        let connection_pool = ConnectionPool::new(&args.db_file_path)?;
+        let keychain = Keychain::new();
+        let public_suffix_list = PublicSuffixList::new()?;
+        let http_client = HttpClient::new(args.cache_dir);
+
+        let resources = CoreResources::builder()
+            .ui_callbacks(ui_callbacks)
+            .rpc_manager(rpc_manager)
+            .connection_pool(connection_pool)
+            .keychain(keychain)
+            .http_client(http_client)
+            .public_suffix_list(public_suffix_list)
+            .build();
+
+        Self::new_with_overrides(Arc::new(resources))
     }
 
     fn connection_pool(&self) -> &ConnectionPool {
-        &self.resources.connection_pool
+        self.resources.connection_pool()
     }
 
     fn keychain(&self) -> &Keychain {
-        &self.resources.keychain
+        self.resources.keychain()
     }
 
     fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
-        &*self.resources.rpc_manager
+        self.resources.rpc_manager()
     }
 
     fn assembler(&self) -> dto::Assembler {
@@ -57,35 +77,17 @@ impl AppCore {
 
     /// Let us mock functionality. Not exposed through FFI.
     pub fn new_with_overrides(
-        args: CoreArgs,
-        ui_callbacks: Box<dyn CoreUICallbackI>,
-        rpc_manager: Box<dyn eth::RpcManagerI>,
+        resources: Arc<dyn CoreResourcesI>,
     ) -> Result<Self, CoreError> {
-        let connection_pool = ConnectionPool::new(&args.db_file_path)?;
-
-        let keychain = Keychain::new();
-
         // Run DB schema migrations and data migrations that haven't been applied yet.
-        connection_pool.exclusive_transaction(|mut tx_conn| {
-            run_migrations(&mut tx_conn)?;
-            data_migrations::run_all(tx_conn, &keychain)
-        })?;
+        resources
+            .connection_pool()
+            .exclusive_transaction(|mut tx_conn| {
+                run_migrations(&mut tx_conn)?;
+                data_migrations::run_all(tx_conn, resources.keychain())
+            })?;
 
-        let public_suffix_list = PublicSuffixList::new()?;
-
-        let http_client = HttpClient::new(args.cache_dir);
-        let resources = CoreResources {
-            ui_callbacks,
-            rpc_manager,
-            connection_pool,
-            keychain,
-            http_client,
-            public_suffix_list,
-        };
-
-        Ok(AppCore {
-            resources: Arc::new(resources),
-        })
+        Ok(AppCore { resources })
     }
 
     pub fn list_accounts(&self) -> Result<Vec<dto::CoreAccount>, CoreError> {
@@ -215,28 +217,118 @@ impl AppCore {
     }
 
     /// Transfer native token on an Ethereum protocol network.
-    /// Returns the tx hash that can be used to poll for the result.
     pub fn eth_transfer_native_token(
         &self,
-        from_address_id: String,
-        to_checksum_address: String,
-        amount_decimal: String,
-    ) -> Result<String, CoreError> {
-        let signing_key = self
-            .fetch_eth_signing_key_for_transfer(&from_address_id, &to_checksum_address)?;
+        args: EthTransferNativeTokenArgs,
+    ) -> Result<(), CoreError> {
+        let signing_key = self.fetch_eth_signing_key_for_transfer(
+            &args.from_address_id,
+            &args.to_checksum_address,
+        )?;
 
         let amount = eth::NativeTokenAmount::new_from_decimal(
             signing_key.chain_id,
-            &amount_decimal,
+            &args.amount_decimal,
         )?;
         let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
-        let tx_hash = rpc_provider.transfer_native_token(
+        let tx_hash_res = rpc_provider.transfer_native_token(
             &signing_key,
-            &to_checksum_address,
+            &args.to_checksum_address,
             &amount,
-        )?;
+        );
 
-        Ok(tx_hash)
+        let resources = self.resources.clone();
+        rt::spawn_blocking(move || {
+            let res = Self::token_transfer_callbacks(resources, args, tx_hash_res);
+            if let Some(err) = res.err() {
+                log::error!(
+                    "Failed to call token transfer callbacks due to error: {err:?}"
+                )
+            }
+        });
+
+        Ok(())
+    }
+
+    fn token_transfer_callbacks(
+        resources: Arc<dyn CoreResourcesI>,
+        args: EthTransferNativeTokenArgs,
+        tx_hash_res: Result<ethers::types::H256, Error>,
+    ) -> Result<(), Error> {
+        let EthTransferNativeTokenArgs {
+            amount_decimal,
+            from_address_id,
+            to_checksum_address,
+        } = args;
+        let (chain_id, mut transfer_res) = resources
+            .connection_pool()
+            .deferred_transaction(move |mut tx_conn| {
+                let chain_id =
+                    m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
+                let maybe_to_id = m::Address::fetch_id_by_checksum_address(
+                    tx_conn.as_mut(),
+                    &to_checksum_address,
+                )?;
+                let to_display_name = if let Some(to_id) = maybe_to_id {
+                    if m::Address::is_account_wallet(tx_conn.as_mut(), &to_id)? {
+                        let account_name =
+                            m::Address::fetch_account_name(tx_conn.as_mut(), &to_id)?;
+                        Ok(format!("{account_name} Account Wallet"))
+                    } else if let Some(dapp_identifier) =
+                        m::Address::dapp_identifier(tx_conn.as_mut(), &to_id)?
+                    {
+                        Ok(dapp_identifier)
+                    } else {
+                        Err(Error::Fatal {
+                            error: format!(
+                                "Address id {to_id} is neither wallet nor dapp address"
+                            ),
+                        })
+                    }
+                } else {
+                    Ok(to_checksum_address)
+                }?;
+                let token_symbol = chain_id.native_token().symbol();
+                let chain_display_name = chain_id.display_name();
+                let res = TokenTransferResult::builder()
+                    .amount(amount_decimal)
+                    .token_symbol(token_symbol)
+                    .chain_display_name(chain_display_name)
+                    .to_display_name(to_display_name)
+                    .build();
+                Ok((chain_id, res))
+            })?;
+        match tx_hash_res {
+            Ok(tx_hash) => {
+                let sent_res = transfer_res.clone();
+                resources.ui_callbacks().sent_token_transfer(sent_res);
+
+                let rpc_provider = resources.rpc_manager().eth_api_provider(chain_id);
+                let confirmation = rpc_provider.wait_for_confirmation(tx_hash);
+                match confirmation {
+                    Ok(tx_hash_str) => {
+                        let explorer_url = eth::explorer::tx_url(chain_id, &tx_hash_str)?;
+                        transfer_res.explorer_url = Some(explorer_url.to_string());
+                        resources.ui_callbacks().sent_token_transfer(transfer_res);
+                    }
+                    Err(err) => {
+                        Self::handle_token_callback_error(resources, transfer_res, err)
+                    }
+                }
+            }
+            Err(err) => Self::handle_token_callback_error(resources, transfer_res, err),
+        };
+        Ok(())
+    }
+
+    fn handle_token_callback_error(
+        resources: Arc<dyn CoreResourcesI>,
+        mut result: TokenTransferResult,
+        err: Error,
+    ) {
+        let error_message = err.message_for_ui_callback();
+        result.error_message = Some(error_message);
+        resources.ui_callbacks().token_transfer_result(result);
     }
 
     /// Transfer fungible native token on an Ethereum protocol network.
@@ -297,22 +389,17 @@ impl AppCore {
     }
 }
 
-// All Send + Sync. Grouped in this struct to simplify getting an Arc to all.
-#[derive(Debug)]
-#[readonly::make]
-pub struct CoreResources {
-    pub ui_callbacks: Box<dyn CoreUICallbackI>,
-    pub connection_pool: ConnectionPool,
-    pub keychain: Keychain,
-    pub http_client: HttpClient,
-    pub rpc_manager: Box<dyn eth::RpcManagerI>,
-    pub public_suffix_list: PublicSuffixList,
-}
-
 #[derive(Debug)]
 pub struct CoreArgs {
     pub cache_dir: String,
     pub db_file_path: String,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct EthTransferNativeTokenArgs {
+    pub from_address_id: String,
+    pub to_checksum_address: String,
+    pub amount_decimal: String,
 }
 
 #[cfg(test)]
@@ -329,8 +416,8 @@ pub mod tests {
     use super::*;
     use crate::{
         protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
-        DappApprovalParams, DappSignatureResult, DappTransactionResult,
-        DappTransactionSent,
+        DappApprovalParams, DappSignatureResult, DappTransactionApproved,
+        DappTransactionResult,
     };
 
     #[readonly::make]
@@ -341,6 +428,43 @@ pub mod tests {
         pub tmp_dir: TempDir,
         pub cache_dir: String,
         pub db_file_path: String,
+    }
+
+    #[derive(Debug, TypedBuilder)]
+    #[readonly::make]
+    pub struct CoreResourcesMock {
+        ui_callbacks: Box<CoreUICallbackMock>,
+        connection_pool: ConnectionPool,
+        keychain: Keychain,
+        http_client: HttpClient,
+        rpc_manager: Box<eth::AnvilRpcManager>,
+        public_suffix_list: PublicSuffixList,
+    }
+
+    impl CoreResourcesI for CoreResourcesMock {
+        fn ui_callbacks(&self) -> &dyn CoreUICallbackI {
+            &*self.ui_callbacks
+        }
+
+        fn connection_pool(&self) -> &ConnectionPool {
+            &self.connection_pool
+        }
+
+        fn keychain(&self) -> &Keychain {
+            &self.keychain
+        }
+
+        fn http_client(&self) -> &HttpClient {
+            &self.http_client
+        }
+
+        fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
+            &*self.rpc_manager
+        }
+
+        fn public_suffix_list(&self) -> &PublicSuffixList {
+            &self.public_suffix_list
+        }
     }
 
     impl TmpCoreDir {
@@ -384,7 +508,8 @@ pub mod tests {
         #[allow(dead_code)]
         tmp_dir: TmpCoreDir,
         ui_callback_state: Arc<UICallbackState>,
-        in_page_callback_state: Arc<InPageCallbackState>,
+        in_page_callback_state: Arc<InPageCallbackStateMock>,
+        resources: Arc<CoreResourcesMock>,
     }
 
     // For polling callback responses.
@@ -399,29 +524,34 @@ pub mod tests {
             let tmp_dir = TmpCoreDir::new()?;
 
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
-
             let ui_callback_state = Arc::new(UICallbackState::new());
             let ui_callbacks =
                 Box::new(CoreUICallbackMock::new(ui_callback_state.clone()));
+            let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;
+            let keychain = Keychain::new();
+            let http_client = HttpClient::new(tmp_dir.cache_dir.clone());
+            let public_suffix_list = PublicSuffixList::new()?;
 
-            let core_args = CoreArgs {
-                cache_dir: tmp_dir.cache_dir.clone(),
-                db_file_path: tmp_dir.db_file_path.clone(),
-            };
-            let core = Arc::new(AppCore::new_with_overrides(
-                core_args,
-                ui_callbacks,
-                rpc_manager,
-            )?);
+            let resources = CoreResourcesMock::builder()
+                .ui_callbacks(ui_callbacks)
+                .rpc_manager(rpc_manager)
+                .connection_pool(connection_pool)
+                .keychain(keychain)
+                .http_client(http_client)
+                .public_suffix_list(public_suffix_list)
+                .build();
+            let resources = Arc::new(resources);
+            let core = Arc::new(AppCore::new_with_overrides(resources.clone())?);
 
             let page_url = Url::parse("https://example.com").expect("static url ok");
             let in_page_callback_state =
-                Arc::new(InPageCallbackState::new(core.clone(), page_url));
+                Arc::new(InPageCallbackStateMock::new(core.clone(), page_url));
             Ok(TmpCore {
                 core,
                 tmp_dir,
                 ui_callback_state,
                 in_page_callback_state,
+                resources,
             })
         }
 
@@ -434,7 +564,22 @@ pub mod tests {
 
         pub fn first_account(&self) -> dto::CoreAccount {
             let accounts = self.core.list_accounts().expect("cannot list accounts");
-            accounts.into_iter().next().expect("no accounts")
+            accounts.into_iter().next().expect("there is one account")
+        }
+
+        pub fn first_account_wallet(&self) -> dto::CoreAddress {
+            let account = self.first_account();
+            account
+                .wallets
+                .into_iter()
+                .next()
+                .expect("there is an account wallet")
+        }
+
+        pub fn fund_first_account_wallet(&self, chain_id: eth::ChainId) {
+            let rpc_manager = &self.resources.rpc_manager;
+            let wallet = self.first_account_wallet();
+            rpc_manager.send_native_token(chain_id, &wallet.checksum_address, 10);
         }
 
         pub fn in_page_provider(&self) -> InPageProvider {
@@ -443,7 +588,7 @@ pub mod tests {
                 self.in_page_callback_state.clone(),
             ));
 
-            InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
+            InPageProvider::new(self.resources.clone(), context).expect("url valid")
         }
 
         pub fn in_page_provider_with_args(
@@ -455,7 +600,7 @@ pub mod tests {
                 self.in_page_callback_state.clone(),
             ));
 
-            InPageProvider::new(self.core.resources.clone(), context).expect("url valid")
+            InPageProvider::new(self.resources.clone(), context).expect("url valid")
         }
 
         pub fn wait_for_first_in_page_response(&self) {
@@ -503,11 +648,35 @@ pub mod tests {
                 .clone()
         }
 
+        pub fn token_transfer_results(&self) -> Vec<TokenTransferResult> {
+            self.ui_callback_state
+                .token_transfer_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
         pub fn dapp_allotment_transfer_results(
             &self,
         ) -> Vec<DappAllotmentTransferResult> {
             self.ui_callback_state
                 .dapp_allotment_transfer_results
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn dapp_tx_approvals(&self) -> Vec<DappTransactionApproved> {
+            self.ui_callback_state
+                .dapp_transaction_approved
+                .read()
+                .unwrap()
+                .clone()
+        }
+
+        pub fn dapp_tx_results(&self) -> Vec<DappTransactionResult> {
+            self.ui_callback_state
+                .dapp_transaction_results
                 .read()
                 .unwrap()
                 .clone()
@@ -528,27 +697,37 @@ pub mod tests {
 
     #[derive(Debug, Default)]
     pub struct UICallbackState {
+        token_transfer_results: Arc<RwLock<Vec<TokenTransferResult>>>,
         dapp_allotment_transfer_results: Arc<RwLock<Vec<DappAllotmentTransferResult>>>,
-        dapp_transaction_sent: Arc<RwLock<Vec<DappTransactionSent>>>,
         dapp_signature_results: Arc<RwLock<Vec<DappSignatureResult>>>,
+        dapp_transaction_approved: Arc<RwLock<Vec<DappTransactionApproved>>>,
         dapp_transaction_results: Arc<RwLock<Vec<DappTransactionResult>>>,
     }
 
     impl UICallbackState {
         pub fn new() -> Self {
             Self {
+                token_transfer_results: Arc::new(Default::default()),
                 dapp_allotment_transfer_results: Arc::new(Default::default()),
-                dapp_transaction_sent: Arc::new(Default::default()),
+                dapp_transaction_approved: Arc::new(Default::default()),
                 dapp_signature_results: Arc::new(Default::default()),
                 dapp_transaction_results: Arc::new(Default::default()),
             }
         }
 
         fn count(&self) -> usize {
-            self.dapp_allotment_transfer_results.read().unwrap().len()
+            self.token_transfer_results.read().unwrap().len()
+                + self.dapp_allotment_transfer_results.read().unwrap().len()
                 + self.dapp_signature_results.read().unwrap().len()
-                + self.dapp_transaction_sent.read().unwrap().len()
+                + self.dapp_transaction_approved.read().unwrap().len()
                 + self.dapp_transaction_results.read().unwrap().len()
+        }
+
+        fn add_token_transfer_result(&self, result: TokenTransferResult) {
+            {
+                let mut results = self.token_transfer_results.write().expect("no poison");
+                results.push(result)
+            }
         }
 
         fn add_dapp_allotment_transfer_result(
@@ -571,9 +750,10 @@ pub mod tests {
             }
         }
 
-        fn add_dapp_transaction_sent(&self, result: DappTransactionSent) {
+        fn add_dapp_transaction_approved(&self, result: DappTransactionApproved) {
             {
-                let mut results = self.dapp_transaction_sent.write().expect("no poison");
+                let mut results =
+                    self.dapp_transaction_approved.write().expect("no poison");
                 results.push(result)
             }
         }
@@ -599,6 +779,14 @@ pub mod tests {
     }
 
     impl CoreUICallbackI for CoreUICallbackMock {
+        fn sent_token_transfer(&self, result: TokenTransferResult) {
+            self.state.add_token_transfer_result(result)
+        }
+
+        fn token_transfer_result(&self, result: TokenTransferResult) {
+            self.state.add_token_transfer_result(result)
+        }
+
         fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
             self.state.add_dapp_allotment_transfer_result(result)
         }
@@ -607,8 +795,8 @@ pub mod tests {
             self.state.add_dapp_signature_result(result)
         }
 
-        fn sent_transaction_for_dapp(&self, result: DappTransactionSent) {
-            self.state.add_dapp_transaction_sent(result)
+        fn approved_dapp_transaction(&self, result: DappTransactionApproved) {
+            self.state.add_dapp_transaction_approved(result)
         }
 
         fn dapp_transaction_result(&self, result: DappTransactionResult) {
@@ -617,7 +805,7 @@ pub mod tests {
     }
 
     #[derive(Debug)]
-    pub struct InPageCallbackState {
+    pub struct InPageCallbackStateMock {
         core: Arc<AppCore>,
         dapp_approval: Arc<RwLock<Option<DappApprovalParams>>>,
         responses: Arc<RwLock<Vec<String>>>,
@@ -625,7 +813,7 @@ pub mod tests {
         page_url: Url,
     }
 
-    impl InPageCallbackState {
+    impl InPageCallbackStateMock {
         pub fn new(core: Arc<AppCore>, page_url: Url) -> Self {
             Self {
                 core,
@@ -690,7 +878,7 @@ pub mod tests {
     impl InPageRequestContextMock {
         pub fn new(
             args: InPageRequestContextMockArgs,
-            state: Arc<InPageCallbackState>,
+            state: Arc<InPageCallbackStateMock>,
         ) -> Self {
             Self {
                 page_url: "https://example.com".into(),
@@ -712,13 +900,13 @@ pub mod tests {
     #[derive(Debug, Clone)]
     pub struct CoreInPageCallbackMock {
         args: InPageRequestContextMockArgs,
-        state: Arc<InPageCallbackState>,
+        state: Arc<InPageCallbackStateMock>,
     }
 
     impl CoreInPageCallbackMock {
         pub fn new(
             args: InPageRequestContextMockArgs,
-            state: Arc<InPageCallbackState>,
+            state: Arc<InPageCallbackStateMock>,
         ) -> Self {
             Self { state, args }
         }
@@ -820,7 +1008,7 @@ pub mod tests {
     }
 
     fn setup_accounts(core: &AppCore) -> Result<(String, String)> {
-        let keychain = &core.resources.keychain;
+        let keychain = core.resources.keychain();
 
         let accounts = core.create_account("account-two".into(), "pug-yellow".into())?;
         assert_eq!(accounts.len(), 2);
@@ -863,10 +1051,13 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let (from_id, to_address) = setup_accounts(&tmp.core)?;
+        let args = EthTransferNativeTokenArgs::builder()
+            .from_address_id(from_id)
+            .to_checksum_address(to_address)
+            .amount_decimal("1".into())
+            .build();
 
-        let result = tmp
-            .core
-            .eth_transfer_native_token(from_id, to_address, "1".into());
+        let result = tmp.core.eth_transfer_native_token(args);
 
         assert!(matches!(result, Err(CoreError::User {
                 explanation
@@ -924,6 +1115,55 @@ pub mod tests {
         let account_post = tmp.first_account();
         let wallets_post = account_post.wallets;
         assert_eq!(wallets_pre.len() + 1, wallets_post.len());
+
+        Ok(())
+    }
+
+    fn transfer_native_token_args(tmp: &TmpCore) -> EthTransferNativeTokenArgs {
+        let wallet_address = tmp.first_account_wallet();
+        let to_address = ethers::types::Address::random();
+        let to_checksum_address = ethers::utils::to_checksum(&to_address, None);
+        EthTransferNativeTokenArgs::builder()
+            .from_address_id(wallet_address.id)
+            .to_checksum_address(to_checksum_address)
+            .amount_decimal("1".into())
+            .build()
+    }
+
+    #[test]
+    fn eth_transfer_native_token_success_callbacks() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let chain_id = eth::ChainId::default_wallet_chain();
+        tmp.fund_first_account_wallet(chain_id);
+
+        let args = transfer_native_token_args(&tmp);
+        tmp.core.eth_transfer_native_token(args)?;
+
+        tmp.wait_for_ui_callbacks(2);
+        let results = tmp.token_transfer_results();
+        assert_eq!(results.len(), 2);
+        assert!(results[0].error_message.is_none());
+        assert!(results[1].error_message.is_none());
+        assert!(results[1].explorer_url.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn eth_transfer_native_token_error_callbacks() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let args = transfer_native_token_args(&tmp);
+        tmp.core.eth_transfer_native_token(args)?;
+
+        tmp.wait_for_ui_callbacks(1);
+        let results = tmp.token_transfer_results();
+        // This only tests if the tx is outright rejected.
+        assert_eq!(results.len(), 1);
+        assert!(results[0].error_message.is_some());
+        let error_message = results[0].error_message.as_ref().unwrap();
+        assert!(error_message.to_lowercase().contains("funds"));
 
         Ok(())
     }

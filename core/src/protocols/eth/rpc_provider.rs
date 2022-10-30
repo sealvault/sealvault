@@ -81,11 +81,7 @@ impl RpcProvider {
         let pending_tx = signer
             .send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest)))
             .await?;
-        let tx_receipt = pending_tx
-            .await
-            .map_err(tx_failed_with_error)?
-            .ok_or_else(tx_failed_error)?;
-        Ok(tx_receipt.transaction_hash)
+        Ok(pending_tx.tx_hash())
     }
 
     fn verify_chain_ids(
@@ -113,7 +109,7 @@ impl RpcProvider {
         signing_key: &SigningKey,
         to_checksum_address: &str,
         amount: &NativeTokenAmount,
-    ) -> Result<String, Error> {
+    ) -> Result<H256, Error> {
         rt::block_on(self.transfer_native_token_async(
             signing_key,
             to_checksum_address,
@@ -126,7 +122,7 @@ impl RpcProvider {
         signing_key: &SigningKey,
         to_checksum_address: &str,
         amount: &NativeTokenAmount,
-    ) -> Result<String, Error> {
+    ) -> Result<H256, Error> {
         self.verify_chain_ids(signing_key, amount.chain_id)?;
 
         let to_address = parse_checksum_address(to_checksum_address)?;
@@ -140,7 +136,7 @@ impl RpcProvider {
 
         let tx_hash = self.send_transaction_async(signing_key, tx).await?;
 
-        Ok(display_tx_hash(tx_hash))
+        Ok(tx_hash)
     }
 
     pub fn transfer_fungible_token(
@@ -219,7 +215,14 @@ impl RpcProvider {
         Ok(amount)
     }
 
-    pub async fn wait_for_confirmation(&self, tx_hash: H256) -> Result<String, Error> {
+    pub fn wait_for_confirmation(&self, tx_hash: H256) -> Result<String, Error> {
+        rt::block_on(self.wait_for_confirmation_async(tx_hash))
+    }
+
+    pub async fn wait_for_confirmation_async(
+        &self,
+        tx_hash: H256,
+    ) -> Result<String, Error> {
         let pending_tx = PendingTransaction::new(tx_hash, &self.provider);
         let tx_receipt = pending_tx
             .await
@@ -465,10 +468,7 @@ mod tests {
             &amount,
         )?;
 
-        rt::block_on(PendingTransaction::new(
-            tx_hash.parse()?,
-            &rpc_provider.provider,
-        ))?;
+        rt::block_on(PendingTransaction::new(tx_hash, &rpc_provider.provider))?;
 
         let balance_receiver =
             rt::block_on(rpc_provider.provider.get_balance(receiver_address, None))?;

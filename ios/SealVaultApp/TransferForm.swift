@@ -255,16 +255,21 @@ struct TransferButton: View {
         state.txExplorerUrl = await dispatchBackground(.userInteractive) {
             do {
                 if let toAddress = state.toChecksumAddress {
-                    var txHash: String
+                    var txHash: String?
                     if state.token.nativeToken {
-                        txHash = try core.ethTransferNativeToken(
-                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount
+                        let args = EthTransferNativeTokenArgs(
+                            fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress,
+                            amountDecimal: state.amount
                         )
+                        try core.ethTransferNativeToken(args: args)
                     } else {
                         txHash = try core.ethTransferFungibleToken(
                             fromAddressId: state.fromAddress.id, toChecksumAddress: toAddress, amount: state.amount,
                             tokenId: state.token.id
                         )
+                    }
+                    guard let txHash = txHash else {
+                        return nil
                     }
                     let rawUrl = try core.ethTransactionBlockExplorerUrl(
                         fromAddressId: state.fromAddress.id, txHash: txHash
@@ -356,7 +361,6 @@ struct TransferView_Previews: PreviewProvider {
         sucessSate.txExplorerUrl = URL(
             string: "https://etherscan.io/tx/0x24d3df3ce3eab3578e6486ebd6b071da3cc715780a1d0870b19ce8fde8e0f22a"
         )
-
         return Group {
             PreviewWrapper(
                 model: model,

@@ -102,7 +102,7 @@ struct AppTabNavigationInner: View {
             let detail = "Automatic approval is safe because it has its own address."
             banner = BannerData(title: title, detail: detail, type: .success)
         }
-        .onChange(of: callbackModel.dappTransactionSent) { val in
+        .onChange(of: callbackModel.dappTransactionApproved) { val in
             guard let res = val else {
                 return
             }
@@ -201,7 +201,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
 
         let callbackSentTransaction = CallbackModel()
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
-            callbackSentTransaction.dappTransactionSent = DappTransactionSent(
+            callbackSentTransaction.dappTransactionApproved = DappTransactionApproved(
                 dappIdentifier: "example.com", chainDisplayName: "Polygon PoS"
             )
         }

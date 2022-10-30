@@ -12,7 +12,9 @@ use crate::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
         models::{DataEncryptionKey, NewAsymmetricKey},
-        schema::{addresses, asymmetric_keys, chains, dapps, data_encryption_keys},
+        schema::{
+            accounts, addresses, asymmetric_keys, chains, dapps, data_encryption_keys,
+        },
         DeferredTxConnection, JsonValue,
     },
     encryption::Keychain,
@@ -228,6 +230,66 @@ impl Address {
         Ok(account_id)
     }
 
+    pub fn fetch_account_name(
+        conn: &mut SqliteConnection,
+        address_id: &str,
+    ) -> Result<String, Error> {
+        use accounts::dsl as ac;
+        use addresses::dsl as a;
+        use asymmetric_keys::dsl as ak;
+
+        let account_name = addresses::table
+            .inner_join(
+                asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
+            )
+            .inner_join(accounts::table.on(ak::account_id.eq(ac::deterministic_id)))
+            .filter(a::deterministic_id.eq(address_id))
+            .select(ac::name)
+            .first(conn)?;
+
+        Ok(account_name)
+    }
+
+    pub fn is_account_wallet(
+        conn: &mut SqliteConnection,
+        address_id: &str,
+    ) -> Result<bool, Error> {
+        use addresses::dsl as a;
+        use asymmetric_keys::dsl as ak;
+
+        let is_account_wallet = addresses::table
+            .inner_join(
+                asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
+            )
+            .filter(a::deterministic_id.eq(address_id))
+            .select(ak::is_account_wallet)
+            .first(conn)?;
+
+        Ok(is_account_wallet)
+    }
+
+    /// If this is a dapp key, return its human identifier.
+    pub fn dapp_identifier(
+        conn: &mut SqliteConnection,
+        address_id: &str,
+    ) -> Result<Option<String>, Error> {
+        use addresses::dsl as a;
+        use asymmetric_keys::dsl as ak;
+        use dapps::dsl as d;
+
+        let human_identifier = addresses::table
+            .inner_join(
+                asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
+            )
+            .inner_join(dapps::table.on(ak::dapp_id.eq(d::deterministic_id.nullable())))
+            .filter(a::deterministic_id.eq(address_id))
+            .select(d::identifier)
+            .first(conn)
+            .optional()?;
+
+        Ok(human_identifier)
+    }
+
     /// Fet the asymmetric key's DB id for an address.
     pub fn fetch_key_id(
         conn: &mut SqliteConnection,
@@ -256,6 +318,22 @@ impl Address {
             .first(conn)?;
 
         Ok(address)
+    }
+
+    /// Fetch the address id by the checksum address if it exists.
+    pub fn fetch_id_by_checksum_address(
+        conn: &mut SqliteConnection,
+        checksum_address: &str,
+    ) -> Result<Option<String>, Error> {
+        use addresses::dsl as a;
+
+        let address_id = addresses::table
+            .filter(a::address.eq(checksum_address))
+            .select(a::deterministic_id)
+            .first(conn)
+            .optional()?;
+
+        Ok(address_id)
     }
 
     /// Fetch the wallet address id for an Ethereum chain in an account.
