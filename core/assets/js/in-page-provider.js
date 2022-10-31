@@ -163,6 +163,21 @@
 
         return this
       },
+
+      /**
+       * Removes all listeners, or those of the specified eventName.
+       *
+       * @param {[string|Symbol]} eventName
+       * @returns {EventEmitter}
+       */
+      removeAllListeners(eventName) {
+        if (eventName === undefined) {
+          state.listeners = new Map()
+        } else {
+          state.listeners.delete(eventName)
+        }
+        return this
+      },
     }
 
     return Object.freeze(eventEmitter)
