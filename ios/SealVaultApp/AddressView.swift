@@ -8,6 +8,7 @@ import SwiftUI
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
     @Published var account: Account?
+    @Published var selectedAddressId: String?
 
     var firstAddress: Address? {
         self.addresses.first
@@ -92,6 +93,7 @@ struct AddressView_Previews: PreviewProvider {
         let dapp = Dapp.oneInch()
         // Simulate loading
         dapp.addressList[0].nativeToken.amount = nil
+        dapp.addressList[0].selectedForDapp = true
         let addresses = Addresses(dapp: dapp)
 
         return AddressView(title: "Wallet", core: model.core, account: account, addresses: addresses)

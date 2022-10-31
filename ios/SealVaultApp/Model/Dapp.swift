@@ -73,8 +73,8 @@ class Dapp: Identifiable, ObservableObject {
         assert(self.id == dapp.id, "id mismatch in dapp update from core")
         self.humanIdentifier = dapp.humanIdentifier
         self.url = URL(string: dapp.url)
-        self.updateAddresses(dapp.addresses)
         self.selectedAddressId = dapp.selectedAddressId
+        self.updateAddresses(dapp.addresses)
         self.lastUsed = dapp.lastUsed
         self.favicon = Self.faviconWithFallback(dapp.favicon)
     }
@@ -87,10 +87,11 @@ class Dapp: Identifiable, ObservableObject {
             self.addresses.removeValue(forKey: id)
         }
         for coreAddr in coreAddresses {
+            let selectedForDapp = coreAddr.id == self.selectedAddressId
             if let address = self.addresses[coreAddr.id] {
-                address.updateFromCore(coreAddr)
+                address.updateFromCore(coreAddr, selectedForDapp: selectedForDapp)
             } else {
-                let address = Address.fromCore(self.core, coreAddr)
+                let address = Address.fromCore(self.core, coreAddr, selectedForDapp: selectedForDapp)
                 self.addresses[address.id] = address
             }
         }
