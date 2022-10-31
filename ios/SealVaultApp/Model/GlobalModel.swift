@@ -305,6 +305,10 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
+    func ethChangeDappAddress(args: EthChangeDappAddressArgs) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
     func listEthChains() -> [CoreEthChain] {
         [
             CoreEthChain(chainId: 1, displayName: "Ethereum"),

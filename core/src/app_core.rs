@@ -272,6 +272,27 @@ impl AppCore {
             })?;
         Ok(())
     }
+
+    /// Change the address to connect with to a dapp.
+    pub fn eth_change_dapp_address(
+        &self,
+        args: EthChangeDappAddressArgs,
+    ) -> Result<(), CoreError> {
+        self.connection_pool()
+            .deferred_transaction(move |mut tx_conn| {
+                let params = m::NewDappSessionParams::builder()
+                    .account_id(&args.account_id)
+                    .dapp_id(&args.dapp_id)
+                    .build();
+                let session = m::LocalDappSession::create_eth_session_if_not_exists(
+                    &mut tx_conn,
+                    &params,
+                )?;
+                session.update_session_address(&mut tx_conn, &args.new_address_id)?;
+                Ok(())
+            })?;
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -293,6 +314,13 @@ pub struct EthTransferFungibleTokenArgs {
     pub to_checksum_address: String,
     pub amount_decimal: String,
     pub token_id: String,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+pub struct EthChangeDappAddressArgs {
+    pub account_id: String,
+    pub dapp_id: String,
+    pub new_address_id: String,
 }
 
 #[derive(Debug, Clone)]
