@@ -320,12 +320,15 @@
          */
         notify(messageHex) {
           const message = JSON.parse(hexBytesToString(messageHex))
-          EthereumProvider.modules.ethereum.emit(message.event, message.data)
+          EthereumProvider.modules.internalEvents.emit(message.event, message.data)
         },
       }
 
       return Object.freeze(sealVaultRpc)
     })()
+
+    // Needed because clients can remove event emitters from the `window.ethereum`
+    EthereumProvider.modules.internalEvents = makeEventEmitter()
 
     EthereumProvider.modules.ethereum = (function EthereumProviderInterface() {
       /**
@@ -485,42 +488,49 @@
         },
       })
 
-      ethereum.on("sealVaultConnect", ({ chainId, networkVersion, selectedAddress }) => {
-        if (state.chainId !== chainId) {
-          ethereum.emit("chainChanged", chainId)
-        }
+      EthereumProvider.modules.internalEvents.on(
+        "sealVaultConnect",
+        ({ chainId, networkVersion, selectedAddress }) => {
+          if (state.chainId !== chainId) {
+            EthereumProvider.modules.internalEvents.emit("chainChanged", chainId)
+          }
 
-        if (state.networkVersion !== networkVersion) {
-          ethereum.emit("networkChanged", networkVersion)
-        }
+          if (state.networkVersion !== networkVersion) {
+            EthereumProvider.modules.internalEvents.emit("networkChanged", networkVersion)
+          }
 
-        // Don't trigger "accountsChanged" event as that causes infinite reload
-        // on https://fi.woo.org/
-        state.selectedAddress = selectedAddress
-      })
+          // Don't trigger "accountsChanged" event as that causes infinite reload
+          // on https://fi.woo.org/
+          state.selectedAddress = selectedAddress
+        }
+      )
 
       // We never send this event in the current implementation, only here for
       // completeness.
-      ethereum.on("disconnected", (error) => {
+      EthereumProvider.modules.internalEvents.on("disconnected", (error) => {
         console.error(error)
         state.isConnected = false
+        ethereum.emit("disconnected", error)
         ethereum.emit("close", error)
       })
 
-      ethereum.on("chainChanged", (chainId) => {
+      EthereumProvider.modules.internalEvents.on("chainChanged", (chainId) => {
         state.chainId = chainId
+        ethereum.emit("chainChanged", chainId)
         // MetaMask legacy event
         ethereum.emit("chainIdChanged", chainId)
       })
 
-      ethereum.on("networkChanged", (networkVersion) => {
+      EthereumProvider.modules.internalEvents.on("networkChanged", (networkVersion) => {
         state.networkVersion = networkVersion
+        ethereum.emit("networkChanged", networkVersion)
       })
 
       // We never send this in the current implementation, only here for
       // completeness.
-      ethereum.on("accountsChanged", (accounts) => {
+      EthereumProvider.modules.internalEvents.on("accountsChanged", (accounts) => {
         state.selectedAddress = accounts[0]
+        ethereum.emit("accountsChanged", accounts)
       })
 
       // Some providers try to mutate the ethereum object. In case they try to mutate a
