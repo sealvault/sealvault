@@ -68,6 +68,7 @@ dictionary CoreDapp {
     string human_identifier;
     string url;
     sequence<CoreAddress> addresses;
+    string? selected_address_id;
     sequence<u8>? favicon;
     string? last_used;
 };

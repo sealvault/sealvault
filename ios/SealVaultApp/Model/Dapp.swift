@@ -13,6 +13,7 @@ class Dapp: Identifiable, ObservableObject {
     @Published var humanIdentifier: String
     @Published var url: URL?
     @Published var addresses: [String: Address]
+    @Published var selectedAddressId: String?
     @Published var lastUsed: String?
 
     /// Favicon
@@ -32,13 +33,14 @@ class Dapp: Identifiable, ObservableObject {
 
     required init(
         _ core: AppCoreProtocol, id: String, humanIdentifier: String, url: URL?, addresses: [Address],
-        lastUsed: String?, favicon: UIImage
+        selectedAddressId: String?, lastUsed: String?, favicon: UIImage
     ) {
         self.core = core
         self.id = id
         self.humanIdentifier = humanIdentifier
         self.url = url
         self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
+        self.selectedAddressId = selectedAddressId
         self.lastUsed = lastUsed
         self.favicon = favicon
     }
@@ -52,6 +54,7 @@ class Dapp: Identifiable, ObservableObject {
             humanIdentifier: dapp.humanIdentifier,
             url: url,
             addresses: addresses,
+            selectedAddressId: dapp.selectedAddressId,
             lastUsed: dapp.lastUsed,
             favicon: Self.faviconWithFallback(dapp.favicon)
         )
@@ -71,6 +74,7 @@ class Dapp: Identifiable, ObservableObject {
         self.humanIdentifier = dapp.humanIdentifier
         self.url = URL(string: dapp.url)
         self.updateAddresses(dapp.addresses)
+        self.selectedAddressId = dapp.selectedAddressId
         self.lastUsed = dapp.lastUsed
         self.favicon = Self.faviconWithFallback(dapp.favicon)
     }
@@ -137,7 +141,8 @@ extension Dapp {
             let core = PreviewAppCore()
             return Self(
                 core,
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-01", favicon: favicon
+                id: id, humanIdentifier: id, url: url, addresses: addresses, selectedAddressId: addresses.first!.id,
+                lastUsed: "2022-08-01", favicon: favicon
             )
 
         }

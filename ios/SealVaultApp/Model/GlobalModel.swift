@@ -164,7 +164,7 @@ class PreviewAppCore: AppCoreProtocol {
         let addresses = dapp.addressList.map(Self.toCoreAddress)
         return CoreDapp(
             id: dapp.id, humanIdentifier: dapp.humanIdentifier, url: url, addresses: addresses,
-            favicon: icon, lastUsed: dapp.lastUsed
+            selectedAddressId: dapp.selectedAddressId, favicon: icon, lastUsed: dapp.lastUsed
         )
     }
 

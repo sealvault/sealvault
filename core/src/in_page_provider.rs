@@ -433,7 +433,7 @@ impl InPageProvider {
                     resources.keychain(),
                     &params,
                 )?;
-                let params = m::DappSessionParams::builder()
+                let params = m::NewDappSessionParams::builder()
                     .dapp_id(&dapp_id)
                     .account_id(&dapp_approval.account_id)
                     .chain_id(chain_id)
@@ -579,7 +579,7 @@ impl InPageProvider {
                 // was added on an other device.
                 let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
                     Some(dapp_id) => {
-                        let params = m::DappSessionParams::builder()
+                        let params = m::NewDappSessionParams::builder()
                             .dapp_id(&dapp_id)
                             .account_id(&account_id)
                             .build();

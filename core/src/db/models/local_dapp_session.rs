@@ -33,15 +33,6 @@ pub struct LocalDappSession {
     pub chain_id: eth::ChainId,
 }
 
-#[derive(TypedBuilder)]
-#[readonly::make]
-pub struct DappSessionParams<'a> {
-    pub dapp_id: &'a str,
-    pub account_id: &'a str,
-    #[builder(default = eth::ChainId::default_dapp_chain())]
-    pub chain_id: eth::ChainId,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(uuid))]
 #[diesel(table_name = local_dapp_sessions)]
@@ -121,7 +112,7 @@ impl LocalDappSession {
     /// ⚠️ Assumes address exists already.
     pub fn create_eth_session_if_not_exists(
         tx_conn: &mut DeferredTxConnection,
-        params: &DappSessionParams,
+        params: &NewDappSessionParams,
     ) -> Result<Self, Error> {
         if let Some(session) = Self::fetch_eth_session(tx_conn, params)? {
             Ok(session)
@@ -132,9 +123,9 @@ impl LocalDappSession {
 
     /// Create an Ethereum dapp session on default dapp chain for account and returns the sessions.
     /// ⚠️ Assumes address already exists and that there is one dapp key per account.
-    pub fn create_eth_session(
+    pub fn create_eth_session<'a>(
         tx_conn: &mut DeferredTxConnection,
-        params: &DappSessionParams,
+        params: &'a impl DappSessionParamsWithChain<'a>,
     ) -> Result<Self, Error> {
         use accounts::dsl as ac;
         use addresses::dsl as ad;
@@ -144,7 +135,7 @@ impl LocalDappSession {
         use local_dapp_sessions::dsl as lds;
 
         let protocol_data: JsonValue =
-            JsonValue::convert_from(eth::ProtocolData::new(params.chain_id))?;
+            JsonValue::convert_from(eth::ProtocolData::new(params.chain_id()))?;
 
         // This assumes one dapp key per account.
         let address_id = addresses::table
@@ -154,8 +145,8 @@ impl LocalDappSession {
             .inner_join(accounts::table.on(ac::deterministic_id.eq(ak::account_id)))
             .inner_join(dapps::table.on(d::deterministic_id.nullable().eq(ak::dapp_id)))
             .inner_join(chains::table.on(c::deterministic_id.eq(ad::chain_id)))
-            .filter(ac::deterministic_id.eq(params.account_id))
-            .filter(d::deterministic_id.eq(params.dapp_id))
+            .filter(ac::deterministic_id.eq(params.account_id()))
+            .filter(d::deterministic_id.eq(params.dapp_id()))
             .filter(c::protocol_data.eq(&protocol_data))
             .select(ad::deterministic_id)
             .first::<String>(tx_conn.as_mut())?;
@@ -167,7 +158,7 @@ impl LocalDappSession {
             .values((
                 lds::uuid.eq(&session_id),
                 lds::address_id.eq(&address_id),
-                lds::dapp_id.eq(params.dapp_id),
+                lds::dapp_id.eq(params.dapp_id()),
                 lds::last_used_at.eq(&created_at),
                 lds::created_at.eq(&created_at),
                 lds::updated_at.eq(&created_at),
@@ -194,9 +185,9 @@ impl LocalDappSession {
     }
 
     /// Fetch dapp session.
-    pub fn fetch_eth_session(
+    pub fn fetch_eth_session<'a>(
         tx_conn: &mut DeferredTxConnection,
-        params: &DappSessionParams,
+        params: &'a impl DappSessionParams<'a>,
     ) -> Result<Option<Self>, Error> {
         use accounts::dsl as ac;
         use addresses::dsl as ad;
@@ -211,8 +202,8 @@ impl LocalDappSession {
             .inner_join(
                 local_dapp_sessions::table.on(lds::address_id.eq(ad::deterministic_id)),
             )
-            .filter(ac::deterministic_id.eq(params.account_id))
-            .filter(lds::dapp_id.eq(params.dapp_id))
+            .filter(ac::deterministic_id.eq(params.account_id()))
+            .filter(lds::dapp_id.eq(params.dapp_id()))
             .select(LocalDappSessionEntity::all_columns())
             .first(tx_conn.as_mut())
             .optional()?;
@@ -281,5 +272,56 @@ impl LocalDappSession {
             .execute(tx_conn.as_mut())?;
 
         Self::fetch_session_by_id(tx_conn, &self.uuid)
+    }
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+#[readonly::make]
+pub struct NewDappSessionParams<'a> {
+    pub dapp_id: &'a str,
+    pub account_id: &'a str,
+    #[builder(default = eth::ChainId::default_dapp_chain())]
+    pub chain_id: eth::ChainId,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+#[readonly::make]
+pub struct FetchDappSessionParams<'a> {
+    pub dapp_id: &'a str,
+    pub account_id: &'a str,
+}
+
+pub trait DappSessionParams<'a> {
+    fn dapp_id(&'a self) -> &'a str;
+    fn account_id(&'a self) -> &'a str;
+}
+
+pub trait DappSessionParamsWithChain<'a>: DappSessionParams<'a> {
+    fn chain_id(&'a self) -> eth::ChainId;
+}
+
+impl<'a> DappSessionParams<'a> for NewDappSessionParams<'a> {
+    fn dapp_id(&'a self) -> &'a str {
+        self.dapp_id
+    }
+
+    fn account_id(&'a self) -> &'a str {
+        self.account_id
+    }
+}
+
+impl<'a> DappSessionParamsWithChain<'a> for NewDappSessionParams<'a> {
+    fn chain_id(&'a self) -> eth::ChainId {
+        self.chain_id
+    }
+}
+
+impl<'a> DappSessionParams<'a> for FetchDappSessionParams<'a> {
+    fn dapp_id(&'a self) -> &'a str {
+        self.dapp_id
+    }
+
+    fn account_id(&'a self) -> &'a str {
+        self.account_id
     }
 }
