@@ -17,7 +17,7 @@
 		5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C2CE182126E257B1DD22 /* TransferForm.swift */; };
 		5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C6335A85D238AFAD5DC5 /* TokenRow.swift */; };
 		5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* AccountImage.swift */; };
-		68091D4D2900859E00CC4A54 /* AddChain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68091D4C2900859E00CC4A54 /* AddChain.swift */; };
+		68091D4D2900859E00CC4A54 /* ChainSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68091D4C2900859E00CC4A54 /* ChainSelection.swift */; };
 		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
 		6853B4D6290591B400397279 /* html in Resources */ = {isa = PBXBuildFile; fileRef = 6853B4D5290591B400397279 /* html */; };
 		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
@@ -71,7 +71,7 @@
 		5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AddressMenu.swift; sourceTree = "<group>"; };
 		5850CEC3F304338F5D6DC43D /* IconView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IconView.swift; sourceTree = "<group>"; };
 		5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenLabel.swift; sourceTree = "<group>"; };
-		68091D4C2900859E00CC4A54 /* AddChain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddChain.swift; sourceTree = "<group>"; };
+		68091D4C2900859E00CC4A54 /* ChainSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChainSelection.swift; sourceTree = "<group>"; };
 		6811E25828E2430B0044F9FE /* BrowserUITest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserUITest.swift; sourceTree = "<group>"; };
 		6811E25B28E243F30044F9FE /* FullTest.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = FullTest.xctestplan; sourceTree = "<group>"; };
 		6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NativeUI.xctestplan; sourceTree = "<group>"; };
@@ -199,12 +199,11 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
-				6853B4D5290591B400397279 /* html */,
 				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
 				688C29B5283FE73E00474900 /* AccountListView.swift */,
 				688C29BD283FF33A00474900 /* AccountRow.swift */,
 				688C29BB283FF32300474900 /* AccountView.swift */,
-				68091D4C2900859E00CC4A54 /* AddChain.swift */,
+				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
@@ -217,6 +216,7 @@
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
 				68B6C3FC28426B040025BCEA /* DappRow.swift */,
 				68C0C4FC28A2739600572668 /* Generated */,
+				6853B4D5290591B400397279 /* html */,
 				5850CEC3F304338F5D6DC43D /* IconView.swift */,
 				688C29E72840F5C500474900 /* Model */,
 				68F6291728251A0B00BDCD02 /* Preview Content */,
@@ -385,7 +385,7 @@
 				688C29B6283FE73E00474900 /* AccountListView.swift in Sources */,
 				5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */,
 				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,
-				68091D4D2900859E00CC4A54 /* AddChain.swift in Sources */,
+				68091D4D2900859E00CC4A54 /* ChainSelection.swift in Sources */,
 				5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */,
 				5850CBD0176884BC3B64B08C /* IconView.swift in Sources */,
 				68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */,

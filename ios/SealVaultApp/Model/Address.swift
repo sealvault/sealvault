@@ -134,12 +134,6 @@ class Address: Identifiable, ObservableObject {
             self.updateFungibleTokens(fungibleTokens)
         }
     }
-
-    func listEthChains() async -> [CoreEthChain] {
-        return await dispatchBackground(.userInteractive) {
-            self.core.listEthChains()
-        }
-    }
 }
 
 // MARK: - Hashable

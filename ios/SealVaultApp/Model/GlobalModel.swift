@@ -138,6 +138,26 @@ class GlobalModel: ObservableObject {
         // Make sure newly added chain shows up
         await self.refreshAccounts()
     }
+
+    func changeDappChain(accountId: String, dappId: String, newChainId: UInt64) async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                let args = EthChangeDappChainArgs(accountId: accountId, dappId: dappId, newChainId: newChainId)
+                try self.core.ethChangeDappChain(args: args)
+            } catch {
+                print("Error changing dapp address for dapp: \(error)")
+            }
+        }
+        // Make sure newly added chain shows up
+        await self.refreshAccounts()
+    }
+
+    func listEthChains() async -> [CoreEthChain] {
+        return await dispatchBackground(.userInteractive) {
+            self.core.listEthChains()
+        }
+    }
+
 }
 
 // MARK: - Development
@@ -306,7 +326,7 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
-    func ethChangeDappAddress(args: EthChangeDappAddressArgs) throws {
+    func ethChangeDappChain(args: EthChangeDappChainArgs) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 

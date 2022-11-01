@@ -274,21 +274,24 @@ impl AppCore {
     }
 
     /// Change the address to connect with to a dapp.
-    pub fn eth_change_dapp_address(
+    /// Assumes there is already a key for the dapp in the account.
+    pub fn eth_change_dapp_chain(
         &self,
-        args: EthChangeDappAddressArgs,
+        args: EthChangeDappChainArgs,
     ) -> Result<(), CoreError> {
+        let new_chain_id: eth::ChainId = args.new_chain_id.try_into()?;
         self.connection_pool()
             .deferred_transaction(move |mut tx_conn| {
                 let params = m::NewDappSessionParams::builder()
                     .account_id(&args.account_id)
                     .dapp_id(&args.dapp_id)
+                    .chain_id(new_chain_id)
                     .build();
                 let session = m::LocalDappSession::create_eth_session_if_not_exists(
                     &mut tx_conn,
                     &params,
                 )?;
-                session.update_session_address(&mut tx_conn, &args.new_address_id)?;
+                session.change_eth_chain(&mut tx_conn, new_chain_id)?;
                 Ok(())
             })?;
         Ok(())
@@ -317,10 +320,10 @@ pub struct EthTransferFungibleTokenArgs {
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
-pub struct EthChangeDappAddressArgs {
+pub struct EthChangeDappChainArgs {
     pub account_id: String,
     pub dapp_id: String,
-    pub new_address_id: String,
+    pub new_chain_id: u64,
 }
 
 #[derive(Debug, Clone)]

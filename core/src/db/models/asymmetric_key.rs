@@ -10,6 +10,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     db::{
         deterministic_id::{DeterministicId, EntityName},
+        models as m,
         schema::asymmetric_keys,
     },
     encryption::EncryptionOutput,
@@ -52,6 +53,23 @@ impl AsymmetricKey {
 
         let public_key = k256::PublicKey::from_public_key_der(&public_key)?;
         Ok(public_key)
+    }
+
+    /// Fetch the key id for a dapp.
+    /// Assumes one dapp key per account.
+    pub fn fetch_id_for_dapp<'a>(
+        conn: &mut SqliteConnection,
+        params: &'a impl m::DappSessionParams<'a>,
+    ) -> Result<String, Error> {
+        use asymmetric_keys::dsl as ak;
+
+        let deterministic_id = asymmetric_keys::table
+            .filter(ak::account_id.eq(params.account_id()))
+            .filter(ak::dapp_id.eq(Some(params.dapp_id())))
+            .select(ak::deterministic_id)
+            .first(conn)?;
+
+        Ok(deterministic_id)
     }
 }
 

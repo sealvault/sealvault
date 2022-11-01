@@ -33,7 +33,7 @@ mod utils;
 // Interfaces defined in SealVaultCore.udl must be exposed directly.
 pub use crate::{
     app_core::{
-        AppCore, CoreArgs, EthChangeDappAddressArgs, EthTransferFungibleTokenArgs,
+        AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
     dto::{CoreAccount, CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreToken},

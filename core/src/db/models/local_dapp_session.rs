@@ -8,9 +8,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     db::{
         models as m,
-        schema::{
-            accounts, addresses, asymmetric_keys, chains, dapps, local_dapp_sessions,
-        },
+        schema::{accounts, addresses, asymmetric_keys, chains, local_dapp_sessions},
         DeferredTxConnection, JsonValue,
     },
     protocols::eth,
@@ -109,7 +107,8 @@ impl LocalDappSessionEntity {
 
 impl LocalDappSession {
     /// Fetch the current session for a dapp or create a new session.
-    /// ⚠️ Assumes address exists already.
+    /// ⚠️ Assumes key for dapp in account already exists already and that there is one dapp key
+    /// per account.
     pub fn create_eth_session_if_not_exists(
         tx_conn: &mut DeferredTxConnection,
         params: &NewDappSessionParams,
@@ -122,34 +121,26 @@ impl LocalDappSession {
     }
 
     /// Create an Ethereum dapp session on default dapp chain for account and returns the sessions.
-    /// ⚠️ Assumes address already exists and that there is one dapp key per account.
+    /// ⚠️ Assumes key for dapp in account already exists already and that there is one dapp key
+    /// per account.
     pub fn create_eth_session<'a>(
         tx_conn: &mut DeferredTxConnection,
         params: &'a impl DappSessionParamsWithChain<'a>,
     ) -> Result<Self, Error> {
-        use accounts::dsl as ac;
-        use addresses::dsl as ad;
-        use asymmetric_keys::dsl as ak;
-        use chains as c;
-        use dapps::dsl as d;
         use local_dapp_sessions::dsl as lds;
 
-        let protocol_data: JsonValue =
-            JsonValue::convert_from(eth::ProtocolData::new(params.chain_id()))?;
-
         // This assumes one dapp key per account.
-        let address_id = addresses::table
-            .inner_join(
-                asymmetric_keys::table.on(ak::deterministic_id.eq(ad::asymmetric_key_id)),
-            )
-            .inner_join(accounts::table.on(ac::deterministic_id.eq(ak::account_id)))
-            .inner_join(dapps::table.on(d::deterministic_id.nullable().eq(ak::dapp_id)))
-            .inner_join(chains::table.on(c::deterministic_id.eq(ad::chain_id)))
-            .filter(ac::deterministic_id.eq(params.account_id()))
-            .filter(d::deterministic_id.eq(params.dapp_id()))
-            .filter(c::protocol_data.eq(&protocol_data))
-            .select(ad::deterministic_id)
-            .first::<String>(tx_conn.as_mut())?;
+        let chain_entity_id =
+            m::Chain::fetch_or_create_eth_chain_id(tx_conn, params.chain_id())?;
+        let asymmetric_key_id =
+            m::AsymmetricKey::fetch_id_for_dapp(tx_conn.as_mut(), params)?;
+        let address_entity = m::AddressEntity::builder()
+            .asymmetric_key_id(&asymmetric_key_id)
+            .chain_entity_id(&chain_entity_id)
+            .build();
+
+        let address_id =
+            m::Address::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
 
         let session_id = new_uuid();
         let created_at = rfc3339_timestamp();
@@ -165,7 +156,7 @@ impl LocalDappSession {
             ))
             .execute(tx_conn.as_mut())?;
 
-        // No `returning` support for insert in Diesel unfortunately.
+        // No `returning` support for Sqlite insert in Diesel unfortunately.
         Self::fetch_session_by_id(tx_conn, &session_id)
     }
 
@@ -243,7 +234,7 @@ impl LocalDappSession {
     }
 
     /// Update currently used address for a dapp session.
-    pub fn update_session_address(
+    fn update_session_address(
         self,
         tx_conn: &mut DeferredTxConnection,
         new_address_id: &str,
@@ -259,6 +250,27 @@ impl LocalDappSession {
             .execute(tx_conn.as_mut())?;
 
         Self::fetch_session_by_id(tx_conn, &self.uuid)
+    }
+
+    /// Assumes there is a key already for the dapp in the account.
+    pub fn change_eth_chain(
+        self,
+        tx_conn: &mut DeferredTxConnection,
+        new_chain_id: eth::ChainId,
+    ) -> Result<Self, Error> {
+        let chain_entity_id =
+            m::Chain::fetch_or_create_eth_chain_id(tx_conn, new_chain_id)?;
+
+        let asymmetric_key_id =
+            m::Address::fetch_key_id(tx_conn.as_mut(), &self.address_id)?;
+        let address_entity = m::AddressEntity::builder()
+            .asymmetric_key_id(&asymmetric_key_id)
+            .chain_entity_id(&chain_entity_id)
+            .build();
+        let new_address_id =
+            m::Address::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+
+        self.update_session_address(tx_conn, &new_address_id)
     }
 
     pub fn update_last_used_at(

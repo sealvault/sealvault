@@ -813,21 +813,7 @@ impl InPageProvider {
     ) -> Result<(), Error> {
         self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let chain_entity_id =
-                    m::Chain::fetch_or_create_eth_chain_id(&mut tx_conn, new_chain_id)?;
-
-                let asymmetric_key_id =
-                    m::Address::fetch_key_id(tx_conn.as_mut(), &session.address_id)?;
-                let address_entity = m::AddressEntity::builder()
-                    .asymmetric_key_id(&asymmetric_key_id)
-                    .chain_entity_id(&chain_entity_id)
-                    .build();
-                let new_address_id = m::Address::fetch_or_create_for_eth_chain(
-                    &mut tx_conn,
-                    &address_entity,
-                )?;
-
-                session.update_session_address(&mut tx_conn, &new_address_id)
+                session.change_eth_chain(&mut tx_conn, new_chain_id)
             })
             .await?;
 

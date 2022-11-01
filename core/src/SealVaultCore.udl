@@ -46,7 +46,7 @@ interface AppCore {
     void add_eth_chain(u64 chain_id, string address_id);
 
     [Throws=CoreError]
-    void eth_change_dapp_address(EthChangeDappAddressArgs args);
+    void eth_change_dapp_chain(EthChangeDappChainArgs args);
 };
 
 [Error]
@@ -136,10 +136,10 @@ dictionary EthTransferFungibleTokenArgs {
     string token_id;
 };
 
-dictionary EthChangeDappAddressArgs {
+dictionary EthChangeDappChainArgs {
     string account_id;
     string dapp_id;
-    string new_address_id;
+    u64 new_chain_id;
 };
 
 dictionary TokenTransferResult {
