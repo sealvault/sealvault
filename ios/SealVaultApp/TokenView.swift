@@ -20,6 +20,9 @@ struct TokenView: View {
         } header: {
             HStack {
                 Text(address.chainDisplayName)
+                if address.selectedForDapp {
+                    Image(systemName: "checkmark.circle")
+                }
             }
             .padding(.top, paddingTop)
             .scaledToFit()

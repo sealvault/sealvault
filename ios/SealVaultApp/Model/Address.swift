@@ -18,6 +18,7 @@ class Address: Identifiable, ObservableObject {
 
     @Published var nativeToken: Token
     @Published var fungibleTokens: [String: Token]
+    @Published var selectedForDapp: Bool = false
     @Published var loading: Bool = false
 
     var fungibleTokenList: [Token] {
@@ -25,7 +26,8 @@ class Address: Identifiable, ObservableObject {
     }
 
     required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
-                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
+                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token,
+                  selectedForDapp: Bool = false) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
@@ -36,16 +38,17 @@ class Address: Identifiable, ObservableObject {
         self.chainIcon = chainIcon
         self.nativeToken = nativeToken
         self.fungibleTokens = Dictionary()
+        self.selectedForDapp = selectedForDapp
     }
 
-    static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress) -> Self {
+    static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress, selectedForDapp: Bool = false) -> Self {
         let chainIcon = Self.convertIcon(address.chainIcon)
         let url = URL(string: address.blockchainExplorerLink)
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
             core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
             isTestNet: address.isTestNet, blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName,
-            chainIcon: chainIcon, nativeToken: nativeToken
+            chainIcon: chainIcon, nativeToken: nativeToken, selectedForDapp: selectedForDapp
         )
     }
 
@@ -53,7 +56,7 @@ class Address: Identifiable, ObservableObject {
         return UIImage(data: Data(icon)) ?? UIImage(systemName: "diamond")!
     }
 
-    func updateFromCore(_ address: CoreAddress) {
+    func updateFromCore(_ address: CoreAddress, selectedForDapp: Bool = false) {
         withAnimation {
             assert(self.id == address.id, "id mismatch when updating address from core")
             assert(
@@ -66,6 +69,7 @@ class Address: Identifiable, ObservableObject {
             self.chainIcon = Self.convertIcon(address.chainIcon)
             self.updateNativeToken(address.nativeToken)
             self.nativeToken.updateFromCore(address.nativeToken)
+            self.selectedForDapp = selectedForDapp
         }
     }
 
@@ -128,12 +132,6 @@ class Address: Identifiable, ObservableObject {
         self.updateNativeToken(nativeToken)
         if let fungibleTokens = fungibleTokens {
             self.updateFungibleTokens(fungibleTokens)
-        }
-    }
-
-    func listEthChains() async -> [CoreEthChain] {
-        return await dispatchBackground(.userInteractive) {
-            self.core.listEthChains()
         }
     }
 }

@@ -8,6 +8,7 @@ import SwiftUI
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
     @Published var account: Account?
+    @Published var selectedAddressId: String?
 
     var firstAddress: Address? {
         self.addresses.first
@@ -21,6 +22,10 @@ class Addresses: ObservableObject {
         } else {
             return []
         }
+    }
+
+    var isDapp: Bool {
+        self.dapp != nil
     }
 
     init(dapp: Dapp) {
@@ -40,8 +45,15 @@ struct AddressView: View {
     let core: AppCoreProtocol
     @ObservedObject var account: Account
     @ObservedObject var addresses: Addresses
-    @State var showAddChain: Bool = false
+    @State var showChainSelection: Bool = false
+    @State var showSwitchAddress: Bool = false
+    @EnvironmentObject private var model: GlobalModel
+
     var paddingTop: CGFloat = 50
+
+    var chainSelectionTitle: String {
+        addresses.isDapp ? "Change Connected Chain" : "Add Chain"
+    }
 
     var body: some View {
         ScrollViewReader { _ in
@@ -64,22 +76,26 @@ struct AddressView: View {
             if let address = addresses.firstAddress {
                 AddressMenu(address: address) {
                     Button {
-                        showAddChain = true
+                        showChainSelection = true
                     } label: {
-                        Text("Add Chain")
+                        Text(chainSelectionTitle)
                     }
                 }
             }
         }
-        .sheet(isPresented: $showAddChain) {
-            if let address = addresses.addresses.first {
-                AddChain(address: address)
-                    .presentationDetents([.medium])
-                    .background(.ultraThinMaterial)
-
-            } else {
-                Text("No address")
+        .sheet(isPresented: $showChainSelection) {
+            ChainSelection(title: chainSelectionTitle) { newChainId in
+                if let dapp = addresses.dapp {
+                    await model.changeDappChain(accountId: dapp.accountId, dappId: dapp.id, newChainId: newChainId)
+                } else if let address = addresses.addresses.first {
+                    await model.addEthChain(chainId: newChainId, addressId: address.id)
+                } else {
+                    print("error: no addresses")
+                }
             }
+            .presentationDetents([.medium])
+            .background(.ultraThinMaterial)
+
         }
     }
 }
@@ -92,6 +108,7 @@ struct AddressView_Previews: PreviewProvider {
         let dapp = Dapp.oneInch()
         // Simulate loading
         dapp.addressList[0].nativeToken.amount = nil
+        dapp.addressList[0].selectedForDapp = true
         let addresses = Addresses(dapp: dapp)
 
         return AddressView(title: "Wallet", core: model.core, account: account, addresses: addresses)

@@ -4,9 +4,11 @@
 
 import SwiftUI
 
-struct AddChain: View {
+struct ChainSelection: View {
+    @State var title: String = "Select Chain"
+    var onSubmit: (_ newChainId: UInt64) async -> Void
+
     @EnvironmentObject private var model: GlobalModel
-    @State var address: Address
     @State var chains: [CoreEthChain] = []
     @State var selectedChain: CoreEthChain?
     @Environment(\.dismiss) var dismiss
@@ -14,7 +16,7 @@ struct AddChain: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                Text("Add chain").font(.title2)
+                Text(title).font(.title2)
             }
             .padding(20)
 
@@ -42,7 +44,7 @@ struct AddChain: View {
                     Button(action: {
                         Task {
                             if let chain = selectedChain {
-                                await model.addEthChain(chainId: chain.chainId, addressId: address.id)
+                                await onSubmit(chain.chainId)
                             } else {
                                 print("No chain selected")
                             }
@@ -58,7 +60,7 @@ struct AddChain: View {
             }
         }
         .task {
-            self.chains = await self.address.listEthChains()
+            self.chains = await self.model.listEthChains()
             if let chain = self.chains.first {
                 self.selectedChain = chain
             }
@@ -89,11 +91,10 @@ struct ChainPicker: View {
 struct AddChain_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let address = Address.polygonWallet()
-        let core = PreviewAppCore()
-        let chains = core.listEthChains()
 
-        AddChain(address: address, chains: chains, selectedChain: chains.first).environmentObject(model)
+        ChainSelection { newChaind in
+            print("onSubmit new chain id: \(newChaind)")
+        }.environmentObject(model)
     }
 }
 #endif

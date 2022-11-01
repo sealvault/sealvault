@@ -84,7 +84,7 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
-                let detail = "Error: \(errorMessage) on \(res.chainDisplayName)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Sent \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
@@ -98,10 +98,10 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
-                let detail = "Error: \(errorMessage) on \(res.chainDisplayName)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
-                let title = "Transferred \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
+                let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
                 let details = "On \(res.chainDisplayName)"
                 bannerData = BannerData(title: title, detail: details, type: .success)
             }
@@ -115,7 +115,7 @@ struct AppTabNavigationInner: View {
                 let detail = "Error: \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
-                let title = "Transferred \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
+                let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
                 let details = "On \(res.chainDisplayName)"
                 bannerData = BannerData(title: title, detail: details, type: .success)
             }
@@ -146,7 +146,7 @@ struct AppTabNavigationInner: View {
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 // TODO add blockchain explorer url once it's tappable.
-                let title = "Transaction succesful for \(res.dappIdentifier)"
+                let title = "Confirmed transaction for \(res.dappIdentifier)"
                 let detail = ""
                 bannerData = BannerData(title: title, detail: detail, type: .success)
             }

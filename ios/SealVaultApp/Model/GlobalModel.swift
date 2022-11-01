@@ -138,6 +138,26 @@ class GlobalModel: ObservableObject {
         // Make sure newly added chain shows up
         await self.refreshAccounts()
     }
+
+    func changeDappChain(accountId: String, dappId: String, newChainId: UInt64) async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                let args = EthChangeDappChainArgs(accountId: accountId, dappId: dappId, newChainId: newChainId)
+                try self.core.ethChangeDappChain(args: args)
+            } catch {
+                print("Error changing dapp address for dapp: \(error)")
+            }
+        }
+        // Make sure newly added chain shows up
+        await self.refreshAccounts()
+    }
+
+    func listEthChains() async -> [CoreEthChain] {
+        return await dispatchBackground(.userInteractive) {
+            self.core.listEthChains()
+        }
+    }
+
 }
 
 // MARK: - Development
@@ -162,9 +182,10 @@ class PreviewAppCore: AppCoreProtocol {
         let icon = [UInt8](dapp.favicon.pngData()!)
         let url = dapp.url?.absoluteString ?? "https://ens.domains"
         let addresses = dapp.addressList.map(Self.toCoreAddress)
+
         return CoreDapp(
-            id: dapp.id, humanIdentifier: dapp.humanIdentifier, url: url, addresses: addresses,
-            favicon: icon, lastUsed: dapp.lastUsed
+            id: dapp.id, accountId: dapp.accountId, humanIdentifier: dapp.humanIdentifier, url: url,
+            addresses: addresses, selectedAddressId: dapp.selectedAddressId, favicon: icon, lastUsed: dapp.lastUsed
         )
     }
 
@@ -302,6 +323,10 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func addEthChain(chainId: UInt64, addressId: String) throws {
+        throw CoreError.Fatal(message: "not implemented")
+    }
+
+    func ethChangeDappChain(args: EthChangeDappChainArgs) throws {
         throw CoreError.Fatal(message: "not implemented")
     }
 

@@ -14,7 +14,6 @@ use url::Url;
 use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
 use crate::{
     async_runtime as rt,
-    db::models::ListAddressesForDappParams,
     favicon::fetch_favicons,
     http_client::HttpClient,
     protocols::{eth, eth::ankr, TokenType},
@@ -36,9 +35,12 @@ pub struct CoreAccount {
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreDapp {
     pub id: String,
+    pub account_id: String,
     pub human_identifier: String,
     pub url: String,
     pub addresses: Vec<CoreAddress>,
+    /// The selected address for the dapp
+    pub selected_address_id: Option<String>,
     pub favicon: Option<Vec<u8>>,
     pub last_used: Option<String>,
 }
@@ -185,15 +187,26 @@ impl Assembler {
         dapp: m::Dapp,
         favicon: Option<Vec<u8>>,
     ) -> Result<CoreDapp, Error> {
-        let params = ListAddressesForDappParams::builder()
+        let params = m::ListAddressesForDappParams::builder()
             .account_id(account_id)
             .dapp_id(&dapp.deterministic_id)
             .build();
-        let mut addresses: Vec<CoreAddress> = Default::default();
-        for address in m::Address::list_for_dapp(tx_conn.as_mut(), &params)? {
+        let addresses = m::Address::list_for_dapp(tx_conn.as_mut(), &params)?;
+
+        let mut core_addresses: Vec<CoreAddress> = Default::default();
+        for address in addresses.into_iter() {
             let address = self.assemble_address(tx_conn, address, false)?;
-            addresses.push(address)
+            core_addresses.push(address)
         }
+
+        let dapp_session_params = m::FetchDappSessionParams::builder()
+            .dapp_id(&dapp.deterministic_id)
+            .account_id(account_id)
+            .build();
+        let dapp_session =
+            m::LocalDappSession::fetch_eth_session(tx_conn, &dapp_session_params)?;
+        let selected_address_id = dapp_session.map(|s| s.address_id);
+
         let m::Dapp {
             deterministic_id,
             identifier,
@@ -202,9 +215,11 @@ impl Assembler {
         } = dapp;
         let result = CoreDapp::builder()
             .id(deterministic_id)
+            .account_id(account_id.into())
             .human_identifier(identifier)
             .url((&url).into())
-            .addresses(addresses)
+            .addresses(core_addresses)
+            .selected_address_id(selected_address_id)
             .favicon(favicon)
             // TODO move last used at from local sessions to dapp
             .last_used(None)

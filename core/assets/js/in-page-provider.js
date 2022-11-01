@@ -163,6 +163,21 @@
 
         return this
       },
+
+      /**
+       * Removes all listeners, or those of the specified eventName.
+       *
+       * @param {[string|Symbol]} eventName
+       * @returns {EventEmitter}
+       */
+      removeAllListeners(eventName) {
+        if (eventName === undefined) {
+          state.listeners = new Map()
+        } else {
+          state.listeners.delete(eventName)
+        }
+        return this
+      },
     }
 
     return Object.freeze(eventEmitter)
@@ -305,12 +320,15 @@
          */
         notify(messageHex) {
           const message = JSON.parse(hexBytesToString(messageHex))
-          EthereumProvider.modules.ethereum.emit(message.event, message.data)
+          EthereumProvider.modules.internalEvents.emit(message.event, message.data)
         },
       }
 
       return Object.freeze(sealVaultRpc)
     })()
+
+    // Needed because clients can remove event emitters from the `window.ethereum`
+    EthereumProvider.modules.internalEvents = makeEventEmitter()
 
     EthereumProvider.modules.ethereum = (function EthereumProviderInterface() {
       /**
@@ -429,6 +447,12 @@
           value: true,
           enumerable: true,
         },
+        // Metamask exposes experimental APIs here.
+        // The bnc-onboard package uses this property to test for MM: https://github.com/blocknative/web3-onboard/blob/4ecba80f215c55aeb9fd3903936bdcee7200758e/src/utilities.ts#L378
+        _metamask: {
+          value: {},
+          enumerable: true,
+        },
         chainId: {
           get() {
             return state.chainId
@@ -464,45 +488,49 @@
         },
       })
 
-      ethereum.on("sealVaultConnect", ({ chainId, networkVersion, selectedAddress }) => {
-        state.isConnected = true
+      EthereumProvider.modules.internalEvents.on(
+        "sealVaultConnect",
+        ({ chainId, networkVersion, selectedAddress }) => {
+          if (state.chainId !== chainId) {
+            EthereumProvider.modules.internalEvents.emit("chainChanged", chainId)
+          }
 
-        if (state.chainId !== chainId) {
-          state.chainId = chainId
-          ethereum.emit("chainChanged", chainId)
-        }
+          if (state.networkVersion !== networkVersion) {
+            EthereumProvider.modules.internalEvents.emit("networkChanged", networkVersion)
+          }
 
-        if (state.networkVersion !== networkVersion) {
-          state.networkVersion = networkVersion
-          ethereum.emit("networkChanged", networkVersion)
-        }
-
-        if (state.selectedAddress !== selectedAddress) {
+          // Don't trigger "accountsChanged" event as that causes infinite reload
+          // on https://fi.woo.org/
           state.selectedAddress = selectedAddress
-          ethereum.emit("accountsChanged", [selectedAddress])
         }
-      })
+      )
 
       // We never send this event in the current implementation, only here for
       // completeness.
-      ethereum.on("disconnected", (error) => {
+      EthereumProvider.modules.internalEvents.on("disconnected", (error) => {
         console.error(error)
         state.isConnected = false
+        ethereum.emit("disconnected", error)
         ethereum.emit("close", error)
       })
 
-      ethereum.on("chainChanged", (chainId) => {
+      EthereumProvider.modules.internalEvents.on("chainChanged", (chainId) => {
         state.chainId = chainId
+        ethereum.emit("chainChanged", chainId)
         // MetaMask legacy event
         ethereum.emit("chainIdChanged", chainId)
       })
 
-      ethereum.on("networkChanged", (networkVersion) => {
+      EthereumProvider.modules.internalEvents.on("networkChanged", (networkVersion) => {
         state.networkVersion = networkVersion
+        ethereum.emit("networkChanged", networkVersion)
       })
 
-      ethereum.on("accountsChanged", (accounts) => {
+      // We never send this in the current implementation, only here for
+      // completeness.
+      EthereumProvider.modules.internalEvents.on("accountsChanged", (accounts) => {
         state.selectedAddress = accounts[0]
+        ethereum.emit("accountsChanged", accounts)
       })
 
       // Some providers try to mutate the ethereum object. In case they try to mutate a

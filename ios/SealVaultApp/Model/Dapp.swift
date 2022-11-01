@@ -9,10 +9,13 @@ class Dapp: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     /// Database identifier
     let id: String
+    /// The account that the dapp belongs to
+    let accountId: String
     /// Human readable identifier that is either the origin or the registrable domain
     @Published var humanIdentifier: String
     @Published var url: URL?
     @Published var addresses: [String: Address]
+    @Published var selectedAddressId: String?
     @Published var lastUsed: String?
 
     /// Favicon
@@ -31,14 +34,16 @@ class Dapp: Identifiable, ObservableObject {
     }
 
     required init(
-        _ core: AppCoreProtocol, id: String, humanIdentifier: String, url: URL?, addresses: [Address],
-        lastUsed: String?, favicon: UIImage
+        _ core: AppCoreProtocol, id: String, accountId: String, humanIdentifier: String, url: URL?,
+        addresses: [Address], selectedAddressId: String?, lastUsed: String?, favicon: UIImage
     ) {
         self.core = core
         self.id = id
+        self.accountId = accountId
         self.humanIdentifier = humanIdentifier
         self.url = url
         self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
+        self.selectedAddressId = selectedAddressId
         self.lastUsed = lastUsed
         self.favicon = favicon
     }
@@ -49,9 +54,11 @@ class Dapp: Identifiable, ObservableObject {
         return self.init(
             core,
             id: dapp.id,
+            accountId: dapp.accountId,
             humanIdentifier: dapp.humanIdentifier,
             url: url,
             addresses: addresses,
+            selectedAddressId: dapp.selectedAddressId,
             lastUsed: dapp.lastUsed,
             favicon: Self.faviconWithFallback(dapp.favicon)
         )
@@ -70,6 +77,7 @@ class Dapp: Identifiable, ObservableObject {
         assert(self.id == dapp.id, "id mismatch in dapp update from core")
         self.humanIdentifier = dapp.humanIdentifier
         self.url = URL(string: dapp.url)
+        self.selectedAddressId = dapp.selectedAddressId
         self.updateAddresses(dapp.addresses)
         self.lastUsed = dapp.lastUsed
         self.favicon = Self.faviconWithFallback(dapp.favicon)
@@ -83,10 +91,11 @@ class Dapp: Identifiable, ObservableObject {
             self.addresses.removeValue(forKey: id)
         }
         for coreAddr in coreAddresses {
+            let selectedForDapp = coreAddr.id == self.selectedAddressId
             if let address = self.addresses[coreAddr.id] {
-                address.updateFromCore(coreAddr)
+                address.updateFromCore(coreAddr, selectedForDapp: selectedForDapp)
             } else {
-                let address = Address.fromCore(self.core, coreAddr)
+                let address = Address.fromCore(self.core, coreAddr, selectedForDapp: selectedForDapp)
                 self.addresses[address.id] = address
             }
         }
@@ -130,14 +139,17 @@ extension Dapp {
 // MARK: - preview
 
 #if DEBUG
+// swiftlint:disable force_try
     extension Dapp {
         static func build(
             id: String, humanIdentifier: String, url: URL?, addresses: [Address], favicon: UIImage
         ) -> Self {
             let core = PreviewAppCore()
+            let activeAccountId = try! core.activeAccountId()
             return Self(
                 core,
-                id: id, humanIdentifier: id, url: url, addresses: addresses, lastUsed: "2022-08-01", favicon: favicon
+                id: id, accountId: activeAccountId, humanIdentifier: id, url: url, addresses: addresses,
+                selectedAddressId: addresses.first!.id, lastUsed: "2022-08-01", favicon: favicon
             )
 
         }
@@ -243,4 +255,5 @@ extension Dapp {
         }
 
     }
+// swiftlint:enable force_try
 #endif

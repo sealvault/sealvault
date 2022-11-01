@@ -1,5 +1,46 @@
 # Changelog
 
+## 2022-11-01
+
+### iOS Beta v0.3.0
+
+#### Features
+
+- Allow changing connected chain for Ethereum dapps from app. This is important,
+because some dapps don't support changing the chain from their UI and just error
+out if the user isn't on the expected chain.
+
+#### Fixes
+
+- Fix can't connect [crypto coven](https://cryptocoven.xyz/)
+
+## 2022-10-30
+
+### iOS Beta v0.2.2
+
+#### Improvements
+
+- Add popup banners for feedback about blockchain interactions. This gives users
+  more info and lets them switch views while waiting for feedback. Events:
+  - Token transfer submitted to mempool success/error.
+  - Token transfer confirmed success/error.
+  - Dapp allotment transfer success/error.
+  - Auto-approved and performed off-chain sig for dapp. Also explains why this 
+    is safe.
+  - Auto-approved dapp transaction. Also explains why this is safe.
+  - Dapp transaction confirmed success/error.
+- Improve address view: 
+  - Make chains better separated visually. 
+  - List mainnets first. 
+  - Move address menu to nav bar and put add chain in it.
+
+#### Fixes
+
+- Fix can't connect dHedge [#23](https://github.com/sealvault/sealvault/issues/23)
+- Fix can't connect Curve [#24](https://github.com/sealvault/sealvault/issues/24)
+- Fix can't connect Hop Exchange [#26](https://github.com/sealvault/sealvault/issues/26)
+- Fix default dapp allotment transfer explainer layout.
+
 ## 2022-10-24
 
 ### iOS Beta v0.2.1
