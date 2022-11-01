@@ -1,5 +1,19 @@
 # Changelog
 
+## 2022-11-01
+
+### iOS Beta v0.3.0
+
+#### Features
+
+- Allow changing connected chain for Ethereum dapps from app. This is important,
+because some dapps don't support changing the chain from their UI and just error
+out if the user isn't on the expected chain.
+
+#### Fixes
+
+- Fix can't connect [crypto coven](https://cryptocoven.xyz/)
+
 ## 2022-10-30
 
 ### iOS Beta v0.2.2
