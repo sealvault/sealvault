@@ -68,6 +68,7 @@ dictionary CoreAccount {
 
 dictionary CoreDapp {
     string id;
+    string account_id;
     string human_identifier;
     string url;
     sequence<CoreAddress> addresses;

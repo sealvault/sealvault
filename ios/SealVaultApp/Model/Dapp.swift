@@ -9,6 +9,8 @@ class Dapp: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     /// Database identifier
     let id: String
+    /// The account that the dapp belongs to
+    let accountId: String
     /// Human readable identifier that is either the origin or the registrable domain
     @Published var humanIdentifier: String
     @Published var url: URL?
@@ -32,11 +34,12 @@ class Dapp: Identifiable, ObservableObject {
     }
 
     required init(
-        _ core: AppCoreProtocol, id: String, humanIdentifier: String, url: URL?, addresses: [Address],
-        selectedAddressId: String?, lastUsed: String?, favicon: UIImage
+        _ core: AppCoreProtocol, id: String, accountId: String, humanIdentifier: String, url: URL?,
+        addresses: [Address], selectedAddressId: String?, lastUsed: String?, favicon: UIImage
     ) {
         self.core = core
         self.id = id
+        self.accountId = accountId
         self.humanIdentifier = humanIdentifier
         self.url = url
         self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
@@ -51,6 +54,7 @@ class Dapp: Identifiable, ObservableObject {
         return self.init(
             core,
             id: dapp.id,
+            accountId: dapp.accountId,
             humanIdentifier: dapp.humanIdentifier,
             url: url,
             addresses: addresses,
@@ -135,15 +139,17 @@ extension Dapp {
 // MARK: - preview
 
 #if DEBUG
+// swiftlint:disable force_try
     extension Dapp {
         static func build(
             id: String, humanIdentifier: String, url: URL?, addresses: [Address], favicon: UIImage
         ) -> Self {
             let core = PreviewAppCore()
+            let activeAccountId = try! core.activeAccountId()
             return Self(
                 core,
-                id: id, humanIdentifier: id, url: url, addresses: addresses, selectedAddressId: addresses.first!.id,
-                lastUsed: "2022-08-01", favicon: favicon
+                id: id, accountId: activeAccountId, humanIdentifier: id, url: url, addresses: addresses,
+                selectedAddressId: addresses.first!.id, lastUsed: "2022-08-01", favicon: favicon
             )
 
         }
@@ -249,4 +255,5 @@ extension Dapp {
         }
 
     }
+// swiftlint:enable force_try
 #endif

@@ -35,6 +35,7 @@ pub struct CoreAccount {
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreDapp {
     pub id: String,
+    pub account_id: String,
     pub human_identifier: String,
     pub url: String,
     pub addresses: Vec<CoreAddress>,
@@ -214,6 +215,7 @@ impl Assembler {
         } = dapp;
         let result = CoreDapp::builder()
             .id(deterministic_id)
+            .account_id(account_id.into())
             .human_identifier(identifier)
             .url((&url).into())
             .addresses(core_addresses)

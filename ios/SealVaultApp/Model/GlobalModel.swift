@@ -162,9 +162,10 @@ class PreviewAppCore: AppCoreProtocol {
         let icon = [UInt8](dapp.favicon.pngData()!)
         let url = dapp.url?.absoluteString ?? "https://ens.domains"
         let addresses = dapp.addressList.map(Self.toCoreAddress)
+
         return CoreDapp(
-            id: dapp.id, humanIdentifier: dapp.humanIdentifier, url: url, addresses: addresses,
-            selectedAddressId: dapp.selectedAddressId, favicon: icon, lastUsed: dapp.lastUsed
+            id: dapp.id, accountId: dapp.accountId, humanIdentifier: dapp.humanIdentifier, url: url,
+            addresses: addresses, selectedAddressId: dapp.selectedAddressId, favicon: icon, lastUsed: dapp.lastUsed
         )
     }
 
