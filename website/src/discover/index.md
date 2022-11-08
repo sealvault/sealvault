@@ -6,11 +6,6 @@
 
 - [Sunflower Land](https://sunflower-land.com/)
 
-### NFTs
-
-- [OpenSea](https://opensea.io/)
-- [Showtime](https://showtime.xyz/)
-
 ### Exchanges
 
 - [1inch](https://1inch.io)
