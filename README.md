@@ -6,7 +6,8 @@
 
 ## Experiment freely with Web3 
 
-SealVault is the Web3 key manager that's got your back.
+SealVault is the first key manager with automatic transaction approval. This
+keeps you safe and gets out of the way simultaneously.
 
 ## Features
 
