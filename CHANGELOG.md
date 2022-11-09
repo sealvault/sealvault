@@ -1,5 +1,14 @@
 # Changelog
 
+## 2022-11-09
+
+### iOS Beta v0.3.1
+
+#### Fixes
+
+- Change default home page in in-app web browser due to App Store Review
+  requirements.
+
 ## 2022-11-01
 
 ### iOS Beta v0.3.0
