@@ -17,22 +17,22 @@ title: Web3 Key Manager App
 
 <div class="grid cards" markdown>
 
--   __Automated burner wallets__
-    <figure markdown>
-    ![iOS app account view](./assets/images/screenshots/account-view.png){ loading=lazy }
-    <figcaption>
-    Each dapp gets a separate key.
-    This protects you from phishing and mitigates compromised dapps.
-    [More](./one-dapp-per-key.md)
-    </figcaption>
-    </figure>
-
 -   __Automatic transaction approval__
     <figure markdown>
     ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>
     You decide which dapp to add, after that transactions are approved
     automatically. [More](./one-dapp-per-key.md)
+    </figcaption>
+    </figure>
+    
+-   __One-Dapp-per-Key__
+    <figure markdown>
+    ![iOS app account view](./assets/images/screenshots/account-view.png){ loading=lazy }
+    <figcaption>
+    Each dapp gets a separate key.
+    This protects you from phishing and mitigates compromised dapps.
+    [More](./one-dapp-per-key.md)
     </figcaption>
     </figure>
     
