@@ -222,7 +222,7 @@ It is clear to us that in order to realize truly decentralized web applications,
 we need to move beyond the wallet paradigm for everyday key and transaction
 management.  This is why we're building [SealVault,](https://sealvault.org) a
 new type of wallet for your dapps with automatic transaction approval and
-phishing protection through [automated burner wallets](../../burners.md) for
+phishing protection through [automated burner wallets](../../one-dapp-per-key.md) for
 key-level dapp isolation.
 
 ## SealVault Goals

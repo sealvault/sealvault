@@ -11,27 +11,24 @@ keeps you safe and gets out of the way simultaneously.
 
 ## Features
 
-### Automated burner wallets :fire:  
-
-When you add a dapp to your account, a new key is generated just for this dapp.
-Wallet addresses are never connected to dapps. 
-This protects you from phishing and mitigates compromised dapps.
-[Learn more.](https://sealvault.org/burners/)
-
-
 ### Automatic transaction approval 🥳
 
 You decide which dapp to add, after that transactions are approved
 automatically.
-[Learn more.](https://sealvault.org/burners/)
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
+### One-Dapp-Per-Key :fire:
+
+When you add a dapp to your account, a new key is generated just for this dapp.
+Wallet addresses are never connected to dapps.
+This protects you from phishing and mitigates compromised dapps.
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
 ### Move assets between wallets and dapps 💰
 
 First class token transfer support for dapp addresses. 
 You can also transfer a pre-configured amount automatically when you add a new dapp. 
-[Learn more.](https://sealvault.org/burners/)
-
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
 ### Isolated identities 🕶️
 

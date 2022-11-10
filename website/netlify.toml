@@ -14,5 +14,11 @@ Strict-Transport-Security = '''
 [[redirects]]
 from = "/blog/web3-vision/"
 to = "/blog/web3/"
+status = 301
+force = false
+
+[[redirects]]
+from = "/blog/burners/"
+to = "/blog/one-dapp-per-key/"
 status = 302
 force = false
