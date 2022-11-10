@@ -209,8 +209,12 @@ class PreviewAppCore: AppCoreProtocol {
 
     func fungibleTokensForAddress(addressId: String) throws -> [CoreToken] {
         let tokens = DispatchQueue.main.sync {
-            // Force update with new ids
-            [Token.dai(UUID().uuidString), Token.usdc(UUID().uuidString), Token.busd(UUID().uuidString)]
+            if addressId.contains("ETH") {
+                // Force update with new ids
+                return [Token.dai(UUID().uuidString), Token.usdc(UUID().uuidString)]
+            } else {
+                return [Token.busd(UUID().uuidString)]
+            }
         }
         Thread.sleep(forTimeInterval: 1)
         return DispatchQueue.main.sync {
@@ -220,7 +224,12 @@ class PreviewAppCore: AppCoreProtocol {
 
     func nativeTokenForAddress(addressId: String) throws -> CoreToken {
         let token = DispatchQueue.main.sync {
-            return Token.matic(UUID().uuidString)
+            if addressId.contains("ETH") {
+                // Force update with new ids
+                return Token.eth(UUID().uuidString)
+            } else {
+                return Token.matic(UUID().uuidString)
+            }
         }
         Thread.sleep(forTimeInterval: 1)
         return DispatchQueue.main.sync {
