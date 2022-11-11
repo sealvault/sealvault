@@ -75,7 +75,7 @@ title: Web3 Key Manager App
     - Currently: iOS
     - Next: Android
     - Planned: MacOS, Window, Linux
-    - self-custody backups and E2EE and sync
+    - Self-custody backups and E2EE sync
 
 -   __Open source for real__
     - [GitHub Repo](https://github.com/sealvault/sealvault)
