@@ -51,7 +51,7 @@ extra_javascript:
 nav:
   - App:
     - index.md
-    - Automated Burner Wallets: one-dapp-per-key.md
+    - One-Dapp-per-Key: one-dapp-per-key.md
     - Privacy: privacy.md
   - Discover: discover/index.md
   - Blog: blog/index.md
