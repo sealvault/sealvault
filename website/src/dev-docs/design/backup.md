@@ -1,5 +1,8 @@
 # Cloud Backup
 
+This document contains an overview of cloud backup options on iOS and our chosen
+solution, the [SealVault iCloud Backup.](#sealvault-icloud-backup)
+
 ## iCloud Device Backup
 
 When a user
