@@ -62,7 +62,7 @@ nav:
           - dev-docs/design/index.md
           - Cryptography: dev-docs/design/cryptography.md
           - Data: dev-docs/design/data.md
-          - Backup: dev-docs/design/backup.md
+          - Cloud Backup: dev-docs/design/backup.md
           - Sync: dev-docs/design/sync.md
           - Security Model:
             - dev-docs/design/security-model.md
