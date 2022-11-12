@@ -7,7 +7,7 @@ When a user
 backups for their device, their local keychain and all app data including the
 [SealVault database](./data.md) gets backed up as part of that. However, items
 stored on the local keychain can be only restored on the same device as their
-encryption key is tangled with the root key in the device's hardware security
+encryption key is tangled with the root key of the device's hardware security
 module.[^0] Since the [SK-KEK](./data.md#secret-key-encryption-keys) is stored
 on the local keychain, this means a user will be **only able to restore
 SealVault to full functionality from an iCloud device backup on the same device
