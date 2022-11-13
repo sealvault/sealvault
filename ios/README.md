@@ -39,4 +39,8 @@ also :warning: resets all iOS simulators on your machine.
 
 Run `swiftlint` with `fastlane lint` from the `ios` directory.
 
+## Xcode Cloud
 
+Xcode Cloud is used to automate TestFlight releases. A new TestFlight release 
+is created for internal testers whenever a new tag with the `ios` prefix is 
+pushed. These tags should follow the `ios-0.1.2` pattern.
