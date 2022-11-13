@@ -12,6 +12,9 @@ struct SealVaultApp: SwiftUI.App {
         WindowGroup {
             AppTabNavigation()
                 .environmentObject(model)
+                .task {
+                    await model.refreshAccounts()
+                }
         }
     }
 }
