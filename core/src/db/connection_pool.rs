@@ -190,7 +190,8 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
     for ConnectionOptions
 {
     fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
-        let timeout = self.busy_timeout.as_millis();
+        // No SQLite injection with u128.
+        let timeout: u128 = self.busy_timeout.as_millis();
         let query = &format!(
             "
             PRAGMA busy_timeout = {timeout};
