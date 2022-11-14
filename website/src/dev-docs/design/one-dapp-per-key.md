@@ -51,7 +51,8 @@ themselves to be interacting.
 
 Therefore, we derive the dapp identifier from the [top-level
 origin](https://html.spec.whatwg.org/#concept-environment-top-level-origin) for
-dapps displayed in embedded browsing contexts.
+dapps displayed in embedded browsing contexts. This also defends against
+[clickjacking](./attack-tree.md#clickjacking) attacks.
 
 For example, the decentralized asset management platform,
 [dHEDGE](https://www.dhedge.org/) embeds other dapps like

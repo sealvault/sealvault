@@ -1,5 +1,23 @@
 # Changelog
 
+## 2022-11-13
+
+### iOS Beta v0.3.2
+
+#### Improvements
+
+- Change nav tab bar labels to "Browser Tab 1", "Accounts", "Browser Tab 2"
+  based on beta feedback.
+
+## 2022-11-09
+
+### iOS Beta v0.3.1
+
+#### Fixes
+
+- Change default home page in in-app web browser due to App Store Review
+  requirements.
+
 ## 2022-11-01
 
 ### iOS Beta v0.3.0

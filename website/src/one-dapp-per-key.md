@@ -1,13 +1,11 @@
-# Automated Burner Wallets
-
-## One-Dapp-per-Key<sup>&reg;</sup>
+# One-Dapp-per-Key<sup>&reg;</sup>
 
 When you add a dapp to your account, a new key is generated just for this dapp.
 Wallet addresses are never connected to dapps.  This isolation
 
 - prevents **phishing** &#127907;
 - mitigates damage from compromised dapps &#129399;
-- enables **automatic transaction approval** &#129395;
+- enables **automated transaction approval** &#129395;
 
 <figure markdown>
 ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
@@ -36,4 +34,4 @@ automatically to each newly added dapp address for transaction fees.
 
 ## Beta
 
-iOS beta is coming October 2022. Sign up for an invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+Sign up for iOS beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)

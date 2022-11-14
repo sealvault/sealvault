@@ -21,7 +21,7 @@ struct AppTabNavigationInner: View {
 
     @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
-    @State var selection: Tab = .dapps
+    @State var selection: Tab = .browserOne
     @State var bannerData: BannerData?
     @StateObject var browserModelOne = BrowserModel(homePage: Config.browserOneHomePage)
     @StateObject var browserModelTwo = BrowserModel(homePage: Config.browserTwoHomePage)
@@ -33,7 +33,7 @@ struct AppTabNavigationInner: View {
                 BrowserView(browserModel: browserModelOne)
             }
             .tabItem {
-                let menuText = Text("Browser 1")
+                let menuText = Text("Browser Tab 1")
                 Label {
                     menuText
                 } icon: {
@@ -47,7 +47,7 @@ struct AppTabNavigationInner: View {
                 AccountListView()
             }
             .tabItem {
-                let menuText = Text("Dapps")
+                let menuText = Text("Accounts")
 
                 Label {
                     menuText
@@ -67,7 +67,7 @@ struct AppTabNavigationInner: View {
                 BrowserView(browserModel: browserModelTwo)
             }
             .tabItem {
-                let menuText = Text("Browser 2")
+                let menuText = Text("Browser Tab 2")
                 Label {
                     menuText
                 } icon: {

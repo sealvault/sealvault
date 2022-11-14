@@ -44,16 +44,16 @@ dapp.
 
 ---
 
-# Secret Key Disclosure
+## Secret Key Disclosure
 
-## Social Engineering
+### Social Engineering
 
 An attacker may trick the user to share their secret key with them.  We prevent
 these attacks by never letting the user view or copy secret keys.
 
-## Device Key Disclosure
+### Device Key Disclosure
 
-The attacker learns the key from the user's device.
+The attacker learns the secret key from the user's device.
 
 ```mermaid
 flowchart BT
@@ -101,13 +101,13 @@ flowchart BT
 
 *Legend: trapezoid means all inputs necessary to carry out attack (AND gate).*
 
-### Privilege Escalation
+#### Privilege Escalation
 
 Malware on the user's device may use an operating system level privilege
 escalation vulnerability to read keychain items and database files. We can't
 defend against OS level privilege-escalation vulnerabilities.
 
-### Security Misconfiguration
+#### Security Misconfiguration
 
 A bug in the app's source code may be exploited by malware on the user's device
 to steal secret keys (eg. by exploiting incorrect keychain item permissions). We
@@ -115,17 +115,17 @@ defend against security misconfigurations by requiring code reviews for all
 changes. Open source code serves as an additional defense-in-depth measure
 against security misconfigurations.
 
-### Malicious App Version
+#### Malicious App Version
 
 Installing a malicious SealVault version can compromise users' secret keys.
 
-#### Supply Chain Attack
+##### Supply Chain Attack
 
 Supply chain attacks may target app distribution (how users acquire the app
 bundle), the developers of the application or application dependencies (what
 goes in the bundle).
 
-#### Compromised Developer
+##### Compromised Developer
 
 The Apple ID that can submit new app versions is hardened with the following
 measures:
@@ -141,12 +141,12 @@ The App Store review process provides a defense in depth measure as the time
 delay between submitting and releasing app version gives time to react in case
 the Apple ID is compromised.
 
-#### Compromised Distribution
+##### Compromised Distribution
 
 We rely on the iOS App Store for secure app distribution. 
 We don't trust application assets that aren't distributed through the App Store.
 
-#### Malicious Dependency
+##### Malicious Dependency
 
 We rely on dependency pinning and Github's supply chain security
 [features](https://github.com/features/security/software-supply-chain) to secure
@@ -157,13 +157,13 @@ micro package-style ecosystem is especially vulnerable to supply chain attacks.
 We don't have any JavaScript dependencies due to the prevalence of supply chain
 attacks in the ecosystem.
 
-#### Malicious Developer
+##### Malicious Developer
 
 Open source code and [reproducible builds](https://reproducible-builds.org/)
 would protect against malicious SealVault developers.
 
 While our code is open source, the iOS platform makes it [very
-difficult](https://core.telegram.org/reproducible-builds#reproducible-builds-for-ios)
+difficult](https://core.telegram.org/reproducible-builds##reproducible-builds-for-ios)
 to produce reproducible builds and to support this feature SealVault developers
 would have to work with jailbroken devices which would open up attack vectors on
 the developers. We don't currently support reproducible iOS builds for this
@@ -172,10 +172,10 @@ verify them without jailbroken devices.
 
 ---
 
-### Side-Channel
+#### Side-Channel
 
-The secret key can accidentally leak through a vector that wasn't intended to make
-it possible to access the secret key.
+The secret key can accidentally leak through a vector that wasn't intended to
+make it possible to access the secret key.
 
 ```mermaid
 flowchart BT
@@ -183,22 +183,10 @@ flowchart BT
   ui_disclosure[UI Disclosure]
   --> side_channel[Side-Channel]
 
-  ui_snooping[UI Snooping]
-  --> ui_disclosure
-
-  ui_access[/Physical UI Access\]
-  --> ui_disclosure
-
-  unlock[Unlock Device]
-  --> ui_access
-
-  physical_access[Physical Device Access]
-  --> ui_access
-
   hw_channel[HW Channel]
   --> side_channel
 
-  physical_access
+  physical_access[Physicial Access]
   --> hw_channel
 
   hw_vulnerability[HW Vulnerability]
@@ -233,13 +221,21 @@ flowchart BT
 
 ```
 
-### UI Disclosure
+#### UI Disclosure
 
-In a UI disclosure attack, the attacker learns the secret key by directly
-viewing the user's screen either in person or remotely through a recording like a
-CCTV camera.
+In a UI disclosure attack, the attacker learns the secret key from its display 
+in the user interface. There are several ways this can happen:
 
-### Hardware Side-Channel
+- The attacker observes the secret in the UI when it is displayed either
+  directly viewing the user's screen either in person or remotely through a
+  recording like a CCTV camera.
+- The secret is visible when the user takes a screenshot or when the operating
+  takes a screenshot as the app goes in the background and the attacker can
+  access the screenshot.
+- The secret as part of the UI state is saved in an insecure location that the
+  attacker can access.[^10]
+
+#### Hardware Side-Channel
 
 In a hardware side-channel attack, an attacker that can take hold of a device to
 perform measurements during the execution of the application to recover secret
@@ -247,13 +243,13 @@ keys or they can use a hardware vulnerability (eg.
 [Meltdown](https://meltdownattack.com/)) to recover secret keys from the
 application with their malware running on the device.
 
-### Software Side-Channel
+#### Software Side-Channel
 
 In a software side-channel attack, an attacker can write code that can either
 passively observe the execution of the application or actively interact with
 the application to recover secret keys. 
 
-#### Passive Software Side-Channel
+##### Passive Software Side-Channel
 
 In a passive software side-channel attack the operating system leaks information
 to the malware on the device about the application without the malware
@@ -263,7 +259,7 @@ interacting with the application. Examples:
 2. Malware can take a screenshot of the application. 
 3. Clipboard snooping.
 
-#### Active Software Side-Channel
+##### Active Software Side-Channel
 
 In an active software side-channel, an attacker can utilize a legitimate way to
 interact with the application to recover secret keys. The most prevalent active
@@ -271,68 +267,183 @@ software side-channel attacks are [timing
 attacks](https://timing.attacks.cr.yp.to/) where the attacker measures the
 response time of the application to recover secret keys.
 
-### Side-Channel Defenses
+#### Side-Channel Defenses
 
-#### Generic Defenses
+##### Generic Defenses
 
 We mitigate side-channel attacks by
 
 1. Storing all user data encrypted on disk.  
 1. Having an additional layer of encryption for secret keys inside the database
-to avoid accidentally storing them in plain text in memory or in temporary files
-created for logs and caches created by the database.
-1. Storing key encryption keys in the local iOS keychain which is
-[protected](https://support.apple.com/en-ie/guide/security/secb0694df1a/web) by
-the iOS Secure Enclave HSM.
+   to avoid accidentally storing them in plain text in memory or in temporary
+   files created for logs and caches created by the database.
+1. Storing [key-encryption-keys](./data.md##secret-key-encryption-keys) in the
+   local iOS keychain which is
+   [protected](https://support.apple.com/en-ie/guide/security/secb0694df1a/web)
+   by the iOS Secure Enclave HSM.
 1. Keeping secrets stored in long-lived data structures of the application
-encrypted.
-1. Implementing all functionality that needs access to secrets in our Rust code 
-inside designated modules to make it easy to follow data flows. Secret values
-are zeroized on drop and stored on the heap to avoid leaving unreachable copies
-one move.  Secret values have neither `Debug` nor `Display` implementations to
-prevent leaking them in logs.
+   encrypted.
+1. Implementing all functionality that needs access to secret keys in our Rust
+   code inside designated modules to make it easy to follow data flows. Secret
+   values are zeroized on drop and stored on the heap to avoid leaving
+   unreachable copies one move.  Secret values have neither `Debug` nor
+   `Display` implementations to prevent leaking them in logs.
 
-#### UI Disclosure & Screenshots
+##### UI Disclosure
 
-We prevent reading secret keys from the UI by never displaying them.
+We prevent disclosing secret keys through the UI by never displaying them.
 
-#### Clipboard Snooping
+##### Clipboard Snooping
 
 We prevent accessing secret keys through the clipboard by never allowing the
 user to copy them.
 
-#### Timing Side-Channel
+##### Timing Side-Channel
 
 We mitigate timing attacks by 
 
 1. Using constant-time cryptographic implementations.
 2. Not branching based on secret values in application code, unless it's a fatal
-error. Conditions are checked with constant time comparison.
+   error. Conditions are checked with constant time comparison.
 3. Rate limiting cryptographic operations that can be initiated by third-party
-code without user interaction to mitigate attacks like
-[Hertzbleed](https://www.hertzbleed.com/) that can bypass constant-time
-safeguards, but need a large sample size.
+   code without user interaction to mitigate attacks like
+   [Hertzbleed](https://www.hertzbleed.com/) that can bypass constant-time
+   safeguards, but need a large sample size.[^15]
 4. Disabling cryptographic operations that can be initiated by third-party code
-without user interaction when the application is in the background.
+   without user interaction when the application is in the background.
 6. Scoping secrets used in cryptographic operations that can be initiated by
-third-party code without user interaction to specific applications through the
-[1DK](./one-dapp-per-key.md) model.
+   third-party code without user interaction to specific applications through
+   the [1DK](./one-dapp-per-key.md) model.
 
 ---
 
-## Backup Disclosure
+### Backup Disclosure
 
-TODO pending finalizing backup design.
+In order to learn the secret key from a backup, the attacker must acquire the
+encrypted backup file which stores the secret keys in addition to the [KDF
+secret](./backup.md##kdf-secret) and the [backup
+password](./backup.md#backup-password) that are needed to decrypt the backup
+file. To reiterate, as opposed to seed phrases, compromising the [backup
+password](./backup.md##backup-password) won't lead to secret key disclosure by
+itself since the secret keys are not derived from the backup password.
+
+```mermaid
+flowchart BT
+
+  encrypted_backup_disclosure[Encrypted Backup Disclosure]
+  --> backup_disclosure[/Backup Disclosure\]
+
+  social_engineering[Social Engineering]
+  --> encrypted_backup_disclosure
+  
+  icloud_storage_compromise[iCloud Storage Compromise]
+  --> encrypted_backup_disclosure
+  
+  apple_id_compromise[Apple ID Compromise]
+  --> encrypted_backup_disclosure
+  
+  kdfs_disclosure[KDF Secret Disclosure]
+  --> backup_disclosure
+  
+  apple_id_compromise
+  --> kdfs_disclosure
+
+  icloud_keychain_compromise[iCloud Keychain Compromise]
+  --> kdfs_disclosure
+  
+  backup_pwd_disclosure[Backup Password Disclosure]
+  --> backup_disclosure
+
+  storage_access[Storage Access]
+  --> backup_pwd_disclosure
+
+  social_engineering2[Social Engineering]
+  --> backup_pwd_disclosure
+
+  side_channel[Side-Channel]
+  --> backup_pwd_disclosure
+
+  ui_disclosure[UI Disclosure]
+  --> side_channel
+
+  clipboard_snooping[Clipboard Snooping]
+  --> side_channel
+```
+
+#### Encrypted Backup Disclosure
+
+Encrypted backup files are stored in iCloud Storage. In order to gain access to
+an encrypted backup file an attacker must
+
+1. compromise a user's Apple ID or 
+1. compromise the iCloud Storage service's security controls or
+1. trick a user into extracting an encrypted backup from the app-specific iCloud
+   Storage and handing it over to the attacker.
+
+We can't defend against any of these attacks, but we note that extracting an
+encrypted backup from the app-specific iCloud Storage is a challenging task that
+requires a technically advanced user and those users are less likely to fall
+subject to trickery in this regard.
+
+#### Backup Password Disclosure
+
+##### Storage Access
+
+The attacker may learn a user's backup password by directly accessing the user's
+choice of [storage](./backup.md#self-custody-password-storage).  We can't
+prevent access to the backup password beyond advising the user on secure storage
+practices.
+
+##### Social Engineering
+
+An attacker may acquire a user's backup password by deceiving the user through
+social engineering. We can't defend against this beyond warning the user never
+to give out the backup password to anyone.
+
+##### UI Disclosure
+
+The user can view the backup password any time in the application settings on
+the device after biometric authentication for reasons explained
+[here.](./backup.md#self-custody-password-storage) We mitigate [UI
+disclosure](#ui-disclosure) of the backup password by hiding it by default and
+requiring the user to reveal it manually by pressing a button.
+
+We prevent the backup password from leaking into snapshots when the app goes
+into the background by hiding it from view when the corresponding [system
+event](https://developer.apple.com/library/archive/qa/qa1838/_index.html) is
+fired.
+
+We prevent the backup password from being saved insecurely as part of the UI
+state by not adding it to the UI state. Instead, the backup password is fetched
+from the local keychain when the user chooses to reveal it and it is added
+directly to the UI as a text element.
+
+There is no officially supported method to prevent taking a screenshot, only
+various hacks that may break with any iOS release, therefore we take no measures
+against the user taking a screenshot of the revealed backup password.
+
+##### Clipboard Snooping
+
+The user can copy the backup password any time in the application settings on
+the device after biometric authentication for reasons explained
+[here.](./backup.md#self-custody-password-storage)
+
+Malicious apps can steal backup password by accessing the clipboard after the
+user copied the backup password and switched to the malicious app. As a
+mitigation measure, iOS warns the user when an app accesses the clipboard if
+it's not initiated through a paste action by the user [since iOS
+15.](https://developer.apple.com/videos/play/wwdc2021/10085/?time=360) We can't
+defend against the user pasting the backup password into a malicious app.
 
 ---
 
-# Approval Spoofing
+## Approval Spoofing
 
-The user authorizes a transaction with different parameters than they intended 
-to or the user performs an action which leads to authorizing a transaction 
-without being aware of authorizing a transaction.
+In an approval spoofing attack, the user authorizes a transaction with different
+parameters than they intended to, or the user performs an action which leads to
+authorizing a transaction without being aware of authorizing a transaction.
 
-## Phishing and Social Engineering
+### Phishing and Social Engineering
 
 ```mermaid
 flowchart BT
@@ -358,7 +469,7 @@ flowchart BT
   --> phishing
 ```
 
-### Social Engineering
+#### Social Engineering
 
 A social engineering attack relies on a crook tricking the user to execute a
 transaction. A novel social engineering threat for Web3 users is that crooks may
@@ -372,14 +483,12 @@ We mitigate social engineering attacks with the following measures:
    attacker manages to convince the user to transfer significant funds into the
    fraudulent dapp, the [1DK](./one-dapp-per-key.md) model offers no protection
    for those funds.
-1. We warn the user if they are about to approve a transaction for a dapp that
-   they haven't transacted with before.
-1. We warn the user if they are about to send a transaction to an address that
-   they haven't transacted with before.
-1. We warn the user if the blockchain data we display hasn't been verified
-   locally.
+1. In the future, we'll warn the user if they are about to send a transaction to
+   an address that they haven't transacted with before.
+1. In the future, we'll warn the user if the blockchain data we display hasn't
+   been verified locally.
 
-### Phishing
+#### Phishing
 
 Phishing is a type of social engineering attack where the attacker prompts the
 user to perform an action advantageous to the attacker with a single message (as
@@ -395,12 +504,12 @@ We prevent such phishing attacks with the novel
 [One-Dapp-per-Key](./one-dapp-per-key.md) (1DK) model.
 
 ---
-## Compromised Dapp
+### Compromised Dapp
 
-An honest dapp may become compromised by changing its smart contract or front
-end to produce fraudulent transactions.  For example, a compromised front end
-may prompt the user to approve transactions with a different smart contract than
-they intended to.
+An honest dapp may become compromised by an attacker changing its smart contract
+or front end to produce fraudulent transactions.  For example, a compromised
+front end may prompt the user to approve transactions with a different smart
+contract than they intended to.
 
 ```mermaid
 flowchart BT
@@ -435,30 +544,31 @@ flowchart BT
   --> malicious_frontend
 ```
 
-### Supply Chain Attack
+#### Supply Chain Attack
 
 
 SealVault offers the following mitigations against supply chain attacks on
 dapps:
 
-1. The 1DK model limits the damage a compromised dapp can do to the assets
-belonging to that dapp.  
-1. We warn the user if a smart contract has changed for a previously used dapp.
+1. The [1DK](./one-dapp-per-key.md) model limits the damage a compromised dapp
+   can do to the assets belonging to that dapp.
+1. In the future we will warn the user if a smart contract has changed for a
+   previously used dapp.
 1. In the future we will warn the user about suspicious transactions based on
-their previous usage of the dapp.
+   their previous usage of the dapp.
 
-### Clickjacking
+#### Clickjacking
 
-The 1DK model defends against
+The [1DK](./one-dapp-per-key.md) model defends against
 [clickjacking](https://owasp.org/www-community/attacks/Clickjacking) attacks as
-detailed there.
+detailed [there.](./one-dapp-per-key.md#embedded-contexts)
 
-### Man-In-The-Middle
+#### Man-In-The-Middle
 
 We mitigate man-in-the-middle attacks on dapps by disallowing transactions and
-signatures for dapps that were served over HTTP.
+signatures for dapps that were served over HTTP.[^20]
 
-### Reflected XSS
+#### Reflected XSS
 
 The application must pass data to the dapp frontend JavaScript which could open
 up a reflected XSS vector for messages from remote APIs.
@@ -469,3 +579,12 @@ frontend.  This is safe because it's not possible to break out of a string
 literal enclosed in `"..."` with the hexadecimal character set `[0-9A-Fa-f]`.
 
 
+[^10]: 
+    See [CVE-2022-32969](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-32969)
+    for a recent example.
+
+[^15]:
+    This is a [todo.](https://github.com/sealvault/sealvault/issues/31)
+
+[^20]:
+    This is a [todo.](https://github.com/sealvault/sealvault/issues/30)

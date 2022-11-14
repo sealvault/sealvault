@@ -40,6 +40,7 @@
 		68CCACFA28F85BC70043692D /* Banner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACF928F85BC70043692D /* Banner.swift */; };
 		68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFD28FC2A740043692D /* CoreUICallback.swift */; };
 		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
+		68E9F88329223CFA007316B6 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 68E9F88229223CFA007316B6 /* Info.plist */; };
 		68EBBC272907C92200C367F4 /* sortAddressesBy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC262907C92200C367F4 /* sortAddressesBy.swift */; };
 		68EBBC29290E9B4D00C367F4 /* displayChecksumAddress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */; };
 		68EBBC2B290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */; };
@@ -96,6 +97,7 @@
 		68CCACF928F85BC70043692D /* Banner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Banner.swift; sourceTree = "<group>"; };
 		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
+		68E9F88229223CFA007316B6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		68EBBC262907C92200C367F4 /* sortAddressesBy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sortAddressesBy.swift; sourceTree = "<group>"; };
 		68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = displayChecksumAddress.swift; sourceTree = "<group>"; };
 		68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TokenTransferSent+displayTo.swift"; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
+				68E9F88229223CFA007316B6 /* Info.plist */,
 				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
 				688C29B5283FE73E00474900 /* AccountListView.swift */,
 				688C29BD283FF33A00474900 /* AccountRow.swift */,
@@ -342,6 +345,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				68E9F88329223CFA007316B6 /* Info.plist in Resources */,
 				68F6291928251A0B00BDCD02 /* Preview Assets.xcassets in Resources */,
 				6853B4D6290591B400397279 /* html in Resources */,
 				68F6291628251A0B00BDCD02 /* Assets.xcassets in Resources */,
@@ -542,7 +546,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SealVaultApp/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TX8MGPD29J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -554,7 +558,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
 				PRODUCT_NAME = SealVault;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -570,7 +574,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TX8MGPD29J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -582,7 +586,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.sealvault.ios.app;
 				PRODUCT_NAME = SealVault;
 				SWIFT_EMIT_LOC_STRINGS = YES;

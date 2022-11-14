@@ -6,31 +6,29 @@
 
 ## Experiment freely with Web3 
 
-SealVault is the Web3 key manager that's got your back.
+SealVault is the first key manager with automated transaction approval. This
+keeps you safe and gets out of the way simultaneously.
 
 ## Features
 
-### Automated burner wallets :fire:  
-
-When you add a dapp to your account, a new key is generated just for this dapp.
-Wallet addresses are never connected to dapps. 
-This protects you from phishing and mitigates compromised dapps.
-[Learn more.](https://sealvault.org/burners/)
-
-
-### Automatic transaction approval 🥳
+### Automated transaction approval 🥳
 
 You decide which dapp to add, after that transactions are approved
 automatically.
-[Learn more.](https://sealvault.org/burners/)
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
+### One-Dapp-Per-Key :fire:
+
+When you add a dapp to your account, a new key is generated just for this dapp.
+Wallet addresses are never connected to dapps.
+This protects you from phishing and mitigates compromised dapps.
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
 ### Move assets between wallets and dapps 💰
 
 First class token transfer support for dapp addresses. 
 You can also transfer a pre-configured amount automatically when you add a new dapp. 
-[Learn more.](https://sealvault.org/burners/)
-
+[Learn more.](https://sealvault.org/one-dapp-per-key/)
 
 ### Isolated identities 🕶️
 
@@ -44,10 +42,10 @@ Organize your dapps into accounts for isolated identities.
 
 ## Status
 
-The project is currently in alpha stage with an iOS app and Polygon PoS support.
-Support for more platforms and blockchains is coming. You can find out more in the [intro blog post.](https://sealvault.org/blog/web3-vision/)
+The project is currently in public beta with an iOS app and Polygon PoS support.
+You can sign up for a beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
 
-The iOS beta starts October 2022. You can sign up for an invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+Support for more platforms and blockchains is coming. You can find out more in the [intro blog post.](https://sealvault.org/blog/web3-vision/)
 
 ## [Developer Docs](https://sealvault.org/dev-docs/)
 

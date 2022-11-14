@@ -122,7 +122,7 @@ flowchart TB
 
 ```
 
-## Backup
+## Cloud Backup
 
 ```mermaid
 
@@ -135,7 +135,7 @@ flowchart TB
       backup_logic(Backup Logic)
     end
 
-    keychain[|borders:bt| Local Keychain]
+    local_keychain[|borders:bt| Local Keychain]
     <-->|iOS Controls| backup_logic
 
     db[|borders:bt| Local DB]
@@ -145,10 +145,15 @@ flowchart TB
 
   subgraph icloud[iCloud]
     icloud_storage[|borders:bt| iCloud Storage]
+    
+    icloud_keychain[|borders:bt| iCloud Keychain]
   end
 
   backup_logic
-  -->|Apple ID, TLS| icloud
+  <-->|Apple ID, Passcode, E2EE| icloud_keychain
+  
+  backup_logic
+  -->|Apple ID, TLS| icloud_storage
 
 ```
 

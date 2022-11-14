@@ -194,7 +194,7 @@ extension Address {
         let nativeToken = Token.eth(checksumAddress)
         let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
-        let id = "ETH-\(checksumAddress)"
+        let id = "ETH-\(checksumAddress)-\(isWallet)"
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress,
             isWallet: isWallet, isTestNet: false, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum",
@@ -206,7 +206,7 @@ extension Address {
         let nativeToken = Token.matic(checksumAddress)
         let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
-        let id = "POLYGON-\(checksumAddress)"
+        let id = "POLYGON-\(checksumAddress)-\(isWallet)"
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet, isTestNet: false,
             blockchainExplorerLink: explorer, chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken
