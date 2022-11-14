@@ -10,7 +10,7 @@ title: Web3 Key Manager App
 </figure>
 
 !!! tip "Experiment freely with Web3"
-    SealVault is the first key manager with automatic transaction approval.
+    SealVault is the first key manager with automated transaction approval.
     This keeps you safe and gets out of the way simultaneously.
 
 ## Features
@@ -27,7 +27,7 @@ title: Web3 Key Manager App
     </figcaption>
     </figure>
 
--   __Automatic transaction approval__
+-   __Automated transaction approval__
     <figure markdown>
     ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>

@@ -6,12 +6,12 @@
 
 ## Experiment freely with Web3 
 
-SealVault is the first key manager with automatic transaction approval. This
+SealVault is the first key manager with automated transaction approval. This
 keeps you safe and gets out of the way simultaneously.
 
 ## Features
 
-### Automatic transaction approval 🥳
+### Automated transaction approval 🥳
 
 You decide which dapp to add, after that transactions are approved
 automatically.
