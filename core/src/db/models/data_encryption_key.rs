@@ -28,6 +28,16 @@ pub struct DataEncryptionKey {
 }
 
 impl DataEncryptionKey {
+    pub fn list_names(connection: &mut SqliteConnection) -> Result<Vec<String>, Error> {
+        use data_encryption_keys::dsl as dek;
+
+        let results = data_encryption_keys::table
+            .select(dek::name)
+            .load(connection)?;
+
+        Ok(results)
+    }
+
     /// Fetch a DEK from the DB by name and decrypt it.
     /// Returns the DEK id and the decrypted DEK.
     pub fn fetch_dek(
