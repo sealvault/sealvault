@@ -135,15 +135,16 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
     for ConnectionOptions
 {
     fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
-        (|| {
-            let timeout = self.busy_timeout.as_millis();
-            conn.batch_execute(&format!("PRAGMA busy_timeout = {};", timeout))?;
-            conn.batch_execute(
-                "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;",
-            )?;
-            conn.batch_execute("PRAGMA foreign_keys = ON;")?;
-            Ok(())
-        })()
-        .map_err(diesel::r2d2::Error::QueryError)
+        let timeout = self.busy_timeout.as_millis();
+        let query = &format!(
+            "
+            PRAGMA busy_timeout = {timeout};
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA foreign_keys = ON;
+        "
+        );
+        conn.batch_execute(query)
+            .map_err(diesel::r2d2::Error::QueryError)
     }
 }
