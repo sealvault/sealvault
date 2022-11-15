@@ -1,5 +1,18 @@
 # Changelog
 
+## 2022-11-15
+
+iOS Beta v0.3.3
+
+#### Improvements
+
+- Add chain name to dapp transaction error message on which the error happened.
+
+#### Fixes
+
+- Fix error message display for "insufficient funds for gas * price + value"
+  message.
+
 ## 2022-11-13
 
 ### iOS Beta v0.3.2
