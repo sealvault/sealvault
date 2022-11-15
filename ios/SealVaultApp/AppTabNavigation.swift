@@ -112,7 +112,7 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
-                let detail = "Error: \(errorMessage)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
@@ -142,7 +142,7 @@ struct AppTabNavigationInner: View {
             }
             if let errorMessage = res.errorMessage {
                 let title = "Transaction failed for \(res.dappIdentifier)"
-                let detail = "Error: \(errorMessage)"
+                let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
                 bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 // TODO add blockchain explorer url once it's tappable.
