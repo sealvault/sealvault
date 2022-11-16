@@ -11,8 +11,8 @@ Wallet addresses are never connected to dapps.  This isolation
 ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
 </figure>
 
-You can read more about how automated burner wallets work under the hood in the
-[technical documentation.](./dev-docs/design/one-dapp-per-key.md)
+You can read more about how the One-Dapp-per-Key method works under the hood in
+the [technical documentation.](./dev-docs/design/one-dapp-per-key.md)
 
 ## Dapp Address
 
