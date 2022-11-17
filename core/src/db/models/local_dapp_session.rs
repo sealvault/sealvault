@@ -16,6 +16,8 @@ use crate::{
     Error,
 };
 
+/// Not synced because it holds data that may differ between devices simultaneously.
+/// Eg. a user might want to use a dapp on Ethereum on desktop and on Polygon on mobile.
 #[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
 pub struct LocalDappSession {
     pub uuid: String,
