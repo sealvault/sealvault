@@ -108,6 +108,22 @@ impl LocalDappSessionEntity {
 }
 
 impl LocalDappSession {
+    /// List dapp ids in descending order by last used.
+    pub fn list_dapp_ids_desc(
+        conn: &mut SqliteConnection,
+        limit: u32,
+    ) -> Result<Vec<String>, Error> {
+        use local_dapp_sessions::dsl as lds;
+
+        let dapp_ids: Vec<String> = local_dapp_sessions::table
+            .select(lds::dapp_id)
+            .order(lds::last_used_at.desc())
+            .limit(limit as i64)
+            .load(conn)?;
+
+        Ok(dapp_ids)
+    }
+
     /// Fetch the current session for a dapp or create a new session.
     /// ⚠️ Assumes key for dapp in account already exists already and that there is one dapp key
     /// per account.

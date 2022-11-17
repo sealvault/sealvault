@@ -102,6 +102,7 @@ extension XCUIElement {
 
     func clearAndEnterText(text: String) {
         self.clear()
+        self.tap()
         // new line at end submits
         self.typeText("\(text)\n")
     }

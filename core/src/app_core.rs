@@ -300,6 +300,24 @@ impl AppCore {
             })?;
         Ok(())
     }
+
+    /// List the ids of the top dapps used by the user.
+    pub fn top_dapps(&self, limit: u32) -> Result<Vec<String>, CoreError> {
+        let res = self.connection_pool().deferred_transaction(|mut tx_conn| {
+            // Prefer dapps that have sessions on this device.
+            let mut session_dapp_ids =
+                m::LocalDappSession::list_dapp_ids_desc(tx_conn.as_mut(), limit)?;
+            // u32 is guaranteed to fit into usize on all supported platforms
+            if session_dapp_ids.len() < limit as usize {
+                // Fall back to dapps that haven't been connected on this device yet.
+                let dapp_ids = m::Dapp::list_dapp_ids_desc(tx_conn.as_mut(), limit)?;
+                session_dapp_ids.extend(dapp_ids)
+            }
+            Ok(session_dapp_ids)
+        })?;
+
+        Ok(res)
+    }
 }
 
 #[derive(Debug)]
@@ -1307,6 +1325,14 @@ pub mod tests {
         let tmp = TmpCore::new()?;
         let version = tmp.data_migration_version()?;
         assert!(version.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn top_dapps() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let top_dapps = tmp.core.top_dapps(10)?;
+        assert!(!top_dapps.is_empty());
         Ok(())
     }
 }

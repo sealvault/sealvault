@@ -23,61 +23,70 @@ struct AppTabNavigationInner: View {
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .browserOne
     @State var bannerData: BannerData?
-    @StateObject var browserModelOne = BrowserModel(homePage: Config.browserOneHomePage)
-    @StateObject var browserModelTwo = BrowserModel(homePage: Config.browserTwoHomePage)
+    @StateObject var browserModelOne = BrowserModel()
+    @StateObject var browserModelTwo = BrowserModel()
 
     var body: some View {
         TabView(selection: $selection) {
-
-            NavigationView {
-                BrowserView(browserModel: browserModelOne)
-            }
-            .tabItem {
-                let menuText = Text("Browser Tab 1")
-                Label {
-                    menuText
-                } icon: {
-                    Image(systemName: "network")
+            Group {
+                NavigationView {
+                    BrowserView(browserModel: browserModelOne)
                 }
-                .accessibility(label: menuText)
-            }
-            .tag(Tab.browserOne)
-
-            NavigationView {
-                AccountListView()
-            }
-            .tabItem {
-                let menuText = Text("Accounts")
-
-                Label {
-                    menuText
-                } icon: {
-                    if let account = model.activeAccount {
-                        // TODO add blue circle around icon when selected
-                        TabIcon(icon: account.picture)
-                    } else {
-                        Image(systemName: "person")
+                .tabItem {
+                    let menuText = Text("Browser Tab 1")
+                    Label {
+                        menuText
+                    } icon: {
+                        Image(systemName: "network")
                     }
+                    .accessibility(label: menuText)
                 }
-                .accessibility(label: menuText)
-            }
-            .tag(Tab.dapps)
+                .tag(Tab.browserOne)
 
-            NavigationView {
-                BrowserView(browserModel: browserModelTwo)
-            }
-            .tabItem {
-                let menuText = Text("Browser Tab 2")
-                Label {
-                    menuText
-                } icon: {
-                    Image(systemName: "network")
+                NavigationView {
+                    AccountListView()
                 }
-                .accessibility(label: menuText)
+                .tabItem {
+                    let menuText = Text("Accounts")
+
+                    Label {
+                        menuText
+                    } icon: {
+                        if let account = model.activeAccount {
+                            // TODO add blue circle around icon when selected
+                            TabIcon(icon: account.picture)
+                        } else {
+                            Image(systemName: "person")
+                        }
+                    }
+                    .accessibility(label: menuText)
+                }
+                .tag(Tab.dapps)
+
+                NavigationView {
+                    BrowserView(browserModel: browserModelTwo)
+                }
+                .tabItem {
+                    let menuText = Text("Browser Tab 2")
+                    Label {
+                        menuText
+                    } icon: {
+                        Image(systemName: "network")
+                    }
+                    .accessibility(label: menuText)
+                }
+                .tag(Tab.browserTwo)
             }
-            .tag(Tab.browserTwo)
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            let appearance = UITabBarAppearance()
+
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundColor = .systemGray5
+
+            UITabBar.appearance().standardAppearance = appearance
+        }
         .onChange(of: callbackModel.tokenTransferSent) { val in
             guard let res = val else {
                 return
