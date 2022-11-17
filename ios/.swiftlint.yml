@@ -5,3 +5,4 @@ excluded:
   - SealVaultApp/Generated
 disabled_rules:
   - todo
+file_length: 1000

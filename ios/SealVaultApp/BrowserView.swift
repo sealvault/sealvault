@@ -116,10 +116,10 @@ struct TopDapps: View {
             Color(colorScheme == .dark ? UIColor.systemGray3 : UIColor.white)
             VStack {
                 HStack {
-                    Text("Top Dapps").font(.title).bold()
+                    Text("Top Dapps").font(.largeTitle).bold()
                     Spacer()
                 }
-                .padding(.top, 40)
+                .padding(.top, 30)
                 .padding(.bottom, 20)
                 LazyVGrid(columns: [GridItem(), GridItem()]) {
                     ForEach(viewModel.topDapps) { dapp in
