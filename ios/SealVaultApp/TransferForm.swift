@@ -243,6 +243,7 @@ struct TransferButton: View {
     let cornerRadius: CGFloat = 8
 
     @ObservedObject var state: TransferState
+    @EnvironmentObject var model: GlobalModel
 
     func makeTransfer() async -> Bool {
         await dispatchBackground(.userInteractive) {
@@ -263,10 +264,27 @@ struct TransferButton: View {
                     }
                 }
                 return true
+            } catch CoreError.User(let message) {
+                DispatchQueue.main.async {
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
+                return false
+            } catch CoreError.Retriable(let message) {
+                DispatchQueue.main.async {
+                    let message = "Something went wrong. Please try again!"
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
+                print("Retriable error while transferring token: \(message)")
+                return false
             } catch let error {
+                DispatchQueue.main.async {
+                    let message = "An unexpected error occurred. Please restart the application!"
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
                 print("\(error)")
                 return false
             }
+
         }
     }
 
