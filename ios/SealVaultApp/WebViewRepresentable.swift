@@ -121,7 +121,6 @@ public struct WebViewRepresentable: UIViewRepresentable {
 
     func loadUrlIfValid(webView: WKWebView) {
         if let url = model.url {
-            print("loading url \(url)")
             webView.load(URLRequest(url: url))
         }
     }
