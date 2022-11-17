@@ -13,6 +13,7 @@ class GlobalModel: ObservableObject {
     @Published var browserOneUrl: URL?
     @Published var browserTwoUrl: URL?
     @Published var topDapps: [Dapp]
+    @Published var bannerData: BannerData?
 
     var activeAccount: Account? {
         return accountList.first(where: { acc in acc.id == activeAccountId })
