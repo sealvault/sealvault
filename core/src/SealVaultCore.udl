@@ -47,6 +47,9 @@ interface AppCore {
 
     [Throws=CoreError]
     void eth_change_dapp_chain(EthChangeDappChainArgs args);
+
+    [Throws=CoreError]
+    sequence<string> top_dapps(u32 limit);
 };
 
 [Error]

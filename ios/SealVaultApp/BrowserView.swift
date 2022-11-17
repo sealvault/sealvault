@@ -5,8 +5,8 @@
 import SwiftUI
 
 class BrowserModel: ObservableObject {
-    @Published fileprivate var urlRaw: String
-    @Published var addressBarText: String
+    @Published fileprivate var urlRaw: String?
+    @Published var addressBarText: String = ""
     @Published var doLoad: Bool = false
     @Published var doReload: Bool = false
     @Published var doStop: Bool = false
@@ -18,15 +18,14 @@ class BrowserModel: ObservableObject {
     @Published var dappApprovalRequest: DappApprovalRequest?
     @Published var dappApprovalPresented = false
     @Published var loadingProgress: Double = 0.0
-    var isAddressBarFocused = false
-
-    init(homePage: String) {
-        self.urlRaw = homePage
-        self.addressBarText = homePage
-    }
+    @Published var isAddressBarFocused = false
 
     var url: URL? {
-        URL(string: urlRaw.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
+        if let url = urlRaw {
+            return URL(string: url.trimmingCharacters(in: NSCharacterSet.whitespacesAndNewlines))
+        } else {
+            return nil
+        }
     }
 
     var urlValid: Bool {
@@ -42,6 +41,12 @@ class BrowserModel: ObservableObject {
         }
     }
 
+    func loadRawUrl(_ rawUrl: String) {
+        if let url = URL(string: rawUrl) {
+            loadUrl(url)
+        }
+    }
+
     func loadUrl(_ url: URL) {
         self.setRawUrl(url)
         self.doLoad = true
@@ -52,7 +57,7 @@ class BrowserModel: ObservableObject {
         if let url = url, url.scheme != "file" {
             self.urlRaw = url.absoluteString
             if !self.isAddressBarFocused {
-                self.addressBarText = self.urlRaw
+                self.addressBarText = self.urlRaw ?? ""
             }
         }
     }
@@ -75,21 +80,77 @@ struct BrowserView: View {
 
     var body: some View {
         BrowserViewInner(core: viewModel.core, browserModel: browserModel)
-        .sheet(isPresented: $browserModel.dappApprovalPresented) {
-            DappApproval(request: browserModel.dappApprovalRequest!)
-                .presentationDetents([.medium])
-                .background(.ultraThinMaterial)
-        }
+            .sheet(isPresented: $browserModel.dappApprovalPresented) {
+                DappApproval(request: browserModel.dappApprovalRequest!)
+                    .presentationDetents([.medium])
+                    .background(.ultraThinMaterial)
+            }
     }
 }
 
 struct BrowserViewInner: View {
     let core: AppCoreProtocol
+
     @ObservedObject var browserModel: BrowserModel
+
     var body: some View {
         VStack(spacing: 0) {
-            WebViewRepresentable(core: core, model: browserModel)
+            ZStack {
+                WebViewRepresentable(core: core, model: browserModel)
+                if browserModel.isAddressBarFocused || browserModel.addressBarText == "" {
+                    TopDapps(browserModel: browserModel)
+                }
+            }
             AddressBar(browserModel: browserModel)
+        }
+    }
+}
+
+struct TopDapps: View {
+    @ObservedObject var browserModel: BrowserModel
+    @EnvironmentObject private var viewModel: GlobalModel
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        ZStack {
+            Color(colorScheme == .dark ? UIColor.systemGray3 : UIColor.white)
+            VStack {
+                HStack {
+                    Text("Top Dapps").font(.title).bold()
+                    Spacer()
+                }
+                .padding(.top, 40)
+                .padding(.bottom, 20)
+                LazyVGrid(columns: [GridItem(), GridItem()]) {
+                    ForEach(viewModel.topDapps) { dapp in
+                        Button(action: {
+                            if let url = dapp.url {
+                                browserModel.loadUrl(url)
+                            }
+                        }, label: {
+                            VStack {
+                                dapp.image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 48, height: 48)
+                                    .cornerRadius(8)
+
+                                Text(dapp.displayName)
+                                    .font(.headline)
+                            }
+                        })
+                        .padding()
+                        .foregroundColor(.primary)
+                    }
+                }
+                Spacer()
+                Spacer()
+            }
+            .padding()
+        }
+        .task {
+            // Refresh top dapps
+            await viewModel.refreshAccounts()
         }
     }
 }
@@ -127,11 +188,9 @@ struct AddressBar: View {
                     .focused($isAddressBarFocused)
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
-                            browserModel.urlRaw = url
-                            browserModel.doLoad = true
+                            browserModel.loadRawUrl(url)
                         } else if let searchUrl = browserModel.searchUrl() {
-                            browserModel.urlRaw = searchUrl.absoluteString
-                            browserModel.doLoad = true
+                            browserModel.loadRawUrl(searchUrl.absoluteString)
                         } else {
                             print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
                         }
@@ -170,6 +229,7 @@ struct AddressBar: View {
             .padding(.horizontal, 5)
         }
         .padding(10)
+        .background(Config.tabBarColor)
         .onChange(of: isAddressBarFocused) { newValue in
             browserModel.isAddressBarFocused = newValue
         }
@@ -194,8 +254,12 @@ struct AddressBar: View {
 #if DEBUG
 struct WebView_Previews: PreviewProvider {
     static var previews: some View {
-        let browserModel = BrowserModel(homePage: Config.browserOneHomePage)
-        BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
+        let browserModel = BrowserModel()
+        Group {
+            BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
+            BrowserView(browserModel: browserModel)
+                .environmentObject(GlobalModel.buildForPreview()).preferredColorScheme(.dark)
+        }
     }
 }
 #endif

@@ -70,6 +70,22 @@ impl Dapp {
         Ok(dapps)
     }
 
+    /// List dapp ids in descending order by last updated at.
+    pub fn list_dapp_ids_desc(
+        conn: &mut SqliteConnection,
+        limit: u32,
+    ) -> Result<Vec<String>, Error> {
+        use dapps::dsl as d;
+
+        let dapp_ids: Vec<String> = dapps::table
+            .select(d::deterministic_id)
+            .order((d::updated_at.desc(), d::created_at.desc()))
+            .limit(limit as i64)
+            .load(conn)?;
+
+        Ok(dapp_ids)
+    }
+
     /// Get the human-readable dapp identifier from an url.
     pub fn dapp_identifier(
         url: Url,
