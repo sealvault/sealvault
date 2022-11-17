@@ -84,7 +84,11 @@ impl AppCore {
             .connection_pool()
             .exclusive_transaction(|mut tx_conn| {
                 run_migrations(&mut tx_conn)?;
-                data_migrations::run_all(tx_conn, resources.keychain())
+                data_migrations::run_all(
+                    tx_conn,
+                    resources.keychain(),
+                    resources.public_suffix_list(),
+                )
             })?;
 
         Ok(AppCore { resources })
@@ -656,9 +660,8 @@ pub mod tests {
 
         pub fn data_migration_version(&self) -> Result<Option<String>, Error> {
             let mut conn = self.core.connection_pool().connection()?;
-            let mut migrations = m::DataMigration::list_all(&mut conn)?;
-            migrations.sort_by_key(|m| m.version.clone());
-            Ok(migrations.last().map(|m| m.version.clone()))
+            let migrations = m::DataMigration::list_versions_sorted(&mut conn)?;
+            Ok(migrations.last().map(|v| v.into()))
         }
 
         pub fn first_account(&self) -> dto::CoreAccount {
@@ -1300,10 +1303,10 @@ pub mod tests {
     }
 
     #[test]
-    fn runs_data_migration_v0() -> Result<()> {
+    fn runs_data_migrations() -> Result<()> {
         let tmp = TmpCore::new()?;
         let version = tmp.data_migration_version()?;
-        assert_eq!(version.expect("there is data migration"), "v0");
+        assert!(version.is_some());
         Ok(())
     }
 }

@@ -49,6 +49,10 @@ impl Dapp {
         ALL_COLUMNS
     }
 
+    pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Self>, Error> {
+        Ok(dapps::table.load::<Self>(conn)?)
+    }
+
     /// List all dapps that have been added to an account.
     pub fn list_for_account(
         conn: &mut SqliteConnection,

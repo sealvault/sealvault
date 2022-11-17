@@ -28,8 +28,18 @@ pub struct DataMigration {
 }
 
 impl DataMigration {
-    pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<DataMigration>, Error> {
-        Ok(data_migrations::table.load::<DataMigration>(conn)?)
+    /// List versions sort in ascending order.
+    pub fn list_versions_sorted(
+        conn: &mut SqliteConnection,
+    ) -> Result<Vec<String>, Error> {
+        use data_migrations::dsl as dm;
+
+        let versions: Vec<String> = data_migrations::table
+            .select(dm::version)
+            .order(dm::version.asc())
+            .load(conn)?;
+
+        Ok(versions)
     }
 }
 
