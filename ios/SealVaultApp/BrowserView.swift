@@ -118,29 +118,32 @@ struct TopDapps: View {
                 }
                 .padding(.top, 30)
                 .padding(.bottom, 20)
-                LazyVGrid(columns: [GridItem(), GridItem()]) {
-                    ForEach(viewModel.topDapps) { dapp in
-                        Button(action: {
-                            if let url = dapp.url {
-                                browserModel.loadUrl(url)
-                            }
-                            browserModel.isAddressBarFocused = false
-                        }, label: {
-                            VStack {
-                                dapp.image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 48, height: 48)
-                                    .cornerRadius(8)
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(), GridItem()]) {
+                        ForEach(viewModel.topDapps) { dapp in
+                            Button(action: {
+                                if let url = dapp.url {
+                                    browserModel.loadUrl(url)
+                                }
+                                browserModel.isAddressBarFocused = false
+                            }, label: {
+                                VStack {
+                                    dapp.image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 48, height: 48)
+                                        .cornerRadius(8)
 
-                                Text(dapp.displayName)
-                                    .font(.headline)
-                            }
-                        })
-                        .padding()
-                        .foregroundColor(.primary)
+                                    Text(dapp.displayName)
+                                        .font(.headline)
+                                }
+                            })
+                            .padding()
+                            .foregroundColor(.primary)
+                        }
                     }
                 }
+                .scrollDismissesKeyboard(.immediately)
                 Spacer()
                 Spacer()
             }
