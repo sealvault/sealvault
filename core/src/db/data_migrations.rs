@@ -111,13 +111,24 @@ impl MigrationV1 {
         account_id: &str,
         dapp_url: Url,
     ) -> Result<(), Error> {
+        let chain_id = eth::ChainId::default_dapp_chain();
         let dapp_id = m::Dapp::create_if_not_exists(tx_conn, dapp_url, psl)?;
         let params = m::CreateEthAddressParams::builder()
             .account_id(account_id)
-            .chain_id(eth::ChainId::default_dapp_chain())
+            .chain_id(chain_id)
             .dapp_id(Some(&dapp_id))
             .build();
         m::Address::create_eth_key_and_address(tx_conn, keychain, &params)?;
+        // We're adding the dapp session here, because Uniswap makes two simultaneous requests on
+        // connect (`eth_requestAccounts` and `eth_chainId`) and as both try to inject the session
+        // on first connect, one of them is rejected by Sqlite and the Uniswap front end doesn't
+        // retry, just hangs.
+        let params = m::NewDappSessionParams::builder()
+            .dapp_id(&dapp_id)
+            .account_id(account_id)
+            .chain_id(chain_id)
+            .build();
+        m::LocalDappSession::create_eth_session(tx_conn, &params)?;
         Ok(())
     }
 }
