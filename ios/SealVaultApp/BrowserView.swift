@@ -56,9 +56,6 @@ class BrowserModel: ObservableObject {
         // File is used for the error page
         if let url = url, url.scheme != "file" {
             self.urlRaw = url.absoluteString
-            if !self.isAddressBarFocused {
-                self.addressBarText = self.urlRaw ?? ""
-            }
         }
     }
 
@@ -127,6 +124,7 @@ struct TopDapps: View {
                             if let url = dapp.url {
                                 browserModel.loadUrl(url)
                             }
+                            browserModel.isAddressBarFocused = false
                         }, label: {
                             VStack {
                                 dapp.image
@@ -232,6 +230,19 @@ struct AddressBar: View {
         .background(Config.tabBarColor)
         .onChange(of: isAddressBarFocused) { newValue in
             browserModel.isAddressBarFocused = newValue
+            if !browserModel.isAddressBarFocused && browserModel.urlRaw != browserModel.addressBarText {
+                browserModel.addressBarText = browserModel.urlRaw ?? ""
+            }
+        }
+        .onChange(of: browserModel.isAddressBarFocused) { newValue in
+            if newValue != isAddressBarFocused {
+                isAddressBarFocused = newValue
+            }
+        }
+        .onChange(of: browserModel.urlRaw) { newValue in
+            if newValue != browserModel.addressBarText {
+                browserModel.addressBarText = newValue ?? ""
+            }
         }
         .onChange(of: browserModel.loading) { newValue in
             if newValue {
