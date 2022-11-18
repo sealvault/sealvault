@@ -16,7 +16,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: ethereumTestUrl)
+        urlField.enterText(text: ethereumTestUrl)
 
         let approveDapp = app.buttons["approveDapp"]
         _ = approveDapp.waitForExistence(timeout: timeOutSeconds)
@@ -30,7 +30,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: newTabTestUrl)
+        urlField.enterText(text: newTabTestUrl)
 
         app.links["open"].tap()
         let opened = app.webViews.staticTexts["New Tab Target"]
@@ -44,7 +44,7 @@ final class BrowserUITest: XCTestCase {
         let searchText = "somethingrandom"
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: searchText)
+        urlField.enterText(text: searchText)
 
         let finishedOk = app.webViews.staticTexts[searchText]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -55,7 +55,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: "example.com")
+        urlField.enterText(text: "example.com")
 
         let finishedOk = app.webViews.staticTexts["Example Domain"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -65,7 +65,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: "https://doesntexist.sealvault.org")
+        urlField.enterText(text: "https://doesntexist.sealvault.org")
 
         let finishedOk = app.webViews.staticTexts["Failed to load page"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -80,28 +80,7 @@ func startBrowserApp() throws -> XCUIApplication {
 }
 
 extension XCUIElement {
-    /// Removes any current text in the field before typing in the new value and submitting
-    /// Based on: https://stackoverflow.com/a/32894080
-    func clear() {
-        if self.value as? String == nil {
-            XCTFail("Tried to clear and enter text into a non string value")
-            return
-        }
-
-        // Repeatedly delete text as long as there is something in the text field.
-        // This is required to clear text that does not fit in to the textfield and is partially hidden initally.
-        // Important to check for placeholder value, otherwise it gets into an infinite loop.
-        while let stringValue = self.value as? String, !stringValue.isEmpty, stringValue != self.placeholderValue {
-            // Move the cursor to the end of the text field
-            let lowerRightCorner = self.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9))
-            lowerRightCorner.tap()
-            let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
-            self.typeText(delete)
-        }
-    }
-
-    func clearAndEnterText(text: String) {
-//        self.clear()
+    func enterText(text: String) {
         self.tap()
         // new line at end submits
         self.typeText("\(text)\n")
