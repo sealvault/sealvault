@@ -75,7 +75,7 @@ final class BrowserUITest: XCTestCase {
 func startBrowserApp() throws -> XCUIApplication {
     let app = XCUIApplication()
     app.launch()
-    app.tabBars.buttons["Browser Tab 1"].tap()
+    app.tabBars.buttons["Browser 1"].tap()
     return app
 }
 
@@ -101,7 +101,7 @@ extension XCUIElement {
     }
 
     func clearAndEnterText(text: String) {
-        self.clear()
+//        self.clear()
         self.tap()
         // new line at end submits
         self.typeText("\(text)\n")
