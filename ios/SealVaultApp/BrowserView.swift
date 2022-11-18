@@ -193,7 +193,7 @@ struct AddressBar: View {
                         } else if let searchUrl = browserModel.searchUrl() {
                             browserModel.loadRawUrl(searchUrl.absoluteString)
                         } else {
-                            print("Unexpected: invalid url and search url \(browserModel.urlRaw)")
+                            print("Unexpected: invalid url and search url \(String(describing: browserModel.urlRaw))")
                         }
                     }
                     .onReceive(NotificationCenter.default.publisher(
