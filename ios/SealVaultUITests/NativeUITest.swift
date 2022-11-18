@@ -10,7 +10,7 @@ final class NativeUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let accountsButton = app.tabBars.buttons["Accounts"]
+        let accountsButton = app.tabBars.buttons["Dapps"]
         _ = accountsButton.waitForExistence(timeout: 5)
         accountsButton.tap()
 

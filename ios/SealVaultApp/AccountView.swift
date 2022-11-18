@@ -35,14 +35,14 @@ struct AccountView: View {
                                             model.browserOneUrl = url
                                         }
                                     }, label: {
-                                        Text("Open in Tab 1")
+                                        Text("Open in Browser 1")
                                     })
                                     Button(action: {
                                         if let url = dapp.url {
                                             model.browserTwoUrl = url
                                         }
                                     }, label: {
-                                        Text("Open in Tab 2")
+                                        Text("Open in Browser 2")
                                     })
                                 }
                         }

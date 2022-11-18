@@ -32,7 +32,7 @@ struct AppTabNavigationInner: View {
                     BrowserView(browserModel: browserModelOne)
                 }
                 .tabItem {
-                    let menuText = Text("Browser Tab 1")
+                    let menuText = Text("Browser 1")
                     Label {
                         menuText
                     } icon: {
@@ -46,7 +46,7 @@ struct AppTabNavigationInner: View {
                     AccountListView()
                 }
                 .tabItem {
-                    let menuText = Text("Accounts")
+                    let menuText = Text("Dapps")
 
                     Label {
                         menuText
@@ -66,7 +66,7 @@ struct AppTabNavigationInner: View {
                     BrowserView(browserModel: browserModelTwo)
                 }
                 .tabItem {
-                    let menuText = Text("Browser Tab 2")
+                    let menuText = Text("Browser 2")
                     Label {
                         menuText
                     } icon: {
