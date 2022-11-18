@@ -2,7 +2,14 @@
 
 ## 2022-11-18
 
-iOS Beta v0.4.0
+## iOS Beta v0.4.1
+
+#### Fixes
+
+- Fix address bar not showing due to too many top dapps
+- Allow dismissing address bar keyboard by scrolling page down 
+
+## iOS Beta v0.4.0
 
 #### Improvements
 
@@ -13,7 +20,7 @@ iOS Beta v0.4.0
 
 ## 2022-11-15
 
-iOS Beta v0.3.3
+## iOS Beta v0.3.3
 
 #### Improvements
 
