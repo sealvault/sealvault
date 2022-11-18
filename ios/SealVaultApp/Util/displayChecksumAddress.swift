@@ -5,5 +5,5 @@
 import Foundation
 
 func displayChecksumAddress(_ address: String) -> String {
-    "\(address.prefix(5))...\(address.suffix(3))"
+    "\(address.prefix(5))...\(address.suffix(4))"
 }
