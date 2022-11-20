@@ -84,7 +84,11 @@ impl AppCore {
             .connection_pool()
             .exclusive_transaction(|mut tx_conn| {
                 run_migrations(&mut tx_conn)?;
-                data_migrations::run_all(tx_conn, resources.keychain())
+                data_migrations::run_all(
+                    tx_conn,
+                    resources.keychain(),
+                    resources.public_suffix_list(),
+                )
             })?;
 
         Ok(AppCore { resources })
@@ -295,6 +299,24 @@ impl AppCore {
                 Ok(())
             })?;
         Ok(())
+    }
+
+    /// List the ids of the top dapps used by the user.
+    pub fn top_dapps(&self, limit: u32) -> Result<Vec<String>, CoreError> {
+        let res = self.connection_pool().deferred_transaction(|mut tx_conn| {
+            // Prefer dapps that have sessions on this device.
+            let mut session_dapp_ids =
+                m::LocalDappSession::list_dapp_ids_desc(tx_conn.as_mut(), limit)?;
+            // u32 is guaranteed to fit into usize on all supported platforms
+            if session_dapp_ids.len() < limit as usize {
+                // Fall back to dapps that haven't been connected on this device yet.
+                let dapp_ids = m::Dapp::list_dapp_ids_desc(tx_conn.as_mut(), limit)?;
+                session_dapp_ids.extend(dapp_ids)
+            }
+            Ok(session_dapp_ids)
+        })?;
+
+        Ok(res)
     }
 }
 
@@ -656,9 +678,8 @@ pub mod tests {
 
         pub fn data_migration_version(&self) -> Result<Option<String>, Error> {
             let mut conn = self.core.connection_pool().connection()?;
-            let mut migrations = m::DataMigration::list_all(&mut conn)?;
-            migrations.sort_by_key(|m| m.version.clone());
-            Ok(migrations.last().map(|m| m.version.clone()))
+            let migrations = m::DataMigration::list_versions_sorted(&mut conn)?;
+            Ok(migrations.last().map(|v| v.into()))
         }
 
         pub fn first_account(&self) -> dto::CoreAccount {
@@ -1300,10 +1321,18 @@ pub mod tests {
     }
 
     #[test]
-    fn runs_data_migration_v0() -> Result<()> {
+    fn runs_data_migrations() -> Result<()> {
         let tmp = TmpCore::new()?;
         let version = tmp.data_migration_version()?;
-        assert_eq!(version.expect("there is data migration"), "v0");
+        assert!(version.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn top_dapps() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let top_dapps = tmp.core.top_dapps(10)?;
+        assert!(!top_dapps.is_empty());
         Ok(())
     }
 }

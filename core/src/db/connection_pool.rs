@@ -213,6 +213,7 @@ mod tests {
     use crate::{
         db::{data_migrations, schema_migrations::run_migrations},
         encryption::Keychain,
+        public_suffix_list::PublicSuffixList,
     };
 
     #[test]
@@ -224,10 +225,11 @@ mod tests {
         // Create mock db
         let connection_pool = ConnectionPool::new(db_path.to_str().expect("ok utf-8"))?;
         let keychain = Keychain::new();
+        let psl = PublicSuffixList::new()?;
 
         connection_pool.exclusive_transaction(|mut tx_conn| {
             run_migrations(&mut tx_conn)?;
-            data_migrations::run_all(tx_conn, &keychain)
+            data_migrations::run_all(tx_conn, &keychain, &psl)
         })?;
 
         // Create backup (also checks integrity)

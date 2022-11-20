@@ -12,6 +12,8 @@ class GlobalModel: ObservableObject {
     @Published var callbackModel: CallbackModel
     @Published var browserOneUrl: URL?
     @Published var browserTwoUrl: URL?
+    @Published var topDapps: [Dapp]
+    @Published var bannerData: BannerData?
 
     var activeAccount: Account? {
         return accountList.first(where: { acc in acc.id == activeAccountId })
@@ -28,6 +30,7 @@ class GlobalModel: ObservableObject {
         self.accounts = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
         self.activeAccountId = activeAccountId
         self.callbackModel = callbackModel
+        self.topDapps = []
     }
 
     private func updateAccounts(_ coreAccounts: [CoreAccount]) {
@@ -125,6 +128,7 @@ class GlobalModel: ObservableObject {
         if let activeAccountId = activeAccountId {
             self.activeAccountId = activeAccountId
         }
+        self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
 
     func addEthChain(chainId: UInt64, addressId: String) async {
@@ -158,6 +162,17 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    func fetchTopDapps(limit: Int) async -> [Dapp] {
+        let topDappIds = await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.topDapps(limit: UInt32(limit))
+            } catch {
+                print("Error listing top dapps: \(error)")
+                return []
+            }
+        }
+        return activeAccount?.dappList.filter { topDappIds.contains($0.id) } ?? []
+    }
 }
 
 // MARK: - Development
@@ -346,6 +361,11 @@ class PreviewAppCore: AppCoreProtocol {
             CoreEthChain(chainId: 137, displayName: "Polygon PoS"),
             CoreEthChain(chainId: 80001, displayName: "Polygon PoS Mumbai Testnet")
         ]
+    }
+
+    func topDapps(limit: UInt32) throws -> [String] {
+        let res = try! listAccounts().first!.dapps.map {$0.id}.prefix(Int(limit))
+        return [String](res)
     }
 }
 

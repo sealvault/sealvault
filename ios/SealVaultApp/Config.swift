@@ -3,12 +3,14 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
+import SwiftUI
 
 struct Config {
     static let dbFileDir = "database"
     static let dbFileName = "sealvault-db.sqlite3"
-    static let browserOneHomePage = "https://sealvault.org/"
-    static let browserTwoHomePage = "https://search.brave.com/"
+    static let tabBarColor = Color(UIColor.systemGray5)
+    // Limited to 4 as a workaround to not being able to scroll
+    static let topDappsLimit = 4
     static let searchProvider = URL(string: "https://search.brave.com/search")!
     static let searchQueryParamName = "q"
 }

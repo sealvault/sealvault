@@ -8,26 +8,30 @@ struct AccountListView: View {
     @EnvironmentObject private var model: GlobalModel
 
     var body: some View {
-        ScrollViewReader { _ in
-            List {
-                ForEach(model.accountList) { account in
-                    NavigationLink {
-                        AccountView(account: account)
-                    } label: {
-                        AccountRow(account: account)
-                            .padding(.vertical, 8)
-                            .accessibilityIdentifier(account.displayName)
+        VStack {
+            ScrollViewReader { _ in
+                List {
+                    ForEach(model.accountList) { account in
+                        NavigationLink {
+                            AccountView(account: account)
+                        } label: {
+                            AccountRow(account: account)
+                                .padding(.vertical, 8)
+                                .accessibilityIdentifier(account.displayName)
+                        }
                     }
                 }
+                .accessibilityRotor("Accounts", entries: model.accountList, entryLabel: \.displayName)
+                .refreshable(action: {
+                    await model.refreshAccounts()
+                })
             }
-            .accessibilityRotor("Accounts", entries: model.accountList, entryLabel: \.displayName)
-            .refreshable(action: {
-                await model.refreshAccounts()
-            })
-        }
-        .navigationTitle(Text("Accounts"))
-        .task {
-            await self.model.refreshAccounts()
+            .navigationTitle(Text("Accounts"))
+            .task {
+                await self.model.refreshAccounts()
+            }
+
+//            Divider()
         }
     }
 }
