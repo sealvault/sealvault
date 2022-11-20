@@ -93,6 +93,7 @@
 		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
 		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
 		68B6C40028426C120025BCEA /* Dapp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dapp.swift; sourceTree = "<group>"; };
+		68CB392B29240507004BDD20 /* SealVaultApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SealVaultApp.entitlements; sourceTree = "<group>"; };
 		68CCACF928F85BC70043692D /* Banner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Banner.swift; sourceTree = "<group>"; };
 		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
@@ -200,12 +201,11 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
-				68E9F88229223CFA007316B6 /* Info.plist */,
+				68CB392B29240507004BDD20 /* SealVaultApp.entitlements */,
 				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
 				688C29B5283FE73E00474900 /* AccountListView.swift */,
 				688C29BD283FF33A00474900 /* AccountRow.swift */,
 				688C29BB283FF32300474900 /* AccountView.swift */,
-				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
@@ -213,6 +213,7 @@
 				68CCACF928F85BC70043692D /* Banner.swift */,
 				68745A7F2826E0F000E7B915 /* BrowserView.swift */,
 				5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */,
+				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				686C1D042827C9DC00011311 /* Config.swift */,
 				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
@@ -220,6 +221,7 @@
 				68C0C4FC28A2739600572668 /* Generated */,
 				6853B4D5290591B400397279 /* html */,
 				5850CEC3F304338F5D6DC43D /* IconView.swift */,
+				68E9F88229223CFA007316B6 /* Info.plist */,
 				688C29E72840F5C500474900 /* Model */,
 				68F6291728251A0B00BDCD02 /* Preview Content */,
 				68F6291128251A0900BDCD02 /* SealVaultApp.swift */,
@@ -541,6 +543,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SealVaultApp/SealVaultApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SealVaultApp/Preview Content\"";
@@ -571,6 +574,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SealVaultApp/SealVaultApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TX8MGPD29J;

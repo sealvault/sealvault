@@ -3,6 +3,18 @@
 <plist version="1.0">
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+        <false/>
+    <key>NSUbiquitousContainers</key>
+        <dict>
+            <key>iCloud.org.sealvault.ios.app.backups</key>
+            <dict>
+                <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+                <false/>
+                <key>NSUbiquitousContainerName</key>
+                <string>iCloud.org.sealvault.ios.app.backups</string>
+                <key>NSUbiquitousContainerSupportedFolderLevels</key>
+                <string>Any</string>
+            </dict>
+        </dict>
 </dict>
 </plist>
