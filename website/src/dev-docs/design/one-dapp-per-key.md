@@ -209,9 +209,10 @@ explicitly transferred by the user to said dapp.
 
 #### Isn't having to send coins for transaction fees to many addresses going to be expensive?
 
-Depends on the blockchain.  On chains like Solana with negligible transaction
-fees this is not an issue.  However, on Ethereum L1 transaction fees would be
-prohibitive and SealVault doesn't support ETH L1 dapps for this reason currently.
+Depends on the blockchain.  On chains like Polygon PoS and Solana with
+negligible transaction fees this is not an issue.  However, on Ethereum L1
+transaction fees could be prohibitive, but we expect fees to become negligible
+over time for all dapps.
 
 #### Isn't having to send coins for transaction fees to many addresses going to be annoying?
 

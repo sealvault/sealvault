@@ -183,7 +183,7 @@ lazy_static! {
     static ref ETHERS_JSONRPC_CODE_REGEX: Regex =
         Regex::new(r"\(code: (?P<code>-?\d+),").expect("static is ok");
     static ref ETHERS_JSONRPC_MESSAGE_REGEX: Regex =
-        Regex::new(r#"message: "?(?P<message>[\.:'!\?\-\d\w\s]+)"?,"#)
+        Regex::new(r#"message: "?(?P<message>[\.:'!\?\-\d\w\s\+\*]+)"?,"#)
             .expect("static is ok");
 }
 
@@ -249,6 +249,19 @@ mod tests {
         let (code, message) = res.unwrap();
         assert_eq!(code, -32000);
         assert_eq!(message, Some("transaction underpriced".into()));
+    }
+
+    #[test]
+    fn parse_jronsrpc_client_error_with_asterisk() {
+        let error = "(code: -32000, message: insufficient funds for gas * price + value, data: None)";
+        let res = parse_eth_json_rpc_error(error);
+        assert!(res.is_some());
+        let (code, message) = res.unwrap();
+        assert_eq!(code, -32000);
+        assert_eq!(
+            message,
+            Some("insufficient funds for gas * price + value".into())
+        );
     }
 
     #[test]

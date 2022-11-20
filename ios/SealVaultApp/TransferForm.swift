@@ -10,12 +10,17 @@ class TransferState: ObservableObject {
     @Published var token: Token
 
     @Published var toExternal: String = ""
-    @Published var toAddress: ToAddress = ToAddress.none
+    @Published var toAddress: Address?
+    @Published var showInAppSelection = false
 
     @Published var disableButton: Bool = false
     @Published var amount: String = ""
 
     @Published var processing: Bool = false
+
+    var defaultPickerSelection: Address? {
+        account.allAddresses.filter({canTransferTo($0)}).first
+    }
 
     var buttonDisabled: Bool {
         return processing || disableButton || toChecksumAddress == nil || amount == ""
@@ -38,11 +43,11 @@ class TransferState: ObservableObject {
         self.token = token
         self.fromAddress = fromAddress
     }
-}
 
-enum ToAddress: Hashable {
-    case none
-    case some(Address)
+    fileprivate func canTransferTo(_ toAddress: Address) -> Bool {
+        // TODO: use protocol + chain id and move to address
+        return toAddress.chainDisplayName == fromAddress.chainDisplayName && fromAddress.id != toAddress.id
+    }
 }
 
 struct TransferForm: View {
@@ -51,53 +56,18 @@ struct TransferForm: View {
     // Accessibility size
     @Environment(\.dynamicTypeSize) var size
 
-    @FocusState private var amountFocused: Bool
-
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Spacer()
-
-                if size >= .accessibility1 {
-                    TitleSection(state: state).scaledToFit()
-                } else {
-                    TitleSection(state: state)
-                }
-
                 Spacer()
 
                 FromSection(state: state)
 
                 ToSection(state: state)
 
-                GroupBox("Amount") {
-                    HStack {
-                        Label {
-                            Text(state.token.symbol)
-                        }
-                        icon: {
-                            IconView(image: state.token.image, iconSize: 24)
-                                .accessibility(label: Text("Token icon"))
-                        }
-                        TextField("amount", text: $state.amount)
-                            .multilineTextAlignment(.trailing)
-                            .textFieldStyle(.roundedBorder)
-                            .padding(.horizontal)
-                            .keyboardType(.decimalPad)
-                            .focused($amountFocused)
-                            .onChange(of: amountFocused, perform: { newValue in
-                                state.disableButton = newValue
-                            })
-                            .toolbar {
-                                ToolbarItemGroup(placement: .keyboard) {
-                                    Spacer()
-                                    Button("Done") {
-                                        amountFocused = false
-                                    }
-                                }
-                            }
-                    }
-                }
+                ChainSection(state: state)
+
+                TokenSection(state: state)
 
                 TransferButton(
                     core: model.core, state: state
@@ -115,26 +85,19 @@ struct TransferForm: View {
                 _ = await (accounts, tokens)
             }
         }
+        .navigationTitle(Text("Transfer"))
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
         .refreshable {
             await state.fromAddress.refreshTokens()
         }
-    }
-}
-
-struct TitleSection: View {
-    @ObservedObject var state: TransferState
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Transfer")
-                TokenLabel(token: state.token)
-            }.font(.largeTitle)
-            HStack {
-                Text("on \(state.fromAddress.chainDisplayName)")
-            }.font(.title2)
+        .sheet(isPresented: $state.showInAppSelection) {
+            if let defaultPickerSelection = state.defaultPickerSelection {
+                InAppPicker(state: state, pickerSelection: defaultPickerSelection)
+                    .presentationDetents([.medium])
+                    .background(.ultraThinMaterial)
+            }
         }
+
     }
 }
 
@@ -143,24 +106,15 @@ struct FromSection: View {
 
     var body: some View {
         GroupBox {
-            HStack {
-                if state.fromAddress.isWallet {
-                    Text("Wallet")
-                        .font(.headline)
-                } else if let dapp = state.account.dappForAddress(address: state.fromAddress) {
-                    DappRow(dapp: dapp)
-                }
-                Spacer()
-                TokenLabel(token: state.token)
-                TokenAmount(token: state.token)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top)
         } label: {
             HStack {
                 Text("From")
                 Spacer()
-                AddressMenu(address: state.fromAddress)
+                if let dapp = state.account.dappForAddress(address: state.fromAddress) {
+                    DappRow(dapp: dapp)
+                } else {
+                    Text("\(state.account.displayName) Account Wallet")
+                }
             }
             .frame(maxWidth: .infinity)
         }
@@ -170,68 +124,204 @@ struct FromSection: View {
 struct ToSection: View {
     @ObservedObject var state: TransferState
 
-    @State var toAddressType: ToAddressType = .dapp
+    @State var toAddressType: ToAddressType = .inApp
+    @State var showInAppSelection: Bool = false
     @FocusState private var toExternalFocused: Bool
 
     enum ToAddressType {
-        case wallet
-        case dapp
+        case inApp
         case external
     }
 
-    private func canTransferTo(_ toAddress: Address) -> Bool {
-        // TODO: use protocol + chain id and move to address
-        return toAddress.chainDisplayName == state.fromAddress.chainDisplayName && state.fromAddress.id != toAddress.id
-    }
-
     var body: some View {
-        GroupBox("To") {
+        GroupBox {
             VStack {
-                switch toAddressType {
-                case .wallet:
-                    Picker("Wallet", selection: $state.toAddress) {
-                        Text("none").tag(ToAddress.none)
-                        ForEach(state.account.walletList) { wallet in
-                            if canTransferTo(wallet) {
-                                Text("\(wallet.chainDisplayName) \(wallet.addressDisplay)")
-                                    .tag(ToAddress.some(wallet))
-                            }
-                        }
-                    }
-                case .dapp:
-                    Picker("Dapp", selection: $state.toAddress) {
-                        Text("none").tag(ToAddress.none)
-                        ForEach(state.account.dappList) { dapp in
-                            ForEach(dapp.addressList) { dappAddress in
-                                if canTransferTo(dappAddress) {
-                                    Text("\(dapp.humanIdentifier)")
-                                        .tag(ToAddress.some(dappAddress))
-                                }
-                            }
-                        }
-                    }
-                case .external:
-                    TextField("Checksum Address", text: $state.toExternal)
-                        .textFieldStyle(.roundedBorder)
-                        .padding(.horizontal)
-                        .autocorrectionDisabled(true)
-                        .autocapitalization(.none)
-                        .focused($toExternalFocused)
-                        .onChange(of: toExternalFocused, perform: { newValue in
-                            state.disableButton = newValue
-                        })
-
-                }
                 Picker("to", selection: $toAddressType) {
-                    Text("Wallet").tag(ToAddressType.wallet)
-                    Text("Dapp").tag(ToAddressType.dapp)
-                    Text("External").tag(ToAddressType.external)
+                    Text("🦭 In-App").tag(ToAddressType.inApp)
+                    Text("💸 Address").tag(ToAddressType.external)
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: toAddressType) { _ in
                     // Very important to reset otherwise user might mistakenly send to different address
                     state.toExternal = ""
-                    state.toAddress = ToAddress.none
+                    state.toAddress = nil
+                }
+
+                HStack {
+                    switch toAddressType {
+                    case .inApp:
+                        Button {
+                            state.showInAppSelection = true
+                        } label: {
+                            switch state.toAddress {
+                            case .none:
+                                Text("Select Dapp or Account Wallet").bold()
+                            case .some(let address):
+                                if let dapp = state.account.dappForAddress(address: address) {
+                                    DappRow(dapp: dapp)
+                                } else {
+                                    Label {
+                                        Text("\(state.account.displayName) Account Wallet").font(.headline)
+                                    } icon: {
+                                        Image(systemName: "checkmark.circle")
+                                    }
+                                }
+                            }
+                        }
+                    case .external:
+                        VStack {
+                            TextField("Paste address here", text: $state.toExternal)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                                .autocorrectionDisabled(true)
+                                .autocapitalization(.none)
+                                .focused($toExternalFocused)
+                                .onChange(of: toExternalFocused, perform: { newValue in
+                                    state.disableButton = newValue
+                                })
+                            if !state.toExternal.isEmpty {
+                                Text(displayChecksumAddress(state.toExternal))
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 10)
+            }
+
+        } label: {
+            HStack {
+                Text("To")
+            }
+        }
+    }
+}
+
+struct InAppPicker: View {
+    @ObservedObject var state: TransferState
+    @State var pickerSelection: Address
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Text("Select Dapp or Account Wallet").font(.title2)
+            }
+            .padding(20)
+
+            Spacer()
+
+            Picker("Select Dapp or Account Wallet", selection: $pickerSelection) {
+                ForEach(state.account.walletList) { walletAddress in
+                    if state.canTransferTo(walletAddress) {
+                        Text("\(state.account.displayName) Account Wallet").tag(walletAddress)
+                    }
+                }
+                ForEach(state.account.dappList) { dapp in
+                    ForEach(dapp.addressList) { dappAddress in
+                        if state.canTransferTo(dappAddress) {
+                            Text("\(dapp.humanIdentifier)")
+                                .tag(dappAddress)
+                        }
+                    }
+                }
+            }
+            .pickerStyle(.wheel)
+
+            Spacer()
+
+            VStack(spacing: 20) {
+                HStack(spacing: 0) {
+                    Button(action: {
+                        state.toAddress = nil
+                        dismiss()
+                    }, label: {
+                        Text("Cancel")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(.secondary)
+                    })
+                    .accessibilityLabel("cancelInAppSelection")
+                    .buttonStyle(.borderless)
+                    .controlSize(.large)
+
+                    Button(action: {
+                        state.toAddress = pickerSelection
+                        dismiss()
+                    }, label: {
+                        Text("OK").frame(maxWidth: .infinity)
+                    })
+                    .accessibilityLabel("approveInAppSelection")
+                    .buttonStyle(.borderless)
+                    .controlSize(.large)
+                }
+            }
+        }
+    }
+}
+
+struct ChainSection: View {
+    @ObservedObject var state: TransferState
+
+    var body: some View {
+        GroupBox {
+        } label: {
+            HStack {
+                Text("On")
+                Spacer()
+                Label {
+                    Text(state.fromAddress.chainDisplayName)
+                } icon: {
+                    IconView(image: state.fromAddress.image, iconSize: 24)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+struct TokenSection: View {
+    @ObservedObject var state: TransferState
+
+    @FocusState private var amountFocused: Bool
+
+    var body: some View {
+        GroupBox {
+            VStack {
+                HStack {
+                    Text("Balance")
+                    Spacer()
+                    TokenAmount(token: state.token)
+                }
+                HStack {
+                    Text("Amount")
+                    Spacer()
+                    TextField("Decimal", text: $state.amount)
+                        .frame(width: 75)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.roundedBorder)
+                        .padding(.leading)
+                        .keyboardType(.decimalPad)
+                        .focused($amountFocused)
+                        .onChange(of: amountFocused, perform: { newValue in
+                            state.disableButton = newValue
+                        })
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") {
+                                    amountFocused = false
+                                }
+                            }
+                        }
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            HStack {
+                Text("Token")
+                Spacer()
+                HStack {
+                    TokenLabel(token: state.token)
                 }
             }
         }
@@ -243,6 +333,7 @@ struct TransferButton: View {
     let cornerRadius: CGFloat = 8
 
     @ObservedObject var state: TransferState
+    @EnvironmentObject var model: GlobalModel
 
     func makeTransfer() async -> Bool {
         await dispatchBackground(.userInteractive) {
@@ -263,10 +354,27 @@ struct TransferButton: View {
                     }
                 }
                 return true
+            } catch CoreError.User(let message) {
+                DispatchQueue.main.async {
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
+                return false
+            } catch CoreError.Retriable(let message) {
+                DispatchQueue.main.async {
+                    let message = "Something went wrong. Please try again!"
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
+                print("Retriable error while transferring token: \(message)")
+                return false
             } catch let error {
+                DispatchQueue.main.async {
+                    let message = "An unexpected error occurred. Please restart the application!"
+                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                }
                 print("\(error)")
                 return false
             }
+
         }
     }
 

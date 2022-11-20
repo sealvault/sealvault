@@ -1,5 +1,36 @@
 # Changelog
 
+## 2022-11-18
+
+## iOS Beta v0.4.1
+
+#### Fixes
+
+- Fix address bar not showing due to too many top dapps
+- Allow dismissing address bar keyboard by scrolling page down 
+
+## iOS Beta v0.4.0
+
+#### Improvements
+
+- Add top dapps list as default view in browser windows
+- Add two dapps by default for new users to help with onboarding
+- Streamline transfer form
+- Change nav bar title to more legible
+
+## 2022-11-15
+
+## iOS Beta v0.3.3
+
+#### Improvements
+
+- Add chain name to dapp transaction error message on which the error happened.
+
+#### Fixes
+
+- Fix error message display for "insufficient funds for gas * price + value"
+  message.
+
 ## 2022-11-13
 
 ### iOS Beta v0.3.2

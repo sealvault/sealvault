@@ -7,7 +7,7 @@
 import XCTest
 
 final class BrowserUITest: XCTestCase {
-    var timeOutSeconds: TimeInterval = 60
+    var timeOutSeconds: TimeInterval = 30
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
     let browserAddressBar = "browserAddressBar"
@@ -16,7 +16,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: ethereumTestUrl)
+        enterAddressBar(app, urlField, text: ethereumTestUrl)
 
         let approveDapp = app.buttons["approveDapp"]
         _ = approveDapp.waitForExistence(timeout: timeOutSeconds)
@@ -30,7 +30,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: newTabTestUrl)
+        enterAddressBar(app, urlField, text: newTabTestUrl)
 
         app.links["open"].tap()
         let opened = app.webViews.staticTexts["New Tab Target"]
@@ -44,7 +44,7 @@ final class BrowserUITest: XCTestCase {
         let searchText = "somethingrandom"
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: searchText)
+        enterAddressBar(app, urlField, text: searchText)
 
         let finishedOk = app.webViews.staticTexts[searchText]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -55,7 +55,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: "example.com")
+        enterAddressBar(app, urlField, text: "example.com")
 
         let finishedOk = app.webViews.staticTexts["Example Domain"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -65,7 +65,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.clearAndEnterText(text: "https://doesntexist.sealvault.org")
+        enterAddressBar(app, urlField, text: "https://doesntexist.sealvault.org")
 
         let finishedOk = app.webViews.staticTexts["Failed to load page"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -75,42 +75,22 @@ final class BrowserUITest: XCTestCase {
 func startBrowserApp() throws -> XCUIApplication {
     let app = XCUIApplication()
     app.launch()
-    app.tabBars.buttons["Browser Tab 1"].tap()
+    app.tabBars.buttons["Browser 1"].tap()
     return app
 }
 
-extension XCUIElement {
-    /// Removes any current text in the field before typing in the new value and submitting
-    /// Based on: https://stackoverflow.com/a/32894080
-    func clear() {
-        if self.value as? String == nil {
-            XCTFail("Tried to clear and enter text into a non string value")
-            return
-        }
+func enterAddressBar(_ app: XCUIApplication, _ addressBar: XCUIElement, text: String) {
+    let pasteMenuItem = app.menuItems.firstMatch
+    UIPasteboard.general.string = "Preparing Pasteboard"
 
-        // Repeatedly delete text as long as there is something in the text field.
-        // This is required to clear text that does not fit in to the textfield and is partially hidden initally.
-        // Important to check for placeholder value, otherwise it gets into an infinite loop.
-        while let stringValue = self.value as? String, !stringValue.isEmpty, stringValue != self.placeholderValue {
-            // Make sure keyboard is fully visible before we start deleting text, otherwise lower right corner tap below
-            // may be inaccurate.
-            self.tap()
-            _ = XCUIApplication().keyboards.element.waitForExistence(timeout: 5)
+    addressBar.tap()
+    addressBar.tap()
+    _ = pasteMenuItem.waitForExistence(timeout: 5)
 
-            // Move the cursor to the end of the text field
-            let lowerRightCorner = self.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9))
-            lowerRightCorner.tap()
-            let delete = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
-            self.typeText(delete)
+    UIPasteboard.general.string = text
+    pasteMenuItem.tap()
 
-            // Make sure we read up-to-date self.value when evaluating loop condition
-            Thread.sleep(forTimeInterval: TimeInterval(floatLiteral: 0.1))
-        }
-    }
-
-    func clearAndEnterText(text: String) {
-        self.clear()
-        // new line at end submits
-        self.typeText("\(text)\n")
-    }
+    addressBar.tap()
+    // new line at end submits. doesn't work if appended to pasted string
+    addressBar.typeText("\n")
 }

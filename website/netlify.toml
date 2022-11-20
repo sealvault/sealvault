@@ -18,7 +18,7 @@ status = 301
 force = false
 
 [[redirects]]
-from = "/blog/burners/"
-to = "/blog/one-dapp-per-key/"
+from = "/burners/"
+to = "/one-dapp-per-key/"
 status = 302
 force = false
