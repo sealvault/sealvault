@@ -30,8 +30,6 @@ struct AccountListView: View {
             .task {
                 await self.model.refreshAccounts()
             }
-
-//            Divider()
         }
     }
 }
