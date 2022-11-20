@@ -322,8 +322,14 @@ impl AppCore {
 
 #[derive(Debug)]
 pub struct CoreArgs {
+    /// Unique identifier for this device among the user's devices. Must be stable, i.e. it should
+    /// the same value for the same device while the app is installed. It can change if the app
+    /// is uninstalled and reinstalled.
+    pub device_id: String,
     pub cache_dir: String,
     pub db_file_path: String,
+    /// Optional backup dir that is synced in the user's cloud storage.
+    pub backup_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]

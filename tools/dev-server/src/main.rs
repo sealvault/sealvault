@@ -32,8 +32,10 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let backend_args = CoreArgs {
+        device_id: "dev-server".into(),
         cache_dir: "./cache".into(),
         db_file_path: DB_PATH.into(),
+        backup_dir: None,
     };
     let backend_service = Arc::new(
         AppCore::new(backend_args, Box::new(CoreUICallBackMock::new()))

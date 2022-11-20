@@ -51,7 +51,9 @@ class GlobalModel: ObservableObject {
     }
 
     static func buildOnStartup() -> Self {
-        let coreArgs = CoreArgs(cacheDir: cacheDir(), dbFilePath: ensureDbFilePath())
+        let coreArgs = CoreArgs(
+            deviceId: deviceId(), cacheDir: cacheDir(), dbFilePath: ensureDbFilePath(), backupDir: backupDir()
+        )
         let callbackModel = CallbackModel()
         var core: AppCoreProtocol
         do {
@@ -94,6 +96,24 @@ class GlobalModel: ObservableObject {
         let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
 
         return cacheDirUrl.path
+    }
+
+    private static func deviceId() -> String {
+        // TODO
+        // > If the value is nil, wait and get the value again later.
+        // > This happens, for example, after the device has been restarted but before the
+        // > user has unlocked the device.
+        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
+        UIDevice.current.identifierForVendor!.uuidString
+    }
+
+    private static func backupDir() -> String? {
+        let driveURL = FileManager
+            .default
+            .url(forUbiquityContainerIdentifier: Config.backupContainerIdentifier)?
+            .appendingPathComponent(Config.iCloudBackupDirName)
+
+        return driveURL?.path
     }
 
     private func listAccounts(_ qos: DispatchQoS.QoSClass) async -> [CoreAccount]? {
