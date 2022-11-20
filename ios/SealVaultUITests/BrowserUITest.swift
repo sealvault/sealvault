@@ -16,7 +16,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.enterText(text: ethereumTestUrl)
+        enterAddressBar(app, urlField, text: ethereumTestUrl)
 
         let approveDapp = app.buttons["approveDapp"]
         _ = approveDapp.waitForExistence(timeout: timeOutSeconds)
@@ -30,7 +30,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.enterText(text: newTabTestUrl)
+        enterAddressBar(app, urlField, text: newTabTestUrl)
 
         app.links["open"].tap()
         let opened = app.webViews.staticTexts["New Tab Target"]
@@ -44,7 +44,7 @@ final class BrowserUITest: XCTestCase {
         let searchText = "somethingrandom"
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.enterText(text: searchText)
+        enterAddressBar(app, urlField, text: searchText)
 
         let finishedOk = app.webViews.staticTexts[searchText]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -55,7 +55,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.enterText(text: "example.com")
+        enterAddressBar(app, urlField, text: "example.com")
 
         let finishedOk = app.webViews.staticTexts["Example Domain"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -65,7 +65,7 @@ final class BrowserUITest: XCTestCase {
         let app = try! startBrowserApp()
 
         let urlField = app.textFields[browserAddressBar]
-        urlField.enterText(text: "https://doesntexist.sealvault.org")
+        enterAddressBar(app, urlField, text: "https://doesntexist.sealvault.org")
 
         let finishedOk = app.webViews.staticTexts["Failed to load page"]
         XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
@@ -79,10 +79,18 @@ func startBrowserApp() throws -> XCUIApplication {
     return app
 }
 
-extension XCUIElement {
-    func enterText(text: String) {
-        self.tap()
-        // new line at end submits
-        self.typeText("\(text)\n")
-    }
+func enterAddressBar(_ app: XCUIApplication, _ addressBar: XCUIElement, text: String) {
+    let pasteMenuItem = app.menuItems.firstMatch
+    UIPasteboard.general.string = "Preparing Pasteboard"
+
+    addressBar.tap()
+    addressBar.tap()
+    _ = pasteMenuItem.waitForExistence(timeout: 5)
+
+    UIPasteboard.general.string = text
+    pasteMenuItem.tap()
+
+    addressBar.tap()
+    // new line at end submits. doesn't work if appended to pasted string
+    addressBar.typeText("\n")
 }
