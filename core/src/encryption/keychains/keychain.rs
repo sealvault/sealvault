@@ -4,14 +4,15 @@
 
 use std::fmt::Debug;
 
-use rand::Rng;
+use generic_array::ArrayLength;
 
 #[cfg(not(target_os = "ios"))]
 use crate::encryption::keychains::in_memory_keychain::InMemoryKeychain;
 #[cfg(target_os = "ios")]
 use crate::encryption::keychains::ios_keychain::IOSKeychain;
 use crate::{
-    config, encryption::encryption_key::KeyEncryptionKey, utils::unix_timestamp, Error,
+    encryption::{key_material::KeyMaterial, KeyName},
+    Error,
 };
 
 /// Keychain to securely store secrets on the operating system.
@@ -23,55 +24,63 @@ use crate::{
 /// internal copy needs to take ownership of the buffer.
 pub(super) trait KeychainImpl: Debug + Send + Sync {
     /// Get an item from the local keychain.
-    fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error>;
+    fn get<N: ArrayLength<u8>>(&self, name: KeyName) -> Result<KeyMaterial<N>, Error>;
 
-    fn soft_delete(&self, name: &str) -> Result<(), Error>;
+    /// Delete an item from the local keychain. The operation is idempotent to simplify cleanup
+    /// actions.
+    fn delete_local(&self, name: KeyName) -> Result<(), Error>;
 
-    /// Put an item on the local (not-synced) keychain that is only available when the device is
-    /// unlocked. The operation should return an error if a key by the same name already exists.
-    fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error>;
-}
-
-pub(super) fn soft_delete_rename(name: &str) -> String {
-    let mut rng = rand::thread_rng();
-
-    // Random suffix is needed for keys deleted in the same second (only an issue for tests).
-    // We don't use a uuid, because we want to have the timestamp in the name in case we have to
-    // recover later and timestamp + uuid might be too long for some keychains.
-    format!("{}-DELETED-{}-{}", name, unix_timestamp(), rng.gen::<u32>())
+    /// Put an item on the local (not-synced) keychain. The operation returns an error if a key by
+    /// the same name already exists.
+    fn put_local<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error>;
 }
 
 #[derive(Debug)]
 pub struct Keychain {
-    keychain: Box<dyn KeychainImpl>,
+    // `KeychainImpl` is not object safe, so we can't use `Box<dyn KeychainImpl>`
+    #[cfg(target_os = "ios")]
+    keychain: IOSKeychain,
+    #[cfg(not(target_os = "ios"))]
+    keychain: InMemoryKeychain,
 }
 
 impl Keychain {
     #[cfg(target_os = "ios")]
     pub fn new() -> Self {
-        let keychain = Box::new(IOSKeychain::new());
+        let keychain = IOSKeychain::new();
         Self { keychain }
     }
 
     #[cfg(not(target_os = "ios"))]
     pub fn new() -> Self {
-        let keychain = Box::new(InMemoryKeychain::new());
+        let keychain = InMemoryKeychain::new();
         Self { keychain }
     }
 
     /// Get a symmetric key from the keychain.
-    pub fn get_sk_kek(&self) -> Result<KeyEncryptionKey, Error> {
-        self.keychain.get(config::SK_KEK_NAME)
+    pub(in crate::encryption) fn get<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+    ) -> Result<KeyMaterial<N>, Error> {
+        self.keychain.get::<N>(name)
     }
 
-    pub fn soft_delete_sk_kek(&self) -> Result<(), Error> {
-        self.keychain.soft_delete(config::SK_KEK_NAME)
+    pub(in crate::encryption) fn delete(&self, name: KeyName) -> Result<(), Error> {
+        self.keychain.delete_local(name)
     }
 
     /// Store a symmetric key on the local keychain encoded that is available when the device is
     /// unlocked. The operation returns an error if a key by the same name already exists.
-    pub fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
-        self.keychain.put_local_unlocked(key)
+    pub(in crate::encryption) fn put_local<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
+        self.keychain.put_local(name, key)
     }
 }
 
@@ -84,17 +93,17 @@ impl Default for Keychain {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use generic_array::typenum::U32;
 
     use super::*;
 
     #[test]
     fn error_on_duplicate_item() -> Result<()> {
         let keychain = Keychain::new();
-        let name = "key-encryption-key";
-        let key_one = KeyEncryptionKey::random(name.into())?;
-        let key_two = KeyEncryptionKey::random(name.into())?;
-        keychain.put_local_unlocked(key_one)?;
-        let res = keychain.put_local_unlocked(key_two);
+        let key_one: KeyMaterial<U32> = KeyMaterial::random()?;
+        let key_two: KeyMaterial<U32> = KeyMaterial::random()?;
+        keychain.put_local(KeyName::SkKeyEncryptionKey, key_one)?;
+        let res = keychain.put_local(KeyName::SkKeyEncryptionKey, key_two);
         assert!(res.is_err());
         Ok(())
     }

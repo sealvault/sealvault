@@ -16,10 +16,6 @@ pub const MAX_ASYNC_CONCURRENT_REQUESTS: usize = 8;
 pub const DEFAULT_ACCOUNT_NAME: &str = "Default";
 pub const DEFAULT_ACCOUNT_PICTURE_NAME: &str = "cat-green";
 
-// Cryptography
-pub const SK_DEK_NAME: &str = "SK-DATA-ENCRYPTION-KEY";
-pub const SK_KEK_NAME: &str = "SK-KEY-ENCRYPTION-KEY";
-
 // In-page provider
 pub const MAX_JSONRPC_REQUEST_SIZE_BYTES: usize = 1000000;
 pub const MAX_JSONRPC_RESPONSE_SIZE_BYTES: usize = 1000000;

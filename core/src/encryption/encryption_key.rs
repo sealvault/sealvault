@@ -4,6 +4,7 @@
 
 use std::fmt::{Debug, Formatter};
 
+use generic_array::typenum::U32;
 use zeroize::Zeroizing;
 
 use crate::{
@@ -11,18 +12,21 @@ use crate::{
         encrypt_decrypt::{decrypt, encrypt},
         encryption_output::EncryptionOutput,
         key_material::KeyMaterial,
+        KeyName, Keychain,
     },
     Error,
 };
 
-/// We need separate data encryption and key encryption key types to prevent encrypting data by
-/// accident with a key encryption.
-/// Some repetition could be saved with a proc macro, but not enough to warrant a separate crate for
-/// it.
+// We need separate data encryption and key encryption key types to prevent encrypting data by
+// accident with a key encryption.
+// Some repetition could be saved with a proc macro, but not enough to warrant a separate crate for
+// it.
+
+type EncryptionKey = KeyMaterial<U32>;
 
 // Only exposed in the encryption module to simplify following data-flows.
 pub(super) trait ExposeKeyMaterial<'a> {
-    fn expose_key_material(&'a self) -> &'a KeyMaterial;
+    fn expose_key_material(&'a self) -> &'a EncryptionKey;
 }
 
 /// Data encryption key.
@@ -32,21 +36,22 @@ pub struct DataEncryptionKey(SymmetricKey);
 
 impl DataEncryptionKey {
     pub fn name(&self) -> &str {
-        &self.0.name
+        self.0.name.as_ref()
     }
 
-    pub fn random(name: String) -> Result<Self, Error> {
+    pub fn random(name: KeyName) -> Result<Self, Error> {
         Ok(Self(SymmetricKey::new(name, KeyMaterial::random()?)))
     }
 
     pub fn from_encrypted(
-        name: String,
+        name: KeyName,
         encryption_output: &EncryptionOutput,
         encryption_key: &KeyEncryptionKey,
     ) -> Result<Self, Error> {
+        let name_str: &str = name.as_ref();
         let payload = aead::Payload {
             msg: &encryption_output.cipher_text,
-            aad: name.as_bytes(),
+            aad: name_str.as_bytes(),
         };
         // The vector returned by decrypt is allocated with the desired capacity by the underlying
         // library, so leaving copies of key material in memory on vector reallocation that won't be
@@ -89,7 +94,7 @@ impl DataEncryptionKey {
 }
 
 impl<'a> ExposeKeyMaterial<'a> for DataEncryptionKey {
-    fn expose_key_material(&'a self) -> &'a KeyMaterial {
+    fn expose_key_material(&'a self) -> &'a EncryptionKey {
         &self.0.key_material
     }
 }
@@ -100,27 +105,41 @@ impl<'a> ExposeKeyMaterial<'a> for DataEncryptionKey {
 pub struct KeyEncryptionKey(SymmetricKey);
 
 impl KeyEncryptionKey {
-    pub(super) fn new(name: String, encryption_key: KeyMaterial) -> Self {
+    pub(super) fn new(name: KeyName, encryption_key: EncryptionKey) -> Self {
         Self(SymmetricKey::new(name, encryption_key))
     }
 
-    pub fn name(&self) -> &str {
-        &self.0.name
+    pub fn sk_kek(keychain: &Keychain) -> Result<Self, Error> {
+        let name = KeyName::SkKeyEncryptionKey;
+        let key: EncryptionKey = keychain.get(name)?;
+        Ok(Self::new(name, key))
     }
 
-    pub fn random(name: String) -> Result<Self, Error> {
+    pub fn name(&self) -> &str {
+        self.0.name.as_ref()
+    }
+
+    pub fn random(name: KeyName) -> Result<Self, Error> {
         Ok(Self::new(name, KeyMaterial::random()?))
     }
 
-    /// Decompose the struct into name and key material.
-    pub(super) fn into_keychain(self) -> (String, KeyMaterial) {
+    /// Save to local keychain.
+    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
         let SymmetricKey { name, key_material } = self.0;
-        (name, key_material)
+        keychain.put_local(name, key_material)
+    }
+
+    /// Delete SK-KEK from the local keychain.
+    /// This should be only called to roll back the initial data migration, hence the deprecation
+    /// warning.
+    #[deprecated]
+    pub fn delete_sk_kek(keychain: &Keychain) -> Result<(), Error> {
+        keychain.delete(KeyName::SkKeyEncryptionKey)
     }
 }
 
 impl<'a> ExposeKeyMaterial<'a> for KeyEncryptionKey {
-    fn expose_key_material(&'a self) -> &'a KeyMaterial {
+    fn expose_key_material(&'a self) -> &'a EncryptionKey {
         &self.0.key_material
     }
 }
@@ -128,12 +147,12 @@ impl<'a> ExposeKeyMaterial<'a> for KeyEncryptionKey {
 /// Wrapper for a 256-bit symmetric encryption key.
 #[readonly::make]
 struct SymmetricKey {
-    pub name: String,
-    pub(super) key_material: KeyMaterial,
+    pub name: KeyName,
+    pub(super) key_material: EncryptionKey,
 }
 
 impl SymmetricKey {
-    pub(super) fn new(name: String, key_material: KeyMaterial) -> Self {
+    pub(super) fn new(name: KeyName, key_material: EncryptionKey) -> Self {
         Self { name, key_material }
     }
 }
@@ -154,12 +173,14 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt_dek() -> Result<()> {
-        let dek_name = "dek";
-        let dek = DataEncryptionKey::random(dek_name.into())?;
-        let kek = KeyEncryptionKey::random("kek".into())?;
+        let dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
+        let kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
         let encryption_output = dek.to_encrypted(&kek)?;
-        let decrypted_key =
-            DataEncryptionKey::from_encrypted(dek_name.into(), &encryption_output, &kek)?;
+        let decrypted_key = DataEncryptionKey::from_encrypted(
+            KeyName::SkDataEncryptionKey,
+            &encryption_output,
+            &kek,
+        )?;
 
         assert_eq!(dek.name(), decrypted_key.name());
 
@@ -168,11 +189,14 @@ mod tests {
 
     #[test]
     fn checks_name_on_dek_decryption() -> Result<()> {
-        let dek = DataEncryptionKey::random("dek".into())?;
-        let kek = KeyEncryptionKey::random("kek".into())?;
+        let dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
+        let kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
         let encryption_output = dek.to_encrypted(&kek)?;
-        let result =
-            DataEncryptionKey::from_encrypted("not-dek".into(), &encryption_output, &kek);
+        let result = DataEncryptionKey::from_encrypted(
+            KeyName::SkKeyEncryptionKey,
+            &encryption_output,
+            &kek,
+        );
         assert!(matches!(result,
                 Err(Error::Fatal {
                     error

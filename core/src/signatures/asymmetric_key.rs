@@ -109,10 +109,11 @@ mod tests {
     use k256::Secp256k1;
 
     use super::*;
+    use crate::encryption::KeyName;
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {
-        let dek = DataEncryptionKey::random("sk-dek".into())?;
+        let dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey.into())?;
         let kp: AsymmetricKey<Secp256k1> = AsymmetricKey::random()?;
         let encrypted_der = kp.to_encrypted_der(&dek)?;
         let decrypted: AsymmetricKey<Secp256k1> =

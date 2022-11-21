@@ -96,12 +96,12 @@ mod tests {
     use super::*;
     use crate::encryption::{
         encrypt_decrypt::{decrypt, encrypt},
-        DataEncryptionKey,
+        DataEncryptionKey, KeyName,
     };
 
     #[test]
     fn to_vec_from_vec() -> Result<()> {
-        let key = DataEncryptionKey::random("key".into())?;
+        let key = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let msg = b"message";
         let aad = b"aad";
         let encryption_payload = Payload { msg, aad };

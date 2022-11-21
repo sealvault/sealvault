@@ -42,11 +42,11 @@ mod tests {
     use anyhow::Result;
 
     use super::*;
-    use crate::encryption::encryption_key::DataEncryptionKey;
+    use crate::encryption::{encryption_key::DataEncryptionKey, KeyName};
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {
-        let key = DataEncryptionKey::random("key".into())?;
+        let key = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let message = b"hello-world";
         let aad = b"aad";
         let encryption_payload = Payload { msg: message, aad };

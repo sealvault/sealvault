@@ -13,7 +13,9 @@ use crate::{
         deterministic_id::{DeterministicId, EntityName},
         schema::{data_encryption_keys, local_encrypted_deks},
     },
-    encryption::{DataEncryptionKey as EncDek, EncryptionOutput, KeyEncryptionKey},
+    encryption::{
+        DataEncryptionKey as EncDek, EncryptionOutput, KeyEncryptionKey, KeyName,
+    },
     utils::rfc3339_timestamp,
     Error,
 };
@@ -42,7 +44,7 @@ impl DataEncryptionKey {
     /// Returns the DEK id and the decrypted DEK.
     pub fn fetch_dek(
         connection: &mut SqliteConnection,
-        dek_name: &str,
+        dek_name: KeyName,
         kek: &KeyEncryptionKey,
     ) -> Result<(String, EncDek), Error> {
         use data_encryption_keys::dsl as dek;
@@ -52,11 +54,15 @@ impl DataEncryptionKey {
             .inner_join(
                 local_encrypted_deks::table.on(dek::deterministic_id.eq(led::dek_id)),
             )
-            .filter(dek::name.eq(dek_name).and(led::kek_name.eq(kek.name())))
+            .filter(
+                dek::name
+                    .eq(dek_name.as_ref())
+                    .and(led::kek_name.eq(kek.name())),
+            )
             .select((dek::deterministic_id, led::encrypted_dek))
             .first::<(String, EncryptionOutput)>(connection)?;
 
-        let dek = EncDek::from_encrypted(dek_name.into(), &encrypted_dek, kek)?;
+        let dek = EncDek::from_encrypted(dek_name, &encrypted_dek, kek)?;
         Ok((dek_id, dek))
     }
 }

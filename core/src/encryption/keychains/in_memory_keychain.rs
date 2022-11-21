@@ -8,18 +8,17 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use generic_array::ArrayLength;
+use zeroize::Zeroizing;
+
 use crate::{
-    encryption::{
-        key_material::KeyMaterial,
-        keychains::keychain::{soft_delete_rename, KeychainImpl},
-        KeyEncryptionKey,
-    },
+    encryption::{key_material::KeyMaterial, keychains::keychain::KeychainImpl, KeyName},
     Error,
 };
 
 /// In-memory keychain for testing.
 pub(super) struct InMemoryKeychain {
-    data: Arc<RwLock<HashMap<String, KeyMaterial>>>,
+    data: Arc<RwLock<HashMap<KeyName, Zeroizing<Vec<u8>>>>>,
 }
 
 impl InMemoryKeychain {
@@ -30,38 +29,31 @@ impl InMemoryKeychain {
 }
 
 impl KeychainImpl for InMemoryKeychain {
-    fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
+    fn get<N: ArrayLength<u8>>(&self, name: KeyName) -> Result<KeyMaterial<N>, Error> {
         let d = self.data.read()?;
-        // Only case when we want to use the `clone_for_in_memory_keychain` method.
-        #[allow(deprecated)]
-        let key_material = d
-            .get(name)
-            .map(|s| (*s).clone_for_in_memory_keychain().expect("valid key"))
-            .ok_or_else(|| Error::Fatal {
-                error: format!("Key '{}' not found", name),
-            })?;
-        Ok(KeyEncryptionKey::new(name.into(), key_material))
+        let key = d.get(&name).ok_or_else(|| Error::Fatal {
+            error: format!("Key '{name}' not found"),
+        })?;
+        KeyMaterial::<N>::from_slice(key.as_slice())
     }
 
-    fn soft_delete(&self, name: &str) -> Result<(), Error> {
-        let key = self.get(name)?;
-        let new_name = soft_delete_rename(name);
-        let (_, key_material) = key.into_keychain();
-        let key = KeyEncryptionKey::new(new_name, key_material);
-        self.put_local_unlocked(key)?;
-
+    fn delete_local(&self, name: KeyName) -> Result<(), Error> {
         let mut d = self.data.write()?;
-        let _ = d.remove(name);
-
+        let _ = d.remove(&name);
         Ok(())
     }
 
-    fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
+    fn put_local<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
         use std::collections::hash_map::Entry;
         let mut d = self.data.write()?;
-        let (name, key_material) = key.into_keychain();
         if let Entry::Vacant(e) = d.entry(name) {
-            e.insert(key_material);
+            let mut vec: Zeroizing<Vec<u8>> = Zeroizing::new(vec![0; key.len()]);
+            vec.copy_from_slice(key.as_ref());
+            e.insert(vec);
             Ok(())
         } else {
             Err(Error::Fatal {
@@ -74,5 +66,44 @@ impl KeychainImpl for InMemoryKeychain {
 impl Debug for InMemoryKeychain {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("InMemoryKeychain").finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use generic_array::{typenum::U32, GenericArray};
+
+    use super::*;
+
+    #[test]
+    fn returns_same_key() -> Result<()> {
+        let key = KeyMaterial::<U32>::random()?;
+        let key_arr: GenericArray<u8, U32> = GenericArray::clone_from_slice(key.as_ref());
+        let imk = InMemoryKeychain::new();
+        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
+        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey)?;
+        let res_slice: &[u8] = res.as_ref();
+        assert_eq!(res_slice, key_arr.as_slice());
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_same_name_twice() -> Result<()> {
+        let imk = InMemoryKeychain::new();
+        let key = KeyMaterial::<U32>::random()?;
+        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
+        let key = KeyMaterial::<U32>::random()?;
+        let res = imk.put_local(KeyName::SkKeyEncryptionKey, key);
+        assert!(res.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_not_found() -> Result<()> {
+        let imk = InMemoryKeychain::new();
+        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey);
+        assert!(res.is_err());
+        Ok(())
     }
 }

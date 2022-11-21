@@ -11,7 +11,7 @@ use url::Url;
 use crate::{
     config,
     db::{models as m, DeferredTxConnection, ExclusiveTxConnection},
-    encryption::{DataEncryptionKey, KeyEncryptionKey, Keychain},
+    encryption::{DataEncryptionKey, KeyEncryptionKey, KeyName, Keychain},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
     Error,
@@ -53,19 +53,17 @@ impl Migration for MigrationV0 {
         keychain: &Keychain,
         _: &PublicSuffixList,
     ) -> Result<(), Error> {
-        // Generate SK-DEK and SK-KEK
-        let sk_dek = DataEncryptionKey::random(config::SK_DEK_NAME.to_string())?;
-        let sk_kek = KeyEncryptionKey::random(config::SK_KEK_NAME.to_string())?;
-        keychain.put_local_unlocked(sk_kek)?;
-        let sk_kek = keychain.get_sk_kek()?;
+        // Create SK-KEK and save it on keychain
+        let sk_kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
+        sk_kek.save_to_local_keychain(keychain)?;
+        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
 
-        // Create SK-DEK entity in DB
+        // Create SK-DEK and save it encrypted with SK-KEK in DB
+        let sk_dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let sk_dek_id = m::NewDataEncryptionKey::builder()
             .name(sk_dek.name())
             .build()
             .insert(tx_conn.as_mut())?;
-
-        // Generate SK-DEK and store it encrypted with SK-KEK in DB
         let encrypted_dek = sk_dek.to_encrypted(&sk_kek)?;
         m::NewLocalEncryptedDek::builder()
             .dek_id(&sk_dek_id)
@@ -89,7 +87,8 @@ impl Migration for MigrationV0 {
     fn rollback(&self, keychain: &Keychain) -> Result<(), Error> {
         // Allow rerunning the tx if there was a failure.
         // Database mutations are rolled back automatically by Diesel on error in the tx closure.
-        keychain.soft_delete_sk_kek()
+        #[allow(deprecated)]
+        KeyEncryptionKey::delete_sk_kek(keychain)
     }
 }
 

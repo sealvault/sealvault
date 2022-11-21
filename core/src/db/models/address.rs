@@ -1,13 +1,13 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+use std::str::FromStr;
 
 use diesel::{expression::AsExpression, prelude::*, sql_types::Bool, SqliteConnection};
 use generic_array::{typenum::U2, GenericArray};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    config,
     db::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
@@ -17,7 +17,7 @@ use crate::{
         },
         DeferredTxConnection, JsonValue,
     },
-    encryption::Keychain,
+    encryption::{KeyEncryptionKey, KeyName, Keychain},
     protocols::{eth, BlockchainProtocol},
     utils::rfc3339_timestamp,
     Error,
@@ -130,9 +130,12 @@ impl Address {
         keychain: &Keychain,
         params: &CreateEthAddressParams,
     ) -> Result<String, Error> {
-        let sk_kek = keychain.get_sk_kek()?;
-        let (dek_id, sk_dek) =
-            DataEncryptionKey::fetch_dek(tx_conn.as_mut(), config::SK_DEK_NAME, &sk_kek)?;
+        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
+        let (dek_id, sk_dek) = DataEncryptionKey::fetch_dek(
+            tx_conn.as_mut(),
+            KeyName::SkDataEncryptionKey,
+            &sk_kek,
+        )?;
 
         let signing_key = eth::EthereumAsymmetricKey::random()?;
         let encrypted_signing_key = signing_key.to_encrypted_der(&sk_dek)?;
@@ -410,10 +413,13 @@ impl Address {
             .first::<(String, EncryptionOutput, JsonValue)>(tx_conn.as_mut())?;
 
         let protocol_data: eth::ProtocolData = protocol_data.convert_into()?;
+        let dek_name = KeyName::from_str(&dek_name).map_err(|_| Error::Fatal {
+            error: format!("Unknown DEK name: {dek_name}"),
+        })?;
 
-        let sk_kek = keychain.get_sk_kek()?;
+        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
         let (_, sk_dek) =
-            DataEncryptionKey::fetch_dek(tx_conn.as_mut(), &dek_name, &sk_kek)?;
+            DataEncryptionKey::fetch_dek(tx_conn.as_mut(), dek_name, &sk_kek)?;
         let key =
             eth::EthereumAsymmetricKey::from_encrypted_der(&encrypted_der, &sk_dek)?;
         let signing_key = eth::SigningKey::new(key, protocol_data.chain_id)?;

@@ -23,14 +23,11 @@ use core_foundation_sys::{
     dictionary::CFDictionaryRef,
     string::CFStringRef,
 };
+use generic_array::ArrayLength;
 
 use crate::{
     config,
-    encryption::{
-        key_material::KeyMaterial,
-        keychains::keychain::{soft_delete_rename, KeychainImpl},
-        KeyEncryptionKey,
-    },
+    encryption::{key_material::KeyMaterial, keychains::keychain::KeychainImpl, KeyName},
     Error,
 };
 
@@ -54,29 +51,26 @@ impl Debug for IOSKeychain {
 }
 
 impl KeychainImpl for IOSKeychain {
-    fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
+    fn get<N: ArrayLength<u8>>(&self, name: KeyName) -> Result<KeyMaterial<N>, Error> {
         let keychain = self.internal.lock()?;
-        let key_material = keychain.get(name, KeychainStorage::WhenUnlockedLocal)?;
-        Ok(KeyEncryptionKey::new(name.into(), key_material))
+        keychain.get::<N>(name, KeychainStorage::WhenUnlockedLocal)
     }
 
     /// Fails when a key by the same name already exists. This is on purpose to avoid overwriting
     /// items by accident.
-    fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
+    fn put_local<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
         let keychain = self.internal.lock()?;
-        keychain.put(key, KeychainStorage::WhenUnlockedLocal)
+        keychain.put(name, key, KeychainStorage::WhenUnlockedLocal)
     }
 
-    fn soft_delete(&self, name: &str) -> Result<(), Error> {
+    fn delete_local(&self, name: KeyName) -> Result<(), Error> {
         let keychain = self.internal.lock()?;
-        let storage_class = KeychainStorage::WhenUnlockedLocal;
 
-        let key_material = keychain.get(name, storage_class)?;
-        let new_name = soft_delete_rename(name);
-        let key = KeyEncryptionKey::new(new_name, key_material);
-        keychain.put(key, storage_class)?;
-
-        keychain.delete(name, storage_class)?;
+        keychain.delete(name, KeychainStorage::WhenUnlockedLocal)?;
 
         Ok(())
     }
@@ -96,11 +90,11 @@ impl IOSKeychainInternal {
         }
     }
 
-    fn get(
+    fn get<N: ArrayLength<u8>>(
         &self,
-        name: &str,
+        name: KeyName,
         storage_class: KeychainStorage,
-    ) -> Result<KeyMaterial, Error> {
+    ) -> Result<KeyMaterial<N>, Error> {
         let query = storage_class.get_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
 
@@ -135,7 +129,7 @@ impl IOSKeychainInternal {
                     error: format!("Got negative buffer length: {}", data.len()),
                 })?;
 
-                let key = KeyMaterial::from_slice(data.bytes())?;
+                let key = KeyMaterial::<N>::from_slice(data.bytes())?;
 
                 // Zeroize the buffer returned by iOS keychain manually.
                 let ptr = data.bytes().as_ptr();
@@ -162,14 +156,14 @@ impl IOSKeychainInternal {
         };
     }
 
-    fn put(
+    fn put<N: ArrayLength<u8>>(
         &self,
-        key: KeyEncryptionKey,
+        name: KeyName,
+        key: KeyMaterial<N>,
         storage_class: KeychainStorage,
     ) -> Result<(), Error> {
-        let (name, key_material) = key.into_keychain();
-        let wrapped_value = Arc::new(key_material);
-        let query = storage_class.put_query(&name, wrapped_value);
+        let wrapped_value = Arc::new(key);
+        let query = storage_class.put_query::<N>(name, wrapped_value);
         let params = CFDictionary::from_CFType_pairs(&query);
 
         // We signal that we don't need the result by passing the null pointer.
@@ -188,13 +182,15 @@ impl IOSKeychainInternal {
         }
     }
 
-    /// Delete the keychain entry for the name.
-    /// !!! Should be only called from soft delete. !!!
-    fn delete(&self, name: &str, storage_class: KeychainStorage) -> Result<(), Error> {
+    /// Delete the keychain entry for the name. The operation is idempotent.
+    fn delete(&self, name: KeyName, storage_class: KeychainStorage) -> Result<(), Error> {
         let query = storage_class.base_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
+
         let status = unsafe { SecItemDelete(params.as_concrete_TypeRef()) };
-        if status == 0 {
+
+        // Ok if not found to make it idempotent.
+        if status == 0 || status == ERR_SEC_ITEM_NOT_FOUND {
             Ok(())
         } else {
             Err(Error::Retriable {
@@ -213,7 +209,7 @@ enum KeychainStorage {
 }
 
 impl KeychainStorage {
-    fn base_query(&self, name: &str) -> Vec<(CFString, CFType)> {
+    fn base_query(&self, name: KeyName) -> Vec<(CFString, CFType)> {
         // SAFETY:
         // The query strings are static `CFStringRef`, but we need to pass `CFString`. The
         // solution is to get a non-owning `CFString` reference with the Core Foundation's
@@ -233,7 +229,7 @@ impl KeychainStorage {
             ),
             (
                 unsafe { CFString::wrap_under_get_rule(kSecAttrAccount) },
-                CFString::from(name).as_CFType(),
+                CFString::from(name.as_ref()).as_CFType(),
             ),
             // The service and the name identify the item, we include the accessible and
             // synchronize attributes as a defensive measure for soft delete.
@@ -250,7 +246,7 @@ impl KeychainStorage {
         ]
     }
 
-    fn get_query(&self, name: &str) -> Vec<(CFString, CFType)> {
+    fn get_query(&self, name: KeyName) -> Vec<(CFString, CFType)> {
         let mut query = self.base_query(name);
         query.push((
             unsafe { CFString::wrap_under_get_rule(kSecReturnData) },
@@ -259,7 +255,11 @@ impl KeychainStorage {
         query
     }
 
-    fn put_query(&self, name: &str, value: Arc<KeyMaterial>) -> Vec<(CFString, CFType)> {
+    fn put_query<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        value: Arc<KeyMaterial<N>>,
+    ) -> Vec<(CFString, CFType)> {
         let mut query = self.base_query(name);
         query.push((
             unsafe { CFString::wrap_under_get_rule(kSecValueData) },
@@ -315,3 +315,5 @@ extern "C" {
     /// Deletes items that match a search query.
     pub fn SecItemDelete(query: CFDictionaryRef) -> OSStatus;
 }
+
+const ERR_SEC_ITEM_NOT_FOUND: OSStatus = -25300;

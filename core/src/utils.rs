@@ -23,6 +23,7 @@ pub fn rfc3339_timestamp() -> String {
 }
 
 /// Number of seconds since unix epoch
+#[allow(dead_code)]
 pub fn unix_timestamp() -> i64 {
     let now = SystemTime::now();
     let dt: DateTime<Utc> = now.into();
