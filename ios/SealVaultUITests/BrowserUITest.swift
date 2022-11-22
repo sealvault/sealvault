@@ -8,6 +8,7 @@ import XCTest
 
 let browserTimeoutSeconds: TimeInterval = 30
 let buttonTimeoutSeconds: TimeInterval = 5
+let browserAddressBar = "browserAddressBar"
 
 final class BrowserUITest: XCTestCase {
 
@@ -39,9 +40,23 @@ final class BrowserUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        let dapp = "uniswap.org"
+
         tapButton(app, "Dapps")
         tapButton(app, "Default account")
+        print("app.webViews.count", app.webViews.count)
 
+        let uniswapButton = app.buttons["\(dapp) dapp"]
+        _ = uniswapButton.waitForExistence(timeout: buttonTimeoutSeconds)
+        uniswapButton.press(forDuration: 1)
+
+        tapButton(app, "Open in Browser 2")
+
+        _ = app.buttons["Reload page"].waitForExistence(timeout: buttonTimeoutSeconds)
+
+        let addressBar = app.textFields[browserAddressBar]
+        let addressText = addressBar.value as? String
+        XCTAssert(addressText?.contains(dapp) ?? false)
     }
 
     // TODO don't rely on web page loading

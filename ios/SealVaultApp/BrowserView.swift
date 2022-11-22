@@ -56,6 +56,9 @@ class BrowserModel: ObservableObject {
         // File is used for the error page
         if let url = url, url.scheme != "file" {
             self.urlRaw = url.absoluteString
+            if url.absoluteString != self.addressBarText {
+                self.addressBarText = url.absoluteString
+            }
         }
     }
 
@@ -170,6 +173,7 @@ struct AddressBar: View {
                     Image(systemName: "arrow.left")
                 })
                 .disabled(!browserModel.canGoBack)
+                .accessibilityIdentifier("Go back")
 
                 if browserModel.canGoForward {
                     Button(action: {
@@ -177,6 +181,7 @@ struct AddressBar: View {
                     }, label: {
                         Image(systemName: "arrow.right")
                     })
+                    .accessibilityIdentifier("Go forward")
                 }
             }.padding(.horizontal, 5)
             ZStack(alignment: .bottom) {
@@ -219,12 +224,14 @@ struct AddressBar: View {
                     }, label: {
                         Image(systemName: "xmark")
                     })
+                    .accessibilityIdentifier("Stop loading")
                 } else {
                     Button(action: {
                         browserModel.doReload = true
                     }, label: {
                         Image(systemName: "arrow.clockwise")
                     })
+                    .accessibilityIdentifier("Reload page")
                 }
             }
             .padding(.horizontal, 5)
@@ -240,11 +247,6 @@ struct AddressBar: View {
         .onChange(of: browserModel.isAddressBarFocused) { newValue in
             if newValue != isAddressBarFocused {
                 isAddressBarFocused = newValue
-            }
-        }
-        .onChange(of: browserModel.urlRaw) { newValue in
-            if newValue != browserModel.addressBarText {
-                browserModel.addressBarText = newValue ?? ""
             }
         }
         .onChange(of: browserModel.loading) { newValue in
