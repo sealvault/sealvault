@@ -53,7 +53,7 @@ struct DappApproval: View {
 
     private var showDisclosure: Bool {
         // Start with the disclosure open the first three times the user adds a dapp
-        account.dappList.count <= 3
+        account.dappList.count <= Config.showDisclosureDappCount
     }
 
     private var dappIcon: Image {
