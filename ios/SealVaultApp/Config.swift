@@ -13,6 +13,8 @@ struct Config {
     static let topDappsLimit = 4
     static let searchProvider = URL(string: "https://search.brave.com/search")!
     static let searchQueryParamName = "q"
+    // There are two dapps by default
+    static let showDisclosureDappCount = 7
     static let backupContainerIdentifier = "iCloud.org.sealvault.ios.app.backups"
     static let iCloudBackupDirName = "Backups"
 }
