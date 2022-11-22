@@ -4,16 +4,15 @@
 
 use std::{collections::HashSet, str::FromStr};
 
+use generic_array::{typenum::U20, GenericArray};
 use lazy_static::lazy_static;
 use rand::Rng;
-use subtle::ConstantTimeEq;
 use zeroize::ZeroizeOnDrop;
 
-use crate::Error;
+use crate::{encryption::key_material::KeyMaterial, Error};
 
 const PASSWORD_LENGTH: usize = 20;
-
-const INVARIANT_VIOLATION: &str = "Invariant violation";
+type PasswordArray = GenericArray<u8, U20>;
 
 lazy_static! {
     // Crockford's base 32 alphabet: https://www.crockford.com/base32.html
@@ -28,30 +27,25 @@ lazy_static! {
 }
 
 #[derive(ZeroizeOnDrop)]
-pub struct BackupPassword(Vec<u8>);
+pub struct BackupPassword(KeyMaterial<U20>);
 
 impl BackupPassword {
-    fn new(password: Vec<u8>) -> Result<Self, Error> {
-        let default: [u8; PASSWORD_LENGTH] = Default::default();
-        if password.len() != PASSWORD_LENGTH || password.ct_eq(&default).unwrap_u8() == 1
-        {
-            return Err(Error::Fatal {
-                error: INVARIANT_VIOLATION.into(),
-            });
-        }
-        Ok(Self(password))
+    fn new(password: Box<PasswordArray>) -> Result<Self, Error> {
+        let key_material = KeyMaterial::new(password)?;
+        Ok(Self(key_material))
     }
 
     #[allow(dead_code)]
     pub fn random() -> Result<Self, Error> {
         let mut rng = rand::thread_rng();
 
-        let mut password: Vec<u8> = Vec::with_capacity(PASSWORD_LENGTH);
-        for _ in 0..PASSWORD_LENGTH {
+        // Allocate on heap here to prevent unreachable copies for zeroization
+        let mut password: Box<PasswordArray> = Box::default();
+        for i in 0..PASSWORD_LENGTH {
             // No fallible interface for gen_range unfortunately. It should panic if insufficient
             // entropy, but not guaranteed.
             let abc_index = rng.gen_range(0..ALPHABET.len());
-            password.push(ALPHABET[abc_index]);
+            (*password)[i] = ALPHABET[abc_index];
         }
 
         BackupPassword::new(password)
@@ -69,8 +63,9 @@ impl BackupPassword {
         for i in 0..dashes {
             let start = i * GROUP_SIZE;
             let end = start + GROUP_SIZE;
-            let slice = &self.0[start..end];
-            for c in slice {
+            // let slice = &self.0.as_ref()[start..end];
+            let slice: &[u8] = self.0.as_ref();
+            for c in &slice[start..end] {
                 res.push(*c as char)
             }
             if i < dashes - 1 {
@@ -97,16 +92,24 @@ impl FromStr for BackupPassword {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut password: Vec<u8> = Vec::with_capacity(PASSWORD_LENGTH);
+        // Allocate on heap here to prevent unreachable copies for zeroization
+        let mut password: Box<PasswordArray> = Default::default();
+        let mut i: usize = 0;
         for c in s.chars() {
             if let Some(symbol) = decode_symbol(c) {
+                if i >= PASSWORD_LENGTH {
+                    return Err(Error::User {
+                        explanation: "Password too long".to_string(),
+                    });
+                }
                 // Symbols in the character set are guaranteed to fit into u8.
-                password.push(symbol as u8)
+                password[i] = symbol as u8;
+                i += 1;
             }
         }
-        if password.len() != PASSWORD_LENGTH {
+        if i < PASSWORD_LENGTH {
             return Err(Error::User {
-                explanation: "Invalid password length".to_string(),
+                explanation: "Password too short".to_string(),
             });
         }
         BackupPassword::new(password)
@@ -181,5 +184,48 @@ mod tests {
 
         let _parsed: BackupPassword = display.parse()?;
         Ok(())
+    }
+
+    #[test]
+    fn parse_without_separator() -> Result<()> {
+        let _parsed: BackupPassword = "8FD93EYWZRGB7HXQAVNS".parse()?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_with_one_separator() -> Result<()> {
+        let _parsed: BackupPassword = "8FD93-EYWZRGB7HXQAVNS".parse()?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_with_lowercase() -> Result<()> {
+        let _parsed: BackupPassword = "8FD93-EYWzR-GB7HX-qavns".parse()?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_empty() {
+        let result: Result<BackupPassword, Error> = "".parse();
+        assert!(matches!(result, Err(Error::User { explanation: _ })))
+    }
+
+    #[test]
+    fn parse_no_valid_char() {
+        let result: Result<BackupPassword, Error> = "@_!".parse();
+        assert!(matches!(result, Err(Error::User { explanation: _ })))
+    }
+
+    #[test]
+    fn parse_short() {
+        let result: Result<BackupPassword, Error> = "abcd".parse();
+        assert!(matches!(result, Err(Error::User { explanation: _ })))
+    }
+
+    #[test]
+    fn parse_long() {
+        let result: Result<BackupPassword, Error> =
+            "8FD93-EYWZR-GB7HX-QAVNS-QAVNS".parse();
+        assert!(matches!(result, Err(Error::User { explanation: _ })))
     }
 }

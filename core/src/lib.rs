@@ -19,7 +19,6 @@ pub mod dto;
 pub mod in_page_provider;
 pub mod protocols;
 
-mod backup;
 mod db;
 mod encryption;
 mod error;
