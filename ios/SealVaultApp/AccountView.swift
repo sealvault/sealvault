@@ -19,6 +19,7 @@ struct AccountView: View {
                     )
                 } label: {
                     WalletRow(account: account)
+                        .accessibilityIdentifier("\(account.displayName) account wallet")
                 }
                 Section {
                     ForEach(account.dappList) { dapp in
@@ -45,6 +46,7 @@ struct AccountView: View {
                                         Text("Open in Browser 2")
                                     })
                                 }
+                                .accessibilityIdentifier("\(dapp.displayName) dapp")
                         }
                     }
                 } header: {

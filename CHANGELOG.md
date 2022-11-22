@@ -1,15 +1,32 @@
 # Changelog
 
+## 2022-11-22
+
+### iOS Beta v0.4.2
+
+#### Improvements
+
+- Increase token transfer amount input field width.
+- Increase the number of times we show the default token amount transfer
+  disclosure to new users to 5. After they've added 5 new dapps, the disclosure
+  is hidden behind an expand button.
+
+#### Fixes
+
+- Fix opening dapp in browser with long press not loading page.
+
+#### Fixes
+
 ## 2022-11-18
 
-## iOS Beta v0.4.1
+### iOS Beta v0.4.1
 
 #### Fixes
 
 - Fix address bar not showing due to too many top dapps
 - Allow dismissing address bar keyboard by scrolling page down 
 
-## iOS Beta v0.4.0
+### iOS Beta v0.4.0
 
 #### Improvements
 

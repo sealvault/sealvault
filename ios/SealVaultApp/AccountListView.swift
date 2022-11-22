@@ -17,7 +17,7 @@ struct AccountListView: View {
                         } label: {
                             AccountRow(account: account)
                                 .padding(.vertical, 8)
-                                .accessibilityIdentifier(account.displayName)
+                                .accessibilityIdentifier("\(account.displayName) account")
                         }
                     }
                 }

@@ -296,7 +296,7 @@ struct TokenSection: View {
                     Text("Amount")
                     Spacer()
                     TextField("Decimal", text: $state.amount)
-                        .frame(width: 75)
+                        .frame(width: 100)
                         .multilineTextAlignment(.trailing)
                         .textFieldStyle(.roundedBorder)
                         .padding(.leading)
