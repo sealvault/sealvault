@@ -93,7 +93,7 @@ impl Default for Keychain {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use generic_array::typenum::U32;
+    use generic_array::{typenum::U32, GenericArray};
 
     use super::*;
 
@@ -104,6 +104,37 @@ mod tests {
         let key_two: KeyMaterial<U32> = KeyMaterial::random()?;
         keychain.put_local(KeyName::SkKeyEncryptionKey, key_one)?;
         let res = keychain.put_local(KeyName::SkKeyEncryptionKey, key_two);
+        assert!(res.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn returns_same_key() -> Result<()> {
+        let key = KeyMaterial::<U32>::random()?;
+        let key_arr: GenericArray<u8, U32> = GenericArray::clone_from_slice(key.as_ref());
+        let imk = Keychain::new();
+        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
+        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey)?;
+        let res_slice: &[u8] = res.as_ref();
+        assert_eq!(res_slice, key_arr.as_slice());
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_same_name_twice() -> Result<()> {
+        let imk = Keychain::new();
+        let key = KeyMaterial::<U32>::random()?;
+        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
+        let key = KeyMaterial::<U32>::random()?;
+        let res = imk.put_local(KeyName::SkKeyEncryptionKey, key);
+        assert!(res.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_not_found() -> Result<()> {
+        let imk = Keychain::new();
+        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey);
         assert!(res.is_err());
         Ok(())
     }
