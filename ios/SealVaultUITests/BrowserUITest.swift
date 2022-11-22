@@ -6,35 +6,42 @@
 
 import XCTest
 
+let browserTimeoutSeconds: TimeInterval = 30
+let buttonTimeoutSeconds: TimeInterval = 5
+
 final class BrowserUITest: XCTestCase {
-    var timeOutSeconds: TimeInterval = 30
+
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
-    let browserAddressBar = "browserAddressBar"
 
     func testEthereumDapp() throws {
         let app = try! startBrowserApp()
 
-        let urlField = app.textFields[browserAddressBar]
-        enterAddressBar(app, urlField, text: ethereumTestUrl)
+        enterAddressBar(app, text: ethereumTestUrl)
 
-        let approveDapp = app.buttons["approveDapp"]
-        _ = approveDapp.waitForExistence(timeout: timeOutSeconds)
-        approveDapp.tap()
+        tapButton(app, "approveDapp")
 
         let finishedOk = app.webViews.staticTexts["Finished OK"]
-        XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
+        XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
     }
 
     func testOpenNewTab() throws {
         let app = try! startBrowserApp()
 
-        let urlField = app.textFields[browserAddressBar]
-        enterAddressBar(app, urlField, text: newTabTestUrl)
+        enterAddressBar(app, text: newTabTestUrl)
 
         app.links["open"].tap()
         let opened = app.webViews.staticTexts["New Tab Target"]
-        XCTAssert(opened.waitForExistence(timeout: timeOutSeconds))
+        XCTAssert(opened.waitForExistence(timeout: browserTimeoutSeconds))
+    }
+
+    func testOpenDappInBrowser() {
+        let app = XCUIApplication()
+        app.launch()
+
+        tapButton(app, "Dapps")
+        tapButton(app, "Default account")
+
     }
 
     // TODO don't rely on web page loading
@@ -43,49 +50,49 @@ final class BrowserUITest: XCTestCase {
 
         let searchText = "somethingrandom"
 
-        let urlField = app.textFields[browserAddressBar]
-        enterAddressBar(app, urlField, text: searchText)
+        enterAddressBar(app, text: searchText)
 
         let finishedOk = app.webViews.staticTexts[searchText]
-        XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
+        XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
     }
 
     // TODO don't rely on web page loading
     func testPartialUrl() throws {
         let app = try! startBrowserApp()
 
-        let urlField = app.textFields[browserAddressBar]
-        enterAddressBar(app, urlField, text: "example.com")
+        enterAddressBar(app, text: "example.com")
 
         let finishedOk = app.webViews.staticTexts["Example Domain"]
-        XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
+        XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
     }
 
     func testErrorLoadingPage() throws {
         let app = try! startBrowserApp()
 
-        let urlField = app.textFields[browserAddressBar]
-        enterAddressBar(app, urlField, text: "https://doesntexist.sealvault.org")
+        enterAddressBar(app, text: "https://doesntexist.sealvault.org")
 
         let finishedOk = app.webViews.staticTexts["Failed to load page"]
-        XCTAssert(finishedOk.waitForExistence(timeout: timeOutSeconds))
+        XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
     }
 }
 
 func startBrowserApp() throws -> XCUIApplication {
     let app = XCUIApplication()
     app.launch()
-    app.tabBars.buttons["Browser 1"].tap()
+    tapButton(app, "Browser 1", tabBar: true)
     return app
 }
 
-func enterAddressBar(_ app: XCUIApplication, _ addressBar: XCUIElement, text: String) {
+func enterAddressBar(_ app: XCUIApplication, text: String) {
+    let addressBar = app.textFields["browserAddressBar"]
+    _ = addressBar.waitForExistence(timeout: buttonTimeoutSeconds)
+
     let pasteMenuItem = app.menuItems.firstMatch
     UIPasteboard.general.string = "Preparing Pasteboard"
 
     addressBar.tap()
     addressBar.tap()
-    _ = pasteMenuItem.waitForExistence(timeout: 5)
+    _ = pasteMenuItem.waitForExistence(timeout: buttonTimeoutSeconds)
 
     UIPasteboard.general.string = text
     pasteMenuItem.tap()
@@ -93,4 +100,10 @@ func enterAddressBar(_ app: XCUIApplication, _ addressBar: XCUIElement, text: St
     addressBar.tap()
     // new line at end submits. doesn't work if appended to pasted string
     addressBar.typeText("\n")
+}
+
+func tapButton(_ app: XCUIApplication, _ accessibilityIdentifier: String, tabBar: Bool = false) {
+    let button = tabBar ? app.tabBars.buttons[accessibilityIdentifier] : app.buttons[accessibilityIdentifier]
+    _ = button.waitForExistence(timeout: buttonTimeoutSeconds)
+    button.tap()
 }
