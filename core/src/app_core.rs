@@ -161,7 +161,7 @@ impl AppCore {
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
         let provider = InPageProvider::new(resources, context)?;
-        let _ = provider.in_page_request(raw_request);
+        provider.in_page_request(raw_request);
         Ok(())
     }
 
@@ -172,7 +172,7 @@ impl AppCore {
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
         let provider = InPageProvider::new(resources, context)?;
-        let _ = provider.user_approved_dapp(dapp_approval);
+        provider.user_approved_dapp(dapp_approval);
         Ok(())
     }
 
@@ -183,7 +183,7 @@ impl AppCore {
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
         let provider = InPageProvider::new(resources, context)?;
-        let _ = provider.user_rejected_dapp(dapp_approval);
+        provider.user_rejected_dapp(dapp_approval);
         Ok(())
     }
 

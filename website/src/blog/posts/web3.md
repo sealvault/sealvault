@@ -88,7 +88,7 @@ counterparties to produce composable data subject to some invariants.
 Decentralized databases store and produce composable data.
 
 Fungible tokens are examples of composable data. Eva Lu Ator can send tokens to
-Alyssa who can add some of his own tokens and send them to Ben and so on ad
+Alyssa who can add some of her own tokens and send them to Ben and so on ad
 infinitum.
 
 Non-fungible tokens (NFTs) are also composable data.  An on-chain game may allow
@@ -221,9 +221,9 @@ non-financial applications like games.
 It is clear to us that in order to realize truly decentralized web applications,
 we need to move beyond the wallet paradigm for everyday key and transaction
 management.  This is why we're building [SealVault,](https://sealvault.org) a
-new type of wallet for your dapps with automated transaction approval and
-phishing protection through [automated burner wallets](../../one-dapp-per-key.md) for
-key-level dapp isolation.
+new type of key manager for your dapps with automated transaction approval and
+phishing protection through [key-level dapp
+isolation.](../../one-dapp-per-key.md)
 
 ## SealVault Goals
 

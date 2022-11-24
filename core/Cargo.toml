@@ -38,7 +38,7 @@ serde_json = { version = "1.0.81", features = ["alloc"] }
 strum = { version = "0.24.1", features = ["derive", "strum_macros"] }
 strum_macros = "^0.24"
 thiserror = "1.0.31"
-tokio = "1.21.2"
+tokio = "1.22.0"
 typed-builder = "0.10.0"
 uniffi = "0.20.0"
 uniffi_macros = "0.20.0"
