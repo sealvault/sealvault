@@ -12,6 +12,7 @@ use crate::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
         schema::asymmetric_keys,
+        DeferredTxConnection,
     },
     encryption::EncryptionOutput,
     signatures::EllipticCurve,
@@ -93,7 +94,7 @@ pub struct NewAsymmetricKey<'a> {
 
 impl<'a> NewAsymmetricKey<'a> {
     /// Create a new asymmetric key and return its deterministic id.
-    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn insert(&self, tx_conn: &mut DeferredTxConnection) -> Result<String, Error> {
         use asymmetric_keys::dsl as ak;
 
         let deterministic_id = self.deterministic_id()?;
@@ -105,7 +106,10 @@ impl<'a> NewAsymmetricKey<'a> {
                 ak::deterministic_id.eq(&deterministic_id),
                 ak::created_at.eq(&created_at),
             ))
-            .execute(conn)?;
+            .execute(tx_conn.as_mut())?;
+
+        // When a key is added, we want to create a new backup.
+        m::LocalSettings::increment_pending_backup_version(tx_conn.as_mut())?;
 
         Ok(deterministic_id)
     }

@@ -65,6 +65,7 @@ impl From<diesel::result::Error> for Error {
 
         match err {
             diesel::result::Error::DatabaseError(kind, info) => {
+                println!("message: {}", info.message());
                 if info.message() == SQLITE_BUSY_MESSAGE {
                     Error::Retriable {
                         error: "Failed to acquire DB lock in busy_timeout.".to_string(),
@@ -174,6 +175,15 @@ impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::Retriable {
             // Error is opaque, OK to expose.
+            error: err.to_string(),
+        }
+    }
+}
+
+impl From<argon2::Error> for Error {
+    fn from(err: argon2::Error) -> Self {
+        Error::Fatal {
+            // Errors are opaque
             error: err.to_string(),
         }
     }

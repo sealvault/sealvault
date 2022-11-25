@@ -61,6 +61,14 @@ impl KeychainImpl for InMemoryKeychain {
             })
         }
     }
+
+    fn put_synced<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
+        self.put_local(name, key)
+    }
 }
 
 impl Debug for InMemoryKeychain {

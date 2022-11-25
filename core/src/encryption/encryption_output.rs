@@ -39,14 +39,14 @@ impl From<&EncryptionOutput> for Vec<u8> {
     }
 }
 
-fn vector_too_short_error() -> Box<Error> {
-    Box::new(Error::Fatal {
+fn vector_too_short_error() -> Error {
+    Error::Fatal {
         error: "Vector is too short.".into(),
-    })
+    }
 }
 
 impl TryFrom<Vec<u8>> for EncryptionOutput {
-    type Error = Box<dyn std::error::Error + Send + Sync>;
+    type Error = Error;
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
         let mut slice = value.as_slice();
@@ -71,7 +71,10 @@ impl FromSql<Binary, Sqlite> for EncryptionOutput {
         bytes: diesel::backend::RawValue<Sqlite>,
     ) -> diesel::deserialize::Result<Self> {
         let v = <Vec<u8> as FromSql<Binary, Sqlite>>::from_sql(bytes)?;
-        v.try_into()
+        v.try_into().map_err(|err: Error| {
+            let e: Box<dyn std::error::Error + Send + Sync> = Box::new(err);
+            e
+        })
     }
 }
 
@@ -88,8 +91,6 @@ impl ToSql<Binary, Sqlite> for EncryptionOutput {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-
     use aead::Payload;
     use anyhow::Result;
 
@@ -124,8 +125,7 @@ mod tests {
     #[test]
     fn no_panic_on_short_from_vec() -> Result<()> {
         let v: Vec<u8> = vec![1, 2];
-        let result: Result<EncryptionOutput, Box<dyn Error + Send + Sync>> =
-            TryFrom::<Vec<u8>>::try_from(v);
+        let result: Result<EncryptionOutput, Error> = TryFrom::<Vec<u8>>::try_from(v);
         assert!(format!("{:?}", result).to_lowercase().contains("short"));
 
         Ok(())

@@ -4,10 +4,12 @@
 
 use std::fmt::{Debug, Formatter};
 
+use aead::Payload;
 use generic_array::typenum::U32;
 use zeroize::Zeroizing;
 
 use crate::{
+    backup::BackupMetadata,
     encryption::{
         encrypt_decrypt::{decrypt, encrypt},
         encryption_output::EncryptionOutput,
@@ -26,7 +28,7 @@ type EncryptionKey = KeyMaterial<U32>;
 
 // Only exposed in the encryption module to simplify following data-flows.
 pub(super) trait ExposeKeyMaterial<'a> {
-    fn expose_key_material(&'a self) -> &'a EncryptionKey;
+    fn expose_secret(&'a self) -> &'a EncryptionKey;
 }
 
 /// Data encryption key.
@@ -35,12 +37,14 @@ pub(super) trait ExposeKeyMaterial<'a> {
 pub struct DataEncryptionKey(SymmetricKey);
 
 impl DataEncryptionKey {
-    pub fn name(&self) -> &str {
-        self.0.name.as_ref()
+    pub(super) fn new(name: KeyName, encryption_key: EncryptionKey) -> Self {
+        Self(SymmetricKey::new(name, encryption_key))
     }
 
-    pub fn random(name: KeyName) -> Result<Self, Error> {
-        Ok(Self(SymmetricKey::new(name, KeyMaterial::random()?)))
+    pub fn db_backup_dek(keychain: &Keychain) -> Result<Self, Error> {
+        let name = KeyName::DbBackupEncryptionKey;
+        let key: EncryptionKey = keychain.get(name)?;
+        Ok(Self::new(name, key))
     }
 
     pub fn from_encrypted(
@@ -63,12 +67,20 @@ impl DataEncryptionKey {
         Ok(Self(SymmetricKey::new(name, encryption_key)))
     }
 
+    pub fn name(&self) -> &str {
+        self.0.name.as_ref()
+    }
+
+    pub fn random(name: KeyName) -> Result<Self, Error> {
+        Ok(Self(SymmetricKey::new(name, KeyMaterial::random()?)))
+    }
+
     pub fn to_encrypted(
         &self,
         with_key: &KeyEncryptionKey,
     ) -> Result<EncryptionOutput, Error> {
         let payload = aead::Payload {
-            msg: self.expose_key_material().as_ref(),
+            msg: self.expose_secret().as_ref(),
             aad: self.name().as_bytes(),
         };
         encrypt(payload, with_key)
@@ -91,10 +103,49 @@ impl DataEncryptionKey {
             &encrypted_secret.nonce,
         )?))
     }
+
+    /// Encrypt a file at a given path and write it to the out path. Assumes the file fits into
+    /// memory. It'd be preferable to use streaming encryption and not read the entire file into
+    /// memory but streaming AEAD is immature in Rust and naive implementations are dangerous.
+    pub fn encrypt_backup(
+        &self,
+        backup_contents: &[u8],
+        metadata: &BackupMetadata,
+    ) -> Result<EncryptionOutput, Error> {
+        let meta_ser = metadata.canonical_json()?;
+
+        let payload = Payload {
+            msg: backup_contents,
+            aad: meta_ser.as_ref(),
+        };
+
+        encrypt(payload, self)
+    }
+
+    pub fn decrypt_backup(
+        &self,
+        encryption_output: &EncryptionOutput,
+        metadata: &BackupMetadata,
+    ) -> Result<Vec<u8>, Error> {
+        let meta_ser = metadata.canonical_json()?;
+
+        let payload = Payload {
+            msg: &encryption_output.cipher_text,
+            aad: meta_ser.as_ref(),
+        };
+
+        decrypt(payload, self, &encryption_output.nonce)
+    }
+
+    /// Save to local keychain.
+    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
+        let SymmetricKey { name, key_material } = self.0;
+        keychain.put_local(name, key_material)
+    }
 }
 
 impl<'a> ExposeKeyMaterial<'a> for DataEncryptionKey {
-    fn expose_key_material(&'a self) -> &'a EncryptionKey {
+    fn expose_secret(&'a self) -> &'a EncryptionKey {
         &self.0.key_material
     }
 }
@@ -133,13 +184,13 @@ impl KeyEncryptionKey {
     /// This should be only called to roll back the initial data migration, hence the deprecation
     /// warning.
     #[deprecated]
-    pub fn delete_sk_kek(keychain: &Keychain) -> Result<(), Error> {
+    pub fn delete_sk_kek_from_keychain(keychain: &Keychain) -> Result<(), Error> {
         keychain.delete(KeyName::SkKeyEncryptionKey)
     }
 }
 
 impl<'a> ExposeKeyMaterial<'a> for KeyEncryptionKey {
-    fn expose_key_material(&'a self) -> &'a EncryptionKey {
+    fn expose_secret(&'a self) -> &'a EncryptionKey {
         &self.0.key_material
     }
 }

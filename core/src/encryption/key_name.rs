@@ -15,11 +15,21 @@
     strum_macros::EnumIter,
 )]
 pub enum KeyName {
-    // Secret key
+    // The serializations must not be changed as it's relied on to map from keychain/db.
     #[strum(serialize = "SK-KEY-ENCRYPTION-KEY")]
     SkKeyEncryptionKey,
     #[strum(serialize = "SK-DATA-ENCRYPTION-KEY")]
     SkDataEncryptionKey,
+    #[strum(serialize = "BACKUP-PASSWORD")]
+    BackupPassword,
+    #[strum(serialize = "KDF-SECRET")]
+    KdfSecret,
+    #[strum(serialize = "ROOT-BACKUP-KEY")]
+    RootBackupKey,
+    #[strum(serialize = "DATABASE-BACKUP-DATA-ENCRYPTION-KEY")]
+    DbBackupEncryptionKey,
+    #[strum(serialize = "SECRET-KEY-BACKUP-KEY-ENCRYPTION-KEY")]
+    SkBackupKeyEncryptionKey,
 }
 
 #[cfg(test)]
@@ -35,5 +45,13 @@ mod tests {
         let count = KeyName::iter().count();
         let set: HashSet<String> = KeyName::iter().map(|kn| kn.to_string()).collect();
         assert_eq!(count, set.len());
+    }
+
+    #[test]
+    fn serialize_sk_kek() {
+        assert_eq!(
+            KeyName::SkKeyEncryptionKey.to_string(),
+            "SK-KEY-ENCRYPTION-KEY"
+        );
     }
 }

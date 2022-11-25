@@ -19,7 +19,12 @@ pub mod dto;
 pub mod in_page_provider;
 pub mod protocols;
 
+// TODO remove allow dead code
+#[allow(dead_code)]
+mod backup;
 mod db;
+mod device;
+#[allow(dead_code)]
 mod encryption;
 mod error;
 mod favicon;

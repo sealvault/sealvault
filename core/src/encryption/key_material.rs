@@ -92,8 +92,8 @@ impl<N: ArrayLength<u8>> AsRef<[u8]> for KeyMaterial<N> {
     }
 }
 
-impl AsRef<chacha20poly1305::Key> for KeyMaterial<U32> {
-    fn as_ref(&self) -> &chacha20poly1305::Key {
+impl AsRef<GenericArray<u8, U32>> for KeyMaterial<U32> {
+    fn as_ref(&self) -> &GenericArray<u8, U32> {
         &self.0
     }
 }

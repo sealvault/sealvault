@@ -88,7 +88,7 @@ impl Migration for MigrationV0 {
         // Allow rerunning the tx if there was a failure.
         // Database mutations are rolled back automatically by Diesel on error in the tx closure.
         #[allow(deprecated)]
-        KeyEncryptionKey::delete_sk_kek(keychain)
+        KeyEncryptionKey::delete_sk_kek_from_keychain(keychain)
     }
 }
 

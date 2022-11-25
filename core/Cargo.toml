@@ -73,6 +73,9 @@ rust_decimal = { version = "1.26.1", features = ["maths"] }
 data-encoding = "2.3.2"
 tempfile = "3.3.0"
 dyn-clone = "1.0.9"
+argon2 = { version = "0.4.1", features = ["std", "zeroize"] }
+zip = "0.6.3"
+derive_more = "0.99.17"
 
 [build-dependencies]
 # Important to match uniffi dep version in `embedded-uniff-bindgen`

@@ -7,9 +7,11 @@ use std::{collections::HashSet, str::FromStr};
 use generic_array::{typenum::U20, GenericArray};
 use lazy_static::lazy_static;
 use rand::Rng;
-use zeroize::ZeroizeOnDrop;
 
-use crate::{encryption::key_material::KeyMaterial, Error};
+use crate::{
+    encryption::{key_material::KeyMaterial, KeyName, Keychain},
+    Error,
+};
 
 const PASSWORD_LENGTH: usize = 20;
 type PasswordArray = GenericArray<u8, U20>;
@@ -26,7 +28,8 @@ lazy_static! {
     );
 }
 
-#[derive(ZeroizeOnDrop)]
+/// The self-custody cloud backup password for the user with 100-bit entropy.
+/// More: https://sealvault.org/dev-docs/design/backup/#backup-password
 pub struct BackupPassword(KeyMaterial<U20>);
 
 impl BackupPassword {
@@ -35,8 +38,7 @@ impl BackupPassword {
         Ok(Self(key_material))
     }
 
-    #[allow(dead_code)]
-    pub fn random() -> Result<Self, Error> {
+    pub(super) fn random() -> Result<Self, Error> {
         let mut rng = rand::thread_rng();
 
         // Allocate on heap here to prevent unreachable copies for zeroization
@@ -49,6 +51,21 @@ impl BackupPassword {
         }
 
         BackupPassword::new(password)
+    }
+
+    pub fn setup(keychain: &Keychain) -> Result<Self, Error> {
+        let backup_password = Self::random()?;
+        backup_password.save_to_local_keychain(keychain)?;
+        Self::from_keychain(keychain)
+    }
+
+    pub fn from_keychain(keychain: &Keychain) -> Result<Self, Error> {
+        let key = keychain.get(KeyName::BackupPassword)?;
+        Ok(Self(key))
+    }
+
+    pub(super) fn expose_secret(&self) -> &[u8] {
+        self.0.as_ref()
     }
 
     /// Display the backup password to the user in groups of 5 separated by dashes, eg.
@@ -73,6 +90,19 @@ impl BackupPassword {
             }
         }
         res
+    }
+
+    /// Save the backup password to the local keychain.
+    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
+        keychain.put_local(KeyName::BackupPassword, self.0)
+    }
+
+    /// Delete the backup password from the local keychain.
+    /// This should be only called to roll back the initial data migration, hence the deprecation
+    /// warning.
+    #[deprecated]
+    pub fn delete_from_keychain(keychain: &Keychain) -> Result<(), Error> {
+        keychain.delete(KeyName::BackupPassword)
     }
 }
 

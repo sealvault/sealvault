@@ -37,6 +37,13 @@ pub(super) trait KeychainImpl: Debug + Send + Sync {
         name: KeyName,
         key: KeyMaterial<N>,
     ) -> Result<(), Error>;
+
+    /// Put an item on the synced keychain.
+    fn put_synced<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error>;
 }
 
 #[derive(Debug)]
@@ -73,14 +80,22 @@ impl Keychain {
         self.keychain.delete_local(name)
     }
 
-    /// Store a symmetric key on the local keychain encoded that is available when the device is
-    /// unlocked. The operation returns an error if a key by the same name already exists.
+    /// Store a symmetric key on the local keychain. The operation returns an error if a key by the same name already exists.
     pub(in crate::encryption) fn put_local<N: ArrayLength<u8>>(
         &self,
         name: KeyName,
         key: KeyMaterial<N>,
     ) -> Result<(), Error> {
         self.keychain.put_local(name, key)
+    }
+
+    /// Put an item on the synced keychain.
+    pub(in crate::encryption) fn put_synced<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
+        self.keychain.put_synced(name, key)
     }
 }
 

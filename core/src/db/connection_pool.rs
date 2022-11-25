@@ -14,7 +14,7 @@ use diesel::{
     Connection, SqliteConnection,
 };
 
-use crate::{async_runtime as rt, config, db::models as m, Error};
+use crate::{async_runtime as rt, config, Error};
 
 /// A Sqlite connection pool.
 #[derive(Debug)]
@@ -39,6 +39,10 @@ impl ConnectionPool {
             pool,
             db_path: db_path.into(),
         })
+    }
+
+    pub fn db_path(&self) -> &Path {
+        self.db_path.as_path()
     }
 
     /// Get a Sqlite connection.
@@ -87,56 +91,6 @@ impl ConnectionPool {
             let tx_conn = ExclusiveTxConnection(conn);
             callback(tx_conn)
         })
-    }
-
-    /// Creates a backup of the database and stores it a file path.
-    pub fn backup(&self, to_path: &Path) -> Result<(), Error> {
-        let db_path = self.db_path.as_path();
-
-        // Flush WAL to the DB file. Can't be part of the exclusive transaction as it does its own
-        // locking.
-        let mut conn = self.connection()?;
-        conn.batch_execute("PRAGMA wal_checkpoint(FULL);")?;
-
-        // Acquire lock on DB for copy.
-        self.exclusive_transaction(|_| {
-            let mut backup_file =
-                std::fs::File::create(to_path).map_err(|err| Error::Retriable {
-                    error: format!("Failed to create backup file: {err}"),
-                })?;
-
-            let mut db_file =
-                std::fs::File::open(db_path).map_err(|err| Error::Retriable {
-                    error: format!("Failed to open DB file: {err}"),
-                })?;
-
-            std::io::copy(&mut db_file, &mut backup_file).map_err(|err| {
-                Error::Retriable {
-                    error: format!("Failed to copy DB file to backup file: {err}"),
-                }
-            })
-        })?;
-
-        Self::verify_backup(to_path)?;
-
-        Ok(())
-    }
-
-    fn verify_backup(backup_path: &Path) -> Result<(), Error> {
-        let backup_path = backup_path.to_str().ok_or_else(|| Error::Fatal {
-            error: "Failed to convert backup path to utf-8".into(),
-        })?;
-        let backup_cp = ConnectionPool::new(backup_path)?;
-        let mut backup_conn = backup_cp.connection()?;
-
-        let deks = m::DataEncryptionKey::list_names(&mut backup_conn)?;
-        if deks.is_empty() {
-            Err(Error::Fatal {
-                error: "No DEKs in backup".into(),
-            })
-        } else {
-            Ok(())
-        }
     }
 }
 
@@ -202,43 +156,5 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
         );
         conn.batch_execute(query)
             .map_err(diesel::r2d2::Error::QueryError)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use anyhow::Result;
-
-    use super::*;
-    use crate::{
-        db::{data_migrations, schema_migrations::run_migrations},
-        encryption::Keychain,
-        public_suffix_list::PublicSuffixList,
-    };
-
-    #[test]
-    fn backup() -> Result<()> {
-        let tmp_dir = tempfile::tempdir().expect("creates temp dir");
-        let db_path = tmp_dir.path().join("db.sqlite3");
-        let backup_path = tmp_dir.path().join("backup.sqlite3");
-
-        // Create mock db
-        let connection_pool = ConnectionPool::new(db_path.to_str().expect("ok utf-8"))?;
-        let keychain = Keychain::new();
-        let psl = PublicSuffixList::new()?;
-
-        connection_pool.exclusive_transaction(|mut tx_conn| {
-            run_migrations(&mut tx_conn)?;
-            data_migrations::run_all(tx_conn, &keychain, &psl)
-        })?;
-
-        // Create backup (also checks integrity)
-        connection_pool.backup(backup_path.as_path())?;
-
-        // Make sure backup was written to the path that we requested.
-        let backup_file = std::fs::File::open(backup_path.as_path())?;
-        assert_ne!(backup_file.metadata()?.len(), 0);
-
-        Ok(())
     }
 }

@@ -67,6 +67,15 @@ impl KeychainImpl for IOSKeychain {
         keychain.put(name, key, KeychainStorage::WhenUnlockedLocal)
     }
 
+    fn put_synced<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), Error> {
+        let keychain = self.internal.lock()?;
+        keychain.put(name, key, KeychainStorage::WhenUnlockedSynced)
+    }
+
     fn delete_local(&self, name: KeyName) -> Result<(), Error> {
         let keychain = self.internal.lock()?;
 
@@ -206,6 +215,7 @@ impl IOSKeychainInternal {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum KeychainStorage {
     WhenUnlockedLocal,
+    WhenUnlockedSynced,
 }
 
 impl KeychainStorage {
@@ -275,12 +285,15 @@ impl KeychainStorage {
     unsafe fn sec_attr_accessible(&self) -> CFStringRef {
         match self {
             Self::WhenUnlockedLocal => kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+            // Synced implies that a passcode is set.
+            Self::WhenUnlockedSynced => kSecAttrAccessibleWhenUnlocked,
         }
     }
 
     fn sec_attr_synchronizable(&self) -> bool {
         match self {
             Self::WhenUnlockedLocal => false,
+            Self::WhenUnlockedSynced => true,
         }
     }
 }
@@ -296,6 +309,7 @@ extern "C" {
     static kSecAttrAccessible: CFStringRef;
 
     static kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly: CFStringRef;
+    static kSecAttrAccessibleWhenUnlocked: CFStringRef;
 
     static kSecAttrSynchronizable: CFStringRef;
 

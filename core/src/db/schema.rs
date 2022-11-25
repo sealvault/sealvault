@@ -116,6 +116,11 @@ table! {
     local_settings (id) {
         id -> Text,
         account_id -> Text,
+        pending_backup_version -> Integer,
+        completed_backup_version -> Integer,
+        backup_completed_at -> Nullable<Text>,
+        backup_password_updated_at -> Nullable<Text>,
+        backup_kdf_nonce -> Nullable<Binary>,
     }
 }
 

@@ -150,7 +150,7 @@ impl Address {
             .dapp_id(params.dapp_id)
             .is_account_wallet(params.is_account_wallet)
             .build()
-            .insert(tx_conn.as_mut())?;
+            .insert(tx_conn)?;
 
         let checksum_address =
             eth::public_key_to_checksum_address(&signing_key.public_key)?;

@@ -316,6 +316,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "argon2"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db4ce4441f99dbd377ca8a8f57b698c44d0d6e712d8329b5040da5a64aa1ce73"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "password-hash",
+ "zeroize",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4089,6 +4101,7 @@ version = "0.1.0"
 dependencies = [
  "aead",
  "anyhow",
+ "argon2",
  "async-trait",
  "base64 0.13.0",
  "blake3",
@@ -4099,6 +4112,7 @@ dependencies = [
  "core-foundation-sys",
  "data-encoding",
  "der 0.5.1",
+ "derive_more",
  "diesel",
  "diesel_migrations",
  "dyn-clone",
@@ -4145,6 +4159,7 @@ dependencies = [
  "url",
  "uuid 1.1.2",
  "zeroize",
+ "zip",
 ]
 
 [[package]]
@@ -5403,6 +5418,26 @@ dependencies = [
  "quote",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "zip"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "537ce7411d25e54e8ae21a7ce0b15840e7bfcff15b51d697ec3266cc76bdf080"
+dependencies = [
+ "aes 0.7.5",
+ "byteorder",
+ "bzip2",
+ "constant_time_eq",
+ "crc32fast",
+ "crossbeam-utils",
+ "flate2",
+ "hmac",
+ "pbkdf2",
+ "sha1",
+ "time 0.3.14",
+ "zstd",
 ]
 
 [[package]]
