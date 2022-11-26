@@ -80,7 +80,6 @@ title: Web3 Key Manager App
 -   __Open source for real__
     - [GitHub Repo](https://github.com/sealvault/sealvault)
     - [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license
-    - Get involved on the [forums](https://forum.sealvault.org)
     - We &#10084;&#65039; PRs and forks
 
 </div>

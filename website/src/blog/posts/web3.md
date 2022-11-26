@@ -244,9 +244,7 @@ apps (Windows, MacOS, Linux) with E2EE cross-platform sync and self-custody
 backups with social recovery methods.
 
 You can sign up for the iOS beta
-[here](https://76u1o4gk7en.typeform.com/to/DxKsEMKM) and join the discussion on
-the [forum.](https://forum.sealvault.org/t/web3-vision-discussion/) We'd love to
-hear from you!
+[here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
 
 <figure markdown>
 [![SealVault Logo](../../assets/images/logo.png){ loading=lazy }](/)
