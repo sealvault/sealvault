@@ -53,7 +53,6 @@ nav:
     - index.md
     - One-Dapp-per-Key: one-dapp-per-key.md
     - Privacy: privacy.md
-  - Discover: discover/index.md
   - Blog: blog/index.md
   - Developer Docs:
       - dev-docs/index.md
@@ -71,4 +70,3 @@ nav:
             - Data-Flow Diagrams: dev-docs/design/data-flow.md
           - Privacy Model: dev-docs/design/privacy-model.md
       - Rust Code Guidelines: dev-docs/rust.md
-  - Forum: https://forum.sealvault.org
