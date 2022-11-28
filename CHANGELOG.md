@@ -1,5 +1,13 @@
 # Changelog
 
+## 2022-11-28
+
+### iOS Beta v0.4.3
+
+#### Improvements
+
+- Change default dapps to [quickswap.exchange](https://quickswap.exchange/) and [mintnft.today](https://mintnft.today/)
+
 ## 2022-11-22
 
 ### iOS Beta v0.4.2
