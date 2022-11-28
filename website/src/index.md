@@ -97,4 +97,4 @@ title: Web3 Key Manager App
 
 ## Beta
 
-Sign up for iOS beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+Sign up for iOS beta invite [here.](https://form.typeform.com/to/DxKsEMKM)

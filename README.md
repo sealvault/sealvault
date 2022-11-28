@@ -43,7 +43,7 @@ Organize your dapps into accounts for isolated identities.
 ## Status
 
 The project is currently in public beta with an iOS app and Polygon PoS support.
-You can sign up for a beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+You can sign up for a beta invite [here.](https://form.typeform.com/to/DxKsEMKM)
 
 Support for more platforms and blockchains is coming. You can find out more in the [intro blog post.](https://sealvault.org/blog/web3-vision/)
 
