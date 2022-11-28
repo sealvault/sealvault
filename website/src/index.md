@@ -27,21 +27,32 @@ title: Web3 Key Manager App
     </figcaption>
     </figure>
 
--   __Automated transaction approval__
+-   __Multiple Identities__
+    <figure markdown>
+    ![iOS app account list view](./assets/images/screenshots/account-list.png){ loading=lazy }
+    <figcaption>
+    Organize your dapps into accounts for isolated identities.
+    [More](./privacy.md)</figcaption>
+    </figure>
+
+
+-   __Quick Launch Your Favorite Dapps__
+    <figure markdown>
+    ![iOS app account view](./assets/images/screenshots/landing-screen.png){ loading=lazy }
+    <figcaption>
+    Each dapp gets a separate key.
+    This protects you from phishing and mitigates compromised dapps.
+    [More](./one-dapp-per-key.md)
+    </figcaption>
+    </figure>
+
+-   __Automated Transaction Approval__
     <figure markdown>
     ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>
     You decide which dapp to add, after that transactions are approved
     automatically. [More](./one-dapp-per-key.md)
     </figcaption>
-    </figure>
-
--   __Isolated identities__
-    <figure markdown>
-    ![iOS app account list view](./assets/images/screenshots/account-list.png){ loading=lazy }
-    <figcaption>
-    Organize your dapps into accounts for isolated identities.
-    [More](./privacy.md)</figcaption>
     </figure>
 
 -   __Move assets between wallets and dapps__
