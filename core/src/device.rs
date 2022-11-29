@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::str::FromStr;
+
 use derive_more::{AsRef, Display, Into};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -34,6 +36,14 @@ impl TryFrom<String> for DeviceIdentifier {
                 error: "Invalid device identifier: '{value}'".into(),
             })
         }
+    }
+}
+
+impl FromStr for DeviceIdentifier {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
     }
 }
 

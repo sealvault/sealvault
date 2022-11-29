@@ -65,7 +65,7 @@ impl From<diesel::result::Error> for Error {
 
         match err {
             diesel::result::Error::DatabaseError(kind, info) => {
-                println!("message: {}", info.message());
+                // println!("message: {}", info.message());
                 if info.message() == SQLITE_BUSY_MESSAGE {
                     Error::Retriable {
                         error: "Failed to acquire DB lock in busy_timeout.".to_string(),
@@ -174,7 +174,7 @@ impl From<jsonrpsee::core::Error> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::Retriable {
-            // Error is opaque, OK to expose.
+            // Error is opaque, ok to log.
             error: err.to_string(),
         }
     }
@@ -183,8 +183,17 @@ impl From<url::ParseError> for Error {
 impl From<argon2::Error> for Error {
     fn from(err: argon2::Error) -> Self {
         Error::Fatal {
-            // Errors are opaque
+            // Error is opaque, ok to log.
             error: err.to_string(),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for Error {
+    fn from(err: std::num::ParseIntError) -> Self {
+        Error::Retriable {
+            // Error is opaque, ok to log.
+            error: format!("Failed to parse int due to error: {err}"),
         }
     }
 }

@@ -2,13 +2,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 use std::{
+    fs,
     fs::File,
     io::{Read, Seek, Write},
-    path::{Path, PathBuf},
+    path::Path,
+    str::FromStr,
 };
 
 use diesel::connection::SimpleConnection;
+use lazy_static::lazy_static;
 use olpc_cjson::CanonicalFormatter;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use typed_builder::TypedBuilder;
@@ -44,7 +48,7 @@ const METADATA_FILE_NAME: &str = "metadata.json";
     Deserialize,
 )]
 #[strum(serialize_all = "lowercase")]
-pub enum BackupVersion {
+pub enum BackupScheme {
     V1,
 }
 
@@ -53,7 +57,7 @@ pub enum BackupVersion {
 #[derive(Debug, PartialEq, Serialize, Deserialize, TypedBuilder)]
 pub struct BackupMetadata {
     /// The backup implementation version
-    backup_scheme_version: BackupVersion,
+    backup_scheme: BackupScheme,
     /// The backup version from the database. Monotonically increasing integer within a device.
     backup_version: i64,
     /// Unix timestamp
@@ -67,17 +71,21 @@ pub struct BackupMetadata {
     kdf_nonce: String,
 }
 
+lazy_static! {
+    static ref BACKUP_FILE_NAME_REGEX: Regex =
+        Regex::new(r"^sealvault_backup_(?P<scheme>[A-Za-z0-9-]+)_(?P<os>[A-Za-z0-9-]+)_(?P<timestamp>\d+)_(?P<device_id>[A-Za-z0-9-]+)_(?P<version>\d+)\.zip$").expect("static is ok");
+}
+
 impl BackupMetadata {
-    fn backup_file_name(&self) -> PathBuf {
+    fn backup_file_name(&self) -> String {
         format!(
             "sealvault_backup_{}_{}_{}_{}_{}.zip",
-            self.backup_scheme_version,
+            self.backup_scheme,
             self.operating_system,
             self.timestamp,
             self.device_identifier,
             self.backup_version
         )
-        .into()
     }
 
     /// Use this for a canonical serialization of the backup metadata to make sure that the
@@ -91,6 +99,49 @@ impl BackupMetadata {
         })?;
         Ok(buf)
     }
+}
+
+#[derive(Debug, PartialEq)]
+struct BackupMetadataFromFileName {
+    backup_version: i64,
+    device_identifier: DeviceIdentifier,
+}
+
+impl FromStr for BackupMetadataFromFileName {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let captures =
+            BACKUP_FILE_NAME_REGEX
+                .captures(s)
+                .ok_or_else(|| Error::Fatal {
+                    error: "Invalid backup file name format".into(),
+                })?;
+
+        let device_identifier =
+            parse_field_from_backup_file_name(&captures, "device_id")?;
+        let backup_version = parse_field_from_backup_file_name(&captures, "version")?;
+
+        Ok(BackupMetadataFromFileName {
+            backup_version,
+            device_identifier,
+        })
+    }
+}
+
+fn parse_field_from_backup_file_name<T>(
+    captures: &regex::Captures,
+    name: &str,
+) -> Result<T, Error>
+where
+    T: FromStr,
+    Error: From<<T as FromStr>::Err>,
+{
+    let group = captures.name(name).ok_or_else(|| Error::Fatal {
+        error: format!("No {name} in backup file name"),
+    })?;
+    let value: T = group.as_str().parse()?;
+    Ok(value)
 }
 
 /// Set up backup keys for the user and return the backup password that can be displayed to the
@@ -117,6 +168,61 @@ pub fn set_up_or_rotate_backup(
     }
 
     res
+}
+
+/// Create backup to the desired directory if needed. The directory is assumed to exist.
+/// Returns the backup metadata if a backup was created.
+/// A backup is needed if the pending backup version matches the completed backup version in the
+/// database.
+/// The backup is a zip file that contains an encrypted database backup and the metadata. Returns
+/// the path to the zip file. More info:
+/// https://sealvault.org/dev-docs/design/backup/#backup-contents
+pub fn create_backup(
+    connection_pool: &ConnectionPool,
+    keychain: &Keychain,
+    device_identifier: DeviceIdentifier,
+    backup_dir: &Path,
+) -> Result<Option<BackupMetadata>, Error> {
+    if let Some(metadata) =
+        db_backup(connection_pool, keychain, device_identifier, backup_dir)?
+    {
+        remove_outdated_backups(&metadata, backup_dir)?;
+
+        Ok(Some(metadata))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn restore_backup(
+    keychain: &Keychain,
+    db_backup_dek: &DataEncryptionKey,
+    sk_backup_kek: &KeyEncryptionKey,
+    device_id: &DeviceIdentifier,
+    from_zip: &Path,
+    to_path: &Path,
+) -> Result<BackupMetadata, Error> {
+    let backup_metadata_bytes =
+        extract_from_zip(from_zip, METADATA_FILE_NAME).map_err(map_zip_error)?;
+    let metadata: BackupMetadata = serde_json::from_slice(&backup_metadata_bytes)
+        .map_err(|_err| Error::Retriable {
+            error: "Failed to deserialize backup metadata".into(),
+        })?;
+
+    let encrypted_backup_bytes =
+        extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
+    let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
+
+    let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
+    restore_decrypted_backup(&metadata, &decrypted_backup, to_path)?;
+
+    let backup_connection_pool =
+        set_up_or_rotate_sk_kek(keychain, sk_backup_kek, to_path)?;
+
+    // Rotate backup password and associated secrets
+    set_up_or_rotate_backup(&backup_connection_pool, keychain, device_id)?;
+
+    Ok(metadata)
 }
 
 fn setup_or_rotate_keys_for_backup(
@@ -223,60 +329,6 @@ fn disable_backups_in_db(mut tx_conn: DeferredTxConnection) -> Result<(), Error>
     Ok(())
 }
 
-/// Create backup to the desired directory if needed. The directory is assumed to exist.
-/// Returns the backup metadata if a backup was created.
-/// A backup is needed if the pending backup version matches the completed backup version in the
-/// database.
-/// The backup is a zip file that contains an encrypted database backup and the metadata. Returns
-/// the path to the zip file. More info:
-/// https://sealvault.org/dev-docs/design/backup/#backup-contents
-pub fn create_backup(
-    connection_pool: &ConnectionPool,
-    keychain: &Keychain,
-    device_identifier: DeviceIdentifier,
-    out_dir: &Path,
-) -> Result<Option<BackupMetadata>, Error> {
-    if let Some(metadata) =
-        db_backup(connection_pool, keychain, device_identifier, out_dir)?
-    {
-        // TODO clean up old versions
-        Ok(Some(metadata))
-    } else {
-        Ok(None)
-    }
-}
-
-pub fn restore_backup(
-    keychain: &Keychain,
-    db_backup_dek: &DataEncryptionKey,
-    sk_backup_kek: &KeyEncryptionKey,
-    device_id: &DeviceIdentifier,
-    from_zip: &Path,
-    to_path: &Path,
-) -> Result<BackupMetadata, Error> {
-    let backup_metadata_bytes =
-        extract_from_zip(from_zip, METADATA_FILE_NAME).map_err(map_zip_error)?;
-    let metadata: BackupMetadata = serde_json::from_slice(&backup_metadata_bytes)
-        .map_err(|_err| Error::Retriable {
-            error: "Failed to deserialize backup metadata".into(),
-        })?;
-
-    let encrypted_backup_bytes =
-        extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
-    let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
-
-    let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
-    restore_decrypted_backup(&metadata, &decrypted_backup, to_path)?;
-
-    let backup_connection_pool =
-        set_up_or_rotate_sk_kek(keychain, sk_backup_kek, to_path)?;
-
-    // Rotate backup password and associated secrets
-    set_up_or_rotate_backup(&backup_connection_pool, keychain, device_id)?;
-
-    Ok(metadata)
-}
-
 fn restore_decrypted_backup(
     metadata: &BackupMetadata,
     decrypted_backup: &[u8],
@@ -360,7 +412,7 @@ fn db_backup(
                 create_verified_backup(connection_pool.db_path(), backup_version)?;
 
             let metadata = BackupMetadata::builder()
-                .backup_scheme_version(BackupVersion::V1)
+                .backup_scheme(BackupScheme::V1)
                 .backup_version(backup_version)
                 .device_identifier(device_identifier)
                 .kdf_nonce(&kdf_nonce)
@@ -450,10 +502,64 @@ fn create_backup_zip(
     Ok(())
 }
 
-fn map_zip_error(err: zip::result::ZipError) -> Error {
-    Error::Retriable {
-        error: format!("Failed to create backup zip with error: '{err}'"),
+/// Removes the outdated backups that were created on this device.
+fn remove_outdated_backups(
+    current_metadata: &BackupMetadata,
+    backup_dir: &Path,
+) -> Result<(), Error> {
+    let entries = fs::read_dir(backup_dir).map_err(|err| Error::Retriable {
+        // Retriable because not necessarily logic error; it's possible that directory is
+        // temporarily unavailable.
+        error: format!("Failed to list backup directory due to error: {err}"),
+    })?;
+    for entry_res in entries {
+        // If the file was removed between listing accessing, do nothing.
+        let maybe_entry = entry_res.map(Some).or_else(|err| {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                Ok(None)
+            } else {
+                Err(Error::Fatal {
+                    error: format!("Failed to access backup file due to error: {err}"),
+                })
+            }
+        })?;
+        if let Some(entry) = maybe_entry {
+            if should_delete(&entry, current_metadata)? {
+                // It might be that file was deleted by other backup inbetween.
+                fs::remove_file(entry.path()).or_else(|err| {
+                    if err.kind() == std::io::ErrorKind::NotFound {
+                        Ok(())
+                    } else {
+                        Err(Error::Fatal {
+                            error: format!(
+                                "Failed to delete backup file due to error: {err}"
+                            ),
+                        })
+                    }
+                })?;
+            }
+        }
     }
+    Ok(())
+}
+
+fn should_delete(
+    dir_entry: &fs::DirEntry,
+    current_metadata: &BackupMetadata,
+) -> Result<bool, Error> {
+    let file_name = dir_entry.file_name();
+    let file_name = file_name.to_str().ok_or_else(|| Error::Fatal {
+        error: "Invalid characters in backup file name".into(),
+    })?;
+    let meta_from_file_name: BackupMetadataFromFileName = file_name.parse()?;
+
+    // There may be other devices saving backups in the same directory.
+    let same_device =
+        meta_from_file_name.device_identifier == current_metadata.device_identifier;
+    // Important to only delete earlier versions as a newer backup may have been created inbetween.
+    let earlier_version =
+        meta_from_file_name.backup_version < current_metadata.backup_version;
+    Ok(same_device && earlier_version)
 }
 
 fn create_backup_zip_inner(
@@ -497,6 +603,12 @@ fn extract_from_zip(
     Ok(file_bytes)
 }
 
+fn map_zip_error(err: zip::result::ZipError) -> Error {
+    Error::Retriable {
+        error: format!("Failed to create backup zip with error: '{err}'"),
+    }
+}
+
 fn backup_connection_pool(backup_path: &Path) -> Result<ConnectionPool, Error> {
     let backup_path = backup_path.to_str().ok_or_else(|| Error::Fatal {
         error: "Failed to convert backup path to utf-8".into(),
@@ -530,7 +642,7 @@ fn verify_backup(backup_path: &Path, expected_backup_version: i64) -> Result<(),
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, path::PathBuf};
 
     use anyhow::Result;
 
@@ -602,20 +714,44 @@ mod tests {
 
         fn trigger_need_new_backup(&self) -> Result<()> {
             self.connection_pool.deferred_transaction(|mut tx_conn| {
-                let account_params = m::AccountParams::builder()
-                    .name("Backup")
-                    .bundled_picture_name("cat-tabby")
+                let account = m::Account::list_all(tx_conn.as_mut())?
+                    .into_iter()
+                    .next()
+                    .expect("there is an account");
+                let params = m::CreateEthAddressParams::builder()
+                    .account_id(&account.deterministic_id)
+                    .chain_id(eth::ChainId::default_wallet_chain())
+                    .is_account_wallet(true)
                     .build();
-                // Creates a new account with a new wallet key.
-                // A new backup is needed after a key is created.
-                let _ = m::Account::create_eth_account(
+                m::Address::create_eth_key_and_address(
                     &mut tx_conn,
                     &self.keychain,
-                    &account_params,
+                    &params,
                 )?;
                 Ok(())
             })?;
             Ok(())
+        }
+
+        fn backup_file_names(&self) -> Result<Vec<String>> {
+            let mut file_names: Vec<String> = Default::default();
+            let entries = fs::read_dir(self.backup_dir.as_path())?;
+            for entry in entries {
+                let file_name = entry?.file_name();
+                let file_name = file_name.to_str().expect("valid string filename");
+                file_names.push(file_name.into());
+            }
+            Ok(file_names)
+        }
+
+        fn backup_versions_in_dir(&self) -> Result<Vec<i64>> {
+            let mut res: Vec<i64> = Default::default();
+            let entries = fs::read_dir(self.backup_dir.as_path())?;
+            for file_name in self.backup_file_names()? {
+                let meta: BackupMetadataFromFileName = file_name.parse()?;
+                res.push(meta.backup_version);
+            }
+            Ok(res)
         }
     }
 
@@ -729,6 +865,14 @@ mod tests {
         let backup_metadata = backup.create_backup()?.expect("needs backup");
         assert!(initial_backup_version < backup_metadata.backup_version);
 
+        // Test cleanup
+        let versions_in_dir = backup.backup_versions_in_dir()?;
+        assert_eq!(versions_in_dir.len(), 1);
+        assert_eq!(
+            *versions_in_dir.first().unwrap(),
+            backup_metadata.backup_version
+        );
+
         let restore = RestoreTest::new(&backup)?;
         restore.verify(&password, &backup_metadata)?;
 
@@ -788,6 +932,30 @@ mod tests {
 
         let restore = RestoreTest::new(&backup)?;
         restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn device_id_from_filename_ok() -> Result<()> {
+        let device_id: DeviceIdentifier =
+            "475dda83-9447-4626-9cf1-ecc4ddbe5bbd".parse()?;
+        let kdf_nonce = KdfNonce::random()?;
+        let metadata = BackupMetadata::builder()
+            .backup_scheme(BackupScheme::V1)
+            .backup_version(16)
+            .device_identifier(device_id.clone())
+            .kdf_nonce(&kdf_nonce)
+            .build();
+
+        let file_name = metadata.backup_file_name();
+        let meta_from_file_name: BackupMetadataFromFileName = file_name.parse()?;
+
+        assert_eq!(meta_from_file_name.backup_version, metadata.backup_version);
+        assert_eq!(
+            meta_from_file_name.device_identifier,
+            metadata.device_identifier
+        );
 
         Ok(())
     }
