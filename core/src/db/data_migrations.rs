@@ -98,7 +98,7 @@ struct MigrationV1 {}
 
 impl MigrationV1 {
     fn default_dapp_urls() -> Vec<Url> {
-        let urls = vec!["https://app.uniswap.org/", "https://app.1inch.io/"];
+        let urls = vec!["https://quickswap.exchange/", "https://mintnft.today/"];
         urls.iter()
             .map(|u| Url::parse(u).expect("static ok"))
             .collect()
