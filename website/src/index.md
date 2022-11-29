@@ -35,27 +35,23 @@ title: Web3 Key Manager App
     [More](./privacy.md)</figcaption>
     </figure>
 
-
 -   __Quick Launch Your Favorite Dapps__
     <figure markdown>
     ![iOS app account view](./assets/images/screenshots/landing-screen.png){ loading=lazy }
     <figcaption>
-    Each dapp gets a separate key.
-    This protects you from phishing and mitigates compromised dapps.
+    Best-in-class dapp browser with helpful notifications about dapp transactions.
     [More](./one-dapp-per-key.md)
     </figcaption>
     </figure>
 
--   __Automated Transaction Approval__
+-   __Built for Multitasking__
     <figure markdown>
-    ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
+    ![iOS app open dapp in browser menu](./assets/images/screenshots/dual-browsers.png){ loading=lazy }
     <figcaption>
-    You decide which dapp to add, after that transactions are approved
-    automatically. [More](./one-dapp-per-key.md)
-    </figcaption>
+    Open two dapps side-by-side and switch with a single tap while both of them remain connected.
     </figure>
 
--   __Move assets between wallets and dapps__
+-   __Move Assets Between Wallets and Dapps__
     <figure markdown>
     ![iOS app token transfer view](./assets/images/screenshots/transfer-view.png){ loading=lazy }
     <figcaption>
@@ -63,19 +59,14 @@ title: Web3 Key Manager App
     dapp. [More](./one-dapp-per-key.md)
     </figcaption>
     </figure>
-
--   __Best-in-class dapp browser__
-    <figure markdown>
-    ![iOS app dapp browser notifications](./assets/images/screenshots/top-dapps.png){ loading=lazy }
-    <figcaption>
-    Best-in-class dapp browser with helpful notifications about dapp transactions.
-    </figure>
     
--   __Built for multitasking__
+-   __Automated Transaction Approval__
     <figure markdown>
-    ![iOS app open dapp in browser menu](./assets/images/screenshots/dual-browsers.png){ loading=lazy }
+    ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>
-    Open two dapps side-by-side and switch with a single tap while both of them remain connected.
+    You decide which dapp to add, after that transactions are approved
+    automatically. [More](./one-dapp-per-key.md)
+    </figcaption>
     </figure>
 
 -   __Multi chain__
