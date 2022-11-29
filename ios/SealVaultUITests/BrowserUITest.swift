@@ -40,15 +40,15 @@ final class BrowserUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let dapp = "uniswap.org"
+        let dapp = "quickswap.exchange"
 
         tapButton(app, "Dapps")
         tapButton(app, "Default account")
         print("app.webViews.count", app.webViews.count)
 
-        let uniswapButton = app.buttons["\(dapp) dapp"]
-        _ = uniswapButton.waitForExistence(timeout: buttonTimeoutSeconds)
-        uniswapButton.press(forDuration: 1)
+        let quickswapButton = app.buttons["\(dapp) dapp"]
+        _ = quickswapButton.waitForExistence(timeout: buttonTimeoutSeconds)
+        quickswapButton.press(forDuration: 1)
 
         tapButton(app, "Open in Browser 2")
 
