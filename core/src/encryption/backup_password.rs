@@ -9,11 +9,12 @@ use lazy_static::lazy_static;
 use rand::Rng;
 
 use crate::{
-    encryption::{key_material::KeyMaterial, KeyName, Keychain},
+    encryption::{key_material::KeyMaterial, KeyName, Keychain, KeychainError},
     Error,
 };
 
 const PASSWORD_LENGTH: usize = 20;
+const NAME: KeyName = KeyName::BackupPassword;
 type PasswordArray = GenericArray<u8, U20>;
 
 lazy_static! {
@@ -38,7 +39,7 @@ impl BackupPassword {
         Ok(Self(key_material))
     }
 
-    pub(super) fn random() -> Result<Self, Error> {
+    fn random() -> Result<Self, Error> {
         let mut rng = rand::thread_rng();
 
         // Allocate on heap here to prevent unreachable copies for zeroization
@@ -53,14 +54,14 @@ impl BackupPassword {
         BackupPassword::new(password)
     }
 
-    pub fn setup(keychain: &Keychain) -> Result<Self, Error> {
+    pub fn setup_or_rotate(keychain: &Keychain) -> Result<Self, Error> {
         let backup_password = Self::random()?;
-        backup_password.save_to_local_keychain(keychain)?;
+        keychain.upsert_local(NAME, backup_password.0)?;
         Self::from_keychain(keychain)
     }
 
     pub fn from_keychain(keychain: &Keychain) -> Result<Self, Error> {
-        let key = keychain.get(KeyName::BackupPassword)?;
+        let key = keychain.get_local(NAME)?;
         Ok(Self(key))
     }
 
@@ -92,17 +93,11 @@ impl BackupPassword {
         res
     }
 
-    /// Save the backup password to the local keychain.
-    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
-        keychain.put_local(KeyName::BackupPassword, self.0)
-    }
-
-    /// Delete the backup password from the local keychain.
-    /// This should be only called to roll back the initial data migration, hence the deprecation
-    /// warning.
-    #[deprecated]
-    pub fn delete_from_keychain(keychain: &Keychain) -> Result<(), Error> {
-        keychain.delete(KeyName::BackupPassword)
+    pub fn delete_from_keychain_if_exists(
+        keychain: &Keychain,
+    ) -> Result<(), KeychainError> {
+        keychain.delete_local_if_exists(NAME)?;
+        Ok(())
     }
 }
 
@@ -237,25 +232,25 @@ mod tests {
     #[test]
     fn parse_empty() {
         let result: Result<BackupPassword, Error> = "".parse();
-        assert!(matches!(result, Err(Error::User { explanation: _ })))
+        assert!(matches!(result, Err(Error::User { .. })))
     }
 
     #[test]
     fn parse_no_valid_char() {
         let result: Result<BackupPassword, Error> = "@_!".parse();
-        assert!(matches!(result, Err(Error::User { explanation: _ })))
+        assert!(matches!(result, Err(Error::User { .. })))
     }
 
     #[test]
     fn parse_short() {
         let result: Result<BackupPassword, Error> = "abcd".parse();
-        assert!(matches!(result, Err(Error::User { explanation: _ })))
+        assert!(matches!(result, Err(Error::User { .. })))
     }
 
     #[test]
     fn parse_long() {
         let result: Result<BackupPassword, Error> =
             "8FD93-EYWZR-GB7HX-QAVNS-QAVNS".parse();
-        assert!(matches!(result, Err(Error::User { explanation: _ })))
+        assert!(matches!(result, Err(Error::User { .. })))
     }
 }

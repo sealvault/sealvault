@@ -13,6 +13,7 @@
     strum_macros::Display,
     strum_macros::EnumString,
     strum_macros::EnumIter,
+    strum_macros::IntoStaticStr,
 )]
 pub enum KeyName {
     // The serializations must not be changed as it's relied on to map from keychain/db.
@@ -27,9 +28,15 @@ pub enum KeyName {
     #[strum(serialize = "ROOT-BACKUP-KEY")]
     RootBackupKey,
     #[strum(serialize = "DATABASE-BACKUP-DATA-ENCRYPTION-KEY")]
-    DbBackupEncryptionKey,
+    DbBackupDataEncryptionKey,
     #[strum(serialize = "SECRET-KEY-BACKUP-KEY-ENCRYPTION-KEY")]
     SkBackupKeyEncryptionKey,
+}
+
+impl From<KeyName> for String {
+    fn from(value: KeyName) -> Self {
+        value.to_string()
+    }
 }
 
 #[cfg(test)]

@@ -55,7 +55,7 @@ impl Migration for MigrationV0 {
     ) -> Result<(), Error> {
         // Create SK-KEK and save it on keychain
         let sk_kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
-        sk_kek.save_to_local_keychain(keychain)?;
+        sk_kek.upsert_to_local_keychain(keychain)?;
         let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
 
         // Create SK-DEK and save it encrypted with SK-KEK in DB
@@ -87,8 +87,10 @@ impl Migration for MigrationV0 {
     fn rollback(&self, keychain: &Keychain) -> Result<(), Error> {
         // Allow rerunning the tx if there was a failure.
         // Database mutations are rolled back automatically by Diesel on error in the tx closure.
-        #[allow(deprecated)]
-        KeyEncryptionKey::delete_sk_kek_from_keychain(keychain)
+        KeyEncryptionKey::delete_from_keychain_if_exists(
+            keychain,
+            KeyName::SkKeyEncryptionKey,
+        )
     }
 }
 

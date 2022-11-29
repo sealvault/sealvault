@@ -13,8 +13,8 @@ use crate::{
 pub struct LocalSettings {
     pub id: String,
     pub account_id: String,
-    pub pending_backup_version: i32,
-    pub completed_backup_version: i32,
+    pub backup_enabled: bool,
+    pub completed_backup_version: i64,
     pub backup_completed_at: Option<String>,
     pub backup_password_updated_at: Option<String>,
     pub backup_kdf_nonce: Option<Vec<u8>>,
@@ -48,28 +48,56 @@ impl LocalSettings {
         Ok(account_id)
     }
 
-    pub fn needs_backup(connection: &mut SqliteConnection) -> Result<bool, Error> {
+    pub fn set_completed_backup_version(
+        connection: &mut SqliteConnection,
+        completed_backup_version: i64,
+    ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 
-        let result = local_settings::table
-            .find(&SINGLETON_ID)
-            .select(ls::pending_backup_version.gt(ls::completed_backup_version))
-            .first(connection)?;
+        diesel::update(local_settings::table.find(&SINGLETON_ID))
+            .set(ls::completed_backup_version.eq(completed_backup_version))
+            .execute(connection)?;
 
-        Ok(result)
+        Ok(())
     }
 
-    pub fn fetch_pending_backup_version(
+    pub fn fetch_completed_backup_version(
         connection: &mut SqliteConnection,
-    ) -> Result<i32, Error> {
+    ) -> Result<i64, Error> {
         use local_settings::dsl as ls;
 
         let pending_backup_version = local_settings::table
             .find(&SINGLETON_ID)
-            .select(ls::pending_backup_version)
+            .select(ls::completed_backup_version)
             .first(connection)?;
 
         Ok(pending_backup_version)
+    }
+
+    pub fn fetch_backup_enabled(
+        connection: &mut SqliteConnection,
+    ) -> Result<bool, Error> {
+        use local_settings::dsl as ls;
+
+        let backup_enabled = local_settings::table
+            .find(&SINGLETON_ID)
+            .select(ls::backup_enabled)
+            .first(connection)?;
+
+        Ok(backup_enabled)
+    }
+
+    pub fn set_backup_enabled(
+        connection: &mut SqliteConnection,
+        backup_enabled: bool,
+    ) -> Result<(), Error> {
+        use local_settings::dsl as ls;
+
+        diesel::update(local_settings::table.find(&SINGLETON_ID))
+            .set(ls::backup_enabled.eq(backup_enabled))
+            .execute(connection)?;
+
+        Ok(())
     }
 
     pub fn fetch_kdf_nonce(
@@ -93,37 +121,12 @@ impl LocalSettings {
 
     pub fn set_backup_kdf_nonce(
         connection: &mut SqliteConnection,
-        kdf_nonce: &KdfNonce,
+        kdf_nonce: Option<&KdfNonce>,
     ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 
         diesel::update(local_settings::table.find(&SINGLETON_ID))
-            .set(ls::backup_kdf_nonce.eq(kdf_nonce.as_ref()))
-            .execute(connection)?;
-
-        Ok(())
-    }
-
-    pub fn increment_pending_backup_version(
-        connection: &mut SqliteConnection,
-    ) -> Result<(), Error> {
-        use local_settings::dsl as ls;
-
-        diesel::update(local_settings::table.find(&SINGLETON_ID))
-            .set(ls::pending_backup_version.eq(ls::pending_backup_version + 1))
-            .execute(connection)?;
-
-        Ok(())
-    }
-
-    pub fn set_completed_backup_version(
-        connection: &mut SqliteConnection,
-        completed_backup_version: i32,
-    ) -> Result<(), Error> {
-        use local_settings::dsl as ls;
-
-        diesel::update(local_settings::table.find(&SINGLETON_ID))
-            .set(ls::completed_backup_version.eq(completed_backup_version))
+            .set(ls::backup_kdf_nonce.eq(kdf_nonce.map(|n| n.as_ref())))
             .execute(connection)?;
 
         Ok(())

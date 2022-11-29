@@ -18,7 +18,7 @@ use crate::{
 #[cfg(not(test))]
 const MEMORY_COST_KIB: u32 = 64 * 1024;
 #[cfg(test)]
-const MEMORY_COST_KIB: u32 = 128;
+const MEMORY_COST_KIB: u32 = 8;
 
 #[cfg(not(test))]
 const ITERATIONS: u32 = 10;
@@ -27,6 +27,8 @@ const ITERATIONS: u32 = 1;
 
 const PARALLELISM: u32 = 1;
 const TAG_BYTES: usize = 32;
+
+const MIN_BLAKE_CONTEXT_LEN: usize = 100;
 
 /// The root cloud backup key that is derived from the backup password.
 /// More: https://sealvault.org/dev-docs/design/backup/#key-derivation-functions
@@ -67,27 +69,25 @@ impl RootBackupKey {
 
     pub fn derive_db_backup_dek(&self) -> Result<DataEncryptionKey, Error> {
         // In this scope to prevent being used in other context by accident.
-        const DB_BACKUP_DEK_CONTEXT: &str = "org.sealvault.backup.keys.database-backup-data-encryption-key unique suffix: 4dd843f710923a5ce96a974732c42b9b";
-        // This is not ideal, as it's not guaranteed that that there won't be unreachable copies of
-        // the output array for zeroization. It'd be safer to allocate the output array on the heap
-        // and hash into it, but the internal state of the hasher isn't zeroized so there is not
-        // much point for it.
+        const DB_BACKUP_DEK_CONTEXT: &str = "\
+        org.sealvault.backup.keys.database-backup-data-encryption-key \
+        unique suffix: 4dd843f710923a5ce96a974732c42b9b";
+        // Make sure nothing is missing due to multiline formatting issues.
+        assert!(DB_BACKUP_DEK_CONTEXT.len() >= MIN_BLAKE_CONTEXT_LEN);
         let tag =
             Zeroizing::new(blake3::derive_key(DB_BACKUP_DEK_CONTEXT, self.0.as_ref()));
         let key_material = KeyMaterial::<U32>::from_slice(tag.as_ref())?;
         Ok(DataEncryptionKey::new(
-            KeyName::DbBackupEncryptionKey,
+            KeyName::DbBackupDataEncryptionKey,
             key_material,
         ))
     }
 
     pub fn derive_sk_backup_kek(&self) -> Result<KeyEncryptionKey, Error> {
-        // In this scope to prevent being used in other context by accident.
-        const SK_BACKUP_KEK_CONTEXT: &str = "org.sealvault.backup.keys.secret-key-backup-key-encryption-key unique suffix: ced64bf5a8364f2c90424c0efa869a86";
-        // This is not ideal, as it's not guaranteed that that there won't be unreachable copies of
-        // the output array for zeroization. It'd be safer to allocate the output array on the heap
-        // and hash into it, but the internal state of the hasher isn't zeroized so there is not
-        // much point for it.
+        const SK_BACKUP_KEK_CONTEXT: &str = "\
+        org.sealvault.backup.keys.secret-key-backup-key-encryption-key \
+        unique suffix: ced64bf5a8364f2c90424c0efa869a86";
+        assert!(SK_BACKUP_KEK_CONTEXT.len() >= MIN_BLAKE_CONTEXT_LEN);
         let tag =
             Zeroizing::new(blake3::derive_key(SK_BACKUP_KEK_CONTEXT, self.0.as_ref()));
         let key_material = KeyMaterial::<U32>::from_slice(tag.as_ref())?;

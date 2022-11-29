@@ -40,6 +40,11 @@ impl AsymmetricKey {
         Ok(asymmetric_keys::table.load::<Self>(conn)?)
     }
 
+    pub fn num_keys(conn: &mut SqliteConnection) -> Result<i64, Error> {
+        let count: i64 = asymmetric_keys::table.count().get_result(conn)?;
+        Ok(count)
+    }
+
     pub fn fetch_eth_public_key(
         conn: &mut SqliteConnection,
         deterministic_id: &str,
@@ -107,9 +112,6 @@ impl<'a> NewAsymmetricKey<'a> {
                 ak::created_at.eq(&created_at),
             ))
             .execute(tx_conn.as_mut())?;
-
-        // When a key is added, we want to create a new backup.
-        m::LocalSettings::increment_pending_backup_version(tx_conn.as_mut())?;
 
         Ok(deterministic_id)
     }

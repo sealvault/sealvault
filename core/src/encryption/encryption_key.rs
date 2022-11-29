@@ -42,8 +42,8 @@ impl DataEncryptionKey {
     }
 
     pub fn db_backup_dek(keychain: &Keychain) -> Result<Self, Error> {
-        let name = KeyName::DbBackupEncryptionKey;
-        let key: EncryptionKey = keychain.get(name)?;
+        let name = KeyName::DbBackupDataEncryptionKey;
+        let key: EncryptionKey = keychain.get_local(name)?;
         Ok(Self::new(name, key))
     }
 
@@ -53,7 +53,7 @@ impl DataEncryptionKey {
         encryption_key: &KeyEncryptionKey,
     ) -> Result<Self, Error> {
         let name_str: &str = name.as_ref();
-        let payload = aead::Payload {
+        let payload = Payload {
             msg: &encryption_output.cipher_text,
             aad: name_str.as_bytes(),
         };
@@ -79,7 +79,7 @@ impl DataEncryptionKey {
         &self,
         with_key: &KeyEncryptionKey,
     ) -> Result<EncryptionOutput, Error> {
-        let payload = aead::Payload {
+        let payload = Payload {
             msg: self.expose_secret().as_ref(),
             aad: self.name().as_bytes(),
         };
@@ -137,10 +137,16 @@ impl DataEncryptionKey {
         decrypt(payload, self, &encryption_output.nonce)
     }
 
-    /// Save to local keychain.
-    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
-        let SymmetricKey { name, key_material } = self.0;
-        keychain.put_local(name, key_material)
+    pub fn upsert_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
+        upsert_to_local_keychain(keychain, self.0)
+    }
+
+    pub fn delete_from_keychain_if_exists(
+        keychain: &Keychain,
+        name: KeyName,
+    ) -> Result<(), Error> {
+        keychain.delete_local_if_exists(name)?;
+        Ok(())
     }
 }
 
@@ -161,8 +167,15 @@ impl KeyEncryptionKey {
     }
 
     pub fn sk_kek(keychain: &Keychain) -> Result<Self, Error> {
-        let name = KeyName::SkKeyEncryptionKey;
-        let key: EncryptionKey = keychain.get(name)?;
+        Self::from_keychain(keychain, KeyName::SkKeyEncryptionKey)
+    }
+
+    pub fn sk_backup_kek(keychain: &Keychain) -> Result<Self, Error> {
+        Self::from_keychain(keychain, KeyName::SkBackupKeyEncryptionKey)
+    }
+
+    fn from_keychain(keychain: &Keychain, name: KeyName) -> Result<Self, Error> {
+        let key: EncryptionKey = keychain.get_local(name)?;
         Ok(Self::new(name, key))
     }
 
@@ -174,18 +187,16 @@ impl KeyEncryptionKey {
         Ok(Self::new(name, KeyMaterial::random()?))
     }
 
-    /// Save to local keychain.
-    pub fn save_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
-        let SymmetricKey { name, key_material } = self.0;
-        keychain.put_local(name, key_material)
+    pub fn upsert_to_local_keychain(self, keychain: &Keychain) -> Result<(), Error> {
+        upsert_to_local_keychain(keychain, self.0)
     }
 
-    /// Delete SK-KEK from the local keychain.
-    /// This should be only called to roll back the initial data migration, hence the deprecation
-    /// warning.
-    #[deprecated]
-    pub fn delete_sk_kek_from_keychain(keychain: &Keychain) -> Result<(), Error> {
-        keychain.delete(KeyName::SkKeyEncryptionKey)
+    pub fn delete_from_keychain_if_exists(
+        keychain: &Keychain,
+        name: KeyName,
+    ) -> Result<(), Error> {
+        keychain.delete_local_if_exists(name)?;
+        Ok(())
     }
 }
 
@@ -214,6 +225,12 @@ impl Debug for SymmetricKey {
             .field("name", &self.name)
             .finish()
     }
+}
+
+fn upsert_to_local_keychain(keychain: &Keychain, key: SymmetricKey) -> Result<(), Error> {
+    let SymmetricKey { name, key_material } = key;
+    keychain.upsert_local(name, key_material)?;
+    Ok(())
 }
 
 #[cfg(test)]

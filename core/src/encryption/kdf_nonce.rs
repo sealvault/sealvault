@@ -35,6 +35,12 @@ impl TryFrom<Vec<u8>> for KdfNonce {
     }
 }
 
+impl From<&KdfNonce> for String {
+    fn from(value: &KdfNonce) -> Self {
+        base64::encode(value)
+    }
+}
+
 impl FromStr for KdfNonce {
     type Err = Error;
 

@@ -14,7 +14,7 @@ use tempfile::NamedTempFile;
 use typed_builder::TypedBuilder;
 
 use crate::{
-    db::{models as m, ConnectionPool},
+    db::{models as m, ConnectionPool, DeferredTxConnection, ExclusiveTxConnection},
     device::{DeviceIdentifier, OperatingSystem},
     encryption::{
         BackupPassword, DataEncryptionKey, EncryptionOutput, KdfNonce, KdfSecret,
@@ -55,7 +55,7 @@ pub struct BackupMetadata {
     /// The backup implementation version
     backup_scheme_version: BackupVersion,
     /// The backup version from the database. Monotonically increasing integer within a device.
-    backup_version: i32,
+    backup_version: i64,
     /// Unix timestamp
     #[builder(default_code = "unix_timestamp()")]
     timestamp: i64,
@@ -63,7 +63,7 @@ pub struct BackupMetadata {
     #[builder(default)]
     operating_system: OperatingSystem,
     /// Base-64 encoded KDF nonce
-    #[builder(setter(transform = |k: &KdfNonce| base64::encode(k)))]
+    #[builder(setter(into))]
     kdf_nonce: String,
 }
 
@@ -94,52 +94,133 @@ impl BackupMetadata {
 }
 
 /// Set up backup keys for the user and return the backup password that can be displayed to the
-/// user.
-pub fn set_up_backup(
+/// user. Calling the function again will rotate the password and associated keys.
+pub fn set_up_or_rotate_backup(
     connection_pool: &ConnectionPool,
     keychain: &Keychain,
+    device_identifier: &DeviceIdentifier,
 ) -> Result<String, Error> {
     // In an exclusive transaction to prevent running in parallel and potentially ending up with
     // mixed up keychain items.
-    connection_pool.exclusive_transaction(|mut tx_conn| {
-        let backup_password = BackupPassword::setup(keychain)?;
-        let kdf_secret = KdfSecret::setup(keychain)?;
-        let kdf_nonce: KdfNonce = KdfNonce::random()?;
+    let res = connection_pool.exclusive_transaction(|mut tx_conn| {
+        let (kdf_nonce, backup_password) =
+            setup_or_rotate_keys_for_backup(keychain, device_identifier, &mut tx_conn)?;
 
-        let root_backup_key =
-            RootBackupKey::derive_from(&backup_password, &kdf_secret, &kdf_nonce)?;
+        enable_backups_in_db(&mut tx_conn, &kdf_nonce)?;
 
-        let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
-        db_backup_dek.save_to_local_keychain(keychain)?;
+        Ok(backup_password.display_to_user())
+    });
 
-        let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
+    // Rollback on error
+    if res.is_err() {
+        rollback_setup_backup(connection_pool, keychain, device_identifier)?;
+    }
 
-        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
+    res
+}
 
-        // Fetch secret key data encryption key (SK-DEK) from DB and decrypt it with secret key
-        // encryption key (SK-KEK) from local keychain.
-        let (sk_dek_id, sk_dek) = m::DataEncryptionKey::fetch_dek(
+fn setup_or_rotate_keys_for_backup(
+    keychain: &Keychain,
+    device_identifier: &DeviceIdentifier,
+    tx_conn: &mut ExclusiveTxConnection,
+) -> Result<(KdfNonce, BackupPassword), Error> {
+    // Create new backup password
+    // KDF secret should be first to abort if something's wrong with keychain sync which is the
+    // most likely failure scenario.
+    let kdf_secret = KdfSecret::setup_or_rotate(keychain, device_identifier)?;
+    let backup_password = BackupPassword::setup_or_rotate(keychain)?;
+    let kdf_nonce: KdfNonce = KdfNonce::random()?;
+
+    let root_backup_key =
+        RootBackupKey::derive_from(&backup_password, &kdf_secret, &kdf_nonce)?;
+
+    let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
+    db_backup_dek.upsert_to_local_keychain(keychain)?;
+
+    let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
+    sk_backup_kek.upsert_to_local_keychain(keychain)?;
+    let sk_backup_kek = KeyEncryptionKey::sk_backup_kek(keychain)?;
+
+    let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
+
+    // Fetch secret key data encryption key (SK-DEK) from DB and decrypt it with secret key
+    // encryption key (SK-KEK) from local keychain.
+    let (sk_dek_id, sk_dek) = m::DataEncryptionKey::fetch_dek(
+        tx_conn.as_mut(),
+        KeyName::SkDataEncryptionKey,
+        &sk_kek,
+    )?;
+
+    // Encrypt SK-DEK with the secret key backup encryption key and save the encrypted SK-DEK in
+    // the database.
+    let encrypted_sk_dek = sk_dek.to_encrypted(&sk_backup_kek)?;
+    let maybe_sk_dek_backup_id = m::LocalEncryptedDek::fetch_id(
+        tx_conn.as_mut(),
+        &sk_dek_id,
+        sk_backup_kek.name(),
+    )?;
+    if let Some(sk_dek_backup_id) = maybe_sk_dek_backup_id {
+        m::LocalEncryptedDek::set_encrypted_dek(
             tx_conn.as_mut(),
-            KeyName::SkDataEncryptionKey,
-            &sk_kek,
+            sk_dek_backup_id,
+            &encrypted_sk_dek,
         )?;
-
-        // Encrypt SK-DEK with the secret key backup encryption key and save the encrypted SK-DEK in
-        // the database.
-        let encrypted_sk_dek = sk_dek.to_encrypted(&sk_backup_kek)?;
+    } else {
         m::NewLocalEncryptedDek::builder()
             .dek_id(&sk_dek_id)
             .encrypted_dek(&encrypted_sk_dek)
             .kek_name(sk_backup_kek.name())
             .build()
             .insert(tx_conn.as_mut())?;
+    }
 
-        // Update timestamps
-        m::LocalSettings::set_backup_kdf_nonce(tx_conn.as_mut(), &kdf_nonce)?;
-        m::LocalSettings::update_backup_password_timestamp(tx_conn.as_mut())?;
+    Ok((kdf_nonce, backup_password))
+}
 
-        Ok(backup_password.display_to_user())
-    })
+fn enable_backups_in_db(
+    tx_conn: &mut ExclusiveTxConnection,
+    kdf_nonce: &KdfNonce,
+) -> Result<(), Error> {
+    // Update timestamps
+    m::LocalSettings::set_backup_kdf_nonce(tx_conn.as_mut(), Some(kdf_nonce))?;
+    m::LocalSettings::update_backup_password_timestamp(tx_conn.as_mut())?;
+    // Reset user viewed password
+    m::LocalSettings::set_backup_enabled(tx_conn.as_mut(), true)?;
+    Ok(())
+}
+
+fn rollback_setup_backup(
+    connection_pool: &ConnectionPool,
+    keychain: &Keychain,
+    device_identifier: &DeviceIdentifier,
+) -> Result<(), Error> {
+    // First make sure we disable backups as keychain might be in inconsistent state.
+    // Rolling back the changes from the transaction is not enough, because backups might have
+    // been enabled prior.
+    connection_pool.deferred_transaction(disable_backups_in_db)?;
+    // Try to clean up keychain items. The application works correctly even if they're not
+    // all successfully cleaned up.
+    remove_keys_for_backup(keychain, device_identifier);
+    Ok(())
+}
+
+fn remove_keys_for_backup(keychain: &Keychain, device_identifier: &DeviceIdentifier) {
+    let _ = KdfSecret::delete_from_keychain_if_exists(keychain, device_identifier);
+    let _ = BackupPassword::delete_from_keychain_if_exists(keychain);
+    let _ = KeyEncryptionKey::delete_from_keychain_if_exists(
+        keychain,
+        KeyName::SkBackupKeyEncryptionKey,
+    );
+    let _ = DataEncryptionKey::delete_from_keychain_if_exists(
+        keychain,
+        KeyName::DbBackupDataEncryptionKey,
+    );
+}
+
+fn disable_backups_in_db(mut tx_conn: DeferredTxConnection) -> Result<(), Error> {
+    m::LocalSettings::set_backup_kdf_nonce(tx_conn.as_mut(), None)?;
+    m::LocalSettings::set_backup_enabled(tx_conn.as_mut(), false)?;
+    Ok(())
 }
 
 /// Create backup to the desired directory if needed. The directory is assumed to exist.
@@ -166,40 +247,81 @@ pub fn create_backup(
 }
 
 pub fn restore_backup(
+    keychain: &Keychain,
     db_backup_dek: &DataEncryptionKey,
+    sk_backup_kek: &KeyEncryptionKey,
+    device_id: &DeviceIdentifier,
     from_zip: &Path,
     to_path: &Path,
 ) -> Result<BackupMetadata, Error> {
     let backup_metadata_bytes =
         extract_from_zip(from_zip, METADATA_FILE_NAME).map_err(map_zip_error)?;
-
     let metadata: BackupMetadata = serde_json::from_slice(&backup_metadata_bytes)
         .map_err(|_err| Error::Retriable {
             error: "Failed to deserialize backup metadata".into(),
         })?;
+
     let encrypted_backup_bytes =
         extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
-
     let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
 
     let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
+    restore_decrypted_backup(&metadata, &decrypted_backup, to_path)?;
 
-    let mut restored_file = File::create(to_path).map_err(|err| Error::Retriable {
-        error: format!("Failed to create restored backup file with error: '{err}'"),
-    })?;
-    restored_file
-        .write_all(&decrypted_backup)
-        .map_err(|err| Error::Retriable {
-            error: format!("Failed to write to restored backup file with error: '{err}'"),
-        })?;
-    verify_backup(to_path, metadata.backup_version)?;
+    let backup_connection_pool =
+        set_up_or_rotate_sk_kek(keychain, sk_backup_kek, to_path)?;
+
+    // Rotate backup password and associated secrets
+    set_up_or_rotate_backup(&backup_connection_pool, keychain, device_id)?;
 
     Ok(metadata)
 }
 
-pub fn rotate_backup_password() {
-    // Hold exclusive transaction to make sure no backup is in progress with different key
-    todo!()
+fn restore_decrypted_backup(
+    metadata: &BackupMetadata,
+    decrypted_backup: &[u8],
+    to_path: &Path,
+) -> Result<(), Error> {
+    let mut restored_file = File::create(to_path).map_err(|err| Error::Retriable {
+        error: format!("Failed to create restored backup file with error: '{err}'"),
+    })?;
+    restored_file
+        .write_all(decrypted_backup)
+        .map_err(|err| Error::Retriable {
+            error: format!("Failed to write to restored backup file with error: '{err}'"),
+        })?;
+    verify_backup(to_path, metadata.backup_version)?;
+    Ok(())
+}
+
+/// Set up SK-KEK if we're on new device as it's not on the local keychain. Rotate if the app is
+/// reinstalled on same device for hygiene.
+/// It's possible that SK-KEK already exists when reinstalling on same device since iOS Keychain
+/// items are not deleted when the app is deleted.
+fn set_up_or_rotate_sk_kek(
+    keychain: &Keychain,
+    sk_backup_kek: &KeyEncryptionKey,
+    db_path: &Path,
+) -> Result<ConnectionPool, Error> {
+    let backup_cp = backup_connection_pool(db_path)?;
+    backup_cp.exclusive_transaction(|mut tx_conn| {
+        // Fetch the secret key data encryption key (SK-DEK) from the database and decrypt it with the backup key encryption key
+        let (dek_id, sk_dek) = m::DataEncryptionKey::fetch_dek(tx_conn.as_mut(), KeyName::SkDataEncryptionKey, sk_backup_kek)?;
+        // Create a new secret key encryption key (SK-KEK)
+        let sk_kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
+        // Encrypt the SK-DEK with the new SK-KEK
+        let encrypted_sk_dek = sk_dek.to_encrypted(&sk_kek)?;
+        // Update the encrypted SK-DEK in the db to the one newly encrypted with new SK-KEK.
+        // The local encrypted SK-DEK with SK-KEK from previous device is assumed to exist in the
+        // backup, since it's created in the first data migration, ergo all backups should have it.
+        let sk_dek_id = m::LocalEncryptedDek::fetch_id(tx_conn.as_mut(), &dek_id, sk_kek.name())?.ok_or_else(|| Error::Fatal {
+            error: "Local encrypted SK-DEK with SK-KEK is assumed to exist when calling `rotate_sk_kek`".into()
+        })?;
+        m::LocalEncryptedDek::set_encrypted_dek(tx_conn.as_mut(), sk_dek_id, &encrypted_sk_dek)?;
+        // Save the new SK-KEK to the keychain.
+        sk_kek.upsert_to_local_keychain(keychain)
+    })?;
+    Ok(backup_cp)
 }
 
 fn db_backup(
@@ -208,58 +330,77 @@ fn db_backup(
     device_identifier: DeviceIdentifier,
     out_dir: &Path,
 ) -> Result<Option<BackupMetadata>, Error> {
+    // We check this twice to avoid running the expensive wal checkpointing if a backup is not
+    // needed.
+    let pending = connection_pool
+        .exclusive_transaction(|mut tx_conn| pending_backup_version(&mut tx_conn))?;
+    if pending.is_none() {
+        return Ok(None);
+    }
     // Flush WAL to the DB file. Can't be inside exclusive transaction, because it acquires its own
     // lock.
     let mut conn = connection_pool.connection()?;
-    // We check this twice to avoid running the expensive wal checkpointing if a backup is not
-    // needed.
-    if !m::LocalSettings::needs_backup(&mut conn)? {
-        return Ok(None);
-    }
     conn.batch_execute("PRAGMA wal_checkpoint(FULL);")?;
 
     connection_pool.exclusive_transaction(|mut tx_conn| {
-        if !m::LocalSettings::needs_backup(tx_conn.as_mut())? {
-            return Ok(None);
+        if let Some(backup_version) = pending_backup_version(&mut tx_conn)? {
+            // Fetch these while holding the exclusive lock to make sure they match
+            // the secret key backup encryption key that was used to encrypt the secret key data
+            // encryption key which is stored inside the DB.
+            let kdf_nonce =
+                m::LocalSettings::fetch_kdf_nonce(tx_conn.as_mut())?.ok_or_else(|| {
+                    Error::Fatal {
+                        error: "No KDF nonce in DB. Make sure backup is set up before attempting \
+                        to create one.".into()
+                    }
+                })?;
+            let db_backup_dek = DataEncryptionKey::db_backup_dek(keychain)?;
+
+            let backup_contents =
+                create_verified_backup(connection_pool.db_path(), backup_version)?;
+
+            let metadata = BackupMetadata::builder()
+                .backup_scheme_version(BackupVersion::V1)
+                .backup_version(backup_version)
+                .device_identifier(device_identifier)
+                .kdf_nonce(&kdf_nonce)
+                .build();
+
+            let encryption_output =
+                db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
+
+            create_backup_zip(out_dir, &metadata, &encryption_output)?;
+
+            m::LocalSettings::set_completed_backup_version(tx_conn.as_mut(), backup_version)?;
+
+            Ok(Some(metadata))
+        } else {
+            Ok(None)
         }
-
-        // Fetch these while holding the exclusive lock to make sure they match
-        // the secret key backup encryption key that was used to encrypt the secret key data
-        // encryption key which is stored inside the DB.
-        let backup_version =
-            m::LocalSettings::fetch_pending_backup_version(tx_conn.as_mut())?;
-        let kdf_nonce =
-            m::LocalSettings::fetch_kdf_nonce(tx_conn.as_mut())?.ok_or_else(|| {
-                Error::Fatal {
-            error: "No KDF nonce in DB. Make sure backup is set up before attempting to \
-                    create one.".into()
-        }
-            })?;
-        let db_backup_dek = DataEncryptionKey::db_backup_dek(keychain)?;
-
-        let backup_contents =
-            create_verified_backup(connection_pool.db_path(), backup_version)?;
-
-        let metadata = BackupMetadata::builder()
-            .backup_scheme_version(BackupVersion::V1)
-            .backup_version(backup_version)
-            .device_identifier(device_identifier)
-            .kdf_nonce(&kdf_nonce)
-            .build();
-
-        let encryption_output =
-            db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
-
-        create_backup_zip(out_dir, &metadata, &encryption_output)?;
-
-        m::LocalSettings::set_completed_backup_version(tx_conn.as_mut(), backup_version)?;
-
-        Ok(Some(metadata))
     })
 }
 
+/// Returns the pending backup version if backups are enabled and we need a backup.
+/// We need a backup if we haven't backed up all keys yet.
+fn pending_backup_version(
+    tx_conn: &mut ExclusiveTxConnection,
+) -> Result<Option<i64>, Error> {
+    let backup_enabled = m::LocalSettings::fetch_backup_enabled(tx_conn.as_mut())?;
+    if !backup_enabled {
+        return Ok(None);
+    }
+    let num_keys = m::AsymmetricKey::num_keys(tx_conn.as_mut())?;
+    let completed_backup_version =
+        m::LocalSettings::fetch_completed_backup_version(tx_conn.as_mut())?;
+    if num_keys > completed_backup_version {
+        Ok(Some(num_keys))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Create a verified backup of the DB and return it as bytes.
-fn create_verified_backup(db_path: &Path, backup_version: i32) -> Result<Vec<u8>, Error> {
+fn create_verified_backup(db_path: &Path, backup_version: i64) -> Result<Vec<u8>, Error> {
     let mut db_file = File::open(db_path).map_err(|err| Error::Retriable {
         error: format!("Failed to open DB file: {err}"),
     })?;
@@ -356,23 +497,33 @@ fn extract_from_zip(
     Ok(file_bytes)
 }
 
-fn verify_backup(backup_path: &Path, expected_backup_version: i32) -> Result<(), Error> {
+fn backup_connection_pool(backup_path: &Path) -> Result<ConnectionPool, Error> {
     let backup_path = backup_path.to_str().ok_or_else(|| Error::Fatal {
         error: "Failed to convert backup path to utf-8".into(),
     })?;
-    let backup_cp = ConnectionPool::new(backup_path)?;
-    let mut backup_conn = backup_cp.connection()?;
+    ConnectionPool::new(backup_path)
+}
 
-    let pending_backup_version =
-        m::LocalSettings::fetch_pending_backup_version(&mut backup_conn)?;
-    if pending_backup_version == expected_backup_version {
-        Ok(())
+fn verify_backup(backup_path: &Path, expected_backup_version: i64) -> Result<(), Error> {
+    let backup_cp = backup_connection_pool(backup_path)?;
+
+    let maybe_version = backup_cp
+        .exclusive_transaction(|mut tx_conn| pending_backup_version(&mut tx_conn))?;
+
+    if let Some(version) = maybe_version {
+        if version == expected_backup_version {
+            Ok(())
+        } else {
+            Err(Error::Fatal {
+                error: format!(
+                    "Expected pending backup version to be {expected_backup_version} in \
+                            backup, instead it is: {version}"
+                ),
+            })
+        }
     } else {
         Err(Error::Fatal {
-            error: format!(
-                "Expected pending backup version to be {expected_backup_version} in \
-                            backup, instead it is: {pending_backup_version}"
-            ),
+            error: "Backups are not enabled in restored backup".into(),
         })
     }
 }
@@ -387,49 +538,256 @@ mod tests {
     use crate::{
         db::{data_migrations, schema_migrations::run_migrations},
         encryption::Keychain,
+        protocols::eth,
         public_suffix_list::PublicSuffixList,
     };
 
+    struct BackupTest {
+        device_id: DeviceIdentifier,
+        tmp_dir: tempfile::TempDir,
+        backup_dir: PathBuf,
+        db_path: PathBuf,
+        keychain: Keychain,
+        psl: PublicSuffixList,
+        connection_pool: ConnectionPool,
+    }
+
+    impl BackupTest {
+        fn new() -> Result<Self> {
+            let device_id: DeviceIdentifier = "test-device".to_string().try_into()?;
+            let tmp_dir = tempfile::tempdir().expect("creates temp dir");
+            let backup_dir = tmp_dir.path().join("backups");
+            fs::create_dir(backup_dir.as_path())?;
+            let db_path = tmp_dir.path().join("db.sqlite3");
+
+            // Create mock db
+            let connection_pool =
+                ConnectionPool::new(db_path.to_str().expect("ok utf-8"))?;
+            let keychain = Keychain::new();
+            let psl = PublicSuffixList::new()?;
+            connection_pool.exclusive_transaction(|mut tx_conn| {
+                run_migrations(&mut tx_conn)?;
+                data_migrations::run_all(tx_conn, &keychain, &psl)
+            })?;
+
+            Ok(Self {
+                device_id,
+                tmp_dir,
+                backup_dir,
+                db_path,
+                keychain,
+                psl,
+                connection_pool,
+            })
+        }
+
+        fn setup_or_rotate_backup(&self) -> Result<String> {
+            let pwd = set_up_or_rotate_backup(
+                &self.connection_pool,
+                &self.keychain,
+                &self.device_id,
+            )?;
+            Ok(pwd)
+        }
+
+        fn create_backup(&self) -> Result<Option<BackupMetadata>> {
+            let metadata = create_backup(
+                &self.connection_pool,
+                &self.keychain,
+                self.device_id.clone(),
+                self.backup_dir.as_path(),
+            )?;
+            Ok(metadata)
+        }
+
+        fn trigger_need_new_backup(&self) -> Result<()> {
+            self.connection_pool.deferred_transaction(|mut tx_conn| {
+                let account_params = m::AccountParams::builder()
+                    .name("Backup")
+                    .bundled_picture_name("cat-tabby")
+                    .build();
+                // Creates a new account with a new wallet key.
+                // A new backup is needed after a key is created.
+                let _ = m::Account::create_eth_account(
+                    &mut tx_conn,
+                    &self.keychain,
+                    &account_params,
+                )?;
+                Ok(())
+            })?;
+            Ok(())
+        }
+    }
+
+    struct RestoreTest<'a> {
+        backup: &'a BackupTest,
+        keychain: Keychain,
+        restore_to: NamedTempFile,
+    }
+
+    impl<'a> RestoreTest<'a> {
+        fn new(backup: &'a BackupTest) -> Result<Self> {
+            // Create new keychain to simulate running on other device but copy over kdf secret
+            // which is synced.
+            let kdf_secret =
+                KdfSecret::from_keychain(&backup.keychain, &backup.device_id)?;
+            let keychain = Keychain::new();
+            kdf_secret.save_to_keychain(&keychain, &backup.device_id)?;
+            Ok(Self {
+                keychain,
+                backup,
+                restore_to: NamedTempFile::new()?,
+            })
+        }
+
+        fn restore(
+            &self,
+            password: &str,
+            metadata: &BackupMetadata,
+        ) -> Result<BackupMetadata> {
+            let password: BackupPassword = password.parse()?;
+            let kdf_secret =
+                KdfSecret::from_keychain(&self.keychain, &metadata.device_identifier)?;
+            let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
+            let root_backup_key =
+                RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
+            let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
+            let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
+
+            let restore_from = self.backup.backup_dir.join(metadata.backup_file_name());
+            let backup_metadata = restore_backup(
+                &self.keychain,
+                &db_backup_dek,
+                &sk_backup_kek,
+                &metadata.device_identifier,
+                restore_from.as_path(),
+                self.restore_to.path(),
+            )?;
+
+            Ok(backup_metadata)
+        }
+
+        fn verify_can_decrypt_key(&self) -> Result<()> {
+            let connection_pool = ConnectionPool::new(
+                self.restore_to
+                    .path()
+                    .to_str()
+                    .expect("path converts to str"),
+            )?;
+            let _ = connection_pool.deferred_transaction(|mut tx_conn| {
+                let accounts = m::Account::list_all(tx_conn.as_mut())?;
+                let account = accounts.first().expect("there is an account");
+                let address_id = m::Address::fetch_eth_wallet_id(
+                    &mut tx_conn,
+                    &account.deterministic_id,
+                    eth::ChainId::default_wallet_chain(),
+                )?;
+                // Uses SK-KEK to decrypt
+                m::Address::fetch_eth_signing_key(
+                    &mut tx_conn,
+                    &self.keychain,
+                    &address_id,
+                )
+            })?;
+            Ok(())
+        }
+
+        fn verify(&self, password: &str, backup_metadata: &BackupMetadata) -> Result<()> {
+            let restore_metadata = self.restore(&password, backup_metadata)?;
+            self.verify_can_decrypt_key()?;
+            assert_eq!(backup_metadata, &restore_metadata);
+            Ok(())
+        }
+    }
+
     #[test]
-    fn db_backup() -> Result<()> {
-        let device_identifier: DeviceIdentifier = "test-device".to_string().try_into()?;
-        let tmp_dir = tempfile::tempdir().expect("creates temp dir");
-        let backup_dir = tmp_dir.path().join("backups");
-        fs::create_dir(backup_dir.as_path())?;
-        let db_path = tmp_dir.path().join("db.sqlite3");
+    fn can_restore_db_backup() -> Result<()> {
+        let backup = BackupTest::new()?;
+        let password = backup.setup_or_rotate_backup()?;
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
 
-        // Create mock db
-        let connection_pool = ConnectionPool::new(db_path.to_str().expect("ok utf-8"))?;
-        let keychain = Keychain::new();
-        let psl = PublicSuffixList::new()?;
-        connection_pool.exclusive_transaction(|mut tx_conn| {
-            run_migrations(&mut tx_conn)?;
-            data_migrations::run_all(tx_conn, &keychain, &psl)
-        })?;
+        let restore = RestoreTest::new(&backup)?;
+        restore.verify(&password, &backup_metadata)?;
 
-        let password = set_up_backup(&connection_pool, &keychain)?;
+        Ok(())
+    }
 
-        let metadata = create_backup(
-            &connection_pool,
-            &keychain,
-            device_identifier,
-            backup_dir.as_path(),
-        )?
-        .expect("needs backup");
+    #[test]
+    fn can_restore_after_multiple_backup() -> Result<()> {
+        let backup = BackupTest::new()?;
+        let password = backup.setup_or_rotate_backup()?;
 
-        let password: BackupPassword = password.parse()?;
-        let kdf_secret = KdfSecret::from_keychain(&keychain)?;
-        let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
-        let root_backup_key =
-            RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
-        let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
+        // First backup
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let initial_backup_version = backup_metadata.backup_version;
+        assert!(initial_backup_version > 0);
 
-        let restore_from = backup_dir.join(metadata.backup_file_name());
-        let restore_to = NamedTempFile::new()?;
-        let backup_metadata =
-            restore_backup(&db_backup_dek, restore_from.as_path(), restore_to.path())?;
+        // No backup if no change.
+        assert_eq!(backup.create_backup()?, None);
 
-        assert_eq!(metadata, backup_metadata);
+        backup.trigger_need_new_backup()?;
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        assert!(initial_backup_version < backup_metadata.backup_version);
+
+        let restore = RestoreTest::new(&backup)?;
+        restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_rotate_password() -> Result<()> {
+        let backup = BackupTest::new()?;
+        let _ = backup.setup_or_rotate_backup()?;
+        let password = backup.setup_or_rotate_backup()?;
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
+
+        let restore = RestoreTest::new(&backup)?;
+        restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_rollback_setup() -> Result<()> {
+        let backup = BackupTest::new()?;
+
+        let _ = backup.setup_or_rotate_backup()?;
+        rollback_setup_backup(
+            &backup.connection_pool,
+            &backup.keychain,
+            &backup.device_id,
+        )?;
+        // Shouldn't create backup after rollback
+        assert_eq!(backup.create_backup()?, None);
+
+        let password = backup.setup_or_rotate_backup()?;
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
+
+        let restore = RestoreTest::new(&backup)?;
+        restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_rollback_rotate() -> Result<()> {
+        let backup = BackupTest::new()?;
+
+        let _ = backup.setup_or_rotate_backup()?;
+        let _ = backup.setup_or_rotate_backup()?;
+        rollback_setup_backup(
+            &backup.connection_pool,
+            &backup.keychain,
+            &backup.device_id,
+        )?;
+        assert_eq!(backup.create_backup()?, None);
+        let password = backup.setup_or_rotate_backup()?;
+
+        let backup_metadata = backup.create_backup()?.expect("needs backup");
+
+        let restore = RestoreTest::new(&backup)?;
+        restore.verify(&password, &backup_metadata)?;
 
         Ok(())
     }

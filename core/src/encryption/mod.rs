@@ -20,6 +20,6 @@ pub use crate::encryption::{
     kdf_nonce::KdfNonce,
     kdf_secret::KdfSecret,
     key_name::KeyName,
-    keychains::Keychain,
+    keychains::{Keychain, KeychainError},
     root_backup_key::RootBackupKey,
 };

@@ -11,6 +11,7 @@ use crate::encryption::keychains::in_memory_keychain::InMemoryKeychain;
 #[cfg(target_os = "ios")]
 use crate::encryption::keychains::ios_keychain::IOSKeychain;
 use crate::{
+    device::DeviceIdentifier,
     encryption::{key_material::KeyMaterial, KeyName},
     Error,
 };
@@ -24,26 +25,41 @@ use crate::{
 /// internal copy needs to take ownership of the buffer.
 pub(super) trait KeychainImpl: Debug + Send + Sync {
     /// Get an item from the local keychain.
-    fn get<N: ArrayLength<u8>>(&self, name: KeyName) -> Result<KeyMaterial<N>, Error>;
+    fn get_local<N: ArrayLength<u8>>(
+        &self,
+        name: KeyName,
+    ) -> Result<KeyMaterial<N>, KeychainError>;
 
-    /// Delete an item from the local keychain. The operation is idempotent to simplify cleanup
-    /// actions.
-    fn delete_local(&self, name: KeyName) -> Result<(), Error>;
+    fn get_synced<N: ArrayLength<u8>>(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        name: KeyName,
+    ) -> Result<KeyMaterial<N>, KeychainError>;
 
-    /// Put an item on the local (not-synced) keychain. The operation returns an error if a key by
-    /// the same name already exists.
-    fn put_local<N: ArrayLength<u8>>(
+    /// Delete an item from the local keychain.
+    fn delete_local(&self, name: KeyName) -> Result<(), KeychainError>;
+
+    /// Delete an item from the synced keychain.
+    fn delete_synced(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        name: KeyName,
+    ) -> Result<(), KeychainError>;
+
+    /// Put an item on the local (not-synced) keychain.
+    fn upsert_local<N: ArrayLength<u8>>(
         &self,
         name: KeyName,
         key: KeyMaterial<N>,
-    ) -> Result<(), Error>;
+    ) -> Result<(), KeychainError>;
 
-    /// Put an item on the synced keychain.
-    fn put_synced<N: ArrayLength<u8>>(
+    /// Add or update an item on the synced keychain.
+    fn upsert_synced<N: ArrayLength<u8>>(
         &self,
+        device_identifier: &DeviceIdentifier,
         name: KeyName,
         key: KeyMaterial<N>,
-    ) -> Result<(), Error>;
+    ) -> Result<(), KeychainError>;
 }
 
 #[derive(Debug)]
@@ -69,39 +85,123 @@ impl Keychain {
     }
 
     /// Get a symmetric key from the keychain.
-    pub(in crate::encryption) fn get<N: ArrayLength<u8>>(
+    pub(in crate::encryption) fn get_local<N: ArrayLength<u8>>(
         &self,
         name: KeyName,
-    ) -> Result<KeyMaterial<N>, Error> {
-        self.keychain.get::<N>(name)
+    ) -> Result<KeyMaterial<N>, KeychainError> {
+        self.keychain.get_local::<N>(name)
     }
 
-    pub(in crate::encryption) fn delete(&self, name: KeyName) -> Result<(), Error> {
-        self.keychain.delete_local(name)
+    pub(in crate::encryption) fn get_synced<N: ArrayLength<u8>>(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        name: KeyName,
+    ) -> Result<KeyMaterial<N>, KeychainError> {
+        self.keychain.get_synced::<N>(device_identifier, name)
     }
 
-    /// Store a symmetric key on the local keychain. The operation returns an error if a key by the same name already exists.
-    pub(in crate::encryption) fn put_local<N: ArrayLength<u8>>(
+    pub(in crate::encryption) fn delete_local_if_exists(
+        &self,
+        name: KeyName,
+    ) -> Result<(), KeychainError> {
+        self.keychain
+            .delete_local(name)
+            .or_else(handle_not_found_for_if_exists)
+    }
+
+    pub(in crate::encryption) fn delete_synced_if_exists(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        name: KeyName,
+    ) -> Result<(), KeychainError> {
+        self.keychain
+            .delete_synced(device_identifier, name)
+            .or_else(handle_not_found_for_if_exists)
+    }
+
+    /// Add or update an item on the local keychain.
+    pub(in crate::encryption) fn upsert_local<N: ArrayLength<u8>>(
         &self,
         name: KeyName,
         key: KeyMaterial<N>,
-    ) -> Result<(), Error> {
-        self.keychain.put_local(name, key)
+    ) -> Result<(), KeychainError> {
+        self.keychain.upsert_local(name, key)
     }
 
-    /// Put an item on the synced keychain.
-    pub(in crate::encryption) fn put_synced<N: ArrayLength<u8>>(
+    /// Add or update an item on the synced keychain.
+    pub(in crate::encryption) fn upsert_synced<N: ArrayLength<u8>>(
         &self,
+        device_identifier: &DeviceIdentifier,
         name: KeyName,
         key: KeyMaterial<N>,
-    ) -> Result<(), Error> {
-        self.keychain.put_synced(name, key)
+    ) -> Result<(), KeychainError> {
+        self.keychain.upsert_synced(device_identifier, name, key)
     }
 }
 
 impl Default for Keychain {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum KeychainError {
+    /// Generic application error
+    #[error("Application error: {error}")]
+    App { error: Error },
+    /// The keychain item was not found.
+    #[error("Keychain item doesn't exist: '{name}'")]
+    NotFound { name: String },
+    /// A keychain item by this name already exists.
+    #[error("Keychain item already exists: '{name}'")]
+    DuplicateItem { name: String },
+    /// Failed to get item with error code.
+    #[error("Failed to get keychain item '{name}' due to error {code}")]
+    FailedToGet { name: String, code: i32 },
+    /// Failed to save item with error code.
+    #[error("Failed to put keychain item '{name}' due to error {code}")]
+    FailedToPut { name: String, code: i32 },
+    /// Failed to update item with error code.
+    #[error("Failed to update keychain item '{name}' due to error {code}")]
+    FailedToUpdate { name: String, code: i32 },
+    /// Failed to delete item with error code.
+    #[error("Failed to delete keychain item '{name}' due to error {code}")]
+    FailedToDelete { name: String, code: i32 },
+}
+
+impl From<Error> for KeychainError {
+    fn from(error: Error) -> Self {
+        KeychainError::App { error }
+    }
+}
+
+impl From<KeychainError> for Error {
+    fn from(value: KeychainError) -> Self {
+        match value {
+            KeychainError::App { error } => error,
+            // If the error is not handled on the keychain error level,
+            // then it's a logic error.
+            keychain_error => Error::Fatal {
+                error: keychain_error.to_string(),
+            },
+        }
+    }
+}
+
+impl<T> From<std::sync::PoisonError<T>> for KeychainError {
+    fn from(err: std::sync::PoisonError<T>) -> Self {
+        Error::Fatal {
+            error: err.to_string(),
+        }
+        .into()
+    }
+}
+
+fn handle_not_found_for_if_exists(error: KeychainError) -> Result<(), KeychainError> {
+    match error {
+        KeychainError::NotFound { .. } => Ok(()),
+        err => Err(err),
     }
 }
 
@@ -113,44 +213,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn error_on_duplicate_item() -> Result<()> {
-        let keychain = Keychain::new();
-        let key_one: KeyMaterial<U32> = KeyMaterial::random()?;
-        let key_two: KeyMaterial<U32> = KeyMaterial::random()?;
-        keychain.put_local(KeyName::SkKeyEncryptionKey, key_one)?;
-        let res = keychain.put_local(KeyName::SkKeyEncryptionKey, key_two);
-        assert!(res.is_err());
-        Ok(())
-    }
-
-    #[test]
     fn returns_same_key() -> Result<()> {
         let key = KeyMaterial::<U32>::random()?;
         let key_arr: GenericArray<u8, U32> = GenericArray::clone_from_slice(key.as_ref());
-        let imk = Keychain::new();
-        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
-        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey)?;
+        let keychain = Keychain::new();
+        keychain.upsert_local(KeyName::SkKeyEncryptionKey, key)?;
+        let res = keychain.get_local::<U32>(KeyName::SkKeyEncryptionKey)?;
         let res_slice: &[u8] = res.as_ref();
         assert_eq!(res_slice, key_arr.as_slice());
         Ok(())
     }
 
     #[test]
-    fn error_on_same_name_twice() -> Result<()> {
-        let imk = Keychain::new();
-        let key = KeyMaterial::<U32>::random()?;
-        imk.put_local(KeyName::SkKeyEncryptionKey, key)?;
-        let key = KeyMaterial::<U32>::random()?;
-        let res = imk.put_local(KeyName::SkKeyEncryptionKey, key);
-        assert!(res.is_err());
+    fn upsert_ok() -> Result<()> {
+        let keychain = Keychain::new();
+        let key_v1 = KeyMaterial::<U32>::random()?;
+        keychain.upsert_local(KeyName::SkKeyEncryptionKey, key_v1)?;
+        let key_v2 = KeyMaterial::<U32>::random()?;
+        keychain.upsert_local(KeyName::SkKeyEncryptionKey, key_v2)?;
         Ok(())
     }
 
     #[test]
-    fn error_on_not_found() -> Result<()> {
-        let imk = Keychain::new();
-        let res = imk.get::<U32>(KeyName::SkKeyEncryptionKey);
-        assert!(res.is_err());
+    fn delete_no_error_if_not_exists() -> Result<()> {
+        let keychain = Keychain::new();
+        let device_id: DeviceIdentifier = "device-id".to_string().try_into().unwrap();
+        keychain.delete_synced_if_exists(&device_id, KeyName::SkKeyEncryptionKey)?;
+        keychain.delete_local_if_exists(KeyName::SkKeyEncryptionKey)?;
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_get_local_not_found() -> Result<()> {
+        let keychain = Keychain::new();
+        let res = keychain.get_local::<U32>(KeyName::SkKeyEncryptionKey);
+        assert!(matches!(res, Err(KeychainError::NotFound { .. })));
+        Ok(())
+    }
+
+    #[test]
+    fn error_on_get_synced_not_found() -> Result<()> {
+        let keychain = Keychain::new();
+        let device_id: DeviceIdentifier = "device-id".to_string().try_into().unwrap();
+        let res = keychain.get_synced::<U32>(&device_id, KeyName::SkKeyEncryptionKey);
+        assert!(matches!(res, Err(KeychainError::NotFound { .. })));
         Ok(())
     }
 }

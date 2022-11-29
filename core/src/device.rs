@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
-#[derive(Debug, Display, Clone, Eq, PartialEq, Into, AsRef, Serialize, Deserialize)]
+#[derive(
+    Debug, Display, Clone, Eq, PartialEq, Hash, Into, AsRef, Serialize, Deserialize,
+)]
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 #[repr(transparent)]

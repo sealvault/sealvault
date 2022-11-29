@@ -108,7 +108,7 @@ mod tests {
     fn fatal_error_on_default() {
         let key_array: GenericArray<u8, U32> = Default::default();
         let res = KeyMaterial::new(Box::new(key_array));
-        assert!(matches!(res, Err(Error::Fatal { error: _ })));
+        assert!(matches!(res, Err(Error::Fatal { .. })));
     }
 
     #[test]
@@ -116,7 +116,7 @@ mod tests {
         let mut array = vec![0_u8; 16];
         try_fill_random_bytes(&mut array).expect("random fail");
         let res = KeyMaterial::<U32>::from_slice(&array);
-        assert!(matches!(res, Err(Error::Fatal { error: _ })));
+        assert!(matches!(res, Err(Error::Fatal { .. })));
     }
 
     #[test]

@@ -8,4 +8,4 @@ mod in_memory_keychain;
 mod ios_keychain;
 mod keychain;
 
-pub use crate::encryption::keychains::keychain::Keychain;
+pub use crate::encryption::keychains::keychain::{Keychain, KeychainError};
