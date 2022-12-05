@@ -83,7 +83,7 @@ title: Web3 Key Manager App
     - [GitHub Repo](https://github.com/sealvault/sealvault)
     - [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license
     - We &#10084;&#65039; PRs and forks
-    - 
+
 -   __Big Picture__
     - General purpose decentralized databases will be ubiquitous in the future.
     - Self-custody of keys is not the default outcome.
