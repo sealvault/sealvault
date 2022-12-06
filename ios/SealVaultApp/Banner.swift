@@ -39,6 +39,15 @@ struct BannerModifier: ViewModifier {
 
     @State var task: DispatchWorkItem?
 
+    func hideDelayed() {
+        self.task = DispatchWorkItem {
+            withAnimation {
+                self.data = nil
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: self.task!)
+    }
+
     func body(content: Content) -> some View {
         ZStack {
             if let data = data {
@@ -70,14 +79,11 @@ struct BannerModifier: ViewModifier {
                 .onChange(of: self.data) { newValue in
                     if let task = self.task, newValue != nil {
                         task.cancel()
+                        self.hideDelayed()
                     }
-                    self.task = DispatchWorkItem {
-                        withAnimation {
-                            self.data = nil
-                        }
-                    }
-                    // Auto dismiss after 5 seconds, and cancel the task if view disappear before the auto dismiss
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: self.task!)
+                }
+                .onAppear {
+                    self.hideDelayed()
                 }
                 .onDisappear {
                     self.task?.cancel()
