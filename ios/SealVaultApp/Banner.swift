@@ -71,11 +71,14 @@ struct BannerModifier: ViewModifier {
                 .padding()
                 .animation(.easeInOut, value: 1.2)
                 .transition(AnyTransition.move(edge: .top).combined(with: .opacity))
-                .onTapGesture {
-                    withAnimation {
-                        self.data = nil
-                    }
-                }
+                .gesture(DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                            .onEnded { value in
+                                if value.translation.height < 0 {
+                                    withAnimation {
+                                        self.data = nil
+                                    }
+                                }
+                            })
                 .onChange(of: self.data) { newValue in
                     if let task = self.task, newValue != nil {
                         task.cancel()
