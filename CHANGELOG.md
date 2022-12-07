@@ -7,7 +7,7 @@
 #### Improvements
 
 - Allow dismissing banners by swiping up
-- 
+
 #### Fixes
 
 - Fix not auto-hiding banners
