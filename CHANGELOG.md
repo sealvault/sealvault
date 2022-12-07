@@ -1,5 +1,18 @@
 # Changelog
 
+## 2022-12-07
+
+### iOS Beta v0.4.4
+
+#### Improvements
+
+- Allow dismissing banners by swiping up
+- 
+#### Fixes
+
+- Fix not auto-hiding banners
+- Update mint NFT domain to the one that it newly redirects
+
 ## 2022-11-28
 
 ### iOS Beta v0.4.3
