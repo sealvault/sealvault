@@ -25,7 +25,7 @@ daily decisions:
 [^1]: 
 It's non-trivial to make secrets exportable in a secure and user-friendly way
 and the design is still WIP. Get involved on
-[GitHub](https://github.com/sealvault/sealvault) to help design this feature!
+[GitHub](https://github.com/sealvault/sealvault/issues/39) to help design this feature!
 
 [^2]:
 Note that not all open source licenses make a project forkable. For

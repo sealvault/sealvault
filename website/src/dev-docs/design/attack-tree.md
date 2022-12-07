@@ -49,7 +49,7 @@ dapp.
 ### Social Engineering
 
 An attacker may trick the user to share their secret key with them.  We prevent
-these attacks by never letting the user view or copy secret keys.
+these attacks by never letting the user view or copy secret keys.[^0]
 
 ### Device Key Disclosure
 
@@ -578,6 +578,10 @@ represented as hexadecimal string literals before sending them to the dapp
 frontend.  This is safe because it's not possible to break out of a string
 literal enclosed in `"..."` with the hexadecimal character set `[0-9A-Fa-f]`.
 
+[^0]:
+    Users can export keys, they just can't copy them directly from the application
+    interface. The design of the export feature is
+    [WIP.](https://github.com/sealvault/sealvault/issues/39)
 
 [^10]: 
     See [CVE-2022-32969](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-32969)
