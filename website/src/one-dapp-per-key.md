@@ -34,4 +34,4 @@ automatically to each newly added dapp address for transaction fees.
 
 ## Beta
 
-Sign up for iOS beta invite [here.](https://76u1o4gk7en.typeform.com/to/DxKsEMKM)
+Sign up for iOS beta invite [here.](https://form.typeform.com/to/DxKsEMKM)
