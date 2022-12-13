@@ -8,7 +8,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     db::{
         models as m,
-        schema::{accounts, addresses, asymmetric_keys, chains, local_dapp_sessions},
+        schema::{addresses, asymmetric_keys, chains, local_dapp_sessions, profiles},
         DeferredTxConnection, JsonValue,
     },
     protocols::eth,
@@ -22,7 +22,7 @@ use crate::{
 pub struct LocalDappSession {
     pub uuid: String,
 
-    pub account_id: String,
+    pub profile_id: String,
 
     pub address_id: String,
     pub address: String,
@@ -91,8 +91,8 @@ impl LocalDappSessionEntity {
         Ok(protocol_data.chain_id)
     }
 
-    pub fn fetch_account_id(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
-        m::Address::fetch_account_id(conn, &self.address_id)
+    pub fn fetch_profile_id(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+        m::Address::fetch_profile_id(conn, &self.address_id)
     }
 
     pub fn fetch_address(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
@@ -125,8 +125,8 @@ impl LocalDappSession {
     }
 
     /// Fetch the current session for a dapp or create a new session.
-    /// ⚠️ Assumes key for dapp in account already exists already and that there is one dapp key
-    /// per account.
+    /// ⚠️ Assumes key for dapp in profile already exists already and that there is one dapp key
+    /// per profile.
     pub fn create_eth_session_if_not_exists(
         tx_conn: &mut DeferredTxConnection,
         params: &NewDappSessionParams,
@@ -138,16 +138,16 @@ impl LocalDappSession {
         }
     }
 
-    /// Create an Ethereum dapp session on default dapp chain for account and returns the sessions.
-    /// ⚠️ Assumes key for dapp in account already exists already and that there is one dapp key
-    /// per account.
+    /// Create an Ethereum dapp session on default dapp chain for profile and returns the sessions.
+    /// ⚠️ Assumes key for dapp in profile already exists already and that there is one dapp key
+    /// per profile.
     pub fn create_eth_session<'a>(
         tx_conn: &mut DeferredTxConnection,
         params: &'a impl DappSessionParamsWithChain<'a>,
     ) -> Result<Self, Error> {
         use local_dapp_sessions::dsl as lds;
 
-        // This assumes one dapp key per account.
+        // This assumes one dapp key per profile.
         let chain_entity_id =
             m::Chain::fetch_or_create_eth_chain_id(tx_conn, params.chain_id())?;
         let asymmetric_key_id =
@@ -198,20 +198,20 @@ impl LocalDappSession {
         tx_conn: &mut DeferredTxConnection,
         params: &'a impl DappSessionParams<'a>,
     ) -> Result<Option<Self>, Error> {
-        use accounts::dsl as ac;
         use addresses::dsl as ad;
         use asymmetric_keys::dsl as ak;
         use local_dapp_sessions::dsl as lds;
+        use profiles::dsl as p;
 
         let entity: Option<LocalDappSessionEntity> = addresses::table
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(ad::asymmetric_key_id)),
             )
-            .inner_join(accounts::table.on(ac::deterministic_id.eq(ak::account_id)))
+            .inner_join(profiles::table.on(p::deterministic_id.eq(ak::profile_id)))
             .inner_join(
                 local_dapp_sessions::table.on(lds::address_id.eq(ad::deterministic_id)),
             )
-            .filter(ac::deterministic_id.eq(params.account_id()))
+            .filter(p::deterministic_id.eq(params.profile_id()))
             .filter(lds::dapp_id.eq(params.dapp_id()))
             .select(LocalDappSessionEntity::all_columns())
             .first(tx_conn.as_mut())
@@ -229,7 +229,7 @@ impl LocalDappSession {
         entity: LocalDappSessionEntity,
     ) -> Result<Self, Error> {
         let chain_id = entity.fetch_eth_chain_id(tx_conn.as_mut())?;
-        let account_id = entity.fetch_account_id(tx_conn.as_mut())?;
+        let profile_id = entity.fetch_profile_id(tx_conn.as_mut())?;
         let address = entity.fetch_address(tx_conn.as_mut())?;
         let dapp_human_identifier = entity.fetch_dapp_identifier(tx_conn.as_mut())?;
 
@@ -245,7 +245,7 @@ impl LocalDappSession {
             .dapp_id(dapp_id)
             .dapp_human_identifier(dapp_human_identifier)
             .chain_id(chain_id)
-            .account_id(account_id)
+            .profile_id(profile_id)
             .address(address)
             .build();
         Ok(session)
@@ -270,7 +270,7 @@ impl LocalDappSession {
         Self::fetch_session_by_id(tx_conn, &self.uuid)
     }
 
-    /// Assumes there is a key already for the dapp in the account.
+    /// Assumes there is a key already for the dapp in the profile.
     pub fn change_eth_chain(
         self,
         tx_conn: &mut DeferredTxConnection,
@@ -309,7 +309,7 @@ impl LocalDappSession {
 #[readonly::make]
 pub struct NewDappSessionParams<'a> {
     pub dapp_id: &'a str,
-    pub account_id: &'a str,
+    pub profile_id: &'a str,
     #[builder(default = eth::ChainId::default_dapp_chain())]
     pub chain_id: eth::ChainId,
 }
@@ -318,12 +318,12 @@ pub struct NewDappSessionParams<'a> {
 #[readonly::make]
 pub struct FetchDappSessionParams<'a> {
     pub dapp_id: &'a str,
-    pub account_id: &'a str,
+    pub profile_id: &'a str,
 }
 
 pub trait DappSessionParams<'a> {
     fn dapp_id(&'a self) -> &'a str;
-    fn account_id(&'a self) -> &'a str;
+    fn profile_id(&'a self) -> &'a str;
 }
 
 pub trait DappSessionParamsWithChain<'a>: DappSessionParams<'a> {
@@ -335,8 +335,8 @@ impl<'a> DappSessionParams<'a> for NewDappSessionParams<'a> {
         self.dapp_id
     }
 
-    fn account_id(&'a self) -> &'a str {
-        self.account_id
+    fn profile_id(&'a self) -> &'a str {
+        self.profile_id
     }
 }
 
@@ -351,7 +351,7 @@ impl<'a> DappSessionParams<'a> for FetchDappSessionParams<'a> {
         self.dapp_id
     }
 
-    fn account_id(&'a self) -> &'a str {
-        self.account_id
+    fn profile_id(&'a self) -> &'a str {
+        self.profile_id
     }
 }

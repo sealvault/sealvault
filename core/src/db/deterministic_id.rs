@@ -80,7 +80,11 @@ pub trait DeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum EntityName {
+    /// Account is deprecated in favor of Profile
+    #[deprecated]
     Account,
+    /// AccountPicture is deprecated in favor of ProfilePicture
+    #[deprecated]
     AccountPicture,
     Address,
     AsymmetricKey,
@@ -88,6 +92,8 @@ pub enum EntityName {
     Dapp,
     DataEncryptionKey,
     DataMigration,
+    Profile,
+    ProfilePicture,
     #[cfg(test)]
     Mock,
 }
@@ -170,7 +176,7 @@ mod tests {
     #[test]
     fn uses_name() -> Result<()> {
         let a = UniqueValuesMock::new_with_name(EntityName::Mock, [""].into());
-        let b = UniqueValuesMock::new_with_name(EntityName::Account, [""].into());
+        let b = UniqueValuesMock::new_with_name(EntityName::Profile, [""].into());
         assert_ne!(a.deterministic_id(), b.deterministic_id());
         Ok(())
     }

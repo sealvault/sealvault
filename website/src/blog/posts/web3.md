@@ -182,7 +182,7 @@ the abuse of data lock-in, so this would be a highly undesirable outcome for
 Web3.
 
 The challenge is that the cloud-based solution is easier for both the user and
-the provider.  Users are familiar with cloud provider accounts and security
+the provider.  Users are familiar with cloud provider profiles and security
 mechanisms and recovery options are well-established.  Similarly, with the cloud
 solution, there is no need to sync keys among devices and key backup is trivial.
 The cloud provider can invoice transaction fees through established payment

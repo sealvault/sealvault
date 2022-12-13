@@ -13,9 +13,11 @@ mod data_migration;
 mod local_dapp_session;
 mod local_encrypted_dek;
 mod local_settings;
+mod profile;
+mod profile_picture;
 
-pub use account::{Account, AccountParams};
-pub use account_picture::AccountPicture;
+pub use account::{Account, AccountEntity, AccountParams};
+pub use account_picture::{AccountPicture, AccountPictureEntity};
 pub use address::{
     Address, AddressEntity, CreateEthAddressParams, ListAddressesForDappParams,
     NewAddress,
@@ -30,3 +32,5 @@ pub use local_dapp_session::{
 };
 pub use local_encrypted_dek::{LocalEncryptedDek, NewLocalEncryptedDek};
 pub use local_settings::LocalSettings;
+pub use profile::{Profile, ProfileEntity, ProfileParams};
+pub use profile_picture::{ProfilePicture, ProfilePictureEntity};

@@ -12,7 +12,7 @@ use crate::{
     db::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
-        schema::accounts,
+        schema::profiles,
         DeferredTxConnection,
     },
     encryption::Keychain,
@@ -21,8 +21,11 @@ use crate::{
     Error,
 };
 
+/// Deprecated in favor of Profile
+#[deprecated]
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
+#[diesel(table_name = profiles)]
 pub struct Account {
     pub deterministic_id: String,
     pub uuid: String,
@@ -32,9 +35,11 @@ pub struct Account {
     pub updated_at: Option<String>,
 }
 
+#[allow(deprecated)]
 impl Account {
     pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Account>, Error> {
-        Ok(accounts::table.load::<Account>(conn)?)
+        #[allow(deprecated)]
+        Ok(profiles::table.load::<Account>(conn)?)
     }
 
     /// Create a new account with Ethereum protocol wallet addresses and return the account's
@@ -42,8 +47,10 @@ impl Account {
     pub fn create_eth_account(
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
+        #[allow(deprecated)]
         params: &AccountParams,
     ) -> Result<String, Error> {
+        #[allow(deprecated)]
         let picture_id = m::AccountPicture::insert_bundled(
             tx_conn.as_mut(),
             params.bundled_picture_name,
@@ -51,9 +58,9 @@ impl Account {
         let account_id = Self::insert(tx_conn.as_mut(), params.name, &picture_id)?;
 
         let create_params = m::CreateEthAddressParams::builder()
-            .account_id(&account_id)
+            .profile_id(&account_id)
             .chain_id(eth::ChainId::default_wallet_chain())
-            .is_account_wallet(true)
+            .is_profile_wallet(true)
             .build();
         let _ =
             m::Address::create_eth_key_and_address(tx_conn, keychain, &create_params)?;
@@ -67,14 +74,15 @@ impl Account {
         name: &str,
         picture_id: &str,
     ) -> Result<String, Error> {
-        use accounts::dsl as a;
+        use profiles::dsl as a;
 
         let uuid = new_uuid();
+        #[allow(deprecated)]
         let entity = AccountEntity { uuid: &uuid };
         let deterministic_id = entity.deterministic_id()?;
         let created_at = rfc3339_timestamp();
 
-        diesel::insert_into(accounts::table)
+        diesel::insert_into(profiles::table)
             .values((
                 a::deterministic_id.eq(&deterministic_id),
                 a::uuid.eq(&entity.uuid),
@@ -90,8 +98,9 @@ impl Account {
 
 // Struct with typed builder ensures that arguments of same type aren't mixed up as Rust doesn't
 // have named parameters.
+/// Deprecated in favor of Profile
+#[deprecated]
 #[derive(TypedBuilder)]
-#[readonly::make]
 pub struct AccountParams<'a> {
     #[builder(setter(into))]
     name: &'a str,
@@ -99,10 +108,13 @@ pub struct AccountParams<'a> {
     bundled_picture_name: &'a str,
 }
 
-struct AccountEntity<'a> {
+/// Deprecated in favor of Profile
+#[deprecated]
+pub struct AccountEntity<'a> {
     pub uuid: &'a str,
 }
 
+#[allow(deprecated)]
 impl<'a> DeterministicId<'a, &'a str, U1> for AccountEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Account
