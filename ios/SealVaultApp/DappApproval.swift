@@ -80,7 +80,6 @@ struct DappApproval: View {
                 }
                 .font(.largeTitle)
                 HStack {
-                    Text("to").fontWeight(.light)
                     Label {
                         Text(account.displayName)
                     } icon: {
@@ -139,7 +138,7 @@ struct DappApprovalHeader: View {
                 .padding()
             },
             label: {
-                Text("Add dapp")
+                Text("Create new key for dapp")
                     .font(.title2)
             })
         }
