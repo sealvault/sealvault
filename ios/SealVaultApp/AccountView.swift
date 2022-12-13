@@ -19,7 +19,7 @@ struct AccountView: View {
                     )
                 } label: {
                     WalletRow(account: account)
-                        .accessibilityIdentifier("\(account.displayName) account wallet")
+                        .accessibilityIdentifier("\(account.displayName) profile wallet")
                 }
                 Section {
                     ForEach(account.dappList) { dapp in

@@ -83,9 +83,9 @@ struct DappApproval: View {
                     Label {
                         Text(account.displayName)
                     } icon: {
-                        AccountImageCircle(account: account).accessibilityLabel("account image")
+                        AccountImageCircle(account: account).accessibilityLabel("profile image")
                     }
-                    Text("account").fontWeight(.light)
+                    Text("profile").fontWeight(.light)
                 }
                 .font(.title2)
 

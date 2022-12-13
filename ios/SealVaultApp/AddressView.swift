@@ -4,7 +4,7 @@
 
 import SwiftUI
 
-// Hack to make the list of addresses update when a new address is added to an account wallet or dapp
+// Hack to make the list of addresses update when a new address is added to an Profile or dapp
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
     @Published var account: Account?

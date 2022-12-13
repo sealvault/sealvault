@@ -113,7 +113,7 @@ struct FromSection: View {
                 if let dapp = state.account.dappForAddress(address: state.fromAddress) {
                     DappRow(dapp: dapp)
                 } else {
-                    Text("\(state.account.displayName) Account Wallet")
+                    Text("\(state.account.displayName) Profile Wallet")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -155,13 +155,13 @@ struct ToSection: View {
                         } label: {
                             switch state.toAddress {
                             case .none:
-                                Text("Select Dapp or Account Wallet").bold()
+                                Text("Select Dapp or Profile Wallet").bold()
                             case .some(let address):
                                 if let dapp = state.account.dappForAddress(address: address) {
                                     DappRow(dapp: dapp)
                                 } else {
                                     Label {
-                                        Text("\(state.account.displayName) Account Wallet").font(.headline)
+                                        Text("\(state.account.displayName) Profile Wallet").font(.headline)
                                     } icon: {
                                         Image(systemName: "checkmark.circle")
                                     }
@@ -205,16 +205,16 @@ struct InAppPicker: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                Text("Select Dapp or Account Wallet").font(.title2)
+                Text("Select Dapp or Profile Wallet").font(.title2)
             }
             .padding(20)
 
             Spacer()
 
-            Picker("Select Dapp or Account Wallet", selection: $pickerSelection) {
+            Picker("Select Dapp or Profile Wallet", selection: $pickerSelection) {
                 ForEach(state.account.walletList) { walletAddress in
                     if state.canTransferTo(walletAddress) {
-                        Text("\(state.account.displayName) Account Wallet").tag(walletAddress)
+                        Text("\(state.account.displayName) Profile Wallet").tag(walletAddress)
                     }
                 }
                 ForEach(state.account.dappList) { dapp in

@@ -17,16 +17,16 @@ struct AccountListView: View {
                         } label: {
                             AccountRow(account: account)
                                 .padding(.vertical, 8)
-                                .accessibilityIdentifier("\(account.displayName) account")
+                                .accessibilityIdentifier("\(account.displayName) profile")
                         }
                     }
                 }
-                .accessibilityRotor("Accounts", entries: model.accountList, entryLabel: \.displayName)
+                .accessibilityRotor("Profiles", entries: model.accountList, entryLabel: \.displayName)
                 .refreshable(action: {
                     await model.refreshAccounts()
                 })
             }
-            .navigationTitle(Text("Accounts"))
+            .navigationTitle(Text("Profiles"))
             .task {
                 await self.model.refreshAccounts()
             }

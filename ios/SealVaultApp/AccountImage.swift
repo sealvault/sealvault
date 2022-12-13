@@ -18,7 +18,7 @@ struct AccountImageRectangle: View {
             .frame(maxWidth: size, maxHeight: size)
             .clipShape(clipShape)
             .overlay(clipShape.strokeBorder(.quaternary, lineWidth: 0.5))
-            .accessibility(label: Text("\(account.displayName) account"))
+            .accessibility(label: Text("\(account.displayName) profile"))
     }
 }
 
@@ -32,6 +32,6 @@ struct AccountImageCircle: View {
             .aspectRatio(contentMode: .fit)
             .frame(maxWidth: size, maxHeight: size)
             .clipShape(Circle())
-            .accessibility(label: Text("\(account.displayName) account"))
+            .accessibility(label: Text("\(account.displayName) profile"))
     }
 }
