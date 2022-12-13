@@ -42,8 +42,8 @@ final class BrowserUITest: XCTestCase {
 
         let dapp = "quickswap.exchange"
 
-        tapButton(app, "Dapps")
-        tapButton(app, "Default account")
+        tapButton(app, "Profiles")
+        tapButton(app, "Default profile")
         print("app.webViews.count", app.webViews.count)
 
         let quickswapButton = app.buttons["\(dapp) dapp"]

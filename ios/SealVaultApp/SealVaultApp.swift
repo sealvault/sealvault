@@ -6,7 +6,7 @@ import SwiftUI
 
 @main
 struct SealVaultApp: SwiftUI.App {
-    @ObservedObject private var model = GlobalModel.buildForPreview()
+    @ObservedObject private var model = GlobalModel.buildOnStartup()
 
     var body: some Scene {
         WindowGroup {

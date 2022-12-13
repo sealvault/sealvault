@@ -10,7 +10,7 @@ final class NativeUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        tapButton(app, "Dapps", tabBar: true)
+        tapButton(app, "Profiles", tabBar: true)
 
         let rowCount = app.collectionViews.element(boundBy: 0).cells.count
         XCTAssert(rowCount >= 1)
