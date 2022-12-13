@@ -13,7 +13,7 @@ struct SealVaultApp: SwiftUI.App {
             AppTabNavigation()
                 .environmentObject(model)
                 .task {
-                    await model.refreshAccounts()
+                    await model.refreshProfiles()
                 }
         }
     }

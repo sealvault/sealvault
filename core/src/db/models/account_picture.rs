@@ -31,7 +31,6 @@ pub struct AccountPicture {
     pub updated_at: Option<String>,
 }
 
-#[allow(deprecated)]
 impl AccountPicture {
     pub fn fetch_image(conn: &mut SqliteConnection, id: &str) -> Result<Vec<u8>, Error> {
         use profile_pictures::dsl as ap;
@@ -51,7 +50,6 @@ impl AccountPicture {
     ) -> Result<String, Error> {
         let image = load_profile_pic(image_name)?;
         let image_hash = blake3_hash(&image);
-        #[allow(deprecated)]
         let entity = AccountPictureEntity {
             image_hash: image_hash.as_bytes(),
         };
@@ -67,7 +65,6 @@ pub struct AccountPictureEntity<'a> {
     pub(crate) image_hash: &'a [u8],
 }
 
-#[allow(deprecated)]
 impl<'a> AccountPictureEntity<'a> {
     /// Insert an account picture and return its deterministic id.
     fn create(
@@ -94,7 +91,6 @@ impl<'a> AccountPictureEntity<'a> {
     }
 }
 
-#[allow(deprecated)]
 impl<'a> DeterministicId<'a, &'a [u8], U1> for AccountPictureEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::AccountPicture

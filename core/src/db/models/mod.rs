@@ -2,7 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#[allow(deprecated)]
 mod account;
+#[allow(deprecated)]
 mod account_picture;
 mod address;
 mod asymmetric_key;
@@ -16,7 +18,9 @@ mod local_settings;
 mod profile;
 mod profile_picture;
 
+#[allow(deprecated)]
 pub use account::{Account, AccountEntity, AccountParams};
+#[allow(deprecated)]
 pub use account_picture::{AccountPicture, AccountPictureEntity};
 pub use address::{
     Address, AddressEntity, CreateEthAddressParams, ListAddressesForDappParams,

@@ -7,7 +7,7 @@ import SwiftUI
 // Hack to make the list of addresses update when a new address is added to an Profile or dapp
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
-    @Published var account: Account?
+    @Published var profile: Profile?
     @Published var selectedAddressId: String?
 
     var firstAddress: Address? {
@@ -17,8 +17,8 @@ class Addresses: ObservableObject {
     var addresses: [Address] {
         if let dapp = self.dapp {
             return dapp.addressList
-        } else if let account = self.account {
-            return account.walletList
+        } else if let profile = self.profile {
+            return profile.walletList
         } else {
             return []
         }
@@ -30,12 +30,12 @@ class Addresses: ObservableObject {
 
     init(dapp: Dapp) {
         self.dapp = dapp
-        self.account = nil
+        self.profile = nil
     }
 
-    init(account: Account) {
+    init(profile: Profile) {
         self.dapp = nil
-        self.account = account
+        self.profile = profile
     }
 
 }
@@ -43,7 +43,7 @@ class Addresses: ObservableObject {
 struct AddressView: View {
     var title: String
     let core: AppCoreProtocol
-    @ObservedObject var account: Account
+    @ObservedObject var profile: Profile
     @ObservedObject var addresses: Addresses
     @State var showChainSelection: Bool = false
     @State var showSwitchAddress: Bool = false
@@ -59,7 +59,7 @@ struct AddressView: View {
         ScrollViewReader { _ in
                 List {
                     ForEach(Array(addresses.addresses.enumerated()), id: \.offset) { index, address in
-                        TokenView(account: account, address: address, paddingTop: index == 0 ? 30 : paddingTop)
+                        TokenView(profile: profile, address: address, paddingTop: index == 0 ? 30 : paddingTop)
                     }
                 }
                 .refreshable(action: {
@@ -86,7 +86,7 @@ struct AddressView: View {
         .sheet(isPresented: $showChainSelection) {
             ChainSelection(title: chainSelectionTitle) { newChainId in
                 if let dapp = addresses.dapp {
-                    await model.changeDappChain(accountId: dapp.accountId, dappId: dapp.id, newChainId: newChainId)
+                    await model.changeDappChain(profileId: dapp.profileId, dappId: dapp.id, newChainId: newChainId)
                 } else if let address = addresses.addresses.first {
                     await model.addEthChain(chainId: newChainId, addressId: address.id)
                 } else {
@@ -104,14 +104,14 @@ struct AddressView: View {
 struct AddressView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let account = model.activeAccount!
+        let profile = model.activeProfile!
         let dapp = Dapp.oneInch()
         // Simulate loading
         dapp.addressList[0].nativeToken.amount = nil
         dapp.addressList[0].selectedForDapp = true
         let addresses = Addresses(dapp: dapp)
 
-        return AddressView(title: "Wallet", core: model.core, account: account, addresses: addresses)
+        return AddressView(title: "Wallet", core: model.core, profile: profile, addresses: addresses)
     }
 }
 #endif

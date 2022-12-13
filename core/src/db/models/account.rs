@@ -35,10 +35,8 @@ pub struct Account {
     pub updated_at: Option<String>,
 }
 
-#[allow(deprecated)]
 impl Account {
     pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Account>, Error> {
-        #[allow(deprecated)]
         Ok(profiles::table.load::<Account>(conn)?)
     }
 
@@ -47,10 +45,8 @@ impl Account {
     pub fn create_eth_account(
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
-        #[allow(deprecated)]
         params: &AccountParams,
     ) -> Result<String, Error> {
-        #[allow(deprecated)]
         let picture_id = m::AccountPicture::insert_bundled(
             tx_conn.as_mut(),
             params.bundled_picture_name,
@@ -77,7 +73,6 @@ impl Account {
         use profiles::dsl as a;
 
         let uuid = new_uuid();
-        #[allow(deprecated)]
         let entity = AccountEntity { uuid: &uuid };
         let deterministic_id = entity.deterministic_id()?;
         let created_at = rfc3339_timestamp();
@@ -114,7 +109,6 @@ pub struct AccountEntity<'a> {
     pub uuid: &'a str,
 }
 
-#[allow(deprecated)]
 impl<'a> DeterministicId<'a, &'a str, U1> for AccountEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Account

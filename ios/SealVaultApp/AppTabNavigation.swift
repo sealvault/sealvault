@@ -43,7 +43,7 @@ struct AppTabNavigationInner: View {
                 .tag(Tab.browserOne)
 
                 NavigationView {
-                    AccountListView()
+                    ProfileListView()
                 }
                 .tabItem {
                     let menuText = Text("Profiles")
@@ -51,9 +51,9 @@ struct AppTabNavigationInner: View {
                     Label {
                         menuText
                     } icon: {
-                        if let account = model.activeAccount {
+                        if let profile = model.activeProfile {
                             // TODO add blue circle around icon when selected
-                            TabIcon(icon: account.picture)
+                            TabIcon(icon: profile.picture)
                         } else {
                             Image(systemName: "person")
                         }

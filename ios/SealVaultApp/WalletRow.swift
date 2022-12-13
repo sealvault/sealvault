@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct WalletRow: View {
-    @ObservedObject var account: Account
+    @ObservedObject var profile: Profile
 
     var body: some View {
         HStack {
@@ -13,7 +13,7 @@ struct WalletRow: View {
                 Text("Profile Wallet")
                     .font(.headline)
 
-                Text(account.walletChains)
+                Text(profile.walletChains)
                     .lineLimit(2)
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
@@ -26,8 +26,8 @@ struct WalletRow: View {
 struct WalletRow_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let account = model.activeAccount!
-        return WalletRow(account: account)
+        let profile = model.activeProfile!
+        return WalletRow(profile: profile)
     }
 }
 #endif

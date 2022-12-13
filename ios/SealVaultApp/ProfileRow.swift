@@ -4,21 +4,21 @@
 
 import SwiftUI
 
-struct AccountRow: View {
-    @ObservedObject var account: Account
+struct ProfileRow: View {
+    @ObservedObject var profile: Profile
 
     private let cornerRadius: Double = 10
     private let maxDapps = 3
 
     var body: some View {
         HStack(alignment: .top) {
-            AccountImageRectangle(account: account)
+            ProfileImageRectangle(profile: profile)
 
             VStack(alignment: .leading) {
-                Text(account.displayName)
+                Text(profile.displayName)
                     .font(.headline)
 
-                Text(account.topDapps)
+                Text(profile.topDapps)
                     .lineLimit(2)
                     .foregroundStyle(.secondary)
             }
@@ -31,16 +31,16 @@ struct AccountRow: View {
 }
 
 #if DEBUG
-struct AccountRow_Previews: PreviewProvider {
+struct ProfileRow_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return PreviewWrapper(account: model.activeAccount!)
+        return PreviewWrapper(profile: model.activeProfile!)
     }
 
     struct PreviewWrapper: View {
-        @State var account: Account
+        @State var profile: Profile
         var body: some View {
-            AccountRow(account: account)
+            ProfileRow(profile: profile)
         }
     }
 

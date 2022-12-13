@@ -5,16 +5,15 @@
 use std::{collections::HashSet, mem};
 
 use dyn_clone::DynClone;
-use generic_array::{
-    typenum::{U32},
-};
+use generic_array::typenum::U32;
 use lazy_static::lazy_static;
 use url::Url;
 
+#[allow(deprecated)]
 use crate::{
     config,
     db::{
-        deterministic_id::{DeterministicId},
+        deterministic_id::DeterministicId,
         models as m,
         models::{AccountEntity, AccountPictureEntity},
         DeferredTxConnection, ExclusiveTxConnection,
@@ -465,7 +464,7 @@ mod tests {
             .build();
         #[allow(deprecated)]
         let account_id =
-            m::Account::create_eth_account(tx_conn, &keychain, &profile_params)?;
+            m::Account::create_eth_account(tx_conn, keychain, &profile_params)?;
 
         m::LocalSettings::create(tx_conn.as_mut(), &account_id)?;
 
