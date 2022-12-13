@@ -1,4 +1,4 @@
-# Isolated Identities with Accounts
+# Isolated Identities with Profiles
 
 SealVault lets you organize your wallets and dapps into accounts for separate
 on-chain identities. The app won't let you send transactions between addresses
@@ -6,7 +6,7 @@ in different accounts, but you have to be careful not to link them from an
 external wallet.
 
 <figure markdown>
-![iOS app account list view](./assets/images/screenshots/account-list.png){ loading=lazy }
+![iOS app account list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
 </figure>
 
 ## Beta

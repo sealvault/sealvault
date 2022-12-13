@@ -19,7 +19,7 @@ title: Web3 Key Manager App
 
 -   __One-Dapp-per-Key__
     <figure markdown>
-    ![iOS app account view](./assets/images/screenshots/account-view.png){ loading=lazy }
+    ![iOS app profile view](./assets/images/screenshots/profile-view.png){ loading=lazy }
     <figcaption>
     Each dapp gets a separate key.
     This protects you from phishing and mitigates compromised dapps.
@@ -29,9 +29,9 @@ title: Web3 Key Manager App
 
 -   __Multiple Identities__
     <figure markdown>
-    ![iOS app account list view](./assets/images/screenshots/account-list.png){ loading=lazy }
+    ![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
     <figcaption>
-    Organize your dapps into accounts for isolated identities.
+    Organize your dapps into profiles for isolated identities.
     [More](./privacy.md)</figcaption>
     </figure>
     
@@ -55,7 +55,7 @@ title: Web3 Key Manager App
 
 -   __Quick Launch Your Favorite Dapps__
     <figure markdown>
-    ![iOS app account view](./assets/images/screenshots/landing-screen.png){ loading=lazy }
+    ![iOS app profile view](./assets/images/screenshots/landing-screen.png){ loading=lazy }
     <figcaption>
     Best-in-class dapp browser with helpful notifications about dapp transactions.
     [More](./one-dapp-per-key.md)

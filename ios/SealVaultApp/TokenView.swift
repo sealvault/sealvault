@@ -17,6 +17,14 @@ struct TokenView: View {
             } label: {
                 NativeTokenRow(address: address)
             }
+            ForEach(address.fungibleTokenList) { token in
+                NavigationLink {
+                    TransferForm(state: TransferState(account: account, token: token, fromAddress: address))
+                        .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    TokenRow(token: token)
+                }
+            }
         } header: {
             HStack {
                 Text(address.chainDisplayName)
@@ -28,23 +36,5 @@ struct TokenView: View {
             .scaledToFit()
         }
         .headerProminence(.increased)
-        Section {
-            ForEach(address.fungibleTokenList) { token in
-                NavigationLink {
-                    TransferForm(state: TransferState(account: account, token: token, fromAddress: address))
-                        .navigationBarTitleDisplayMode(.inline)
-                } label: {
-                    TokenRow(token: token)
-                }
-            }
-        } header: {
-            if address.loading {
-                ProgressView()
-            } else if !address.fungibleTokens.isEmpty {
-                Text("Fungible Tokens")
-            } else {
-                Text("No other tokens")
-            }
-        }
     }
 }

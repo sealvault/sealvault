@@ -1,6 +1,6 @@
 # One-Dapp-per-Key<sup>&reg;</sup>
 
-When you add a dapp to your account, a new key is generated just for this dapp.
+When you add a dapp to your profile, a new key is generated just for this dapp.
 Wallet addresses are never connected to dapps.  This isolation
 
 - prevents **phishing** &#127907;
