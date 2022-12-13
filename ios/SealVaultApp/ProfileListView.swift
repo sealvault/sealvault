@@ -4,31 +4,31 @@
 
 import SwiftUI
 
-struct AccountListView: View {
+struct ProfileListView: View {
     @EnvironmentObject private var model: GlobalModel
 
     var body: some View {
         VStack {
             ScrollViewReader { _ in
                 List {
-                    ForEach(model.accountList) { account in
+                    ForEach(model.profileList) { profile in
                         NavigationLink {
-                            AccountView(account: account)
+                            ProfileView(profile: profile)
                         } label: {
-                            AccountRow(account: account)
+                            ProfileRow(profile: profile)
                                 .padding(.vertical, 8)
-                                .accessibilityIdentifier("\(account.displayName) account")
+                                .accessibilityIdentifier("\(profile.displayName) profile")
                         }
                     }
                 }
-                .accessibilityRotor("Accounts", entries: model.accountList, entryLabel: \.displayName)
+                .accessibilityRotor("Profiles", entries: model.profileList, entryLabel: \.displayName)
                 .refreshable(action: {
-                    await model.refreshAccounts()
+                    await model.refreshProfiles()
                 })
             }
-            .navigationTitle(Text("Accounts"))
+            .navigationTitle(Text("Profiles"))
             .task {
-                await self.model.refreshAccounts()
+                await self.model.refreshProfiles()
             }
 
 //            Divider()
@@ -37,10 +37,10 @@ struct AccountListView: View {
 }
 
 #if DEBUG
-struct AccountListView_Previews: PreviewProvider {
+struct ProfileListView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            AccountListView().environmentObject(GlobalModel.buildForPreview())
+            ProfileListView().environmentObject(GlobalModel.buildForPreview())
         }
     }
 }

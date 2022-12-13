@@ -5,7 +5,7 @@
 import SwiftUI
 
 class TransferState: ObservableObject {
-    @Published var account: Account
+    @Published var profile: Profile
     @Published var fromAddress: Address
     @Published var token: Token
 
@@ -19,7 +19,7 @@ class TransferState: ObservableObject {
     @Published var processing: Bool = false
 
     var defaultPickerSelection: Address? {
-        account.allAddresses.filter({canTransferTo($0)}).first
+        profile.allAddresses.filter({canTransferTo($0)}).first
     }
 
     var buttonDisabled: Bool {
@@ -37,9 +37,9 @@ class TransferState: ObservableObject {
     }
 
     required init(
-        account: Account, token: Token, fromAddress: Address
+        profile: Profile, token: Token, fromAddress: Address
     ) {
-        self.account = account
+        self.profile = profile
         self.token = token
         self.fromAddress = fromAddress
     }
@@ -79,10 +79,10 @@ struct TransferForm: View {
             }
             .padding()
             .task {
-                async let accounts: () = self.model.refreshAccounts()
+                async let profiles: () = self.model.refreshProfiles()
                 async let tokens: () = self.state.fromAddress.refreshTokens()
                 // Refresh concurrently
-                _ = await (accounts, tokens)
+                _ = await (profiles, tokens)
             }
         }
         .navigationTitle(Text("Transfer"))
@@ -110,10 +110,10 @@ struct FromSection: View {
             HStack {
                 Text("From")
                 Spacer()
-                if let dapp = state.account.dappForAddress(address: state.fromAddress) {
+                if let dapp = state.profile.dappForAddress(address: state.fromAddress) {
                     DappRow(dapp: dapp)
                 } else {
-                    Text("\(state.account.displayName) Account Wallet")
+                    Text("\(state.profile.displayName) Profile Wallet")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -155,13 +155,13 @@ struct ToSection: View {
                         } label: {
                             switch state.toAddress {
                             case .none:
-                                Text("Select Dapp or Account Wallet").bold()
+                                Text("Select Dapp or Profile Wallet").bold()
                             case .some(let address):
-                                if let dapp = state.account.dappForAddress(address: address) {
+                                if let dapp = state.profile.dappForAddress(address: address) {
                                     DappRow(dapp: dapp)
                                 } else {
                                     Label {
-                                        Text("\(state.account.displayName) Account Wallet").font(.headline)
+                                        Text("\(state.profile.displayName) Profile Wallet").font(.headline)
                                     } icon: {
                                         Image(systemName: "checkmark.circle")
                                     }
@@ -205,19 +205,19 @@ struct InAppPicker: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                Text("Select Dapp or Account Wallet").font(.title2)
+                Text("Select Dapp or Profile Wallet").font(.title2)
             }
             .padding(20)
 
             Spacer()
 
-            Picker("Select Dapp or Account Wallet", selection: $pickerSelection) {
-                ForEach(state.account.walletList) { walletAddress in
+            Picker("Select Dapp or Profile Wallet", selection: $pickerSelection) {
+                ForEach(state.profile.walletList) { walletAddress in
                     if state.canTransferTo(walletAddress) {
-                        Text("\(state.account.displayName) Account Wallet").tag(walletAddress)
+                        Text("\(state.profile.displayName) Profile Wallet").tag(walletAddress)
                     }
                 }
-                ForEach(state.account.dappList) { dapp in
+                ForEach(state.profile.dappList) { dapp in
                     ForEach(dapp.addressList) { dappAddress in
                         if state.canTransferTo(dappAddress) {
                             Text("\(dapp.humanIdentifier)")
@@ -418,22 +418,22 @@ struct TransferButton: View {
 struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let account = model.activeAccount!
-        let walletAddress = account.walletList[0]
+        let profile = model.activeProfile!
+        let walletAddress = profile.walletList[0]
         let walletToken = Token.matic(walletAddress.checksumAddress)
-        let dapp = account.dappList[0]
+        let dapp = profile.dappList[0]
         let dappAddress = dapp.addressList[0]
         let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
-        let errorState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
-        let sucessState = TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+        let errorState = TransferState(profile: profile, token: walletToken, fromAddress: walletAddress)
+        let sucessState = TransferState(profile: profile, token: walletToken, fromAddress: walletAddress)
         return Group {
             PreviewWrapper(
                 model: model,
-                state: TransferState(account: account, token: dappToken, fromAddress: dappAddress)
+                state: TransferState(profile: profile, token: dappToken, fromAddress: dappAddress)
             ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,
-                state: TransferState(account: account, token: walletToken, fromAddress: walletAddress)
+                state: TransferState(profile: profile, token: walletToken, fromAddress: walletAddress)
             ).environment(\.dynamicTypeSize, .medium)
             PreviewWrapper(
                 model: model,

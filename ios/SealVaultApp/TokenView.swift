@@ -5,17 +5,25 @@
 import SwiftUI
 
 struct TokenView: View {
-    @ObservedObject var account: Account
+    @ObservedObject var profile: Profile
     @ObservedObject var address: Address
     var paddingTop: CGFloat
 
     var body: some View {
         Section {
             NavigationLink {
-                TransferForm(state: TransferState(account: account, token: address.nativeToken, fromAddress: address))
+                TransferForm(state: TransferState(profile: profile, token: address.nativeToken, fromAddress: address))
                     .navigationBarTitleDisplayMode(.inline)
             } label: {
                 NativeTokenRow(address: address)
+            }
+            ForEach(address.fungibleTokenList) { token in
+                NavigationLink {
+                    TransferForm(state: TransferState(profile: profile, token: token, fromAddress: address))
+                        .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    TokenRow(token: token)
+                }
             }
         } header: {
             HStack {
@@ -28,23 +36,5 @@ struct TokenView: View {
             .scaledToFit()
         }
         .headerProminence(.increased)
-        Section {
-            ForEach(address.fungibleTokenList) { token in
-                NavigationLink {
-                    TransferForm(state: TransferState(account: account, token: token, fromAddress: address))
-                        .navigationBarTitleDisplayMode(.inline)
-                } label: {
-                    TokenRow(token: token)
-                }
-            }
-        } header: {
-            if address.loading {
-                ProgressView()
-            } else if !address.fungibleTokens.isEmpty {
-                Text("Fungible Tokens")
-            } else {
-                Text("No other tokens")
-            }
-        }
     }
 }

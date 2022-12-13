@@ -10,23 +10,23 @@ transactions is permanent by default and observable by anybody.  Correlation
 based on IP addresses may be permanent, but only available to blockchain API
 providers.
 
-## Account
+## Profile
 
-The privacy boundary in SealVault is the account.  An account is a collection of
-addresses.  An account can contain addresses from multiple chains, because
+The privacy boundary in SealVault is the profile.  A profile is a collection of
+addresses.  A profile can contain addresses from multiple chains, because
 cross-chain bridging may correlate addresses from different chains.
 
-Users can only send tokens between addresses in the same account within
+Users can only send tokens between addresses in the same profile within
 SealVault.  While the [1DK](./one-dapp-per-key.md) model prevents producing
 transactions with an address for multiple dapps, users may produce off-chain
-signatures for multiple dapps in the same account.  In the future, users will be
-able to prove claims between accounts with zero-knowledge proofs without
-correlating addresses between different accounts.
+signatures for multiple dapps in the same profile.  In the future, users will be
+able to prove claims between profiles with zero-knowledge proofs without
+correlating addresses between different profiles.
 
-Users may correlate addresses in different accounts outside of
+Users may correlate addresses in different profiles outside of
 SealVault.  We can't prevent this, but we warn users against it. We also can't
 prevent correlating addresses based on IP addresses.
 
-Accounts may be merged, but they may not be split.
+Profiles may be merged, but they may not be split.
 
 

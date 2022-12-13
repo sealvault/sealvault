@@ -5,27 +5,27 @@
 import SwiftUI
 
 @MainActor
-struct AccountView: View {
+struct ProfileView: View {
     @EnvironmentObject private var model: GlobalModel
-    @ObservedObject var account: Account
+    @ObservedObject var profile: Profile
 
     var body: some View {
         ScrollViewReader { _ in
             List {
                 NavigationLink {
                     AddressView(
-                        title: "Wallet", core: model.core, account: account,
-                        addresses: Addresses(account: account)
+                        title: "Wallet", core: model.core, profile: profile,
+                        addresses: Addresses(profile: profile)
                     )
                 } label: {
-                    WalletRow(account: account)
-                        .accessibilityIdentifier("\(account.displayName) account wallet")
+                    WalletRow(profile: profile)
+                        .accessibilityIdentifier("\(profile.displayName) profile wallet")
                 }
                 Section {
-                    ForEach(account.dappList) { dapp in
+                    ForEach(profile.dappList) { dapp in
                         NavigationLink {
                             AddressView(
-                                title: dapp.humanIdentifier, core: model.core, account: account,
+                                title: dapp.humanIdentifier, core: model.core, profile: profile,
                                 addresses: Addresses(dapp: dapp)
                             )
                         } label: {
@@ -54,23 +54,23 @@ struct AccountView: View {
                 }
             }
             .refreshable(action: {
-                await model.refreshAccounts()
+                await model.refreshProfiles()
             })
-            .accessibilityRotor("Dapps", entries: account.dappList, entryLabel: \.displayName)
+            .accessibilityRotor("Dapps", entries: profile.dappList, entryLabel: \.displayName)
         }
-        .navigationTitle(Text(account.displayName))
+        .navigationTitle(Text(profile.displayName))
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await self.model.refreshAccounts()
+            await self.model.refreshProfiles()
         }
     }
 }
 
 #if DEBUG
-struct AccountView_Previews: PreviewProvider {
+struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        return AccountView(account: model.activeAccount!).environmentObject(model)
+        return ProfileView(profile: model.activeProfile!).environmentObject(model)
     }
 }
 #endif

@@ -134,7 +134,7 @@ impl InPageProvider {
         let maybe_session = self.fetch_session_for_approved_dapp().await?;
         match &*request.method {
             // These methods request the user approval if the user hasn't added the dapp yet
-            // in the account.
+            // in the profile.
             "eth_requestAccounts" | "eth_accounts" => match maybe_session {
                 Some(session) => {
                     let accounts = self.eth_request_accounts(session).await?;
@@ -165,7 +165,7 @@ impl InPageProvider {
         }
     }
 
-    /// Resolve JSON-RPC method if user has approved the dapp in the current account.
+    /// Resolve JSON-RPC method if user has approved the dapp in the current profile.
     async fn dispatch_authorized_methods<'a>(
         &self,
         request: &'a Request<'a>,
@@ -335,17 +335,17 @@ impl InPageProvider {
         request: &'a Request<'a>,
     ) -> Result<(), Error> {
         let resources = self.resources.clone();
-        let (account_id, chain_id, chain_settings) = resources
+        let (profile_id, chain_id, chain_settings) = resources
             .connection_pool()
             .deferred_transaction_async(|mut tx_conn| {
-                let account_id =
-                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
+                let profile_id =
+                    m::LocalSettings::fetch_active_profile_id(tx_conn.as_mut())?;
                 let chain_id = eth::ChainId::default_dapp_chain();
                 let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
                     tx_conn.as_mut(),
                     chain_id,
                 )?;
-                Ok((account_id, chain_id, chain_settings))
+                Ok((profile_id, chain_id, chain_settings))
             })
             .await?;
 
@@ -359,7 +359,7 @@ impl InPageProvider {
             })?;
         let dapp_allotment = chain_settings.default_dapp_allotment;
         let dapp_approval = DappApprovalParams::builder()
-            .account_id(account_id)
+            .profile_id(profile_id)
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
             .amount(dapp_allotment.display_amount())
@@ -405,13 +405,13 @@ impl InPageProvider {
         Ok(())
     }
 
-    /// Add a new dapp to the account and return the dapp's deterministic id.
+    /// Add a new dapp to the profile and return the dapp's deterministic id.
     /// Also transfers the configured default amount to the new dapp address.
     async fn add_new_dapp(
         &self,
         dapp_approval: DappApprovalParams,
     ) -> Result<m::LocalDappSession, Error> {
-        // Add dapp to account and create local session
+        // Add dapp to profile and create local session
         let url = self.url.clone();
         let resources = self.resources.clone();
         let chain_id: eth::ChainId = dapp_approval.chain_id.try_into()?;
@@ -424,7 +424,7 @@ impl InPageProvider {
                     resources.public_suffix_list(),
                 )?;
                 let params = m::CreateEthAddressParams::builder()
-                    .account_id(&dapp_approval.account_id)
+                    .profile_id(&dapp_approval.profile_id)
                     .chain_id(chain_id)
                     .dapp_id(Some(&dapp_id))
                     .build();
@@ -435,14 +435,14 @@ impl InPageProvider {
                 )?;
                 let params = m::NewDappSessionParams::builder()
                     .dapp_id(&dapp_id)
-                    .account_id(&dapp_approval.account_id)
+                    .profile_id(&dapp_approval.profile_id)
                     .chain_id(chain_id)
                     .build();
                 m::LocalDappSession::create_eth_session(&mut tx_conn, &params)
             })
             .await?;
 
-        // Transfer default dapp allotment to new dapp address from account wallet.
+        // Transfer default dapp allotment to new dapp address from profile wallet.
         if dapp_approval.transfer_allotment {
             self.transfer_default_dapp_allotment(session.clone())
                 .await?;
@@ -462,7 +462,7 @@ impl InPageProvider {
             .deferred_transaction_async(move |mut tx_conn| {
                 let wallet_address_id = m::Address::fetch_eth_wallet_id(
                     &mut tx_conn,
-                    &session.account_id,
+                    &session.profile_id,
                     session.chain_id,
                 )?;
                 let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
@@ -566,22 +566,22 @@ impl InPageProvider {
         let resources = self.resources.clone();
         self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let account_id =
-                    m::LocalSettings::fetch_active_account_id(tx_conn.as_mut())?;
-                let maybe_dapp_id = m::Dapp::fetch_id_for_account(
+                let profile_id =
+                    m::LocalSettings::fetch_active_profile_id(tx_conn.as_mut())?;
+                let maybe_dapp_id = m::Dapp::fetch_id_for_profile(
                     tx_conn.as_mut(),
                     url,
                     resources.public_suffix_list(),
-                    &account_id,
+                    &profile_id,
                 )?;
-                // If the dapp has been added to the account, return an existing session or create one.
+                // If the dapp has been added to the profile, return an existing session or create one.
                 // It can happen that the dapp has been added, but no local session exists if the dapp
                 // was added on an other device.
                 let maybe_session: Option<m::LocalDappSession> = match maybe_dapp_id {
                     Some(dapp_id) => {
                         let params = m::NewDappSessionParams::builder()
                             .dapp_id(&dapp_id)
-                            .account_id(&account_id)
+                            .profile_id(&profile_id)
                             .build();
                         let session =
                             m::LocalDappSession::create_eth_session_if_not_exists(
@@ -875,9 +875,9 @@ pub trait InPageRequestContextI: Send + Sync + Debug {
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct DappApprovalParams {
-    /// The account for which the dapp approval is set.
+    /// The profile for which the dapp approval is set.
     #[builder(setter(into))]
-    pub account_id: String,
+    pub profile_id: String,
     /// A human readable dapp identifier that can be presented to the user.
     #[builder(setter(into))]
     pub dapp_identifier: String,
@@ -1253,7 +1253,7 @@ mod tests {
     #[test]
     fn responds_on_allowed() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_account_wallet(eth::ChainId::default_dapp_chain());
+        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain());
 
         let _ = authorize_dapp(&core)?;
         core.wait_for_ui_callbacks(1);
@@ -1387,7 +1387,7 @@ mod tests {
     #[test]
     fn send_transactions_callback() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_account_wallet(eth::ChainId::default_dapp_chain());
+        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain());
 
         let dapp_address = authorize_dapp(&core)?;
         let dapp_address: Address = dapp_address.parse().expect("checksum address");

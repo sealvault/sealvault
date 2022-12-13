@@ -43,17 +43,17 @@ struct AppTabNavigationInner: View {
                 .tag(Tab.browserOne)
 
                 NavigationView {
-                    AccountListView()
+                    ProfileListView()
                 }
                 .tabItem {
-                    let menuText = Text("Dapps")
+                    let menuText = Text("Profiles")
 
                     Label {
                         menuText
                     } icon: {
-                        if let account = model.activeAccount {
+                        if let profile = model.activeProfile {
                             // TODO add blue circle around icon when selected
-                            TabIcon(icon: account.picture)
+                            TabIcon(icon: profile.picture)
                         } else {
                             Image(systemName: "person")
                         }
@@ -219,7 +219,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
             callbackTokenSent.tokenTransferSent = TokenTransferResult(
                 amount: "0.1", tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS",
-                toDisplayName: "Default Account Wallet", explorerUrl: nil, errorMessage: nil
+                toDisplayName: "Default Profile Wallet", explorerUrl: nil, errorMessage: nil
             )
         }
 
@@ -227,7 +227,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
             callbackTokenTransferError.tokenTransferSent = TokenTransferResult(
                 amount: "0.1", tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS",
-                toDisplayName: "Default Account Wallet", explorerUrl: nil, errorMessage: "insufficient funds"
+                toDisplayName: "Default Profile Wallet", explorerUrl: nil, errorMessage: "insufficient funds"
             )
         }
 
@@ -235,7 +235,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
             callbackTokenTransferConfirmed.tokenTransferConfirmed = TokenTransferResult(
                 amount: "0.1", tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS",
-                toDisplayName: "Default Account Wallet", explorerUrl: explorerUrl, errorMessage: nil
+                toDisplayName: "Default Profile Wallet", explorerUrl: explorerUrl, errorMessage: nil
             )
         }
 

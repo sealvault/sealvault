@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug, TypedBuilder)]
-pub struct CoreAccount {
+pub struct CoreProfile {
     pub id: String,
     pub name: String,
     pub picture: Vec<u8>,
@@ -35,7 +35,7 @@ pub struct CoreAccount {
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreDapp {
     pub id: String,
-    pub account_id: String,
+    pub profile_id: String,
     pub human_identifier: String,
     pub url: String,
     pub addresses: Vec<CoreAddress>,
@@ -114,27 +114,27 @@ impl Assembler {
         self.resources.rpc_manager()
     }
 
-    /// Combine data from multiple sources to create Account data transfer objects.
-    pub fn assemble_accounts(&self) -> Result<Vec<CoreAccount>, Error> {
+    /// Combine data from multiple sources to create Profile data transfer objects.
+    pub fn assemble_profiles(&self) -> Result<Vec<CoreProfile>, Error> {
         // Important to pass down connection to make sure we see a consistent view of the db.
         self.connection_pool().deferred_transaction(|mut tx_conn| {
-            let mut accounts: Vec<CoreAccount> = Default::default();
-            for account in m::Account::list_all(tx_conn.as_mut())? {
-                let m::Account {
+            let mut profiles: Vec<CoreProfile> = Default::default();
+            for profile in m::Profile::list_all(tx_conn.as_mut())? {
+                let m::Profile {
                     deterministic_id,
                     name,
                     picture_id,
                     created_at,
                     updated_at,
                     ..
-                } = account;
+                } = profile;
 
                 let dapps = self.assemble_dapps(&mut tx_conn, &deterministic_id)?;
                 let wallets = self.assemble_wallets(&mut tx_conn, &deterministic_id)?;
                 let picture =
-                    m::AccountPicture::fetch_image(tx_conn.as_mut(), &picture_id)?;
+                    m::ProfilePicture::fetch_image(tx_conn.as_mut(), &picture_id)?;
 
-                let account = CoreAccount::builder()
+                let profile = CoreProfile::builder()
                     .id(deterministic_id)
                     .name(name)
                     .picture(picture)
@@ -144,18 +144,18 @@ impl Assembler {
                     .updated_at(updated_at)
                     .build();
 
-                accounts.push(account);
+                profiles.push(profile);
             }
-            Ok(accounts)
+            Ok(profiles)
         })
     }
 
     fn assemble_wallets(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Vec<CoreAddress>, Error> {
-        let addresses = m::Address::list_account_wallets(tx_conn.as_mut(), account_id)?;
+        let addresses = m::Address::list_profile_wallets(tx_conn.as_mut(), profile_id)?;
         let mut results: Vec<CoreAddress> = Default::default();
         for address in addresses {
             let address = self.assemble_address(tx_conn, address, true)?;
@@ -167,14 +167,14 @@ impl Assembler {
     fn assemble_dapps(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Vec<CoreDapp>, Error> {
-        let dapps = m::Dapp::list_for_account(tx_conn.as_mut(), account_id)?;
+        let dapps = m::Dapp::list_for_profile(tx_conn.as_mut(), profile_id)?;
         let urls: Vec<Url> = dapps.iter().map(|d| d.url.clone().into()).collect();
         let favicons = fetch_favicons(self.http_client(), urls)?;
         let mut results: Vec<CoreDapp> = Default::default();
         for (dapp, icon) in dapps.into_iter().zip(favicons) {
-            let dapp = self.assemble_dapp(tx_conn, account_id, dapp, icon)?;
+            let dapp = self.assemble_dapp(tx_conn, profile_id, dapp, icon)?;
             results.push(dapp);
         }
         Ok(results)
@@ -183,12 +183,12 @@ impl Assembler {
     fn assemble_dapp(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        account_id: &str,
+        profile_id: &str,
         dapp: m::Dapp,
         favicon: Option<Vec<u8>>,
     ) -> Result<CoreDapp, Error> {
         let params = m::ListAddressesForDappParams::builder()
-            .account_id(account_id)
+            .profile_id(profile_id)
             .dapp_id(&dapp.deterministic_id)
             .build();
         let addresses = m::Address::list_for_dapp(tx_conn.as_mut(), &params)?;
@@ -201,7 +201,7 @@ impl Assembler {
 
         let dapp_session_params = m::FetchDappSessionParams::builder()
             .dapp_id(&dapp.deterministic_id)
-            .account_id(account_id)
+            .profile_id(profile_id)
             .build();
         let dapp_session =
             m::LocalDappSession::fetch_eth_session(tx_conn, &dapp_session_params)?;
@@ -215,7 +215,7 @@ impl Assembler {
         } = dapp;
         let result = CoreDapp::builder()
             .id(deterministic_id)
-            .account_id(account_id.into())
+            .profile_id(profile_id.into())
             .human_identifier(identifier)
             .url((&url).into())
             .addresses(core_addresses)

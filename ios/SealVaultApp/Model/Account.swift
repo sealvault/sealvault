@@ -5,7 +5,7 @@
 import Foundation
 import SwiftUI
 
-class Account: Identifiable, ObservableObject {
+class Profile: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     let id: String
     @Published var name: String
@@ -37,23 +37,23 @@ class Account: Identifiable, ObservableObject {
         self.dapps = Dictionary(uniqueKeysWithValues: dapps.map { ($0.id, $0) })
     }
 
-    static func fromCore(_ core: AppCoreProtocol, _ account: CoreAccount) -> Self {
-        let wallets = account.wallets.map { Address.fromCore(core, $0) }
-        let dapps = account.dapps.map { Dapp.fromCore(core, $0) }
-        let picture = Self.convertPicture(account.picture)
-        return Self(core, id: account.id, name: account.name, picture: picture, wallets: wallets, dapps: dapps)
+    static func fromCore(_ core: AppCoreProtocol, _ profile: CoreProfile) -> Self {
+        let wallets = profile.wallets.map { Address.fromCore(core, $0) }
+        let dapps = profile.dapps.map { Dapp.fromCore(core, $0) }
+        let picture = Self.convertPicture(profile.picture)
+        return Self(core, id: profile.id, name: profile.name, picture: picture, wallets: wallets, dapps: dapps)
     }
 
     static func convertPicture(_ picture: [UInt8]) -> UIImage {
         return UIImage(data: Data(picture)) ?? UIImage(systemName: "person")!
     }
 
-    func updateFromCore(_ account: CoreAccount) {
-        assert(account.id == self.id, "account id mismatch on update")
-        self.name = account.name
-        self.picture = Self.convertPicture(account.picture)
-        self.updateWallets(account.wallets)
-        self.updateDapps(account.dapps)
+    func updateFromCore(_ profile: CoreProfile) {
+        assert(profile.id == self.id, "profile id mismatch on update")
+        self.name = profile.name
+        self.picture = Self.convertPicture(profile.picture)
+        self.updateWallets(profile.wallets)
+        self.updateDapps(profile.dapps)
     }
 
     private func updateWallets(_ coreAddresses: [CoreAddress]) {
@@ -105,9 +105,9 @@ class Account: Identifiable, ObservableObject {
 
 // MARK: - Hashable
 
-extension Account: Equatable, Hashable {
+extension Profile: Equatable, Hashable {
 
-    static func == (lhs: Account, rhs: Account) -> Bool {
+    static func == (lhs: Profile, rhs: Profile) -> Bool {
         return lhs.id == rhs.id
     }
 
@@ -119,7 +119,7 @@ extension Account: Equatable, Hashable {
 
 // MARK: - Display
 
-extension Account {
+extension Profile {
     // SwiftUI image is not hashable
     var image: Image {
         Image(uiImage: picture)
@@ -154,7 +154,7 @@ extension Account {
 // MARK: - Development
 
 #if DEBUG
-    extension Account {
+    extension Profile {
         convenience init(name: String, picture: UIImage, wallets: [Address], dapps: [Dapp]) {
             let core = PreviewAppCore()
             self.init(core, id: name.lowercased(), name: name, picture: picture, wallets: wallets, dapps: dapps)

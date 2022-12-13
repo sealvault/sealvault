@@ -11,14 +11,17 @@ use crate::{
     assets::load_profile_pic,
     db::{
         deterministic_id::{DeterministicId, EntityName},
-        schema::account_pictures,
+        schema::profile_pictures,
     },
     utils::{blake3_hash, rfc3339_timestamp},
     Error,
 };
 
+/// Deprecated in favor of ProfilePicture
+#[deprecated]
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
+#[diesel(table_name = profile_pictures)]
 pub struct AccountPicture {
     pub deterministic_id: String,
     pub image_name: Option<String>,
@@ -30,9 +33,9 @@ pub struct AccountPicture {
 
 impl AccountPicture {
     pub fn fetch_image(conn: &mut SqliteConnection, id: &str) -> Result<Vec<u8>, Error> {
-        use account_pictures::dsl as ap;
+        use profile_pictures::dsl as ap;
 
-        let image = account_pictures::table
+        let image = profile_pictures::table
             .filter(ap::deterministic_id.eq(id))
             .select(ap::image)
             .first(conn)?;
@@ -54,10 +57,12 @@ impl AccountPicture {
     }
 }
 
+/// Deprecated in favor of ProfilePicture
+#[deprecated]
 #[derive(Insertable)]
-#[diesel(table_name = account_pictures)]
-struct AccountPictureEntity<'a> {
-    image_hash: &'a [u8],
+#[diesel(table_name = profile_pictures)]
+pub struct AccountPictureEntity<'a> {
+    pub(crate) image_hash: &'a [u8],
 }
 
 impl<'a> AccountPictureEntity<'a> {
@@ -68,11 +73,11 @@ impl<'a> AccountPictureEntity<'a> {
         image: &[u8],
         image_name: Option<&str>,
     ) -> Result<String, Error> {
-        use account_pictures::dsl as ap;
+        use profile_pictures::dsl as ap;
 
         let deterministic_id = self.deterministic_id()?;
         let created_at = rfc3339_timestamp();
-        diesel::insert_into(account_pictures::table)
+        diesel::insert_into(profile_pictures::table)
             .values((
                 self,
                 ap::deterministic_id.eq(&deterministic_id),

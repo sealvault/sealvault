@@ -16,7 +16,7 @@
 		5850CBD0176884BC3B64B08C /* IconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850CEC3F304338F5D6DC43D /* IconView.swift */; };
 		5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C2CE182126E257B1DD22 /* TransferForm.swift */; };
 		5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C6335A85D238AFAD5DC5 /* TokenRow.swift */; };
-		5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* AccountImage.swift */; };
+		5850CFD0A5651186748412E7 /* ProfileImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850C4EEB3250EA90D094D1D /* ProfileImage.swift */; };
 		68091D4D2900859E00CC4A54 /* ChainSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68091D4C2900859E00CC4A54 /* ChainSelection.swift */; };
 		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
 		6853B4D6290591B400397279 /* html in Resources */ = {isa = PBXBuildFile; fileRef = 6853B4D5290591B400397279 /* html */; };
@@ -29,10 +29,10 @@
 		68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A812826E11500E7B915 /* WebViewRepresentable.swift */; };
 		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
 		688C29B4283FD78000474900 /* GlobalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* GlobalModel.swift */; };
-		688C29B6283FE73E00474900 /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* AccountListView.swift */; };
+		688C29B6283FE73E00474900 /* ProfileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* ProfileListView.swift */; };
 		688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B9283FE94300474900 /* AppTabNavigation.swift */; };
-		688C29BC283FF32300474900 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BB283FF32300474900 /* AccountView.swift */; };
-		688C29BE283FF33A00474900 /* AccountRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BD283FF33A00474900 /* AccountRow.swift */; };
+		688C29BC283FF32300474900 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BB283FF32300474900 /* ProfileView.swift */; };
+		688C29BE283FF33A00474900 /* ProfileRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BD283FF33A00474900 /* ProfileRow.swift */; };
 		688C29E92840F69100474900 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29E82840F69100474900 /* Account.swift */; };
 		688C29EB284102FC00474900 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29EA284102FC00474900 /* Address.swift */; };
 		68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C3FC28426B040025BCEA /* DappRow.swift */; };
@@ -63,7 +63,7 @@
 /* Begin PBXFileReference section */
 		5850C0ECACCBB3AEF2D72B92 /* Token.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Token.swift; sourceTree = "<group>"; };
 		5850C2CE182126E257B1DD22 /* TransferForm.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TransferForm.swift; sourceTree = "<group>"; };
-		5850C4EEB3250EA90D094D1D /* AccountImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AccountImage.swift; sourceTree = "<group>"; };
+		5850C4EEB3250EA90D094D1D /* ProfileImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProfileImage.swift; sourceTree = "<group>"; };
 		5850C6335A85D238AFAD5DC5 /* TokenRow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenRow.swift; sourceTree = "<group>"; };
 		5850C80B600A5AFC33AFACE0 /* TokenView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TokenView.swift; sourceTree = "<group>"; };
 		5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChainLabel.swift; sourceTree = "<group>"; };
@@ -85,10 +85,10 @@
 		68745A812826E11500E7B915 /* WebViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewRepresentable.swift; sourceTree = "<group>"; };
 		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
 		688C29B3283FD78000474900 /* GlobalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalModel.swift; sourceTree = "<group>"; };
-		688C29B5283FE73E00474900 /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
+		688C29B5283FE73E00474900 /* ProfileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileListView.swift; sourceTree = "<group>"; };
 		688C29B9283FE94300474900 /* AppTabNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabNavigation.swift; sourceTree = "<group>"; };
-		688C29BB283FF32300474900 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
-		688C29BD283FF33A00474900 /* AccountRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountRow.swift; sourceTree = "<group>"; };
+		688C29BB283FF32300474900 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		688C29BD283FF33A00474900 /* ProfileRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRow.swift; sourceTree = "<group>"; };
 		688C29E82840F69100474900 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
 		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
@@ -200,12 +200,6 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
-				68E9F88229223CFA007316B6 /* Info.plist */,
-				5850C4EEB3250EA90D094D1D /* AccountImage.swift */,
-				688C29B5283FE73E00474900 /* AccountListView.swift */,
-				688C29BD283FF33A00474900 /* AccountRow.swift */,
-				688C29BB283FF32300474900 /* AccountView.swift */,
-				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
@@ -213,6 +207,7 @@
 				68CCACF928F85BC70043692D /* Banner.swift */,
 				68745A7F2826E0F000E7B915 /* BrowserView.swift */,
 				5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */,
+				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				686C1D042827C9DC00011311 /* Config.swift */,
 				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
@@ -220,8 +215,13 @@
 				68C0C4FC28A2739600572668 /* Generated */,
 				6853B4D5290591B400397279 /* html */,
 				5850CEC3F304338F5D6DC43D /* IconView.swift */,
+				68E9F88229223CFA007316B6 /* Info.plist */,
 				688C29E72840F5C500474900 /* Model */,
 				68F6291728251A0B00BDCD02 /* Preview Content */,
+				5850C4EEB3250EA90D094D1D /* ProfileImage.swift */,
+				688C29B5283FE73E00474900 /* ProfileListView.swift */,
+				688C29BD283FF33A00474900 /* ProfileRow.swift */,
+				688C29BB283FF32300474900 /* ProfileView.swift */,
 				68F6291128251A0900BDCD02 /* SealVaultApp.swift */,
 				686D8BB728E5FF4A00031375 /* TokenAmount.swift */,
 				5850CFC23F4A51B23AA2A833 /* TokenLabel.swift */,
@@ -370,7 +370,7 @@
 				68CCACFA28F85BC70043692D /* Banner.swift in Sources */,
 				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
 				686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */,
-				688C29BE283FF33A00474900 /* AccountRow.swift in Sources */,
+				688C29BE283FF33A00474900 /* ProfileRow.swift in Sources */,
 				68745A802826E0F000E7B915 /* BrowserView.swift in Sources */,
 				686C1D052827C9DC00011311 /* Config.swift in Sources */,
 				688C29EB284102FC00474900 /* Address.swift in Sources */,
@@ -379,12 +379,12 @@
 				688C29B4283FD78000474900 /* GlobalModel.swift in Sources */,
 				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
-				688C29BC283FF32300474900 /* AccountView.swift in Sources */,
+				688C29BC283FF32300474900 /* ProfileView.swift in Sources */,
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
 				686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */,
 				68EBBC29290E9B4D00C367F4 /* displayChecksumAddress.swift in Sources */,
-				688C29B6283FE73E00474900 /* AccountListView.swift in Sources */,
+				688C29B6283FE73E00474900 /* ProfileListView.swift in Sources */,
 				5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */,
 				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,
 				68091D4D2900859E00CC4A54 /* ChainSelection.swift in Sources */,
@@ -398,7 +398,7 @@
 				5850C9386494A92B159B20B2 /* TokenLabel.swift in Sources */,
 				5850C848BCC100C1CECBC0DE /* ChainLabel.swift in Sources */,
 				685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */,
-				5850CFD0A5651186748412E7 /* AccountImage.swift in Sources */,
+				5850CFD0A5651186748412E7 /* ProfileImage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
