@@ -1,5 +1,15 @@
 # Changelog
 
+## 2022-12-13
+
+### iOS Beta v0.5.0
+
+#### Improvements
+
+- Change accounts to profiles
+- Improve token display
+- Improve add dapp modal text
+
 ## 2022-12-07
 
 ### iOS Beta v0.4.4
