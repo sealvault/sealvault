@@ -36,7 +36,7 @@ Organize your dapps into accounts for isolated identities.
 [Learn more.](https://sealvault.org/privacy/)</figcaption>
 
 <div float="left" align="center">
-    <img src="./website/src/assets/images/screenshots/account-view.png" height="600px" />
+    <img src="./website/src/assets/images/screenshots/profile-view.png" height="600px" />
     <img src="./website/src/assets/images/screenshots/add-dapp.png" height="600px" />
 </div>
 
