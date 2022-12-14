@@ -714,14 +714,14 @@ mod tests {
 
         fn trigger_need_new_backup(&self) -> Result<()> {
             self.connection_pool.deferred_transaction(|mut tx_conn| {
-                let account = m::Account::list_all(tx_conn.as_mut())?
+                let profile = m::Profile::list_all(tx_conn.as_mut())?
                     .into_iter()
                     .next()
-                    .expect("there is an account");
+                    .expect("there is an profile");
                 let params = m::CreateEthAddressParams::builder()
-                    .account_id(&account.deterministic_id)
+                    .profile_id(&profile.deterministic_id)
                     .chain_id(eth::ChainId::default_wallet_chain())
-                    .is_account_wallet(true)
+                    .is_profile_wallet(true)
                     .build();
                 m::Address::create_eth_key_and_address(
                     &mut tx_conn,
@@ -746,7 +746,6 @@ mod tests {
 
         fn backup_versions_in_dir(&self) -> Result<Vec<i64>> {
             let mut res: Vec<i64> = Default::default();
-            let entries = fs::read_dir(self.backup_dir.as_path())?;
             for file_name in self.backup_file_names()? {
                 let meta: BackupMetadataFromFileName = file_name.parse()?;
                 res.push(meta.backup_version);
@@ -811,11 +810,11 @@ mod tests {
                     .expect("path converts to str"),
             )?;
             let _ = connection_pool.deferred_transaction(|mut tx_conn| {
-                let accounts = m::Account::list_all(tx_conn.as_mut())?;
-                let account = accounts.first().expect("there is an account");
+                let profiles = m::Profile::list_all(tx_conn.as_mut())?;
+                let profile = profiles.first().expect("there is a profile");
                 let address_id = m::Address::fetch_eth_wallet_id(
                     &mut tx_conn,
-                    &account.deterministic_id,
+                    &profile.deterministic_id,
                     eth::ChainId::default_wallet_chain(),
                 )?;
                 // Uses SK-KEK to decrypt
