@@ -154,7 +154,7 @@ struct TopDapps: View {
         }
         .task {
             // Refresh top dapps
-            await viewModel.refreshAccounts()
+            await viewModel.refreshProfiles()
         }
     }
 }

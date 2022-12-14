@@ -47,13 +47,13 @@ struct DappApproval: View {
 
     @ObservedObject var request: DappApprovalRequest
 
-    private var account: Account {
-        viewModel.accountList.first(where: { $0.id == request.params.accountId })!
+    private var profile: Profile {
+        viewModel.profileList.first(where: { $0.id == request.params.profileId })!
     }
 
     private var showDisclosure: Bool {
         // Start with the disclosure open the first three times the user adds a dapp
-        account.dappList.count <= Config.showDisclosureDappCount
+        profile.dappList.count <= Config.showDisclosureDappCount
     }
 
     private var dappIcon: Image {
@@ -80,13 +80,12 @@ struct DappApproval: View {
                 }
                 .font(.largeTitle)
                 HStack {
-                    Text("to").fontWeight(.light)
                     Label {
-                        Text(account.displayName)
+                        Text(profile.displayName)
                     } icon: {
-                        AccountImageCircle(account: account).accessibilityLabel("account image")
+                        ProfileImageCircle(profile: profile).accessibilityLabel("profile image")
                     }
-                    Text("account").fontWeight(.light)
+                    Text("profile").fontWeight(.light)
                 }
                 .font(.title2)
 
@@ -139,7 +138,7 @@ struct DappApprovalHeader: View {
                 .padding()
             },
             label: {
-                Text("Add dapp")
+                Text("Create new key for dapp")
                     .font(.title2)
             })
         }
@@ -157,11 +156,11 @@ struct DappApprovalHeader: View {
 struct DappApproval_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
-        let accountId = model.activeAccountId!
+        let profileId = model.activeProfileId!
         let dapp = Dapp.quickswap()
         let favicon = [UInt8](dapp.favicon.pngData()!)
         let params = DappApprovalParams(
-            accountId: accountId, dappIdentifier: dapp.humanIdentifier, favicon: favicon, amount: "0.1",
+            profileId: profileId, dappIdentifier: dapp.humanIdentifier, favicon: favicon, amount: "0.1",
             transferAllotment: true, tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS", chainId: 137,
             jsonRpcRequest: ""
         )

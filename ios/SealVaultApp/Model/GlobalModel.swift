@@ -6,46 +6,46 @@ import Foundation
 
 @MainActor
 class GlobalModel: ObservableObject {
-    @Published var accounts: [String: Account]
-    /// The account currently used for dapp interactions
-    @Published var activeAccountId: String?
+    @Published var profiles: [String: Profile]
+    /// The profile currently used for dapp interactions
+    @Published var activeProfileId: String?
     @Published var callbackModel: CallbackModel
     @Published var browserOneUrl: URL?
     @Published var browserTwoUrl: URL?
     @Published var topDapps: [Dapp]
     @Published var bannerData: BannerData?
 
-    var activeAccount: Account? {
-        return accountList.first(where: { acc in acc.id == activeAccountId })
+    var activeProfile: Profile? {
+        return profileList.first(where: { acc in acc.id == activeProfileId })
     }
 
-    var accountList: [Account] {
-        accounts.values.sorted(by: {$0.displayName.lowercased() < $1.displayName.lowercased()})
+    var profileList: [Profile] {
+        profiles.values.sorted(by: {$0.displayName.lowercased() < $1.displayName.lowercased()})
     }
 
     let core: AppCoreProtocol
 
-    required init(core: AppCoreProtocol, accounts: [Account], activeAccountId: String?, callbackModel: CallbackModel) {
+    required init(core: AppCoreProtocol, profiles: [Profile], activeProfileId: String?, callbackModel: CallbackModel) {
         self.core = core
-        self.accounts = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
-        self.activeAccountId = activeAccountId
+        self.profiles = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        self.activeProfileId = activeProfileId
         self.callbackModel = callbackModel
         self.topDapps = []
     }
 
-    private func updateAccounts(_ coreAccounts: [CoreAccount]) {
-        let newIds = Set(coreAccounts.map {$0.id})
-        let oldIds = Set(self.accounts.keys)
+    private func updateProfiles(_ coreProfiles: [CoreProfile]) {
+        let newIds = Set(coreProfiles.map {$0.id})
+        let oldIds = Set(self.profiles.keys)
         let toRemoveIds = oldIds.subtracting(newIds)
         for id in toRemoveIds {
-            self.accounts.removeValue(forKey: id)
+            self.profiles.removeValue(forKey: id)
         }
-        for coreAccount in coreAccounts {
-            if let account = self.accounts[coreAccount.id] {
-                account.updateFromCore(coreAccount)
+        for coreProfile in coreProfiles {
+            if let profile = self.profiles[coreProfile.id] {
+                profile.updateFromCore(coreProfile)
             } else {
-                let account = Account.fromCore(self.core, coreAccount)
-                self.accounts[account.id] = account
+                let profile = Profile.fromCore(self.core, coreProfile)
+                self.profiles[profile.id] = profile
             }
         }
     }
@@ -62,7 +62,7 @@ class GlobalModel: ObservableObject {
             print("Failed to create core: \(error)")
             exit(1)
         }
-        return Self(core: core, accounts: [], activeAccountId: nil, callbackModel: callbackModel)
+        return Self(core: core, profiles: [], activeProfileId: nil, callbackModel: callbackModel)
     }
 
     private static func ensureDbFilePath() -> String {
@@ -116,37 +116,37 @@ class GlobalModel: ObservableObject {
         return driveURL?.path
     }
 
-    private func listAccounts(_ qos: DispatchQoS.QoSClass) async -> [CoreAccount]? {
+    private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
         return await dispatchBackground(qos) {
             do {
-                return try self.core.listAccounts()
+                return try self.core.listProfiles()
             } catch {
-                print("Error fetching account data: \(error)")
+                print("Error fetching profile data: \(error)")
                 return nil
             }
         }
     }
 
-    private func fetchActiveAccountId(_ qos: DispatchQoS.QoSClass) async -> String? {
+    private func fetchActiveProfileId(_ qos: DispatchQoS.QoSClass) async -> String? {
         return await dispatchBackground(qos) {
             do {
-                return try self.core.activeAccountId()
+                return try self.core.activeProfileId()
             } catch {
-                print("Error fetching active account id: \(error)")
+                print("Error fetching active profile id: \(error)")
                 return nil
             }
         }
     }
 
-    func refreshAccounts() async {
-        let accounts = await self.listAccounts(.userInteractive)
-        let activeAccountId = await self.fetchActiveAccountId(.userInteractive)
+    func refreshProfiles() async {
+        let profiles = await self.listProfiles(.userInteractive)
+        let activeProfileId = await self.fetchActiveProfileId(.userInteractive)
 
-        if let accounts = accounts {
-            self.updateAccounts(accounts)
+        if let profiles = profiles {
+            self.updateProfiles(profiles)
         }
-        if let activeAccountId = activeAccountId {
-            self.activeAccountId = activeAccountId
+        if let activeProfileId = activeProfileId {
+            self.activeProfileId = activeProfileId
         }
         self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
@@ -160,20 +160,20 @@ class GlobalModel: ObservableObject {
             }
         }
         // Make sure newly added chain shows up
-        await self.refreshAccounts()
+        await self.refreshProfiles()
     }
 
-    func changeDappChain(accountId: String, dappId: String, newChainId: UInt64) async {
+    func changeDappChain(profileId: String, dappId: String, newChainId: UInt64) async {
         await dispatchBackground(.userInteractive) {
             do {
-                let args = EthChangeDappChainArgs(accountId: accountId, dappId: dappId, newChainId: newChainId)
+                let args = EthChangeDappChainArgs(profileId: profileId, dappId: dappId, newChainId: newChainId)
                 try self.core.ethChangeDappChain(args: args)
             } catch {
                 print("Error changing dapp address for dapp: \(error)")
             }
         }
         // Make sure newly added chain shows up
-        await self.refreshAccounts()
+        await self.refreshProfiles()
     }
 
     func listEthChains() async -> [CoreEthChain] {
@@ -191,7 +191,7 @@ class GlobalModel: ObservableObject {
                 return []
             }
         }
-        return activeAccount?.dappList.filter { topDappIds.contains($0.id) } ?? []
+        return activeProfile?.dappList.filter { topDappIds.contains($0.id) } ?? []
     }
 }
 
@@ -203,12 +203,12 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-    static func toCoreAccount(_ account: Account) -> CoreAccount {
-        let picture = [UInt8](account.picture.pngData()!)
-        let wallets = account.walletList.map(Self.toCoreAddress)
-        let dapps = account.dappList.map(Self.toCoreDapp)
-        return CoreAccount(
-            id: account.id, name: account.name, picture: picture, wallets: wallets, dapps: dapps,
+    static func toCoreProfile(_ profile: Profile) -> CoreProfile {
+        let picture = [UInt8](profile.picture.pngData()!)
+        let wallets = profile.walletList.map(Self.toCoreAddress)
+        let dapps = profile.dappList.map(Self.toCoreDapp)
+        return CoreProfile(
+            id: profile.id, name: profile.name, picture: picture, wallets: wallets, dapps: dapps,
             createdAt: "2022-08-01", updatedAt: "2022-08-01"
         )
     }
@@ -219,7 +219,7 @@ class PreviewAppCore: AppCoreProtocol {
         let addresses = dapp.addressList.map(Self.toCoreAddress)
 
         return CoreDapp(
-            id: dapp.id, accountId: dapp.accountId, humanIdentifier: dapp.humanIdentifier, url: url,
+            id: dapp.id, profileId: dapp.profileId, humanIdentifier: dapp.humanIdentifier, url: url,
             addresses: addresses, selectedAddressId: dapp.selectedAddressId, favicon: icon, lastUsed: dapp.lastUsed
         )
     }
@@ -295,18 +295,18 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
-    func listAccounts() throws -> [CoreAccount] {
+    func listProfiles() throws -> [CoreProfile] {
         let wallets = [
             Address.ethereumWallet(),
             Address.polygonWallet()
         ]
-        let activeAccountName = "alice.eth"
-        let activeAccountId = try! self.activeAccountId()
+        let activeProfileName = "alice.eth"
+        let activeProfileId = try! self.activeProfileId()
 
-        let accounts = [
-            Account(
+        let profiles = [
+            Profile(
                 self,
-                id: activeAccountId, name: activeAccountName, picture: UIImage(named: "cat-green")!,
+                id: activeProfileId, name: activeProfileName, picture: UIImage(named: "cat-green")!,
                 wallets: wallets,
                 dapps: [
                     Dapp.ens(),
@@ -321,32 +321,32 @@ class PreviewAppCore: AppCoreProtocol {
                     Dapp.dnd()
                 ]
             ),
-            Account(
+            Profile(
                 self,
                 id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
                 dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
             ),
-            Account(
+            Profile(
                 self,
                 id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
                 dapps: [Dapp.darkForest()]
             ),
-            Account(
+            Profile(
                 self,
                 id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
                 dapps: [Dapp.dnd()]
             ),
-            Account(
+            Profile(
                 self,
                 id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
                 dapps: [Dapp.opensea()]
             )
         ]
 
-        return accounts.map(Self.toCoreAccount)
+        return profiles.map(Self.toCoreProfile)
     }
 
-    func activeAccountId() throws -> String {
+    func activeProfileId() throws -> String {
         return "1"
     }
 
@@ -384,7 +384,7 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func topDapps(limit: UInt32) throws -> [String] {
-        let res = try! listAccounts().first!.dapps.map {$0.id}.prefix(Int(limit))
+        let res = try! listProfiles().first!.dapps.map {$0.id}.prefix(Int(limit))
         return [String](res)
     }
 }
@@ -392,10 +392,10 @@ class PreviewAppCore: AppCoreProtocol {
 extension GlobalModel {
     static func buildForPreview() -> GlobalModel {
         let core = PreviewAppCore()
-        let accounts = try! core.listAccounts().map { Account.fromCore(core, $0) }
-        let activeAccountId = try! core.activeAccountId()
+        let profiles = try! core.listProfiles().map { Profile.fromCore(core, $0) }
+        let activeProfileId = try! core.activeProfileId()
         return GlobalModel(
-            core: core, accounts: accounts, activeAccountId: activeAccountId, callbackModel: CallbackModel()
+            core: core, profiles: profiles, activeProfileId: activeProfileId, callbackModel: CallbackModel()
         )
     }
 }

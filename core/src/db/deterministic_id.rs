@@ -75,22 +75,36 @@ pub trait DeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
     }
 }
 
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, EnumIter, EnumString, strum_macros::Display,
-)]
-#[strum(serialize_all = "snake_case")]
-pub enum EntityName {
-    Account,
-    AccountPicture,
-    Address,
-    AsymmetricKey,
-    Chain,
-    Dapp,
-    DataEncryptionKey,
-    DataMigration,
-    #[cfg(test)]
-    Mock,
+// In a mod to let the #[allow(deprecated)] flag take effect for macro produced code.
+#[allow(deprecated)]
+mod entity_name {
+    use super::*;
+
+    #[derive(
+        Copy, Clone, Debug, PartialEq, Eq, EnumIter, EnumString, strum_macros::Display,
+    )]
+    #[strum(serialize_all = "snake_case")]
+    pub enum EntityName {
+        /// Account is deprecated in favor of Profile
+        #[deprecated]
+        Account,
+        /// AccountPicture is deprecated in favor of ProfilePicture
+        #[deprecated]
+        AccountPicture,
+        Address,
+        AsymmetricKey,
+        Chain,
+        Dapp,
+        DataEncryptionKey,
+        DataMigration,
+        Profile,
+        ProfilePicture,
+        #[cfg(test)]
+        Mock,
+    }
 }
+
+pub use entity_name::EntityName;
 
 #[cfg(test)]
 mod tests {
@@ -170,7 +184,7 @@ mod tests {
     #[test]
     fn uses_name() -> Result<()> {
         let a = UniqueValuesMock::new_with_name(EntityName::Mock, [""].into());
-        let b = UniqueValuesMock::new_with_name(EntityName::Account, [""].into());
+        let b = UniqueValuesMock::new_with_name(EntityName::Profile, [""].into());
         assert_ne!(a.deterministic_id(), b.deterministic_id());
         Ok(())
     }

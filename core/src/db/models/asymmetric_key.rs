@@ -24,12 +24,12 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 pub struct AsymmetricKey {
     pub deterministic_id: String,
-    pub account_id: String,
+    pub profile_id: String,
     pub dek_id: String,
     pub elliptic_curve: EllipticCurve,
     pub public_key: Vec<u8>,
     pub encrypted_der: EncryptionOutput,
-    pub is_account_wallet: bool,
+    pub is_profile_wallet: bool,
     pub dapp_id: Option<String>,
     pub created_at: String,
     pub updated_at: Option<String>,
@@ -62,7 +62,7 @@ impl AsymmetricKey {
     }
 
     /// Fetch the key id for a dapp.
-    /// Assumes one dapp key per account.
+    /// Assumes one dapp key per profile.
     pub fn fetch_id_for_dapp<'a>(
         conn: &mut SqliteConnection,
         params: &'a impl m::DappSessionParams<'a>,
@@ -70,12 +70,29 @@ impl AsymmetricKey {
         use asymmetric_keys::dsl as ak;
 
         let deterministic_id = asymmetric_keys::table
-            .filter(ak::account_id.eq(params.account_id()))
+            .filter(ak::profile_id.eq(params.profile_id()))
             .filter(ak::dapp_id.eq(Some(params.dapp_id())))
             .select(ak::deterministic_id)
             .first(conn)?;
 
         Ok(deterministic_id)
+    }
+
+    pub fn set_profile_id(
+        &self,
+        connection: &mut SqliteConnection,
+        profile_id: &str,
+    ) -> Result<(), Error> {
+        use asymmetric_keys::dsl as ak;
+
+        diesel::update(
+            asymmetric_keys::table
+                .filter(ak::deterministic_id.eq(&self.deterministic_id)),
+        )
+        .set(ak::profile_id.eq(profile_id))
+        .execute(connection)?;
+
+        Ok(())
     }
 }
 
@@ -84,7 +101,7 @@ impl AsymmetricKey {
 #[diesel(table_name = asymmetric_keys)]
 pub struct NewAsymmetricKey<'a> {
     #[builder(setter(into))]
-    pub account_id: &'a str,
+    pub profile_id: &'a str,
     #[builder(setter(into))]
     pub dek_id: &'a str,
     #[builder(setter(into))]
@@ -92,7 +109,7 @@ pub struct NewAsymmetricKey<'a> {
     pub elliptic_curve: EllipticCurve,
     pub encrypted_der: &'a EncryptionOutput,
     #[builder(default = false)]
-    pub is_account_wallet: bool,
+    pub is_profile_wallet: bool,
     #[builder(default = None)]
     pub dapp_id: Option<&'a str>,
 }

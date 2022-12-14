@@ -13,7 +13,7 @@ use crate::{
         models as m,
         models::{DataEncryptionKey, NewAsymmetricKey},
         schema::{
-            accounts, addresses, asymmetric_keys, chains, dapps, data_encryption_keys,
+            addresses, asymmetric_keys, chains, dapps, data_encryption_keys, profiles,
         },
         DeferredTxConnection, JsonValue,
     },
@@ -62,10 +62,10 @@ impl Address {
         Ok(addresses::table.load::<Self>(conn)?)
     }
 
-    /// Returns the wallet addresses of an account.
-    pub fn list_account_wallets(
+    /// Returns the wallet addresses of an profile.
+    pub fn list_profile_wallets(
         conn: &mut SqliteConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Vec<Self>, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -74,15 +74,15 @@ impl Address {
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
-            .filter(ak::account_id.eq(account_id))
-            .filter(ak::is_account_wallet.eq(true))
+            .filter(ak::profile_id.eq(profile_id))
+            .filter(ak::is_profile_wallet.eq(true))
             .select(Self::all_columns())
             .load(conn)?;
 
         Ok(wallets)
     }
 
-    /// Returns the addresses for a dapp in an account.
+    /// Returns the addresses for a dapp in an profile.
     pub fn list_for_dapp(
         conn: &mut SqliteConnection,
         params: &ListAddressesForDappParams,
@@ -97,7 +97,7 @@ impl Address {
             )
             .inner_join(dapps::table.on(ak::dapp_id.eq(d::deterministic_id.nullable())))
             .filter(d::deterministic_id.eq(params.dapp_id))
-            .filter(ak::account_id.eq(params.account_id))
+            .filter(ak::profile_id.eq(params.profile_id))
             .select(Self::all_columns())
             .load(conn)?;
 
@@ -142,13 +142,13 @@ impl Address {
         let public_key = signing_key.public_key_der()?;
 
         let key_id = NewAsymmetricKey::builder()
-            .account_id(params.account_id)
+            .profile_id(params.profile_id)
             .dek_id(dek_id.as_str())
             .elliptic_curve(signing_key.curve)
             .public_key(public_key.as_ref())
             .encrypted_der(&encrypted_signing_key)
             .dapp_id(params.dapp_id)
-            .is_account_wallet(params.is_account_wallet)
+            .is_profile_wallet(params.is_profile_wallet)
             .build()
             .insert(tx_conn)?;
 
@@ -215,60 +215,60 @@ impl Address {
         Ok(address)
     }
 
-    pub fn fetch_account_id(
+    pub fn fetch_profile_id(
         conn: &mut SqliteConnection,
         address_id: &str,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
 
-        let account_id = addresses::table
+        let profile_id = addresses::table
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
             .filter(a::deterministic_id.eq(address_id))
-            .select(ak::account_id)
+            .select(ak::profile_id)
             .first(conn)?;
 
-        Ok(account_id)
+        Ok(profile_id)
     }
 
-    pub fn fetch_account_name(
+    pub fn fetch_profile_name(
         conn: &mut SqliteConnection,
         address_id: &str,
     ) -> Result<String, Error> {
-        use accounts::dsl as ac;
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
+        use profiles::dsl as p;
 
-        let account_name = addresses::table
+        let profile_name = addresses::table
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
-            .inner_join(accounts::table.on(ak::account_id.eq(ac::deterministic_id)))
-            .filter(a::deterministic_id.eq(address_id))
-            .select(ac::name)
+            .inner_join(profiles::table.on(ak::profile_id.eq(p::deterministic_id)))
+            .filter(p::deterministic_id.eq(address_id))
+            .select(p::name)
             .first(conn)?;
 
-        Ok(account_name)
+        Ok(profile_name)
     }
 
-    pub fn is_account_wallet(
+    pub fn is_profile_wallet(
         conn: &mut SqliteConnection,
         address_id: &str,
     ) -> Result<bool, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
 
-        let is_account_wallet = addresses::table
+        let is_profile_wallet = addresses::table
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
             .filter(a::deterministic_id.eq(address_id))
-            .select(ak::is_account_wallet)
+            .select(ak::is_profile_wallet)
             .first(conn)?;
 
-        Ok(is_account_wallet)
+        Ok(is_profile_wallet)
     }
 
     /// If this is a dapp key, return its human identifier.
@@ -339,11 +339,11 @@ impl Address {
         Ok(address_id)
     }
 
-    /// Fetch the wallet address id for an Ethereum chain in an account.
-    /// Assumes one wallet address per account per chain.
+    /// Fetch the wallet address id for an Ethereum chain in an profile.
+    /// Assumes one wallet address per profile per chain.
     pub fn fetch_eth_wallet_id(
         tx_conn: &mut DeferredTxConnection,
-        account_id: &str,
+        profile_id: &str,
         eth_chain_id: eth::ChainId,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
@@ -356,15 +356,15 @@ impl Address {
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
             .filter(a::chain_id.eq(&*chain_id))
-            .filter(ak::account_id.eq(account_id))
-            .filter(ak::is_account_wallet.eq(true))
+            .filter(ak::profile_id.eq(profile_id))
+            .filter(ak::is_profile_wallet.eq(true))
             .select(a::deterministic_id)
             .first(tx_conn.as_mut())?;
 
         Ok(address_id)
     }
 
-    pub fn fetch_account_id_for_eth_address(
+    pub fn fetch_profile_id_for_eth_address(
         connection: &mut SqliteConnection,
         checksum_address: &str,
     ) -> Result<Option<String>, Error> {
@@ -375,16 +375,16 @@ impl Address {
 
         validate_checksum_address(checksum_address)?;
 
-        let account_id = addresses::table
+        let profile_id = addresses::table
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
             .filter(a::address.eq(checksum_address))
-            .select(ak::account_id)
+            .select(ak::profile_id)
             .first(connection)
             .optional()?;
 
-        Ok(account_id)
+        Ok(profile_id)
     }
 
     pub fn fetch_eth_signing_key(
@@ -515,18 +515,18 @@ impl<'a> DeterministicId<'a, &'a str, U2> for AddressEntity<'a> {
 #[derive(Clone, Debug, TypedBuilder)]
 #[readonly::make]
 pub struct ListAddressesForDappParams<'a> {
-    pub account_id: &'a str,
+    pub profile_id: &'a str,
     pub dapp_id: &'a str,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
 #[readonly::make]
 pub struct CreateEthAddressParams<'a> {
-    pub account_id: &'a str,
+    pub profile_id: &'a str,
     #[builder(setter(into))]
     pub chain_id: eth::ChainId,
     #[builder(default = None)]
     pub dapp_id: Option<&'a str>,
     #[builder(default = false)]
-    pub is_account_wallet: bool,
+    pub is_profile_wallet: bool,
 }

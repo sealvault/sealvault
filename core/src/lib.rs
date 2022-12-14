@@ -41,7 +41,7 @@ pub use crate::{
         AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
-    dto::{CoreAccount, CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreToken},
+    dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
     protocols::TokenType,

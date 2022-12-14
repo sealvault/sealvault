@@ -12,7 +12,7 @@ use crate::{
 #[diesel(table_name = local_settings)]
 pub struct LocalSettings {
     pub id: String,
-    pub account_id: String,
+    pub profile_id: String,
     pub backup_enabled: bool,
     pub completed_backup_version: i64,
     pub backup_completed_at: Option<String>,
@@ -25,27 +25,39 @@ const SINGLETON_ID: &str = "local_settings";
 impl LocalSettings {
     pub fn create(
         connection: &mut SqliteConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 
         diesel::insert_into(local_settings::table)
-            .values((ls::id.eq(SINGLETON_ID), ls::account_id.eq(account_id)))
+            .values((ls::id.eq(SINGLETON_ID), ls::profile_id.eq(profile_id)))
             .execute(connection)?;
 
         Ok(())
     }
 
-    pub fn fetch_active_account_id(
+    pub fn fetch_active_profile_id(
         connection: &mut SqliteConnection,
     ) -> Result<String, Error> {
         use local_settings::dsl as ls;
 
-        let account_id = local_settings::table
+        let profile_id = local_settings::table
             .find(&SINGLETON_ID)
-            .select(ls::account_id)
+            .select(ls::profile_id)
             .first(connection)?;
-        Ok(account_id)
+        Ok(profile_id)
+    }
+
+    pub fn set_active_profile_id(
+        connection: &mut SqliteConnection,
+        profile_id: &str,
+    ) -> Result<(), Error> {
+        use local_settings::dsl as ls;
+
+        diesel::update(local_settings::table.filter(ls::id.eq(&SINGLETON_ID)))
+            .set(ls::profile_id.eq(profile_id))
+            .execute(connection)?;
+        Ok(())
     }
 
     pub fn set_completed_backup_version(

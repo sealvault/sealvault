@@ -94,36 +94,36 @@ impl AppCore {
         Ok(AppCore { resources })
     }
 
-    pub fn list_accounts(&self) -> Result<Vec<dto::CoreAccount>, CoreError> {
-        let res = self.assembler().assemble_accounts()?;
+    pub fn list_profiles(&self) -> Result<Vec<dto::CoreProfile>, CoreError> {
+        let res = self.assembler().assemble_profiles()?;
         Ok(res)
     }
 
-    pub fn active_account_id(&self) -> Result<String, CoreError> {
+    pub fn active_profile_id(&self) -> Result<String, CoreError> {
         let mut conn = self.connection_pool().connection()?;
-        let res = m::LocalSettings::fetch_active_account_id(&mut conn)?;
+        let res = m::LocalSettings::fetch_active_profile_id(&mut conn)?;
         Ok(res)
     }
 
-    pub fn create_account(
+    pub fn create_profile(
         &self,
         name: String,
         bundled_picture_name: String,
-    ) -> Result<Vec<dto::CoreAccount>, CoreError> {
+    ) -> Result<Vec<dto::CoreProfile>, CoreError> {
         self.connection_pool().deferred_transaction(|mut tx_conn| {
-            let account_params = m::AccountParams::builder()
+            let profile_params = m::ProfileParams::builder()
                 .name(&*name)
                 .bundled_picture_name(&*bundled_picture_name)
                 .build();
-            m::Account::create_eth_account(
+            m::Profile::create_eth_profile(
                 &mut tx_conn,
                 self.keychain(),
-                &account_params,
+                &profile_params,
             )?;
             Ok(())
         })?;
 
-        self.list_accounts()
+        self.list_profiles()
     }
 
     pub fn native_token_for_address(
@@ -278,7 +278,7 @@ impl AppCore {
     }
 
     /// Change the address to connect with to a dapp.
-    /// Assumes there is already a key for the dapp in the account.
+    /// Assumes there is already a key for the dapp in the profile.
     pub fn eth_change_dapp_chain(
         &self,
         args: EthChangeDappChainArgs,
@@ -287,7 +287,7 @@ impl AppCore {
         self.connection_pool()
             .deferred_transaction(move |mut tx_conn| {
                 let params = m::NewDappSessionParams::builder()
-                    .account_id(&args.account_id)
+                    .profile_id(&args.profile_id)
                     .dapp_id(&args.dapp_id)
                     .chain_id(new_chain_id)
                     .build();
@@ -349,7 +349,7 @@ pub struct EthTransferFungibleTokenArgs {
 
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct EthChangeDappChainArgs {
-    pub account_id: String,
+    pub profile_id: String,
     pub dapp_id: String,
     pub new_chain_id: u64,
 }
@@ -403,19 +403,19 @@ fn fetch_eth_signing_key_for_transfer(
     let signing_key = resources.connection_pool().deferred_transaction(
         |mut tx_conn| {
             // Returns NotFoundError if the address is not in the db.
-            let from_account_id =
-                m::Address::fetch_account_id(tx_conn.as_mut(), from_address_id)?;
-            let maybe_to_account_id = m::Address::fetch_account_id_for_eth_address(
+            let from_profile_id =
+                m::Address::fetch_profile_id(tx_conn.as_mut(), from_address_id)?;
+            let maybe_to_profile_id = m::Address::fetch_profile_id_for_eth_address(
                 tx_conn.as_mut(),
                 to_checksum_address,
             )?;
 
             // See privacy in developer docs fore more.
-            if maybe_to_account_id.is_some()
-                && Some(from_account_id) != maybe_to_account_id
+            if maybe_to_profile_id.is_some()
+                && Some(from_profile_id) != maybe_to_profile_id
             {
                 return Err(Error::User {
-                    explanation: "Cannot transfer between accounts for privacy reasons."
+                    explanation: "Cannot transfer between profiles for privacy reasons."
                         .into(),
                 })?;
             }
@@ -479,10 +479,10 @@ fn build_partial_token_transfer_result(
                     &to_checksum_address,
                 )?;
                 let to_display_name = if let Some(to_id) = maybe_to_id {
-                    if m::Address::is_account_wallet(tx_conn.as_mut(), &to_id)? {
-                        let account_name =
-                            m::Address::fetch_account_name(tx_conn.as_mut(), &to_id)?;
-                        Ok(format!("{account_name} Account Wallet"))
+                    if m::Address::is_profile_wallet(tx_conn.as_mut(), &to_id)? {
+                        let profile_name =
+                            m::Address::fetch_profile_name(tx_conn.as_mut(), &to_id)?;
+                        Ok(format!("{profile_name} Profile Wallet"))
                     } else if let Some(dapp_identifier) =
                         m::Address::dapp_identifier(tx_conn.as_mut(), &to_id)?
                     {
@@ -688,23 +688,23 @@ pub mod tests {
             Ok(migrations.last().map(|v| v.into()))
         }
 
-        pub fn first_account(&self) -> dto::CoreAccount {
-            let accounts = self.core.list_accounts().expect("cannot list accounts");
-            accounts.into_iter().next().expect("there is one account")
+        pub fn first_profile(&self) -> dto::CoreProfile {
+            let profiles = self.core.list_profiles().expect("cannot list profiles");
+            profiles.into_iter().next().expect("there is one profile")
         }
 
-        pub fn first_account_wallet(&self) -> dto::CoreAddress {
-            let account = self.first_account();
-            account
+        pub fn first_profile_wallet(&self) -> dto::CoreAddress {
+            let profile = self.first_profile();
+            profile
                 .wallets
                 .into_iter()
                 .next()
-                .expect("there is an account wallet")
+                .expect("there is an profile wallet")
         }
 
-        pub fn fund_first_account_wallet(&self, chain_id: eth::ChainId) {
+        pub fn fund_first_profile_wallet(&self, chain_id: eth::ChainId) {
             let rpc_manager = &self.resources.rpc_manager;
-            let wallet = self.first_account_wallet();
+            let wallet = self.first_profile_wallet();
             rpc_manager.send_native_token(chain_id, &wallet.checksum_address, 10);
         }
 
@@ -1101,49 +1101,49 @@ pub mod tests {
     }
 
     #[test]
-    fn create_account() -> Result<()> {
+    fn create_profile() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let initial_count = tmp.core.list_accounts()?.len();
+        let initial_count = tmp.core.list_profiles()?.len();
 
         let name = "foo".to_string();
-        let accounts = tmp.core.create_account(name.clone(), "pug-yellow".into())?;
-        assert_eq!(accounts.len(), initial_count + 1);
-        assert_eq!(accounts[initial_count].name, name);
+        let profiles = tmp.core.create_profile(name.clone(), "pug-yellow".into())?;
+        assert_eq!(profiles.len(), initial_count + 1);
+        assert_eq!(profiles[initial_count].name, name);
 
         let name = "bar".to_string();
-        let accounts = tmp.core.create_account(name.clone(), "pug-denim".into())?;
-        assert_eq!(accounts.len(), initial_count + 2);
-        assert_eq!(accounts[initial_count + 1].name, name);
+        let profiles = tmp.core.create_profile(name.clone(), "pug-denim".into())?;
+        assert_eq!(profiles.len(), initial_count + 2);
+        assert_eq!(profiles[initial_count + 1].name, name);
 
         Ok(())
     }
 
     #[test]
-    fn active_account_id() -> Result<()> {
+    fn active_profile_id() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let first_account = tmp.first_account();
-        let active_account_id = tmp.core.active_account_id()?;
-        assert_eq!(active_account_id, first_account.id);
+        let first_profile = tmp.first_profile();
+        let active_profile_id = tmp.core.active_profile_id()?;
+        assert_eq!(active_profile_id, first_profile.id);
         Ok(())
     }
 
     #[test]
-    fn account_has_a_wallet() -> Result<()> {
+    fn profile_has_a_wallet() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let first_account = tmp.first_account();
-        assert_eq!(first_account.wallets.len(), 1);
+        let first_profile = tmp.first_profile();
+        assert_eq!(first_profile.wallets.len(), 1);
         Ok(())
     }
 
     #[test]
-    fn checks_account_profile_pic_name() -> Result<()> {
+    fn checks_profile_profile_pic_name() -> Result<()> {
         let tmp = TmpCore::new()?;
 
         let invalid_pic_name = "bar".to_string();
         let result = tmp
             .core
-            .create_account("foo".into(), invalid_pic_name.clone());
+            .create_profile("foo".into(), invalid_pic_name.clone());
         assert!(
             matches!(result, Err(CoreError::Fatal {error }) if error.to_lowercase().contains("not found"))
         );
@@ -1151,20 +1151,20 @@ pub mod tests {
         Ok(())
     }
 
-    fn setup_accounts(core: &AppCore) -> Result<(String, String)> {
+    fn setup_profiles(core: &AppCore) -> Result<(String, String)> {
         let keychain = core.resources.keychain();
 
-        let accounts = core.create_account("account-two".into(), "pug-yellow".into())?;
-        assert_eq!(accounts.len(), 2);
+        let profiles = core.create_profile("profile-two".into(), "pug-yellow".into())?;
+        assert_eq!(profiles.len(), 2);
 
-        let account_id_one = &accounts[0].id;
-        let account_id_two = &accounts[1].id;
+        let profile_id_one = &profiles[0].id;
+        let profile_id_two = &profiles[1].id;
 
         let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
             let params_one = m::CreateEthAddressParams::builder()
-                .account_id(account_id_one)
+                .profile_id(profile_id_one)
                 .chain_id(eth::ChainId::EthMainnet)
-                .is_account_wallet(true)
+                .is_profile_wallet(true)
                 .build();
             let from_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
@@ -1172,9 +1172,9 @@ pub mod tests {
                 &params_one,
             )?;
             let params_two = m::CreateEthAddressParams::builder()
-                .account_id(account_id_two)
+                .profile_id(profile_id_two)
                 .chain_id(eth::ChainId::EthMainnet)
-                .is_account_wallet(true)
+                .is_profile_wallet(true)
                 .build();
             let to_id = m::Address::create_eth_key_and_address(
                 &mut tx_conn,
@@ -1191,10 +1191,10 @@ pub mod tests {
     }
 
     #[test]
-    fn cannot_transfer_native_token_between_accounts() -> Result<()> {
+    fn cannot_transfer_native_token_between_profiles() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let (from_id, to_address) = setup_accounts(&tmp.core)?;
+        let (from_id, to_address) = setup_profiles(&tmp.core)?;
         let args = EthTransferNativeTokenArgs::builder()
             .from_address_id(from_id)
             .to_checksum_address(to_address)
@@ -1211,10 +1211,10 @@ pub mod tests {
     }
 
     #[test]
-    fn cannot_transfer_fungible_token_between_accounts() -> Result<()> {
+    fn cannot_transfer_fungible_token_between_profiles() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let (from_id, to_address) = setup_accounts(&tmp.core)?;
+        let (from_id, to_address) = setup_profiles(&tmp.core)?;
 
         let contract_address: String =
             "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".into();
@@ -1247,8 +1247,8 @@ pub mod tests {
     #[test]
     fn adds_ethereum_chain() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let account_pre = tmp.first_account();
-        let wallets_pre = account_pre.wallets;
+        let profile_pre = tmp.first_profile();
+        let wallets_pre = profile_pre.wallets;
         let wallet = wallets_pre.first().expect("there is a wallet address");
 
         tmp.core
@@ -1257,15 +1257,15 @@ pub mod tests {
         tmp.core
             .add_eth_chain(eth::ChainId::EthGoerli.into(), wallet.id.clone())?;
 
-        let account_post = tmp.first_account();
-        let wallets_post = account_post.wallets;
+        let profile_post = tmp.first_profile();
+        let wallets_post = profile_post.wallets;
         assert_eq!(wallets_pre.len() + 1, wallets_post.len());
 
         Ok(())
     }
 
     fn transfer_native_token_args(tmp: &TmpCore) -> EthTransferNativeTokenArgs {
-        let wallet_address = tmp.first_account_wallet();
+        let wallet_address = tmp.first_profile_wallet();
         let to_address = ethers::types::Address::random();
         let to_checksum_address = ethers::utils::to_checksum(&to_address, None);
         EthTransferNativeTokenArgs::builder()
@@ -1280,7 +1280,7 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let chain_id = eth::ChainId::default_wallet_chain();
-        tmp.fund_first_account_wallet(chain_id);
+        tmp.fund_first_profile_wallet(chain_id);
 
         let args = transfer_native_token_args(&tmp);
         tmp.core.eth_transfer_native_token(args)?;
@@ -1317,8 +1317,8 @@ pub mod tests {
     #[test]
     fn native_token_for_address() -> Result<()> {
         let tmp = TmpCore::new()?;
-        let account = tmp.first_account();
-        let address_id = account.wallets.first().map(|a| &a.id).unwrap();
+        let profile = tmp.first_profile();
+        let address_id = profile.wallets.first().map(|a| &a.id).unwrap();
 
         let token = tmp.core.native_token_for_address(address_id.clone())?;
         assert_eq!(token.amount, Some("0".into()));

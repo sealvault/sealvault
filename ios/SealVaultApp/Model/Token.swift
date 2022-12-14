@@ -43,7 +43,7 @@ class Token: Identifiable, ObservableObject {
         assert(self.id == token.id, "token id mismatch in update from core")
         assert(self.symbol == token.symbol, "symbol mismatch in update from core")
         self.icon = Self.convertIcon(token.icon)
-        // Tokens are listed without amounts first when fetching accounts.
+        // Tokens are listed without amounts first when fetching profiles.
         // Don't unset amount if we have fetched the amount for this token already.
         if token.amount != nil {
             self.amount = token.amount

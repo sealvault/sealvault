@@ -9,8 +9,8 @@ class Dapp: Identifiable, ObservableObject {
     let core: AppCoreProtocol
     /// Database identifier
     let id: String
-    /// The account that the dapp belongs to
-    let accountId: String
+    /// The profile that the dapp belongs to
+    let profileId: String
     /// Human readable identifier that is either the origin or the registrable domain
     @Published var humanIdentifier: String
     @Published var url: URL?
@@ -34,12 +34,12 @@ class Dapp: Identifiable, ObservableObject {
     }
 
     required init(
-        _ core: AppCoreProtocol, id: String, accountId: String, humanIdentifier: String, url: URL?,
+        _ core: AppCoreProtocol, id: String, profileId: String, humanIdentifier: String, url: URL?,
         addresses: [Address], selectedAddressId: String?, lastUsed: String?, favicon: UIImage
     ) {
         self.core = core
         self.id = id
-        self.accountId = accountId
+        self.profileId = profileId
         self.humanIdentifier = humanIdentifier
         self.url = url
         self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
@@ -54,7 +54,7 @@ class Dapp: Identifiable, ObservableObject {
         return self.init(
             core,
             id: dapp.id,
-            accountId: dapp.accountId,
+            profileId: dapp.profileId,
             humanIdentifier: dapp.humanIdentifier,
             url: url,
             addresses: addresses,
@@ -145,10 +145,10 @@ extension Dapp {
             id: String, humanIdentifier: String, url: URL?, addresses: [Address], favicon: UIImage
         ) -> Self {
             let core = PreviewAppCore()
-            let activeAccountId = try! core.activeAccountId()
+            let activeProfileId = try! core.activeProfileId()
             return Self(
                 core,
-                id: id, accountId: activeAccountId, humanIdentifier: id, url: url, addresses: addresses,
+                id: id, profileId: activeProfileId, humanIdentifier: id, url: url, addresses: addresses,
                 selectedAddressId: addresses.first!.id, lastUsed: "2022-08-01", favicon: favicon
             )
 

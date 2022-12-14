@@ -5,22 +5,22 @@
 import XCTest
 
 final class NativeUITest: XCTestCase {
-    func testAccountList() throws {
+    func testProfileList() throws {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
 
-        tapButton(app, "Dapps", tabBar: true)
+        tapButton(app, "Profiles", tabBar: true)
 
         let rowCount = app.collectionViews.element(boundBy: 0).cells.count
         XCTAssert(rowCount >= 1)
     }
 
-//    func testAccountSearch() throws {
+//    func testProfileSearch() throws {
 //        // UI tests must launch the application that they test.
 //        let app = XCUIApplication()
 //        app.launch()
-//        app.tabBars.buttons["Accounts"].tap()
+//        app.tabBars.buttons["Profiles"].tap()
 //
 //        let cells = app.tables.element(boundBy: 0).cells
 //        let rowCount = cells.count
@@ -37,18 +37,18 @@ final class NativeUITest: XCTestCase {
 //        searchField.tap()
 //        app.typeText("De")
 //
-//        // TODO: add this back after we can create account
+//        // TODO: add this back after we can create profile
 //        // Make sure filtering works (fewer rows are displayed after typing than originally)
 //        // XCTAssert(rowCount > cells.count)
 //
 //        // Accept first autocomplete suggestion
 //        cells.element(boundBy: 0).tap()
 //
-//        // Open account view
+//        // Open profile view
 //        cells.element(boundBy: 0).tap()
 //
-//        // Check that account view was opened by existence of back button to accounts overview
+//        // Check that profile view was opened by existence of back button to profiles overview
 //        let firstNavBarButtonLabel = app.navigationBars.buttons.element(boundBy: 0).label
-//        XCTAssert(firstNavBarButtonLabel == "Accounts")
+//        XCTAssert(firstNavBarButtonLabel == "Profiles")
 //    }
 }

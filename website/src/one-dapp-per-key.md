@@ -1,6 +1,6 @@
 # One-Dapp-per-Key<sup>&reg;</sup>
 
-When you add a dapp to your account, a new key is generated just for this dapp.
+When you add a dapp to your profile, a new key is generated just for this dapp.
 Wallet addresses are never connected to dapps.  This isolation
 
 - prevents **phishing** &#127907;
@@ -34,4 +34,6 @@ automatically to each newly added dapp address for transaction fees.
 
 ## Beta
 
-Sign up for iOS beta invite [here.](https://form.typeform.com/to/DxKsEMKM)
+Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz)
+
+Please reach out [on Telegram](https://t.me/agostbiro) for support and feedback.

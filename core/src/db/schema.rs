@@ -3,28 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 table! {
-    account_pictures (deterministic_id) {
-        deterministic_id -> Text,
-        image_name -> Nullable<Text>,
-        image_hash -> Binary,
-        image -> Binary,
-        created_at -> Text,
-        updated_at -> Nullable<Text>,
-    }
-}
-
-table! {
-    accounts (deterministic_id) {
-        deterministic_id -> Text,
-        uuid -> Text,
-        name -> Text,
-        picture_id -> Text,
-        created_at -> Text,
-        updated_at -> Nullable<Text>,
-    }
-}
-
-table! {
     addresses (deterministic_id) {
         deterministic_id -> Text,
         asymmetric_key_id -> Text,
@@ -38,12 +16,12 @@ table! {
 table! {
     asymmetric_keys (deterministic_id) {
         deterministic_id -> Text,
-        account_id -> Text,
+        profile_id -> Text,
         dek_id -> Text,
         elliptic_curve -> Text,
         public_key -> Binary,
         encrypted_der -> Binary,
-        is_account_wallet -> Bool,
+        is_profile_wallet -> Bool,
         dapp_id -> Nullable<Text>,
         created_at -> Text,
         updated_at -> Nullable<Text>,
@@ -115,7 +93,7 @@ table! {
 table! {
     local_settings (id) {
         id -> Text,
-        account_id -> Text,
+        profile_id -> Text,
         backup_enabled -> Bool,
         // !!! `BigInt` here is a manual override. Make sure to add it back if you regenerate the
         // schema. Context: https://github.com/diesel-rs/diesel/issues/1116
@@ -126,20 +104,37 @@ table! {
     }
 }
 
-joinable!(accounts -> account_pictures (picture_id));
+table! {
+    profiles (deterministic_id) {
+        deterministic_id -> Text,
+        uuid -> Text,
+        name -> Text,
+        picture_id -> Text,
+        created_at -> Text,
+        updated_at -> Nullable<Text>,
+    }
+}
+
+table! {
+    profile_pictures (deterministic_id) {
+        deterministic_id -> Text,
+        image_name -> Nullable<Text>,
+        image_hash -> Binary,
+        image -> Binary,
+        created_at -> Text,
+        updated_at -> Nullable<Text>,
+    }
+}
+
 joinable!(addresses -> asymmetric_keys (asymmetric_key_id));
 joinable!(addresses -> chains (chain_id));
-joinable!(asymmetric_keys -> accounts (account_id));
 joinable!(asymmetric_keys -> dapps (dapp_id));
 joinable!(asymmetric_keys -> data_encryption_keys (dek_id));
 joinable!(local_dapp_sessions -> addresses (address_id));
 joinable!(local_dapp_sessions -> dapps (dapp_id));
 joinable!(local_encrypted_deks -> data_encryption_keys (dek_id));
-joinable!(local_settings -> accounts (account_id));
 
 allow_tables_to_appear_in_same_query!(
-    account_pictures,
-    accounts,
     addresses,
     asymmetric_keys,
     chains,
@@ -149,4 +144,6 @@ allow_tables_to_appear_in_same_query!(
     local_dapp_sessions,
     local_encrypted_deks,
     local_settings,
+    profile_pictures,
+    profiles,
 );

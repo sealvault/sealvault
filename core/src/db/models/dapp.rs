@@ -9,7 +9,7 @@ use url::Url;
 use crate::{
     db::{
         deterministic_id::{DeterministicId, EntityName},
-        schema::{accounts, asymmetric_keys, dapps},
+        schema::{asymmetric_keys, dapps, profiles},
         url_value::UrlValue,
         DeferredTxConnection,
     },
@@ -53,17 +53,17 @@ impl Dapp {
         Ok(dapps::table.load::<Self>(conn)?)
     }
 
-    /// List all dapps that have been added to an account.
-    pub fn list_for_account(
+    /// List all dapps that have been added to an profile.
+    pub fn list_for_profile(
         conn: &mut SqliteConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Vec<Self>, Error> {
         use asymmetric_keys::dsl as ak;
         use dapps::dsl as d;
 
         let dapps: Vec<Self> = asymmetric_keys::table
             .inner_join(dapps::table.on(ak::dapp_id.eq(d::deterministic_id.nullable())))
-            .filter(ak::account_id.eq(account_id))
+            .filter(ak::profile_id.eq(profile_id))
             .select(Self::all_columns())
             .load(conn)?;
 
@@ -122,15 +122,15 @@ impl Dapp {
         Ok(dapp_id)
     }
 
-    /// Returns the dapp id if the dapp has been added to the account.
-    pub fn fetch_id_for_account(
+    /// Returns the dapp id if the dapp has been added to the profile.
+    pub fn fetch_id_for_profile(
         conn: &mut SqliteConnection,
         url: Url,
         public_suffix_list: &PublicSuffixList,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Option<String>, Error> {
         let dapp_entity = DappEntity::new(url, public_suffix_list)?;
-        dapp_entity.fetch_id_for_account(conn, account_id)
+        dapp_entity.fetch_id_for_profile(conn, profile_id)
     }
 }
 
@@ -154,23 +154,23 @@ impl DappEntity {
         })
     }
 
-    /// Returns the dapp id if the dapp has been added to the account.
-    fn fetch_id_for_account(
+    /// Returns the dapp id if the dapp has been added to the profile.
+    fn fetch_id_for_profile(
         &self,
         conn: &mut SqliteConnection,
-        account_id: &str,
+        profile_id: &str,
     ) -> Result<Option<String>, Error> {
-        use accounts::dsl as a;
         use asymmetric_keys::dsl as ak;
         use dapps::dsl as d;
         use diesel::{expression::AsExpression, sql_types::Bool};
+        use profiles::dsl as p;
 
         let deterministic_id = self.deterministic_id()?;
 
         let maybe_exists: Option<bool> = asymmetric_keys::table
-            .inner_join(accounts::table.on(ak::account_id.eq(a::deterministic_id)))
+            .inner_join(profiles::table.on(ak::profile_id.eq(p::deterministic_id)))
             .inner_join(dapps::table.on(ak::dapp_id.eq(d::deterministic_id.nullable())))
-            .filter(a::deterministic_id.eq(account_id))
+            .filter(p::deterministic_id.eq(profile_id))
             .filter(d::deterministic_id.eq(&deterministic_id))
             // `exists` query is unstable
             .select(AsExpression::<Bool>::as_expression(true))

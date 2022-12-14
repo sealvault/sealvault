@@ -11,10 +11,10 @@ interface AppCore {
     constructor(CoreArgs args, CoreUICallbackI ui_callback);
 
     [Throws=CoreError]
-    sequence<CoreAccount> list_accounts();
+    sequence<CoreProfile> list_profiles();
 
     [Throws=CoreError]
-    string active_account_id();
+    string active_profile_id();
 
     [Throws=CoreError]
     CoreToken native_token_for_address(string address_id);
@@ -59,7 +59,7 @@ enum CoreError{
     "User",
 };
 
-dictionary CoreAccount {
+dictionary CoreProfile {
     string id;
     string name;
     sequence<u8> picture;
@@ -71,7 +71,7 @@ dictionary CoreAccount {
 
 dictionary CoreDapp {
     string id;
-    string account_id;
+    string profile_id;
     string human_identifier;
     string url;
     sequence<CoreAddress> addresses;
@@ -117,7 +117,7 @@ dictionary CoreEthChain {
 };
 
 dictionary DappApprovalParams {
-    string account_id;
+    string profile_id;
     string dapp_identifier;
     sequence<u8>? favicon;
     string amount;
@@ -142,7 +142,7 @@ dictionary EthTransferFungibleTokenArgs {
 };
 
 dictionary EthChangeDappChainArgs {
-    string account_id;
+    string profile_id;
     string dapp_id;
     u64 new_chain_id;
 };
