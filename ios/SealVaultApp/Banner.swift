@@ -71,6 +71,7 @@ struct BannerModifier: ViewModifier {
                 .padding()
                 .animation(.easeInOut, value: 1.2)
                 .transition(AnyTransition.move(edge: .top).combined(with: .opacity))
+                // Swipe up to dismiss
                 .gesture(DragGesture(minimumDistance: 10, coordinateSpace: .global)
                             .onEnded { value in
                                 if value.translation.height < 0 {

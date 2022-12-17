@@ -14,7 +14,7 @@ struct AppTabNavigation: View {
 
 struct AppTabNavigationInner: View {
     enum Tab {
-        case dapps
+        case profiles
         case browserOne
         case browserTwo
     }
@@ -60,7 +60,7 @@ struct AppTabNavigationInner: View {
                     }
                     .accessibility(label: menuText)
                 }
-                .tag(Tab.dapps)
+                .tag(Tab.profiles)
 
                 NavigationView {
                     BrowserView(browserModel: browserModelTwo)
@@ -82,7 +82,7 @@ struct AppTabNavigationInner: View {
             let appearance = UITabBarAppearance()
 
             appearance.configureWithTransparentBackground()
-            appearance.backgroundColor = .systemGray5
+            appearance.backgroundColor = UIColor(Config.tabBarColor)
 
             UITabBar.appearance().standardAppearance = appearance
         }
@@ -284,25 +284,29 @@ struct AppTabNavigation_Previews: PreviewProvider {
                 explorerUrl: nil, errorMessage: "insufficient funds"
             )
         }
-
+        
         return Group {
-            AppTabNavigationInner(callbackModel: callbackTokenSent, selection: .dapps)
+            AppTabNavigationInner(callbackModel: CallbackModel(), selection: .browserOne)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackTokenTransferError, selection: .dapps)
+                .preferredColorScheme(.dark)
+
+            AppTabNavigationInner(callbackModel: callbackTokenSent, selection: .profiles)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackTokenTransferConfirmed, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackTokenTransferError, selection: .profiles)
+                .environmentObject(model)
+            AppTabNavigationInner(callbackModel: callbackTokenTransferConfirmed, selection: .profiles)
                 .environmentObject(model)
             AppTabNavigationInner(callbackModel: callbackDappAllotmentSuccess, selection: .browserOne)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackDappAllotmentError, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackDappAllotmentError, selection: .profiles)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackSignedMessage, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackSignedMessage, selection: .profiles)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackSentTransaction, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackSentTransaction, selection: .profiles)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackDappTxResult, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackDappTxResult, selection: .profiles)
                 .environmentObject(model)
-            AppTabNavigationInner(callbackModel: callbackDappTxError, selection: .dapps)
+            AppTabNavigationInner(callbackModel: callbackDappTxError, selection: .profiles)
                 .environmentObject(model)
         }
     }
