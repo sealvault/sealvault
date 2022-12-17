@@ -185,7 +185,7 @@ struct AddressBar: View {
                 }
             }.padding(.horizontal, 5)
             ZStack(alignment: .bottom) {
-                TextField("url / search", text: $browserModel.addressBarText)
+                TextField("Search or enter website name", text: $browserModel.addressBarText)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
