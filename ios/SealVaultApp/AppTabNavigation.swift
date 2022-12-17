@@ -82,7 +82,7 @@ struct AppTabNavigationInner: View {
             let appearance = UITabBarAppearance()
 
             appearance.configureWithTransparentBackground()
-            appearance.backgroundColor = .systemGray5
+            appearance.backgroundColor = UIColor(Config.tabBarColor)
 
             UITabBar.appearance().standardAppearance = appearance
         }
