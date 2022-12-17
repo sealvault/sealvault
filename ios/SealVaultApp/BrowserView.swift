@@ -32,6 +32,14 @@ class BrowserModel: ObservableObject {
         url != nil
     }
 
+    var showTopDapps: Bool {
+        isAddressBarFocused || addressBarText == ""
+    }
+
+    var navigationTitle: String {
+        showTopDapps ? "Top Dapps" : ""
+    }
+
     func searchUrl() -> URL? {
         if var urlComps = URLComponents(url: Config.searchProvider, resolvingAgainstBaseURL: false) {
             urlComps.queryItems = [URLQueryItem(name: Config.searchQueryParamName, value: addressBarText)]
@@ -97,61 +105,47 @@ struct BrowserViewInner: View {
         VStack(spacing: 0) {
             ZStack {
                 WebViewRepresentable(core: core, model: browserModel)
-                if browserModel.isAddressBarFocused || browserModel.addressBarText == "" {
+                if browserModel.showTopDapps {
                     TopDapps(browserModel: browserModel)
                 }
             }
             AddressBar(browserModel: browserModel)
         }
+        .navigationTitle(browserModel.navigationTitle)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
 struct TopDapps: View {
     @ObservedObject var browserModel: BrowserModel
     @EnvironmentObject private var viewModel: GlobalModel
-    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        ZStack {
-            Color(colorScheme == .dark ? UIColor.systemGray3 : UIColor.white)
-            VStack {
-                HStack {
-                    Text("Top Dapps").font(.largeTitle).bold()
-                    Spacer()
-                }
-                .padding(.top, 30)
-                .padding(.bottom, 20)
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(), GridItem()]) {
-                        ForEach(viewModel.topDapps) { dapp in
-                            Button(action: {
-                                if let url = dapp.url {
-                                    browserModel.loadUrl(url)
-                                }
-                                browserModel.isAddressBarFocused = false
-                            }, label: {
-                                VStack {
-                                    dapp.image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 48, height: 48)
-                                        .cornerRadius(8)
-
-                                    Text(dapp.displayName)
-                                        .font(.headline)
-                                }
-                            })
-                            .padding()
-                            .foregroundColor(.primary)
-                        }
+        VStack {
+            List {
+                    ForEach(viewModel.topDapps) { dapp in
+                        Button(action: {
+                            if let url = dapp.url {
+                                browserModel.loadUrl(url)
+                            }
+                            browserModel.isAddressBarFocused = false
+                        }, label: {
+                            DappRow(dapp: dapp)
+                                .accessibilityIdentifier(dapp.displayName)
+                        })
                     }
+
                 }
-                .scrollDismissesKeyboard(.immediately)
-                Spacer()
-                Spacer()
-            }
-            .padding()
+            .scrollDisabled(true)
         }
+        .background(Config.tabBarColor)
+        // Swipe up to dismiss keyboard
+        .gesture(DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                    .onEnded { value in
+                        if value.translation.height < 0 {
+                            browserModel.isAddressBarFocused = false
+                        }
+                    })
         .task {
             // Refresh top dapps
             await viewModel.refreshProfiles()
@@ -185,7 +179,7 @@ struct AddressBar: View {
                 }
             }.padding(.horizontal, 5)
             ZStack(alignment: .bottom) {
-                TextField("url / search", text: $browserModel.addressBarText)
+                TextField("Search or enter website name", text: $browserModel.addressBarText)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
@@ -272,9 +266,11 @@ struct WebView_Previews: PreviewProvider {
     static var previews: some View {
         let browserModel = BrowserModel()
         Group {
-            BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
             BrowserView(browserModel: browserModel)
-                .environmentObject(GlobalModel.buildForPreview()).preferredColorScheme(.dark)
+                .environmentObject(GlobalModel.buildForPreview())
+            BrowserView(browserModel: browserModel)
+                .environmentObject(GlobalModel.buildForPreview())
+                .preferredColorScheme(.dark)
         }
     }
 }
