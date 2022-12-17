@@ -32,6 +32,14 @@ class BrowserModel: ObservableObject {
         url != nil
     }
 
+    var showTopDapps: Bool {
+        isAddressBarFocused || addressBarText == ""
+    }
+
+    var navigationTitle: String {
+        showTopDapps ? "Top Dapps" : ""
+    }
+
     func searchUrl() -> URL? {
         if var urlComps = URLComponents(url: Config.searchProvider, resolvingAgainstBaseURL: false) {
             urlComps.queryItems = [URLQueryItem(name: Config.searchQueryParamName, value: addressBarText)]
@@ -97,12 +105,14 @@ struct BrowserViewInner: View {
         VStack(spacing: 0) {
             ZStack {
                 WebViewRepresentable(core: core, model: browserModel)
-                if browserModel.isAddressBarFocused || browserModel.addressBarText == "" {
+                if browserModel.showTopDapps {
                     TopDapps(browserModel: browserModel)
                 }
             }
             AddressBar(browserModel: browserModel)
         }
+        .navigationTitle(browserModel.navigationTitle)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -112,39 +122,20 @@ struct TopDapps: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        ZStack {
-            Color(colorScheme == .dark ? UIColor.systemGray3 : UIColor.white)
-            VStack {
-                HStack {
-                    Text("Top Dapps").font(.largeTitle).bold()
-                    Spacer()
-                }
-                .padding(.top, 30)
-                .padding(.bottom, 20)
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(), GridItem()]) {
-                        ForEach(viewModel.topDapps) { dapp in
-                            Button(action: {
-                                if let url = dapp.url {
-                                    browserModel.loadUrl(url)
-                                }
-                                browserModel.isAddressBarFocused = false
-                            }, label: {
-                                VStack {
-                                    dapp.image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 48, height: 48)
-                                        .cornerRadius(8)
-
-                                    Text(dapp.displayName)
-                                        .font(.headline)
-                                }
-                            })
-                            .padding()
-                            .foregroundColor(.primary)
-                        }
+        VStack {
+            List {
+                    ForEach(viewModel.topDapps) { dapp in
+                        Button(action: {
+                            if let url = dapp.url {
+                                browserModel.loadUrl(url)
+                            }
+                            browserModel.isAddressBarFocused = false
+                        }, label: {
+                            DappRow(dapp: dapp)
+                                .accessibilityIdentifier(dapp.displayName)
+                        })
                     }
+
                 }
             .scrollDisabled(true)
         }
@@ -276,9 +267,11 @@ struct WebView_Previews: PreviewProvider {
     static var previews: some View {
         let browserModel = BrowserModel()
         Group {
-            BrowserView(browserModel: browserModel).environmentObject(GlobalModel.buildForPreview())
             BrowserView(browserModel: browserModel)
-                .environmentObject(GlobalModel.buildForPreview()).preferredColorScheme(.dark)
+                .environmentObject(GlobalModel.buildForPreview())
+            BrowserView(browserModel: browserModel)
+                .environmentObject(GlobalModel.buildForPreview())
+                .preferredColorScheme(.dark)
         }
     }
 }
