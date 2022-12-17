@@ -284,7 +284,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
                 explorerUrl: nil, errorMessage: "insufficient funds"
             )
         }
-        
+
         return Group {
             AppTabNavigationInner(callbackModel: CallbackModel(), selection: .browserOne)
                 .environmentObject(model)
