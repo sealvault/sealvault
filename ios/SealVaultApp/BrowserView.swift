@@ -146,12 +146,16 @@ struct TopDapps: View {
                         }
                     }
                 }
-                .scrollDismissesKeyboard(.immediately)
-                Spacer()
-                Spacer()
-            }
-            .padding()
+            .scrollDisabled(true)
         }
+        .background(Config.tabBarColor)
+        // Swipe up to dismiss keyboard
+        .gesture(DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                    .onEnded { value in
+                        if value.translation.height < 0 {
+                            browserModel.isAddressBarFocused = false
+                        }
+                    })
         .task {
             // Refresh top dapps
             await viewModel.refreshProfiles()
