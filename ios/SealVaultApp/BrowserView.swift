@@ -119,7 +119,6 @@ struct BrowserViewInner: View {
 struct TopDapps: View {
     @ObservedObject var browserModel: BrowserModel
     @EnvironmentObject private var viewModel: GlobalModel
-    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         VStack {
