@@ -143,6 +143,10 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    func tabBarColor(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? .black : Color(UIColor.systemGray6)
+    }
+
     func refreshProfiles() async {
         let profiles = await self.listProfiles(.userInteractive)
         let activeProfileId = await self.fetchActiveProfileId(.userInteractive)
