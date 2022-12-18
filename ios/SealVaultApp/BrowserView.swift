@@ -272,6 +272,8 @@ struct AddressBarTextFieldStyle: TextFieldStyle {
         configuration
             .padding(10)
             .background((RoundedRectangle(cornerRadius: 10)).fill(backgroundColor))
+            .clipped()
+            .shadow(radius: 2)
     }
     // swiftlint:enable identifier_name
 }
