@@ -25,6 +25,8 @@ struct AppTabNavigationInner: View {
     @StateObject var browserModelOne = BrowserModel()
     @StateObject var browserModelTwo = BrowserModel()
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         TabView(selection: $selection) {
             Group {
@@ -82,7 +84,7 @@ struct AppTabNavigationInner: View {
             let appearance = UITabBarAppearance()
 
             appearance.configureWithTransparentBackground()
-            appearance.backgroundColor = UIColor(Config.tabBarColor)
+            appearance.backgroundColor = UIColor(model.tabBarColor(colorScheme))
 
             UITabBar.appearance().standardAppearance = appearance
         }
