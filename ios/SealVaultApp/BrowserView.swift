@@ -249,15 +249,14 @@ struct AddressBar: View {
             .background((RoundedRectangle(cornerRadius: 10)).fill(backgroundColor))
             .clipped()
             .shadow(radius: 2)
-            .padding(.vertical, 20)
-            .padding(.horizontal, 10)
+            .padding(20)
             .background(viewModel.tabBarColor(colorScheme))
 
             if showProgressView {
                 ProgressView(value: browserModel.loadingProgress)
                     .scaleEffect(x: 1, y: 0.5, anchor: .center)
-                    .padding(.horizontal, 18)
-                    .offset(y: -19)
+                    .padding(.horizontal, 28)
+                    .offset(y: -18)
             }
 
         }
