@@ -180,11 +180,11 @@ struct AddressBar: View {
             }.padding(.horizontal, 5)
             ZStack(alignment: .bottom) {
                 TextField("Search or enter website name", text: $browserModel.addressBarText)
+                    .textFieldStyle(AddressBarTextFieldStyle())
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
                     .multilineTextAlignment(.center)
-                    .textFieldStyle(.roundedBorder)
                     .focused($isAddressBarFocused)
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
@@ -259,6 +259,21 @@ struct AddressBar: View {
             }
         }
     }
+}
+
+// Can't customize background with RoundedBorderTextFieldStyle on iOS 16
+// that's why we need this.
+struct AddressBarTextFieldStyle: TextFieldStyle {
+    @Environment(\.colorScheme) var colorScheme
+
+    // swiftlint:disable identifier_name
+    func _body(configuration: TextField<_Label>) -> some View {
+        let backgroundColor: Color = colorScheme == .dark ? Color(.systemGray4) : .white
+        configuration
+            .padding(10)
+            .background((RoundedRectangle(cornerRadius: 10)).fill(backgroundColor))
+    }
+    // swiftlint:enable identifier_name
 }
 
 #if DEBUG
