@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, path::PathBuf, sync::Arc};
 
 use typed_builder::TypedBuilder;
 
@@ -11,6 +11,7 @@ use crate::{
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
+    device::{DeviceIdentifier, DeviceName},
     dto,
     encryption::Keychain,
     error::Error,
@@ -47,6 +48,16 @@ impl AppCore {
         let public_suffix_list = PublicSuffixList::new()?;
         let http_client = HttpClient::new(args.cache_dir);
 
+        let CoreArgs {
+            device_name,
+            device_id,
+            backup_dir,
+            ..
+        } = args;
+        let device_id: DeviceIdentifier = device_id.try_into()?;
+        let device_name: DeviceName = device_name.try_into()?;
+        let backup_dir: Option<PathBuf> = backup_dir.map(|bd| bd.into());
+
         let resources = CoreResources::builder()
             .ui_callbacks(ui_callbacks)
             .rpc_manager(rpc_manager)
@@ -54,6 +65,9 @@ impl AppCore {
             .keychain(keychain)
             .http_client(http_client)
             .public_suffix_list(public_suffix_list)
+            .backup_dir(backup_dir)
+            .device_id(device_id)
+            .device_name(device_name)
             .build();
 
         Self::new_with_overrides(Arc::new(resources))
@@ -322,10 +336,8 @@ impl AppCore {
 
 #[derive(Debug)]
 pub struct CoreArgs {
-    /// Unique identifier for this device among the user's devices. Must be stable, i.e. it should
-    /// the same value for the same device while the app is installed. It can change if the app
-    /// is uninstalled and reinstalled.
     pub device_id: String,
+    pub device_name: String,
     pub cache_dir: String,
     pub db_file_path: String,
     /// Optional backup dir that is synced in the user's cloud storage.
@@ -547,25 +559,99 @@ pub mod tests {
         DappTransactionResult,
     };
 
+    #[derive(Debug)]
     #[readonly::make]
-    pub(crate) struct TmpCoreDir {
+    pub struct TmpCoreDir {
         // The TempDir is kept to keep it open for the lifetime of the core as the db file is
         // deleted when in the TempDir dtor is invoked.
         #[allow(dead_code)]
         pub tmp_dir: TempDir,
-        pub cache_dir: String,
+        pub cache_dir: PathBuf,
         pub db_file_path: String,
+        pub backup_dir: PathBuf,
     }
 
-    #[derive(Debug, TypedBuilder)]
+    impl TmpCoreDir {
+        pub fn new() -> Result<Self, Error> {
+            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
+            // mode.
+            let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
+                error: err.to_string(),
+            })?;
+            let db_dir = tmp_dir.path().join("db");
+            let cache_dir = tmp_dir.path().join("cache");
+            let backup_dir = tmp_dir.path().join("backups");
+
+            fs::create_dir(&db_dir).unwrap();
+            fs::create_dir(&cache_dir).unwrap();
+            fs::create_dir(&backup_dir).unwrap();
+
+            let db_file_path = db_dir
+                .join("tmp-db.sqlite3")
+                .into_os_string()
+                .into_string()
+                .unwrap();
+
+            Ok(Self {
+                tmp_dir,
+                cache_dir,
+                db_file_path,
+                backup_dir,
+            })
+        }
+    }
+
+    #[derive(Debug)]
     #[readonly::make]
     pub struct CoreResourcesMock {
+        tmp_dir: TmpCoreDir,
         ui_callbacks: Box<CoreUICallbackMock>,
         connection_pool: ConnectionPool,
         keychain: Keychain,
         http_client: HttpClient,
         rpc_manager: Box<eth::AnvilRpcManager>,
         public_suffix_list: PublicSuffixList,
+        device_id: DeviceIdentifier,
+        device_name: DeviceName,
+    }
+
+    impl CoreResourcesMock {
+        pub fn new(tmp_dir: TmpCoreDir) -> Result<Self, Error> {
+            let rpc_manager = Box::new(eth::AnvilRpcManager::new());
+            let ui_callback_state = Arc::new(UICallbackState::new());
+            let ui_callbacks =
+                Box::new(CoreUICallbackMock::new(ui_callback_state.clone()));
+            let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;
+            let keychain = Keychain::new();
+
+            let cache_dir = tmp_dir
+                .cache_dir
+                .clone()
+                .into_os_string()
+                .into_string()
+                .expect("path ok");
+            let http_client = HttpClient::new(cache_dir);
+
+            let public_suffix_list = PublicSuffixList::new()?;
+            let device_id = "test-device-id".parse()?;
+            let device_name = "test-device-name".parse()?;
+
+            Ok(Self {
+                tmp_dir,
+                ui_callbacks,
+                rpc_manager,
+                connection_pool,
+                keychain,
+                http_client,
+                public_suffix_list,
+                device_id,
+                device_name,
+            })
+        }
+
+        pub fn set_keychain(&mut self, keychain: Keychain) {
+            self.keychain = keychain
+        }
     }
 
     impl CoreResourcesI for CoreResourcesMock {
@@ -592,48 +678,23 @@ pub mod tests {
         fn public_suffix_list(&self) -> &PublicSuffixList {
             &self.public_suffix_list
         }
-    }
 
-    impl TmpCoreDir {
-        pub fn new() -> Result<Self, Error> {
-            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
-            // mode.
-            let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
-                error: err.to_string(),
-            })?;
-            let db_dir = tmp_dir.path().join("db");
-            let cache_dir = tmp_dir.path().join("cache");
+        fn backup_dir(&self) -> Option<&PathBuf> {
+            Some(&self.tmp_dir.backup_dir)
+        }
 
-            fs::create_dir(&db_dir).unwrap();
-            fs::create_dir(&cache_dir).unwrap();
+        fn device_id(&self) -> &DeviceIdentifier {
+            &self.device_id
+        }
 
-            let db_file_path = db_dir
-                .join("tmp-db.sqlite3")
-                .into_os_string()
-                .into_string()
-                .unwrap();
-
-            let cache_dir =
-                cache_dir
-                    .into_os_string()
-                    .into_string()
-                    .map_err(|err| Error::Fatal {
-                        error: format!("{err:?}"),
-                    })?;
-
-            Ok(Self {
-                tmp_dir,
-                cache_dir,
-                db_file_path,
-            })
+        fn device_name(&self) -> &DeviceName {
+            &self.device_name
         }
     }
 
     /// Create an empty path in a temp directory for a Sqlite DB.
     pub(crate) struct TmpCore {
         pub core: Arc<AppCore>,
-        #[allow(dead_code)]
-        tmp_dir: TmpCoreDir,
         ui_callback_state: Arc<UICallbackState>,
         in_page_callback_state: Arc<InPageCallbackStateMock>,
         resources: Arc<CoreResourcesMock>,
@@ -650,32 +711,16 @@ pub mod tests {
             // mode.
             let tmp_dir = TmpCoreDir::new()?;
 
-            let rpc_manager = Box::new(eth::AnvilRpcManager::new());
-            let ui_callback_state = Arc::new(UICallbackState::new());
-            let ui_callbacks =
-                Box::new(CoreUICallbackMock::new(ui_callback_state.clone()));
-            let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;
-            let keychain = Keychain::new();
-            let http_client = HttpClient::new(tmp_dir.cache_dir.clone());
-            let public_suffix_list = PublicSuffixList::new()?;
-
-            let resources = CoreResourcesMock::builder()
-                .ui_callbacks(ui_callbacks)
-                .rpc_manager(rpc_manager)
-                .connection_pool(connection_pool)
-                .keychain(keychain)
-                .http_client(http_client)
-                .public_suffix_list(public_suffix_list)
-                .build();
-            let resources = Arc::new(resources);
+            let resources = Arc::new(CoreResourcesMock::new(tmp_dir)?);
             let core = Arc::new(AppCore::new_with_overrides(resources.clone())?);
+            let ui_callback_state = resources.ui_callbacks.state.clone();
 
             let page_url = Url::parse("https://example.com").expect("static url ok");
             let in_page_callback_state =
                 Arc::new(InPageCallbackStateMock::new(core.clone(), page_url));
+
             Ok(TmpCore {
                 core,
-                tmp_dir,
                 ui_callback_state,
                 in_page_callback_state,
                 resources,

@@ -52,7 +52,8 @@ class GlobalModel: ObservableObject {
 
     static func buildOnStartup() -> Self {
         let coreArgs = CoreArgs(
-            deviceId: deviceId(), cacheDir: cacheDir(), dbFilePath: ensureDbFilePath(), backupDir: backupDir()
+            deviceId: deviceId(), deviceName: deviceName(), cacheDir: cacheDir(),
+            dbFilePath: ensureDbFilePath(), backupDir: backupDir()
         )
         let callbackModel = CallbackModel()
         var core: AppCoreProtocol
@@ -96,6 +97,10 @@ class GlobalModel: ObservableObject {
         let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
 
         return cacheDirUrl.path
+    }
+
+    private static func deviceName() -> String {
+        UIDevice.current.name
     }
 
     private static func deviceId() -> String {

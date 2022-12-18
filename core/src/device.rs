@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
+/// Unique identifier for this device among the user's devices. Must be stable, i.e. it should
+/// the same value for the same device while the app is installed. It can change if the app
+/// is uninstalled and reinstalled.
 #[derive(
     Debug, Display, Clone, Eq, PartialEq, Hash, Into, AsRef, Serialize, Deserialize,
 )]
@@ -40,6 +43,37 @@ impl TryFrom<String> for DeviceIdentifier {
 }
 
 impl FromStr for DeviceIdentifier {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
+    }
+}
+
+/// The device name that let's the user identifies the device.
+#[derive(
+    Debug, Display, Clone, Eq, PartialEq, Hash, Into, AsRef, Serialize, Deserialize,
+)]
+#[serde(try_from = "String")]
+#[serde(into = "String")]
+#[repr(transparent)]
+pub struct DeviceName(String);
+
+impl TryFrom<String> for DeviceName {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if !value.is_empty() {
+            Ok(Self(value))
+        } else {
+            Err(Error::Fatal {
+                error: "Invalid device name: '{value}'".into(),
+            })
+        }
+    }
+}
+
+impl FromStr for DeviceName {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {

@@ -7,6 +7,7 @@ use std::{
     io::{Read, Seek, Write},
     path::Path,
     str::FromStr,
+    sync::Arc,
 };
 
 use diesel::connection::SimpleConnection;
@@ -19,11 +20,12 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{models as m, ConnectionPool, DeferredTxConnection, ExclusiveTxConnection},
-    device::{DeviceIdentifier, OperatingSystem},
+    device::{DeviceIdentifier, DeviceName, OperatingSystem},
     encryption::{
         BackupPassword, DataEncryptionKey, EncryptionOutput, KdfNonce, KdfSecret,
         KeyEncryptionKey, KeyName, Keychain, RootBackupKey,
     },
+    resources::CoreResourcesI,
     utils::unix_timestamp,
     Error,
 };
@@ -64,6 +66,7 @@ pub struct BackupMetadata {
     #[builder(default_code = "unix_timestamp()")]
     timestamp: i64,
     device_identifier: DeviceIdentifier,
+    device_name: DeviceName,
     #[builder(default)]
     operating_system: OperatingSystem,
     /// Base-64 encoded KDF nonce
@@ -178,27 +181,22 @@ pub fn set_up_or_rotate_backup(
 /// the path to the zip file. More info:
 /// https://sealvault.org/dev-docs/design/backup/#backup-contents
 pub fn create_backup(
-    connection_pool: &ConnectionPool,
-    keychain: &Keychain,
-    device_identifier: DeviceIdentifier,
-    backup_dir: &Path,
+    resources: Arc<dyn CoreResourcesI>,
 ) -> Result<Option<BackupMetadata>, Error> {
-    if let Some(metadata) =
-        db_backup(connection_pool, keychain, device_identifier, backup_dir)?
-    {
-        remove_outdated_backups(&metadata, backup_dir)?;
+    if let Some(backup_dir) = resources.backup_dir() {
+        if let Some(metadata) = db_backup(resources.as_ref(), backup_dir)? {
+            remove_outdated_backups(&metadata, backup_dir)?;
 
-        Ok(Some(metadata))
-    } else {
-        Ok(None)
+            return Ok(Some(metadata));
+        }
     }
+    Ok(None)
 }
 
 pub fn restore_backup(
-    keychain: &Keychain,
+    resources: &dyn CoreResourcesI,
     db_backup_dek: &DataEncryptionKey,
     sk_backup_kek: &KeyEncryptionKey,
-    device_id: &DeviceIdentifier,
     from_zip: &Path,
     to_path: &Path,
 ) -> Result<BackupMetadata, Error> {
@@ -217,10 +215,14 @@ pub fn restore_backup(
     restore_decrypted_backup(&metadata, &decrypted_backup, to_path)?;
 
     let backup_connection_pool =
-        set_up_or_rotate_sk_kek(keychain, sk_backup_kek, to_path)?;
+        set_up_or_rotate_sk_kek(resources.keychain(), sk_backup_kek, to_path)?;
 
     // Rotate backup password and associated secrets
-    set_up_or_rotate_backup(&backup_connection_pool, keychain, device_id)?;
+    set_up_or_rotate_backup(
+        &backup_connection_pool,
+        resources.keychain(),
+        resources.device_id(),
+    )?;
 
     Ok(metadata)
 }
@@ -377,11 +379,11 @@ fn set_up_or_rotate_sk_kek(
 }
 
 fn db_backup(
-    connection_pool: &ConnectionPool,
-    keychain: &Keychain,
-    device_identifier: DeviceIdentifier,
-    out_dir: &Path,
+    resources: &dyn CoreResourcesI,
+    backup_dir: &Path,
 ) -> Result<Option<BackupMetadata>, Error> {
+    let connection_pool = resources.connection_pool();
+
     // We check this twice to avoid running the expensive wal checkpointing if a backup is not
     // needed.
     let pending = connection_pool
@@ -406,7 +408,7 @@ fn db_backup(
                         to create one.".into()
                     }
                 })?;
-            let db_backup_dek = DataEncryptionKey::db_backup_dek(keychain)?;
+            let db_backup_dek = DataEncryptionKey::db_backup_dek(resources.keychain())?;
 
             let backup_contents =
                 create_verified_backup(connection_pool.db_path(), backup_version)?;
@@ -414,14 +416,15 @@ fn db_backup(
             let metadata = BackupMetadata::builder()
                 .backup_scheme(BackupScheme::V1)
                 .backup_version(backup_version)
-                .device_identifier(device_identifier)
+                .device_identifier(resources.device_id().clone())
+                .device_name(resources.device_name().clone())
                 .kdf_nonce(&kdf_nonce)
                 .build();
 
             let encryption_output =
                 db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
 
-            create_backup_zip(out_dir, &metadata, &encryption_output)?;
+            create_backup_zip(backup_dir, &metadata, &encryption_output)?;
 
             m::LocalSettings::set_completed_backup_version(tx_conn.as_mut(), backup_version)?;
 
@@ -642,100 +645,85 @@ fn verify_backup(backup_path: &Path, expected_backup_version: i64) -> Result<(),
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::PathBuf};
+    use std::fs;
 
     use anyhow::Result;
 
     use super::*;
     use crate::{
+        app_core::tests::{CoreResourcesMock, TmpCoreDir},
         db::{data_migrations, schema_migrations::run_migrations},
         encryption::Keychain,
         protocols::eth,
-        public_suffix_list::PublicSuffixList,
     };
 
     struct BackupTest {
-        device_id: DeviceIdentifier,
-        tmp_dir: tempfile::TempDir,
-        backup_dir: PathBuf,
-        db_path: PathBuf,
-        keychain: Keychain,
-        psl: PublicSuffixList,
-        connection_pool: ConnectionPool,
+        resources: Arc<CoreResourcesMock>,
     }
 
     impl BackupTest {
         fn new() -> Result<Self> {
-            let device_id: DeviceIdentifier = "test-device".to_string().try_into()?;
-            let tmp_dir = tempfile::tempdir().expect("creates temp dir");
-            let backup_dir = tmp_dir.path().join("backups");
-            fs::create_dir(backup_dir.as_path())?;
-            let db_path = tmp_dir.path().join("db.sqlite3");
+            let tmp_dir = TmpCoreDir::new()?;
+            let resources = Arc::new(CoreResourcesMock::new(tmp_dir)?);
 
-            // Create mock db
-            let connection_pool =
-                ConnectionPool::new(db_path.to_str().expect("ok utf-8"))?;
-            let keychain = Keychain::new();
-            let psl = PublicSuffixList::new()?;
-            connection_pool.exclusive_transaction(|mut tx_conn| {
-                run_migrations(&mut tx_conn)?;
-                data_migrations::run_all(tx_conn, &keychain, &psl)
-            })?;
+            resources
+                .connection_pool()
+                .exclusive_transaction(|mut tx_conn| {
+                    run_migrations(&mut tx_conn)?;
+                    data_migrations::run_all(
+                        tx_conn,
+                        resources.keychain(),
+                        resources.public_suffix_list(),
+                    )
+                })?;
 
-            Ok(Self {
-                device_id,
-                tmp_dir,
-                backup_dir,
-                db_path,
-                keychain,
-                psl,
-                connection_pool,
-            })
+            Ok(Self { resources })
+        }
+
+        fn backup_dir(&self) -> &Path {
+            self.resources.backup_dir().expect("has backup dir")
         }
 
         fn setup_or_rotate_backup(&self) -> Result<String> {
             let pwd = set_up_or_rotate_backup(
-                &self.connection_pool,
-                &self.keychain,
-                &self.device_id,
+                self.resources.connection_pool(),
+                self.resources.keychain(),
+                self.resources.device_id(),
             )?;
             Ok(pwd)
         }
 
         fn create_backup(&self) -> Result<Option<BackupMetadata>> {
-            let metadata = create_backup(
-                &self.connection_pool,
-                &self.keychain,
-                self.device_id.clone(),
-                self.backup_dir.as_path(),
-            )?;
+            let metadata = create_backup(self.resources.clone())?;
             Ok(metadata)
         }
 
         fn trigger_need_new_backup(&self) -> Result<()> {
-            self.connection_pool.deferred_transaction(|mut tx_conn| {
-                let profile = m::Profile::list_all(tx_conn.as_mut())?
-                    .into_iter()
-                    .next()
-                    .expect("there is an profile");
-                let params = m::CreateEthAddressParams::builder()
-                    .profile_id(&profile.deterministic_id)
-                    .chain_id(eth::ChainId::default_wallet_chain())
-                    .is_profile_wallet(true)
-                    .build();
-                m::Address::create_eth_key_and_address(
-                    &mut tx_conn,
-                    &self.keychain,
-                    &params,
-                )?;
-                Ok(())
-            })?;
+            self.resources
+                .connection_pool()
+                .deferred_transaction(|mut tx_conn| {
+                    let profile = m::Profile::list_all(tx_conn.as_mut())?
+                        .into_iter()
+                        .next()
+                        .expect("there is an profile");
+                    let params = m::CreateEthAddressParams::builder()
+                        .profile_id(&profile.deterministic_id)
+                        .chain_id(eth::ChainId::default_wallet_chain())
+                        .is_profile_wallet(true)
+                        .build();
+                    m::Address::create_eth_key_and_address(
+                        &mut tx_conn,
+                        &self.resources.keychain(),
+                        &params,
+                    )?;
+                    Ok(())
+                })?;
             Ok(())
         }
 
         fn backup_file_names(&self) -> Result<Vec<String>> {
             let mut file_names: Vec<String> = Default::default();
-            let entries = fs::read_dir(self.backup_dir.as_path())?;
+            let entries = fs::read_dir(self.backup_dir())?;
             for entry in entries {
                 let file_name = entry?.file_name();
                 let file_name = file_name.to_str().expect("valid string filename");
@@ -754,23 +742,27 @@ mod tests {
         }
     }
 
-    struct RestoreTest<'a> {
-        backup: &'a BackupTest,
-        keychain: Keychain,
+    struct RestoreTest {
+        resources: Arc<CoreResourcesMock>,
         restore_to: NamedTempFile,
     }
 
-    impl<'a> RestoreTest<'a> {
-        fn new(backup: &'a BackupTest) -> Result<Self> {
+    impl RestoreTest {
+        fn new(backup: BackupTest) -> Result<Self> {
+            let BackupTest { resources } = backup;
+            let mut resources = Arc::try_unwrap(resources)
+                .expect("resources aren't held when BackupTest is owned");
+
             // Create new keychain to simulate running on other device but copy over kdf secret
             // which is synced.
             let kdf_secret =
-                KdfSecret::from_keychain(&backup.keychain, &backup.device_id)?;
+                KdfSecret::from_keychain(resources.keychain(), resources.device_id())?;
             let keychain = Keychain::new();
-            kdf_secret.save_to_keychain(&keychain, &backup.device_id)?;
+            kdf_secret.save_to_keychain(&keychain, resources.device_id())?;
+            resources.set_keychain(keychain);
+
             Ok(Self {
-                keychain,
-                backup,
+                resources: Arc::new(resources),
                 restore_to: NamedTempFile::new()?,
             })
         }
@@ -781,20 +773,25 @@ mod tests {
             metadata: &BackupMetadata,
         ) -> Result<BackupMetadata> {
             let password: BackupPassword = password.parse()?;
-            let kdf_secret =
-                KdfSecret::from_keychain(&self.keychain, &metadata.device_identifier)?;
+            let kdf_secret = KdfSecret::from_keychain(
+                self.resources.keychain(),
+                &metadata.device_identifier,
+            )?;
             let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
             let root_backup_key =
                 RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
             let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
             let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
 
-            let restore_from = self.backup.backup_dir.join(metadata.backup_file_name());
+            let restore_from = self
+                .resources
+                .backup_dir()
+                .unwrap()
+                .join(metadata.backup_file_name());
             let backup_metadata = restore_backup(
-                &self.keychain,
+                &*self.resources,
                 &db_backup_dek,
                 &sk_backup_kek,
-                &metadata.device_identifier,
                 restore_from.as_path(),
                 self.restore_to.path(),
             )?;
@@ -820,7 +817,7 @@ mod tests {
                 // Uses SK-KEK to decrypt
                 m::Address::fetch_eth_signing_key(
                     &mut tx_conn,
-                    &self.keychain,
+                    self.resources.keychain(),
                     &address_id,
                 )
             })?;
@@ -841,7 +838,7 @@ mod tests {
         let password = backup.setup_or_rotate_backup()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
-        let restore = RestoreTest::new(&backup)?;
+        let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
 
         Ok(())
@@ -872,7 +869,7 @@ mod tests {
             backup_metadata.backup_version
         );
 
-        let restore = RestoreTest::new(&backup)?;
+        let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
 
         Ok(())
@@ -885,7 +882,7 @@ mod tests {
         let password = backup.setup_or_rotate_backup()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
-        let restore = RestoreTest::new(&backup)?;
+        let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
 
         Ok(())
@@ -897,9 +894,9 @@ mod tests {
 
         let _ = backup.setup_or_rotate_backup()?;
         rollback_setup_backup(
-            &backup.connection_pool,
-            &backup.keychain,
-            &backup.device_id,
+            backup.resources.connection_pool(),
+            backup.resources.keychain(),
+            backup.resources.device_id(),
         )?;
         // Shouldn't create backup after rollback
         assert_eq!(backup.create_backup()?, None);
@@ -907,7 +904,7 @@ mod tests {
         let password = backup.setup_or_rotate_backup()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
-        let restore = RestoreTest::new(&backup)?;
+        let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
 
         Ok(())
@@ -920,16 +917,16 @@ mod tests {
         let _ = backup.setup_or_rotate_backup()?;
         let _ = backup.setup_or_rotate_backup()?;
         rollback_setup_backup(
-            &backup.connection_pool,
-            &backup.keychain,
-            &backup.device_id,
+            backup.resources.connection_pool(),
+            backup.resources.keychain(),
+            backup.resources.device_id(),
         )?;
         assert_eq!(backup.create_backup()?, None);
         let password = backup.setup_or_rotate_backup()?;
 
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
-        let restore = RestoreTest::new(&backup)?;
+        let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
 
         Ok(())
@@ -937,6 +934,7 @@ mod tests {
 
     #[test]
     fn device_id_from_filename_ok() -> Result<()> {
+        let device_name: DeviceName = "test-device".parse()?;
         let device_id: DeviceIdentifier =
             "475dda83-9447-4626-9cf1-ecc4ddbe5bbd".parse()?;
         let kdf_nonce = KdfNonce::random()?;
@@ -944,6 +942,7 @@ mod tests {
             .backup_scheme(BackupScheme::V1)
             .backup_version(16)
             .device_identifier(device_id.clone())
+            .device_name(device_name)
             .kdf_nonce(&kdf_nonce)
             .build();
 

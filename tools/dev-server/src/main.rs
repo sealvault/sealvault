@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
 
     let backend_args = CoreArgs {
         device_id: "dev-server".into(),
+        device_name: "dev-server".into(),
         cache_dir: "./cache".into(),
         db_file_path: DB_PATH.into(),
         backup_dir: None,
