@@ -2,7 +2,7 @@
 
 ## 2022-12-19
 
-### iOS Beta v0.5.1
+### iOS Beta v0.5.2
 
 #### Improvements
 
