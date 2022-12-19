@@ -5,6 +5,7 @@ SealVault stores the following data on the user's device:
 * Data and key encryption keys.
 * Asymmetric keys for digital signatures.
 * Blockchain addresses derived from public keys of the user.
+* Profiles and profile images.
 * Metadata about dapps that the user has interacted with, eg.:
     * Smart contract addresses,
     * URLs.
