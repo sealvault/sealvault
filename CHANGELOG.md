@@ -1,5 +1,15 @@
 # Changelog
 
+## 2022-12-19
+
+### iOS Beta v0.5.2
+
+#### Improvements
+
+- Improve browser address bar UI
+- Improve top dapps UI
+- Improve dark mode colors
+
 ## 2022-12-13
 
 ### iOS Beta v0.5.0

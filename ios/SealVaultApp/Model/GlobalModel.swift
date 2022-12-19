@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
+import SwiftUI
 
 @MainActor
 class GlobalModel: ObservableObject {
