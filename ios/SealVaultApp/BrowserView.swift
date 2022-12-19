@@ -245,18 +245,19 @@ struct AddressBar: View {
                     .padding(.trailing, 5)
                 }
             }
-            .padding()
+            .padding(10)
             .background((RoundedRectangle(cornerRadius: 10)).fill(backgroundColor))
             .clipped()
             .shadow(radius: 2)
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
             .background(viewModel.tabBarColor(colorScheme))
 
             if showProgressView {
                 ProgressView(value: browserModel.loadingProgress)
                     .scaleEffect(x: 1, y: 0.5, anchor: .center)
                     .padding(.horizontal, 28)
-                    .offset(y: -18)
+                    .offset(y: -8)
             }
 
         }
