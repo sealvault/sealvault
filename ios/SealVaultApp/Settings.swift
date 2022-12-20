@@ -78,7 +78,7 @@ You won't be able to recover from iCloud Storage without the backup password.
                                 password = nil
                                 showPassword = false
                             }, label: {
-                                Text("Hid Backup Password")
+                                Text("Hide Backup Password")
                             })
                             .listRowInsets(rowInsets)
 
