@@ -897,7 +897,7 @@ mod tests {
     #[test]
     fn can_rotate_password() -> Result<()> {
         let backup = BackupTest::new()?;
-        let _ = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
@@ -912,7 +912,7 @@ mod tests {
     fn can_rollback_setup() -> Result<()> {
         let backup = BackupTest::new()?;
 
-        let _ = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
         rollback_setup_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
@@ -937,8 +937,8 @@ mod tests {
     fn can_rollback_rotate() -> Result<()> {
         let backup = BackupTest::new()?;
 
-        let _ = backup.setup_or_rotate_backup()?;
-        let _ = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
         rollback_setup_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
