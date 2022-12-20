@@ -153,16 +153,16 @@ pub fn set_up_or_rotate_backup(
     connection_pool: &ConnectionPool,
     keychain: &Keychain,
     device_identifier: &DeviceIdentifier,
-) -> Result<String, Error> {
+) -> Result<(), Error> {
     // In an exclusive transaction to prevent running in parallel and potentially ending up with
     // mixed up keychain items.
     let res = connection_pool.exclusive_transaction(|mut tx_conn| {
-        let (kdf_nonce, backup_password) =
+        let kdf_nonce =
             setup_or_rotate_keys_for_backup(keychain, device_identifier, &mut tx_conn)?;
 
         enable_backups_in_db(&mut tx_conn, &kdf_nonce)?;
 
-        Ok(backup_password.display_to_user())
+        Ok(())
     });
 
     // Rollback on error
@@ -171,6 +171,16 @@ pub fn set_up_or_rotate_backup(
     }
 
     res
+}
+
+pub fn display_backup_password(keychain: &Keychain) -> Result<String, Error> {
+    let pwd = BackupPassword::from_keychain(keychain)?;
+    Ok(pwd.display_to_user())
+}
+
+pub fn is_backup_enabled(connection_pool: &ConnectionPool) -> Result<bool, Error> {
+    let mut conn = connection_pool.connection()?;
+    m::LocalSettings::fetch_backup_enabled(&mut conn)
 }
 
 /// Create backup to the desired directory if needed. The directory is assumed to exist.
@@ -231,7 +241,7 @@ fn setup_or_rotate_keys_for_backup(
     keychain: &Keychain,
     device_identifier: &DeviceIdentifier,
     tx_conn: &mut ExclusiveTxConnection,
-) -> Result<(KdfNonce, BackupPassword), Error> {
+) -> Result<KdfNonce, Error> {
     // Create new backup password
     // KDF secret should be first to abort if something's wrong with keychain sync which is the
     // most likely failure scenario.
@@ -282,7 +292,7 @@ fn setup_or_rotate_keys_for_backup(
             .insert(tx_conn.as_mut())?;
     }
 
-    Ok((kdf_nonce, backup_password))
+    Ok(kdf_nonce)
 }
 
 fn enable_backups_in_db(
@@ -658,7 +668,7 @@ mod tests {
     };
 
     struct BackupTest {
-        resources: Arc<CoreResourcesMock>,
+        pub resources: Arc<CoreResourcesMock>,
     }
 
     impl BackupTest {
@@ -684,13 +694,18 @@ mod tests {
             self.resources.backup_dir().expect("has backup dir")
         }
 
-        fn setup_or_rotate_backup(&self) -> Result<String> {
-            let pwd = set_up_or_rotate_backup(
+        fn setup_or_rotate_backup(&self) -> Result<()> {
+            set_up_or_rotate_backup(
                 self.resources.connection_pool(),
                 self.resources.keychain(),
                 self.resources.device_id(),
             )?;
-            Ok(pwd)
+            Ok(())
+        }
+
+        fn backup_password(&self) -> Result<String> {
+            let res = display_backup_password(self.resources.keychain())?;
+            Ok(res)
         }
 
         fn create_backup(&self) -> Result<Option<BackupMetadata>> {
@@ -835,8 +850,11 @@ mod tests {
     #[test]
     fn can_restore_db_backup() -> Result<()> {
         let backup = BackupTest::new()?;
-        let password = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
+        assert!(backup_enabled);
 
         let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
@@ -847,7 +865,8 @@ mod tests {
     #[test]
     fn can_restore_after_multiple_backup() -> Result<()> {
         let backup = BackupTest::new()?;
-        let password = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
 
         // First backup
         let backup_metadata = backup.create_backup()?.expect("needs backup");
@@ -879,7 +898,8 @@ mod tests {
     fn can_rotate_password() -> Result<()> {
         let backup = BackupTest::new()?;
         let _ = backup.setup_or_rotate_backup()?;
-        let password = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
         let restore = RestoreTest::new(backup)?;
@@ -900,8 +920,11 @@ mod tests {
         )?;
         // Shouldn't create backup after rollback
         assert_eq!(backup.create_backup()?, None);
+        let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
+        assert!(!backup_enabled);
 
-        let password = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 
         let restore = RestoreTest::new(backup)?;
@@ -922,7 +945,8 @@ mod tests {
             backup.resources.device_id(),
         )?;
         assert_eq!(backup.create_backup()?, None);
-        let password = backup.setup_or_rotate_backup()?;
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
 
         let backup_metadata = backup.create_backup()?.expect("needs backup");
 

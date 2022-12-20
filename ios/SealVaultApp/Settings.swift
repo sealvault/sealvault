@@ -6,18 +6,17 @@ import Foundation
 import SwiftUI
 
 struct Settings: View {
-    @EnvironmentObject private var viewModel: GlobalModel
-    @State var backupsEnabled: Bool = true
+    @EnvironmentObject private var model: GlobalModel
+    @State var settingUpBackup: Bool = false
     @State var showPassword: Bool = false
     @State var showConfirmation: Bool = false
     @State var didConfirmPassword: Bool = false
-    @State private var password: String = "8FD93-EYWZR-GB7HX-QAVNS"
+    @State var password: String?
 
     var body: some View {
         let isBackupOn = Binding<Bool>(
-            get: { self.backupsEnabled },
+            get: { return settingUpBackup || model.backupEnabled },
             set: {
-                self.backupsEnabled = $0
                 self.showConfirmation = $0
             }
         )
@@ -29,7 +28,11 @@ struct Settings: View {
                         Label {
                             Text("iCloud Storage Backup")
                         } icon: {
-                            Image(systemName: "icloud").foregroundColor(Color.secondary)
+                            if settingUpBackup {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "icloud").foregroundColor(Color.secondary)
+                            }
                         }
                     }
                     .alert(
@@ -37,7 +40,11 @@ struct Settings: View {
                          isPresented: $showConfirmation
                     ) {
                         Button("OK") {
-                            backupsEnabled = true
+                            Task {
+                                settingUpBackup = true
+                                await model.enableBackup()
+                                settingUpBackup = false
+                            }
                         }
                     } message: {
                         Text("""
@@ -48,16 +55,18 @@ You won't be able to recover from iCloud Storage without the backup password.
 
                     let rowInsets = EdgeInsets(top: 0, leading: 60, bottom: 0, trailing: 0)
 
-                    if backupsEnabled {
-                        Button(action: {
-                            UIPasteboard.general.string = password
+                    if model.backupEnabled && !settingUpBackup {
+                        AsyncButton(action: {
+                            let pwd = await model.displayBackupPassword()
+                            UIPasteboard.general.string = pwd
                         }, label: {
                             Text("Copy Backup Password")
                         })
                         .listRowInsets(rowInsets)
 
                         if !showPassword {
-                            Button(action: {
+                            AsyncButton(action: {
+                                password = await model.displayBackupPassword()
                                 showPassword = true
                             }, label: {
                                 Text("Reveal Backup Password")
@@ -66,13 +75,14 @@ You won't be able to recover from iCloud Storage without the backup password.
 
                         } else {
                             Button(action: {
+                                password = nil
                                 showPassword = false
                             }, label: {
                                 Text("Hid Backup Password")
                             })
                             .listRowInsets(rowInsets)
 
-                            Text(password)
+                            Text(password ?? "Error")
                             .listRowInsets(rowInsets)
 
                         }

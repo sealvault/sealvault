@@ -15,6 +15,7 @@ class GlobalModel: ObservableObject {
     @Published var browserTwoUrl: URL?
     @Published var topDapps: [Dapp]
     @Published var bannerData: BannerData?
+    @Published var backupEnabled: Bool = false
 
     var activeProfile: Profile? {
         return profileList.first(where: { acc in acc.id == activeProfileId })
@@ -144,6 +145,38 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    func enableBackup() async {
+        await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.enableBackup()
+            } catch {
+                print("Error enabling backup: \(error)")
+                self.bannerData = BannerData(title: "Error enabling backup", detail: "", type: .error)
+            }
+        }
+        self.backupEnabled = await self.fetchBackupEnabled()
+    }
+
+    func displayBackupPassword() async -> String? {
+        await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.displayBackupPassword()
+            } catch {
+                print("Error enabling backup: \(error)")
+                return nil
+            }
+        }
+    }
+
+    func fetchBackupEnabled() async -> Bool {
+        do {
+            return try self.core.isBackupEnabled()
+        } catch {
+            print("Error fetching whether backup is enabled: \(error)")
+            return false
+        }
+    }
+
     func tabBarColor(_ colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? .black : Color(UIColor.systemGray6)
     }
@@ -158,6 +191,7 @@ class GlobalModel: ObservableObject {
         if let activeProfileId = activeProfileId {
             self.activeProfileId = activeProfileId
         }
+        self.backupEnabled = await self.fetchBackupEnabled()
         self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
 
@@ -213,6 +247,8 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+    private var backupEnabled: Bool = false
+
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
         let picture = [UInt8](profile.picture.pngData()!)
         let wallets = profile.walletList.map(Self.toCoreAddress)
@@ -280,6 +316,20 @@ class PreviewAppCore: AppCoreProtocol {
         return DispatchQueue.main.sync {
             return Self.toCoreToken(token)
         }
+    }
+
+    func enableBackup() throws {
+        // Simulate password KDF
+        Thread.sleep(forTimeInterval: 1)
+        self.backupEnabled = true
+    }
+
+    func isBackupEnabled() throws -> Bool {
+        self.backupEnabled
+    }
+
+    func displayBackupPassword() throws -> String {
+        "AAA1-BBB2-CCC3-DDD4"
     }
 
     func fetchFavicon(rawUrl: String) throws -> [UInt8]? {

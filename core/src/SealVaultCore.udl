@@ -11,6 +11,15 @@ interface AppCore {
     constructor(CoreArgs args, CoreUICallbackI ui_callback);
 
     [Throws=CoreError]
+    void enable_backup();
+
+    [Throws=CoreError]
+    string display_backup_password();
+
+    [Throws=CoreError]
+    boolean is_backup_enabled();
+
+    [Throws=CoreError]
     sequence<CoreProfile> list_profiles();
 
     [Throws=CoreError]

@@ -7,7 +7,7 @@ use std::{fmt::Debug, path::PathBuf, sync::Arc};
 use typed_builder::TypedBuilder;
 
 use crate::{
-    async_runtime as rt,
+    async_runtime as rt, backup,
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
@@ -77,6 +77,10 @@ impl AppCore {
         self.resources.connection_pool()
     }
 
+    fn device_id(&self) -> &DeviceIdentifier {
+        self.resources.device_id()
+    }
+
     fn keychain(&self) -> &Keychain {
         self.resources.keychain()
     }
@@ -106,6 +110,26 @@ impl AppCore {
             })?;
 
         Ok(AppCore { resources })
+    }
+
+    pub fn enable_backup(&self) -> Result<(), CoreError> {
+        backup::set_up_or_rotate_backup(
+            self.connection_pool(),
+            self.keychain(),
+            self.device_id(),
+        )?;
+        backup::create_backup(self.resources.clone())?;
+        Ok(())
+    }
+
+    pub fn display_backup_password(&self) -> Result<String, CoreError> {
+        let res = backup::display_backup_password(self.keychain())?;
+        Ok(res)
+    }
+
+    pub fn is_backup_enabled(&self) -> Result<bool, CoreError> {
+        let res = backup::is_backup_enabled(self.connection_pool())?;
+        Ok(res)
     }
 
     pub fn list_profiles(&self) -> Result<Vec<dto::CoreProfile>, CoreError> {
