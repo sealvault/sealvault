@@ -118,7 +118,6 @@ impl AppCore {
             self.keychain(),
             self.device_id(),
         )?;
-        backup::create_backup(self.resources.clone())?;
         Ok(())
     }
 

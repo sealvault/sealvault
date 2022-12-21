@@ -146,15 +146,22 @@ class GlobalModel: ObservableObject {
     }
 
     func enableBackup() async {
-        await dispatchBackground(.userInteractive) {
+        let success = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.enableBackup()
+                return true
             } catch {
                 print("Error enabling backup: \(error)")
-                self.bannerData = BannerData(title: "Error enabling backup", detail: "", type: .error)
+                return false
             }
         }
-        self.backupEnabled = await self.fetchBackupEnabled()
+        if success {
+            self.backupEnabled = await self.fetchBackupEnabled()
+        } else {
+            self.bannerData = BannerData(
+                title: "Error enabling backup", detail: "Make sure iCloud is enabled.", type: .error
+            )
+        }
     }
 
     func displayBackupPassword() async -> String? {
