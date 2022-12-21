@@ -7,11 +7,18 @@ import SwiftUI
 
 struct Settings: View {
     @EnvironmentObject private var model: GlobalModel
+    @Environment(\.scenePhase) var scenePhase
+
     @State var settingUpBackup: Bool = false
     @State var showPassword: Bool = false
     @State var showConfirmation: Bool = false
     @State var didConfirmPassword: Bool = false
     @State var password: String?
+
+    func hidePassword() {
+        self.password = nil
+        self.showPassword = false
+    }
 
     var body: some View {
         let isBackupOn = Binding<Bool>(
@@ -75,8 +82,7 @@ You won't be able to recover from iCloud Storage without the backup password.
 
                         } else {
                             Button(action: {
-                                password = nil
-                                showPassword = false
+                                hidePassword()
                             }, label: {
                                 Text("Hide Backup Password")
                             })
@@ -84,6 +90,11 @@ You won't be able to recover from iCloud Storage without the backup password.
 
                             Text(password ?? "Error")
                             .listRowInsets(rowInsets)
+                            .onChange(of: scenePhase) { newPhase in
+                                if newPhase == .inactive || newPhase == .background {
+                                    hidePassword()
+                                }
+                            }
 
                         }
                     }
