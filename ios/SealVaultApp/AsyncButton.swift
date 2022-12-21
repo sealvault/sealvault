@@ -43,7 +43,11 @@ struct AsyncButton<Label: View>: View {
                     label().opacity(showProgressView ? 0 : 1)
 
                     if showProgressView {
-                        ProgressView()
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
                     }
                 }
             }

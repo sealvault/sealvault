@@ -9,11 +9,14 @@ struct TokenRow: View {
 
     var body: some View {
         HStack {
-            Label { Text(token.symbol).font(.headline) }
-            icon: {
-                    IconView(image: token.image, iconSize: 24)
-                        .accessibility(label: Text(token.symbol))
-                }
+            Label {
+                Text(token.symbol).font(.headline)
+
+            }
+        icon: {
+            IconView(image: token.image, iconSize: 24)
+                .accessibility(label: Text(token.symbol))
+        }
 
             Spacer()
 
@@ -28,8 +31,8 @@ struct NativeTokenRow: View {
 
     var body: some View {
         TokenRow(token: address.nativeToken)
-        .task {
-            await address.refreshTokens()
-        }
+            .task {
+                await address.refreshTokens()
+            }
     }
 }

@@ -39,7 +39,9 @@ struct ProfileListView: View {
                 await self.model.refreshProfiles()
             }
             .sheet(isPresented: $isSettingsPresented, content: {
-                Settings()
+                NavigationView {
+                    GlobalSettings()
+                }
             })
         }
     }

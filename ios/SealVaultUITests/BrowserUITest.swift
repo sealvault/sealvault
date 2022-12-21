@@ -20,7 +20,7 @@ final class BrowserUITest: XCTestCase {
 
         enterAddressBar(app, text: ethereumTestUrl)
 
-        tapButton(app, "approveDapp")
+        tapButton(app, "approve")
 
         let finishedOk = app.webViews.staticTexts["Finished OK"]
         XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))

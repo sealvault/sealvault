@@ -191,6 +191,25 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    func disableBackup() async {
+        let success = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.disableBackup()
+                return true
+            } catch {
+                print("Error enabling backup: \(error)")
+                return false
+            }
+        }
+        if success {
+            self.backupEnabled = await self.fetchBackupEnabled()
+        } else {
+            self.bannerData = BannerData(
+                title: "Error disabling backup", detail: "", type: .error
+            )
+        }
+    }
+
     func displayBackupPassword() async -> String? {
         await dispatchBackground(.userInteractive) {
             do {
@@ -281,7 +300,7 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-    private var backupEnabled: Bool = false
+    private var backupEnabledToggle: Bool = false
 
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
         let picture = [UInt8](profile.picture.pngData()!)
@@ -362,11 +381,16 @@ class PreviewAppCore: AppCoreProtocol {
     func enableBackup() throws {
         // Simulate password KDF
         Thread.sleep(forTimeInterval: 1)
-        self.backupEnabled = true
+        self.backupEnabledToggle = true
+    }
+
+    func disableBackup() throws {
+        Thread.sleep(forTimeInterval: 0.5)
+        backupEnabledToggle = false
     }
 
     func isBackupEnabled() throws -> Bool {
-        self.backupEnabled
+        self.backupEnabledToggle
     }
 
     func displayBackupPassword() throws -> String {
