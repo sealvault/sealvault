@@ -17,6 +17,8 @@ class GlobalModel: ObservableObject {
     @Published var bannerData: BannerData?
     @Published var backupEnabled: Bool = false
 
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+
     var activeProfile: Profile? {
         return profileList.first(where: { acc in acc.id == activeProfileId })
     }
@@ -141,6 +143,31 @@ class GlobalModel: ObservableObject {
             } catch {
                 print("Error fetching active profile id: \(error)")
                 return nil
+            }
+        }
+    }
+
+    func onBackground() {
+        DispatchQueue.global(qos: .background).async {
+            // Request the task assertion and save the ID.
+            DispatchQueue.main.sync {
+                self.backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "App Core On Background") {
+                    // End the task if time expires.
+                    UIApplication.shared.endBackgroundTask(self.backgroundTaskID!)
+                    self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+                }
+            }
+
+            do {
+                try self.core.onBackground()
+            } catch {
+                print("Error for core onBackground: \(error)")
+            }
+
+            // End the task assertion.
+            DispatchQueue.main.sync {
+                UIApplication.shared.endBackgroundTask(self.backgroundTaskID!)
+                self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
             }
         }
     }
@@ -323,6 +350,13 @@ class PreviewAppCore: AppCoreProtocol {
         return DispatchQueue.main.sync {
             return Self.toCoreToken(token)
         }
+    }
+
+    func onBackground() throws {
+        print("on background starting")
+        // Simulate creating backup
+        Thread.sleep(forTimeInterval: 1)
+        print("on background finished")
     }
 
     func enableBackup() throws {

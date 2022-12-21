@@ -112,6 +112,12 @@ impl AppCore {
         Ok(AppCore { resources })
     }
 
+    /// Method called by the UI when the application enters the background.
+    pub fn on_background(&self) -> Result<(), CoreError> {
+        backup::create_backup(self.resources.clone())?;
+        Ok(())
+    }
+
     pub fn enable_backup(&self) -> Result<(), CoreError> {
         backup::set_up_or_rotate_backup(
             self.connection_pool(),

@@ -11,6 +11,9 @@ interface AppCore {
     constructor(CoreArgs args, CoreUICallbackI ui_callback);
 
     [Throws=CoreError]
+    void on_background();
+
+    [Throws=CoreError]
     void enable_backup();
 
     [Throws=CoreError]

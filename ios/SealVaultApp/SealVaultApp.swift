@@ -6,6 +6,8 @@ import SwiftUI
 
 @main
 struct SealVaultApp: SwiftUI.App {
+    @Environment(\.scenePhase) var scenePhase
+
     @ObservedObject private var model = GlobalModel.buildOnStartup()
 
     var body: some Scene {
@@ -15,6 +17,11 @@ struct SealVaultApp: SwiftUI.App {
                 .task {
                     await model.refreshProfiles()
                 }
+        }
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .background {
+                model.onBackground()
+            }
         }
     }
 }
