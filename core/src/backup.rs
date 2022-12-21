@@ -167,7 +167,7 @@ pub fn set_up_or_rotate_backup(
 
     // Rollback on error
     if res.is_err() {
-        rollback_setup_backup(connection_pool, keychain, device_identifier)?;
+        disable_backup(connection_pool, keychain, device_identifier)?;
     }
 
     res
@@ -307,7 +307,7 @@ fn enable_backups_in_db(
     Ok(())
 }
 
-fn rollback_setup_backup(
+pub fn disable_backup(
     connection_pool: &ConnectionPool,
     keychain: &Keychain,
     device_identifier: &DeviceIdentifier,
@@ -913,7 +913,7 @@ mod tests {
         let backup = BackupTest::new()?;
 
         backup.setup_or_rotate_backup()?;
-        rollback_setup_backup(
+        disable_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
             backup.resources.device_id(),
@@ -939,7 +939,7 @@ mod tests {
 
         backup.setup_or_rotate_backup()?;
         backup.setup_or_rotate_backup()?;
-        rollback_setup_backup(
+        disable_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
             backup.resources.device_id(),

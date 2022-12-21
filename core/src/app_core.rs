@@ -127,6 +127,15 @@ impl AppCore {
         Ok(())
     }
 
+    pub fn disable_backup(&self) -> Result<(), CoreError> {
+        backup::disable_backup(
+            self.connection_pool(),
+            self.keychain(),
+            self.device_id(),
+        )?;
+        Ok(())
+    }
+
     pub fn display_backup_password(&self) -> Result<String, CoreError> {
         let res = backup::display_backup_password(self.keychain())?;
         Ok(res)

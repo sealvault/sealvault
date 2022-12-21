@@ -17,6 +17,9 @@ interface AppCore {
     void enable_backup();
 
     [Throws=CoreError]
+    void disable_backup();
+
+    [Throws=CoreError]
     string display_backup_password();
 
     [Throws=CoreError]
