@@ -203,7 +203,7 @@ struct AddressBar: View {
                     .multilineTextAlignment(.center)
                     .focused($isAddressBarFocused)
                     .onSubmit {
-                        if let url = uriFixup(input: browserModel.addressBarText) {
+                        if let url = coreUriFixup(input: browserModel.addressBarText) {
                             browserModel.loadRawUrl(url)
                         } else if let searchUrl = browserModel.searchUrl() {
                             browserModel.loadRawUrl(searchUrl.absoluteString)

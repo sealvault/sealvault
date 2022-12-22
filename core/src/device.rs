@@ -15,7 +15,18 @@ use crate::Error;
 /// the same value for the same device while the app is installed. It can change if the app
 /// is uninstalled and reinstalled.
 #[derive(
-    Debug, Display, Clone, Eq, PartialEq, Hash, Into, AsRef, Serialize, Deserialize,
+    Debug,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    AsRef,
+    Serialize,
+    Deserialize,
 )]
 #[serde(try_from = "String")]
 #[serde(into = "String")]
@@ -94,5 +105,19 @@ impl Default for OperatingSystem {
             std::env::consts::OS
         };
         Self(os.into())
+    }
+}
+
+impl FromStr for OperatingSystem {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Err(Error::Retriable {
+                error: "Empty OS string".into(),
+            })
+        } else {
+            Ok(Self(s.into()))
+        }
     }
 }

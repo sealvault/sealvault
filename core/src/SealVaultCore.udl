@@ -2,10 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-namespace SealVaultCore {
-    string? uri_fixup(string input);
-};
-
 interface AppCore {
     [Throws=CoreError]
     constructor(CoreArgs args, CoreUICallbackI ui_callback);
@@ -215,3 +211,16 @@ callback interface InPageRequestContextI {
     string page_url();
     CoreInPageCallbackI callbacks();
 };
+
+namespace SealVaultCore {
+    string? core_uri_fixup(string input);
+    [Throws=CoreError]
+    BackupRestoreData? core_find_latest_backup(string backup_dir);
+};
+
+dictionary BackupRestoreData {
+    i64 timestamp;
+    string device_name;
+    string file_path;
+};
+

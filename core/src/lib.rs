@@ -41,6 +41,7 @@ pub use crate::{
         AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
+    backup::{find_latest_backup as core_find_latest_backup, BackupRestoreData},
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
@@ -49,7 +50,7 @@ pub use crate::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
         DappTransactionApproved, DappTransactionResult, TokenTransferResult,
     },
-    utils::uri_fixup,
+    utils::uri_fixup as core_uri_fixup,
 };
 
 // Build FFI based on SealVaultCore.udl.

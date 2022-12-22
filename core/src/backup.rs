@@ -5,7 +5,7 @@ use std::{
     fs,
     fs::File,
     io::{Read, Seek, Write},
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -27,7 +27,7 @@ use crate::{
     },
     resources::CoreResourcesI,
     utils::unix_timestamp,
-    Error,
+    CoreError, Error,
 };
 
 // File names inside the backup zip
@@ -106,29 +106,46 @@ impl BackupMetadata {
 
 #[derive(Debug, PartialEq)]
 struct BackupMetadataFromFileName {
+    timestamp: i64,
+    os: OperatingSystem,
+    device_id: DeviceIdentifier,
     backup_version: i64,
-    device_identifier: DeviceIdentifier,
 }
 
 impl FromStr for BackupMetadataFromFileName {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(file_name: &str) -> Result<Self, Self::Err> {
         let captures =
             BACKUP_FILE_NAME_REGEX
-                .captures(s)
+                .captures(file_name)
                 .ok_or_else(|| Error::Fatal {
                     error: "Invalid backup file name format".into(),
                 })?;
 
-        let device_identifier =
-            parse_field_from_backup_file_name(&captures, "device_id")?;
+        let timestamp = parse_field_from_backup_file_name(&captures, "timestamp")?;
+        let os = parse_field_from_backup_file_name(&captures, "os")?;
+        let device_id = parse_field_from_backup_file_name(&captures, "device_id")?;
         let backup_version = parse_field_from_backup_file_name(&captures, "version")?;
 
         Ok(BackupMetadataFromFileName {
+            timestamp,
+            os,
             backup_version,
-            device_identifier,
+            device_id,
         })
+    }
+}
+
+impl TryFrom<&fs::DirEntry> for BackupMetadataFromFileName {
+    type Error = Error;
+
+    fn try_from(dir_entry: &fs::DirEntry) -> Result<Self, Self::Error> {
+        let file_name = dir_entry.file_name();
+        let file_name = file_name.to_str().ok_or_else(|| Error::Fatal {
+            error: "Invalid characters in backup file name".into(),
+        })?;
+        file_name.parse()
     }
 }
 
@@ -145,6 +162,32 @@ where
     })?;
     let value: T = group.as_str().parse()?;
     Ok(value)
+}
+
+/// Exposed through FFI to UI.
+#[derive(Debug, PartialEq)]
+pub struct BackupRestoreData {
+    /// Unix timestamp
+    pub timestamp: i64,
+    /// The device name set by the user.
+    pub device_name: String,
+    /// The path to the backup.
+    pub file_path: String,
+}
+
+impl BackupRestoreData {
+    fn new(metadata: BackupMetadata, file_path: String) -> Self {
+        let BackupMetadata {
+            timestamp,
+            device_name,
+            ..
+        } = metadata;
+        Self {
+            timestamp,
+            device_name: device_name.into(),
+            file_path,
+        }
+    }
 }
 
 /// Set up backup keys for the user and return the backup password that can be displayed to the
@@ -210,12 +253,7 @@ pub fn restore_backup(
     from_zip: &Path,
     to_path: &Path,
 ) -> Result<BackupMetadata, Error> {
-    let backup_metadata_bytes =
-        extract_from_zip(from_zip, METADATA_FILE_NAME).map_err(map_zip_error)?;
-    let metadata: BackupMetadata = serde_json::from_slice(&backup_metadata_bytes)
-        .map_err(|_err| Error::Retriable {
-            error: "Failed to deserialize backup metadata".into(),
-        })?;
+    let metadata = backup_metadata_from_zip(from_zip)?;
 
     let encrypted_backup_bytes =
         extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
@@ -234,6 +272,60 @@ pub fn restore_backup(
         resources.device_id(),
     )?;
 
+    Ok(metadata)
+}
+
+pub fn find_latest_backup(
+    backup_dir: String,
+) -> Result<Option<BackupRestoreData>, CoreError> {
+    let path = Path::new(&backup_dir);
+    let res = find_latest_restorable_backup(path)?;
+    Ok(res)
+}
+
+fn find_latest_restorable_backup(
+    backup_dir: &Path,
+) -> Result<Option<BackupRestoreData>, Error> {
+    // Get the current os
+    let os: OperatingSystem = Default::default();
+
+    let entries = list_backup_dir(backup_dir)?;
+    let mut metas: Vec<(BackupMetadataFromFileName, PathBuf)> = Default::default();
+    for entry in entries {
+        let meta_from_file_name: BackupMetadataFromFileName = (&entry).try_into()?;
+        if meta_from_file_name.os == os {
+            metas.push((meta_from_file_name, entry.path()))
+        }
+    }
+    metas.sort_by(|a_tup, b_tup| {
+        let a = &a_tup.0;
+        let b = &b_tup.0;
+        a.timestamp
+            .cmp(&b.timestamp)
+            .then(a.device_id.cmp(&b.device_id))
+            .then(a.backup_version.cmp(&b.backup_version))
+    });
+
+    if let Some((_, file_path)) = metas.last() {
+        let metadata = backup_metadata_from_zip(file_path.as_path())?;
+        let file_path = file_path.to_str().ok_or_else(|| Error::Fatal {
+            error: "Invalid characters in backup file path".into(),
+        })?;
+        // Metadata will be authenticated when backup is decrypted on restore
+        let restore_data = BackupRestoreData::new(metadata, file_path.into());
+        Ok(Some(restore_data))
+    } else {
+        Ok(None)
+    }
+}
+
+fn backup_metadata_from_zip(zip_path: &Path) -> Result<BackupMetadata, Error> {
+    let backup_metadata_bytes =
+        extract_from_zip(zip_path, METADATA_FILE_NAME).map_err(map_zip_error)?;
+    let metadata: BackupMetadata = serde_json::from_slice(&backup_metadata_bytes)
+        .map_err(|_err| Error::Retriable {
+            error: "Failed to deserialize backup metadata".into(),
+        })?;
     Ok(metadata)
 }
 
@@ -520,11 +612,33 @@ fn remove_outdated_backups(
     current_metadata: &BackupMetadata,
     backup_dir: &Path,
 ) -> Result<(), Error> {
+    let entries = list_backup_dir(backup_dir)?;
+    for entry in entries {
+        if should_delete(&entry, current_metadata)? {
+            // It might be that file was deleted by other backup inbetween.
+            fs::remove_file(entry.path()).or_else(|err| {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(Error::Fatal {
+                        error: format!(
+                            "Failed to delete backup file due to error: {err}"
+                        ),
+                    })
+                }
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn list_backup_dir(backup_dir: &Path) -> Result<Vec<fs::DirEntry>, Error> {
     let entries = fs::read_dir(backup_dir).map_err(|err| Error::Retriable {
         // Retriable because not necessarily logic error; it's possible that directory is
         // temporarily unavailable.
         error: format!("Failed to list backup directory due to error: {err}"),
     })?;
+    let mut results: Vec<fs::DirEntry> = Default::default();
     for entry_res in entries {
         // If the file was removed between listing accessing, do nothing.
         let maybe_entry = entry_res.map(Some).or_else(|err| {
@@ -537,38 +651,20 @@ fn remove_outdated_backups(
             }
         })?;
         if let Some(entry) = maybe_entry {
-            if should_delete(&entry, current_metadata)? {
-                // It might be that file was deleted by other backup inbetween.
-                fs::remove_file(entry.path()).or_else(|err| {
-                    if err.kind() == std::io::ErrorKind::NotFound {
-                        Ok(())
-                    } else {
-                        Err(Error::Fatal {
-                            error: format!(
-                                "Failed to delete backup file due to error: {err}"
-                            ),
-                        })
-                    }
-                })?;
-            }
+            results.push(entry)
         }
     }
-    Ok(())
+    Ok(results)
 }
 
 fn should_delete(
     dir_entry: &fs::DirEntry,
     current_metadata: &BackupMetadata,
 ) -> Result<bool, Error> {
-    let file_name = dir_entry.file_name();
-    let file_name = file_name.to_str().ok_or_else(|| Error::Fatal {
-        error: "Invalid characters in backup file name".into(),
-    })?;
-    let meta_from_file_name: BackupMetadataFromFileName = file_name.parse()?;
+    let meta_from_file_name: BackupMetadataFromFileName = dir_entry.try_into()?;
 
     // There may be other devices saving backups in the same directory.
-    let same_device =
-        meta_from_file_name.device_identifier == current_metadata.device_identifier;
+    let same_device = meta_from_file_name.device_id == current_metadata.device_identifier;
     // Important to only delete earlier versions as a newer backup may have been created inbetween.
     let earlier_version =
         meta_from_file_name.backup_version < current_metadata.backup_version;
@@ -710,6 +806,16 @@ mod tests {
 
         fn create_backup(&self) -> Result<Option<BackupMetadata>> {
             let metadata = create_backup(self.resources.clone())?;
+            Ok(metadata)
+        }
+
+        fn create_backup_without_deleting_outdated(
+            &self,
+        ) -> Result<Option<BackupMetadata>> {
+            let metadata = db_backup(
+                self.resources.as_ref(),
+                self.resources.backup_dir().unwrap(),
+            )?;
             Ok(metadata)
         }
 
@@ -957,6 +1063,34 @@ mod tests {
     }
 
     #[test]
+    fn empty_dir_ok_for_finding_restorable() -> Result<()> {
+        let backup = BackupTest::new()?;
+        let res = find_latest_restorable_backup(backup.backup_dir())?;
+        assert!(res.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn finds_restorable() -> Result<()> {
+        let backup = BackupTest::new()?;
+        backup.setup_or_rotate_backup()?;
+        let _ = backup.create_backup_without_deleting_outdated()?.unwrap();
+        backup.trigger_need_new_backup()?;
+        let metadata = backup
+            .create_backup_without_deleting_outdated()?
+            .expect("needs backup");
+        let res = find_latest_restorable_backup(backup.backup_dir())?.unwrap();
+
+        assert_eq!(metadata.timestamp, res.timestamp);
+
+        let path = Path::new(&res.file_path);
+        let meta_from_zip = backup_metadata_from_zip(path)?;
+        assert_eq!(meta_from_zip, metadata);
+
+        Ok(())
+    }
+
+    #[test]
     fn device_id_from_filename_ok() -> Result<()> {
         let device_name: DeviceName = "test-device".parse()?;
         let device_id: DeviceIdentifier =
@@ -974,10 +1108,7 @@ mod tests {
         let meta_from_file_name: BackupMetadataFromFileName = file_name.parse()?;
 
         assert_eq!(meta_from_file_name.backup_version, metadata.backup_version);
-        assert_eq!(
-            meta_from_file_name.device_identifier,
-            metadata.device_identifier
-        );
+        assert_eq!(meta_from_file_name.device_id, metadata.device_identifier);
 
         Ok(())
     }
