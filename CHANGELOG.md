@@ -8,7 +8,7 @@
 
 - Improve default dapps on new installs
 - Revert to old logo
-- 
+
 ## 2022-12-19
 
 ### iOS Beta v0.5.2
