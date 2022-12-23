@@ -21,6 +21,7 @@
 		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
 		68145F4D2950D96F005FA1C1 /* GlobalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68145F4C2950D96F005FA1C1 /* GlobalSettings.swift */; };
 		68145F4F295219A4005FA1C1 /* AsyncButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68145F4E295219A4005FA1C1 /* AsyncButton.swift */; };
+		68194EE32955DD4F00D2D813 /* CustomSecureField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68194EE22955DD4F00D2D813 /* CustomSecureField.swift */; };
 		6853B4D6290591B400397279 /* html in Resources */ = {isa = PBXBuildFile; fileRef = 6853B4D5290591B400397279 /* html */; };
 		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
 		686C1D052827C9DC00011311 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C1D042827C9DC00011311 /* Config.swift */; };
@@ -32,6 +33,7 @@
 		688AD66329532B1B001EC192 /* BackupSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66229532B1B001EC192 /* BackupSettings.swift */; };
 		688AD66729534BAC001EC192 /* DialogButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66629534BAC001EC192 /* DialogButtons.swift */; };
 		688AD66929547066001EC192 /* RestoreModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66829547066001EC192 /* RestoreModel.swift */; };
+		688AD66B2955C85A001EC192 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66A2955C85A001EC192 /* RecoveryView.swift */; };
 		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
 		688C29B4283FD78000474900 /* GlobalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* GlobalModel.swift */; };
 		688C29B6283FE73E00474900 /* ProfileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* ProfileListView.swift */; };
@@ -82,6 +84,7 @@
 		6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NativeUI.xctestplan; sourceTree = "<group>"; };
 		68145F4C2950D96F005FA1C1 /* GlobalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettings.swift; sourceTree = "<group>"; };
 		68145F4E295219A4005FA1C1 /* AsyncButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncButton.swift; sourceTree = "<group>"; };
+		68194EE22955DD4F00D2D813 /* CustomSecureField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomSecureField.swift; sourceTree = "<group>"; };
 		6853B4D5290591B400397279 /* html */ = {isa = PBXFileReference; lastKnownFileType = folder; path = html; sourceTree = "<group>"; };
 		685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SealVaultCore.swift; path = Generated/SealVaultCore.swift; sourceTree = "<group>"; };
 		686C1D042827C9DC00011311 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
@@ -93,6 +96,7 @@
 		688AD66229532B1B001EC192 /* BackupSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettings.swift; sourceTree = "<group>"; };
 		688AD66629534BAC001EC192 /* DialogButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogButtons.swift; sourceTree = "<group>"; };
 		688AD66829547066001EC192 /* RestoreModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreModel.swift; sourceTree = "<group>"; };
+		688AD66A2955C85A001EC192 /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
 		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
 		688C29B3283FD78000474900 /* GlobalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalModel.swift; sourceTree = "<group>"; };
 		688C29B5283FE73E00474900 /* ProfileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileListView.swift; sourceTree = "<group>"; };
@@ -224,6 +228,7 @@
 				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				686C1D042827C9DC00011311 /* Config.swift */,
 				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
+				68194EE22955DD4F00D2D813 /* CustomSecureField.swift */,
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
 				68B6C3FC28426B040025BCEA /* DappRow.swift */,
 				688AD66629534BAC001EC192 /* DialogButtons.swift */,
@@ -238,6 +243,7 @@
 				688C29B5283FE73E00474900 /* ProfileListView.swift */,
 				688C29BD283FF33A00474900 /* ProfileRow.swift */,
 				688C29BB283FF32300474900 /* ProfileView.swift */,
+				688AD66A2955C85A001EC192 /* RecoveryView.swift */,
 				68CB392B29240507004BDD20 /* SealVaultApp.entitlements */,
 				68F6291128251A0900BDCD02 /* SealVaultApp.swift */,
 				686D8BB728E5FF4A00031375 /* TokenAmount.swift */,
@@ -389,6 +395,7 @@
 				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
 				686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */,
 				68145F4D2950D96F005FA1C1 /* GlobalSettings.swift in Sources */,
+				68194EE32955DD4F00D2D813 /* CustomSecureField.swift in Sources */,
 				688C29BE283FF33A00474900 /* ProfileRow.swift in Sources */,
 				68745A802826E0F000E7B915 /* BrowserView.swift in Sources */,
 				686C1D052827C9DC00011311 /* Config.swift in Sources */,
@@ -397,6 +404,7 @@
 				68EBBC2B290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift in Sources */,
 				688AD66729534BAC001EC192 /* DialogButtons.swift in Sources */,
 				688C29B4283FD78000474900 /* GlobalModel.swift in Sources */,
+				688AD66B2955C85A001EC192 /* RecoveryView.swift in Sources */,
 				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
 				688C29BC283FF32300474900 /* ProfileView.swift in Sources */,

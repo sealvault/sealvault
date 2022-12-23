@@ -5,6 +5,10 @@
 import SwiftUI
 
 struct DialogButtons: View {
+    @State var approveDisabled: Bool = false
+    @State var approveLabel: String = "OK"
+    @State var rejectLabel: String = "Cancel"
+
     var onApprove: () -> Void
     var onReject: () -> Void
 
@@ -13,7 +17,9 @@ struct DialogButtons: View {
             Button(action: {
                 onReject()
             }, label: {
-                Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
+                Text(rejectLabel)
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(.secondary)
             })
             .accessibilityLabel("reject")
             .buttonStyle(.borderless)
@@ -22,11 +28,13 @@ struct DialogButtons: View {
             Button(action: {
                 onApprove()
             }, label: {
-                Text("OK").frame(maxWidth: .infinity)
+                Text(approveLabel)
+                    .frame(maxWidth: .infinity)
             })
             .accessibilityLabel("approve")
             .buttonStyle(.borderless)
             .controlSize(.large)
+            .disabled(approveDisabled)
         }
     }
 }

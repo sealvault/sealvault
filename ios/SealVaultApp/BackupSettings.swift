@@ -46,11 +46,11 @@ struct BackupSettings: View {
             }
         }
         .confirmationDialog("Are you sure you want to disable backups?", isPresented: $presentConfirmation) {
-          Button("Disable Backups", role: .destructive, action: {
+            Button("Disable Backups", role: .destructive, action: {
               Task {
                   await model.disableBackup()
               }
-          })
+            })
             Button("Cancel", role: .cancel, action: {
                 backupEnabledToggle = true
             })
