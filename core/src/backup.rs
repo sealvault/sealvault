@@ -302,8 +302,9 @@ fn find_latest_restorable_backup(
         let b = &b_tup.0;
         a.timestamp
             .cmp(&b.timestamp)
-            .then(a.device_id.cmp(&b.device_id))
             .then(a.backup_version.cmp(&b.backup_version))
+            // Break ties across devices based on device id which is random.
+            .then(a.device_id.cmp(&b.device_id))
     });
 
     if let Some((_, file_path)) = metas.last() {
