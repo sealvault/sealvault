@@ -70,6 +70,31 @@ class GlobalModel: ObservableObject {
         return Self(core: core, profiles: [], activeProfileId: nil, callbackModel: callbackModel)
     }
 
+//    static func shouldRestoreBackup() -> RestoreModel? {
+//        let dbPath = dbFilePath()
+//        let hasDb = FileManager.default.fileExists(atPath: dbPath.absoluteString)
+//        // If we already have a db then we don't restore
+//        if hasDb {
+//            return nil
+//        }
+//        if let backupDir = self.backupDir() {
+//            if let backupData = findBackup(backupDir) {
+//                return RestoreModel(backupData)
+//            }
+//        }
+//        return nil
+//    }
+
+    private static func dbDirPath() -> URL {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
+        return dbDirPath
+    }
+
+    private static func dbFilePath() -> URL {
+        dbDirPath().appendingPathComponent(Config.dbFileName)
+    }
+
     private static func ensureDbFilePath() -> String {
         let dataProtectionAttributes = [
             FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
@@ -78,17 +103,17 @@ class GlobalModel: ObservableObject {
         let fileManager = FileManager.default
         let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
 
-        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
-        if !fileManager.fileExists(atPath: dbDirPath.path) {
+        let dirPath = dbDirPath()
+        if !fileManager.fileExists(atPath: dirPath.path) {
             // App can't start if it can't create this directory
             // swiftlint:disable force_try
             try! fileManager.createDirectory(
-                atPath: dbDirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes
+                atPath: dirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes
             )
             // swiftlint:enable force_try
         }
 
-        let dbFilePath = dbDirPath.appendingPathComponent(Config.dbFileName)
+        let dbFilePath = dbFilePath()
         if !fileManager.fileExists(atPath: dbFilePath.path) {
             fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes)
         }

@@ -31,6 +31,7 @@
 		68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68745A812826E11500E7B915 /* WebViewRepresentable.swift */; };
 		688AD66329532B1B001EC192 /* BackupSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66229532B1B001EC192 /* BackupSettings.swift */; };
 		688AD66729534BAC001EC192 /* DialogButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66629534BAC001EC192 /* DialogButtons.swift */; };
+		688AD66929547066001EC192 /* RestoreModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688AD66829547066001EC192 /* RestoreModel.swift */; };
 		688C29AA283A426500474900 /* SealVaultCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */; };
 		688C29B4283FD78000474900 /* GlobalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B3283FD78000474900 /* GlobalModel.swift */; };
 		688C29B6283FE73E00474900 /* ProfileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29B5283FE73E00474900 /* ProfileListView.swift */; };
@@ -91,6 +92,7 @@
 		68745A812826E11500E7B915 /* WebViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewRepresentable.swift; sourceTree = "<group>"; };
 		688AD66229532B1B001EC192 /* BackupSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettings.swift; sourceTree = "<group>"; };
 		688AD66629534BAC001EC192 /* DialogButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogButtons.swift; sourceTree = "<group>"; };
+		688AD66829547066001EC192 /* RestoreModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreModel.swift; sourceTree = "<group>"; };
 		688C29A9283A426500474900 /* SealVaultCoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = SealVaultCoreFFI.xcframework; sourceTree = "<group>"; };
 		688C29B3283FD78000474900 /* GlobalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalModel.swift; sourceTree = "<group>"; };
 		688C29B5283FE73E00474900 /* ProfileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileListView.swift; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 				68CCACFF28FC42670043692D /* CallbackModel.swift */,
 				68B6C40028426C120025BCEA /* Dapp.swift */,
 				688C29B3283FD78000474900 /* GlobalModel.swift */,
+				688AD66829547066001EC192 /* RestoreModel.swift */,
 				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
 				68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */,
 			);
@@ -380,6 +383,7 @@
 			files = (
 				68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */,
 				68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */,
+				688AD66929547066001EC192 /* RestoreModel.swift in Sources */,
 				688C29E92840F69100474900 /* Account.swift in Sources */,
 				68CCACFA28F85BC70043692D /* Banner.swift in Sources */,
 				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
