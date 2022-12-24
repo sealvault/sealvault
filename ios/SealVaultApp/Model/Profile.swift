@@ -126,7 +126,12 @@ extension Profile {
     }
 
     var displayName: String {
-        name
+        if let first = name.first {
+            let index = name.index(name.startIndex, offsetBy: 1)
+            return String(first.uppercased()) + name.suffix(from: index)
+        } else {
+            return name
+        }
     }
 
     var topDapps: String {

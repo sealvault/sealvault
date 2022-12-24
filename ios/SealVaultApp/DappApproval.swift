@@ -116,7 +116,7 @@ struct DappApprovalHeader: View {
                 Toggle(isOn: $transferAllotment) {
                     Text("""
     Transfer \(request.params.amount) \(request.params.tokenSymbol) on \(request.params.chainDisplayName) to new \
-    dapp address.
+    dapp address for network fees.
     """).font(.callout)
                 }
                 .padding()
