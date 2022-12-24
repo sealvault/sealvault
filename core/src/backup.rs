@@ -120,7 +120,7 @@ impl FromStr for BackupMetadataFromFileName {
             BACKUP_FILE_NAME_REGEX
                 .captures(file_name)
                 .ok_or_else(|| Error::Fatal {
-                    error: "Invalid backup file name format".into(),
+                    error: format!("Invalid backup file name format: '{file_name}'"),
                 })?;
 
         let timestamp = parse_field_from_backup_file_name(&captures, "timestamp")?;
@@ -292,9 +292,15 @@ fn find_latest_restorable_backup(
     let entries = list_backup_dir(backup_dir)?;
     let mut metas: Vec<(BackupMetadataFromFileName, PathBuf)> = Default::default();
     for entry in entries {
-        let meta_from_file_name: BackupMetadataFromFileName = (&entry).try_into()?;
-        if meta_from_file_name.os == os {
-            metas.push((meta_from_file_name, entry.path()))
+        match BackupMetadataFromFileName::try_from(&entry) {
+            Ok(meta) => {
+                if meta.os == os {
+                    metas.push((meta, entry.path()))
+                }
+            }
+            Err(err) => {
+                log::warn!("{}", err);
+            }
         }
     }
     metas.sort_by(|a_tup, b_tup| {
@@ -1080,6 +1086,10 @@ mod tests {
         let metadata = backup
             .create_backup_without_deleting_outdated()?
             .expect("needs backup");
+
+        // Make sure it can handle an unexpected file name in the directory
+        File::create(backup.backup_dir().join("some-random-file.zip"))?;
+
         let res = find_latest_restorable_backup(backup.backup_dir())?.unwrap();
 
         assert_eq!(metadata.timestamp, res.timestamp);
