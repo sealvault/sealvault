@@ -37,7 +37,7 @@ class BrowserModel: ObservableObject {
     }
 
     var navigationTitle: String {
-        showTopDapps ? "Top Dapps" : ""
+        showTopDapps ? "Dapps" : ""
     }
 
     func searchUrl() -> URL? {
