@@ -95,7 +95,6 @@ struct AddressView: View {
             }
             .presentationDetents([.medium])
             .background(.ultraThinMaterial)
-
         }
     }
 }
