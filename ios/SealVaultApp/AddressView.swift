@@ -52,7 +52,7 @@ struct AddressView: View {
     var paddingTop: CGFloat = 50
 
     var chainSelectionTitle: String {
-        addresses.isDapp ? "Change Connected Chain" : "Add Chain"
+        addresses.isDapp ? "Change Connected Network" : "Add Network"
     }
 
     var body: some View {
