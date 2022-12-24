@@ -10,7 +10,7 @@ struct WalletRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text("Profile Wallet")
+                Text("\(profile.displayName) Profile Wallet")
                     .font(.headline)
 
                 Text(profile.walletChains)

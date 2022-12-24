@@ -37,7 +37,7 @@ class BrowserModel: ObservableObject {
     }
 
     var navigationTitle: String {
-        showTopDapps ? "Top Dapps" : ""
+        showTopDapps ? "Dapps" : ""
     }
 
     func searchUrl() -> URL? {
@@ -119,33 +119,33 @@ struct BrowserViewInner: View {
 struct TopDapps: View {
     @ObservedObject var browserModel: BrowserModel
     @EnvironmentObject private var viewModel: GlobalModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack {
             List {
-                    ForEach(viewModel.topDapps) { dapp in
-                        Button(action: {
-                            if let url = dapp.url {
-                                browserModel.loadUrl(url)
-                            }
-                            browserModel.isAddressBarFocused = false
-                        }, label: {
-                            DappRow(dapp: dapp)
-                                .accessibilityIdentifier(dapp.displayName)
-                        })
-                    }
-
+                ForEach(viewModel.topDapps) { dapp in
+                    Button(action: {
+                        if let url = dapp.url {
+                            browserModel.loadUrl(url)
+                        }
+                        browserModel.isAddressBarFocused = false
+                    }, label: {
+                        DappRow(dapp: dapp)
+                            .accessibilityIdentifier(dapp.displayName)
+                    })
                 }
+            }
             .scrollDisabled(true)
         }
-        .background(Config.tabBarColor)
+        .background(viewModel.tabBarColor(colorScheme))
         // Swipe up to dismiss keyboard
         .gesture(DragGesture(minimumDistance: 10, coordinateSpace: .global)
-                    .onEnded { value in
-                        if value.translation.height < 0 {
-                            browserModel.isAddressBarFocused = false
-                        }
-                    })
+            .onEnded { value in
+                if value.translation.height < 0 {
+                    browserModel.isAddressBarFocused = false
+                }
+            })
         .task {
             // Refresh top dapps
             await viewModel.refreshProfiles()
@@ -154,37 +154,53 @@ struct TopDapps: View {
 }
 
 struct AddressBar: View {
+    @EnvironmentObject private var viewModel: GlobalModel
     @ObservedObject var browserModel: BrowserModel
     @FocusState private var isAddressBarFocused: Bool
     @State private var showProgressView: Bool = false
 
-    var body: some View {
-        HStack {
-            HStack {
-                Button(action: {
-                    browserModel.goBack = true
-                }, label: {
-                    Image(systemName: "arrow.left")
-                })
-                .disabled(!browserModel.canGoBack)
-                .accessibilityIdentifier("Go back")
+    @Environment(\.colorScheme) private var colorScheme
 
-                if browserModel.canGoForward {
-                    Button(action: {
-                        browserModel.goForward = true
-                    }, label: {
-                        Image(systemName: "arrow.right")
-                    })
-                    .accessibilityIdentifier("Go forward")
+    var backgroundColor: Color {
+        if colorScheme == .dark {
+            return isAddressBarFocused ? Color(.systemGray4) : Color(.systemGray6)
+        } else {
+            return Color.white
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            HStack {
+                if !isAddressBarFocused {
+                    HStack {
+                        HStack {
+                            Button(action: {
+                                browserModel.goBack = true
+                            }, label: {
+                                Image(systemName: "arrow.left")
+                            })
+                            .disabled(!browserModel.canGoBack)
+                            .accessibilityIdentifier("Go back")
+
+                            if browserModel.canGoForward {
+                                Button(action: {
+                                    browserModel.goForward = true
+                                }, label: {
+                                    Image(systemName: "arrow.right")
+                                })
+                                .accessibilityIdentifier("Go forward")
+                            }
+                        }
+                        .padding(.leading, 5)
+                    }
+
                 }
-            }.padding(.horizontal, 5)
-            ZStack(alignment: .bottom) {
                 TextField("Search or enter website name", text: $browserModel.addressBarText)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .accessibility(identifier: "browserAddressBar")
                     .multilineTextAlignment(.center)
-                    .textFieldStyle(.roundedBorder)
                     .focused($isAddressBarFocused)
                     .onSubmit {
                         if let url = uriFixup(input: browserModel.addressBarText) {
@@ -192,7 +208,8 @@ struct AddressBar: View {
                         } else if let searchUrl = browserModel.searchUrl() {
                             browserModel.loadRawUrl(searchUrl.absoluteString)
                         } else {
-                            print("Unexpected: invalid url and search url \(String(describing: browserModel.urlRaw))")
+                            print(
+                                "Unexpected: invalid url and search url \(String(describing: browserModel.urlRaw))")
                         }
                     }
                     .onReceive(NotificationCenter.default.publisher(
@@ -205,33 +222,45 @@ struct AddressBar: View {
                             )
                         }
                     }
-                if showProgressView {
-                    ProgressView(value: browserModel.loadingProgress)
-                        // Make the bar thinner
-                        .scaleEffect(x: 1, y: 0.5, anchor: .center)
+
+                if !isAddressBarFocused {
+                    HStack {
+                        if browserModel.loading {
+                            Button(action: {
+                                browserModel.doStop = true
+                            }, label: {
+                                Image(systemName: "xmark")
+                            })
+                            .accessibilityIdentifier("Stop loading")
+                        } else {
+                            Button(action: {
+                                browserModel.doReload = true
+                            }, label: {
+                                Image(systemName: "arrow.clockwise")
+                            })
+                            .disabled(!browserModel.urlValid)
+                            .accessibilityIdentifier("Reload page")
+                        }
+                    }
+                    .padding(.trailing, 5)
                 }
             }
-            HStack {
-                if browserModel.loading {
-                    Button(action: {
-                        browserModel.doStop = true
-                    }, label: {
-                        Image(systemName: "xmark")
-                    })
-                    .accessibilityIdentifier("Stop loading")
-                } else {
-                    Button(action: {
-                        browserModel.doReload = true
-                    }, label: {
-                        Image(systemName: "arrow.clockwise")
-                    })
-                    .accessibilityIdentifier("Reload page")
-                }
+            .padding(10)
+            .background((RoundedRectangle(cornerRadius: 10)).fill(backgroundColor))
+            .clipped()
+            .shadow(radius: 2)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(viewModel.tabBarColor(colorScheme))
+
+            if showProgressView {
+                ProgressView(value: browserModel.loadingProgress)
+                    .scaleEffect(x: 1, y: 0.5, anchor: .center)
+                    .padding(.horizontal, 28)
+                    .offset(y: -8)
             }
-            .padding(.horizontal, 5)
+
         }
-        .padding(10)
-        .background(Config.tabBarColor)
         .onChange(of: isAddressBarFocused) { newValue in
             browserModel.isAddressBarFocused = newValue
             if !browserModel.isAddressBarFocused && browserModel.urlRaw != browserModel.addressBarText {

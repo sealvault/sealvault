@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
+import SwiftUI
 
 @MainActor
 class GlobalModel: ObservableObject {
@@ -116,6 +117,10 @@ class GlobalModel: ObservableObject {
                 return nil
             }
         }
+    }
+
+    func tabBarColor(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? .black : Color(UIColor.systemGray6)
     }
 
     func refreshProfiles() async {

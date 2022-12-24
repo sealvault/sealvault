@@ -1,5 +1,24 @@
 # Changelog
 
+## 2022-12-23
+
+### iOS Beta v0.5.3
+
+#### Improvements
+
+- Improve default dapps on new installs
+- Revert to old logo
+- 
+## 2022-12-19
+
+### iOS Beta v0.5.2
+
+#### Improvements
+
+- Improve browser address bar UI
+- Improve top dapps UI
+- Improve dark mode colors
+
 ## 2022-12-13
 
 ### iOS Beta v0.5.0

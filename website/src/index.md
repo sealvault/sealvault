@@ -55,7 +55,7 @@ title: Web3 Key Manager App
 
 -   __Quick Launch Your Favorite Dapps__
     <figure markdown>
-    ![iOS app profile view](./assets/images/screenshots/landing-screen.png){ loading=lazy }
+    ![iOS app profile view](./assets/images/screenshots/top-dapps.png){ loading=lazy }
     <figcaption>
     Best-in-class dapp browser with helpful notifications about dapp transactions.
     [More](./one-dapp-per-key.md)

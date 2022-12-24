@@ -6,10 +6,14 @@ import SwiftUI
 
 struct AddressMenu: View {
     @ObservedObject var address: Address
-    var middleButton: (() -> Button<Text>)?
+    var topButton: (() -> Button<Text>)?
 
     var body: some View {
         Menu(address.addressDisplay) {
+            if let button = topButton {
+                button()
+            }
+
             if let url = address.blockchainExplorerLink {
                 Button(action: {
                     UIApplication.shared.open(url)
@@ -17,13 +21,10 @@ struct AddressMenu: View {
                     Text("Open in Block Explorer")
                 })
             }
-            if let button = middleButton {
-                button()
-            }
             Button(action: {
                 UIPasteboard.general.string = address.checksumAddress
             }, label: {
-                Text("Copy")
+                Text("Copy Address")
             })
         }
     }
