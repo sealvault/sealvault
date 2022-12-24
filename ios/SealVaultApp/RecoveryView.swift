@@ -19,8 +19,9 @@ struct RecoveryView: View {
     var body: some View {
         VStack(alignment: .center, spacing: 40) {
 
-            Text("Restore From Backup")
+            Text("Restore Backup")
                 .font(.largeTitle)
+                .bold()
 
             VStack(alignment: .leading, spacing: 20) {
                 Text("The last backup was created at \(backupDate) on \(restoreData.backupDeviceName).")
