@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct ChainSelection: View {
-    @State var title: String = "Select Chain"
+    @State var title: String = "Select Network"
     var onSubmit: (_ newChainId: UInt64) async -> Void
 
     @EnvironmentObject private var model: GlobalModel
