@@ -8,6 +8,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     async_runtime as rt, backup,
+    backup::BackupError,
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
@@ -114,11 +115,13 @@ impl AppCore {
 
     /// Method called by the UI when the application enters the background.
     pub fn on_background(&self) -> Result<(), CoreError> {
-        backup::create_backup(self.resources.clone())?;
+        if self.is_backup_enabled()? {
+            backup::create_backup(self.resources.clone())?;
+        }
         Ok(())
     }
 
-    pub fn enable_backup(&self) -> Result<(), CoreError> {
+    pub fn enable_backup(&self) -> Result<(), BackupError> {
         backup::set_up_or_rotate_backup(
             self.connection_pool(),
             self.keychain(),

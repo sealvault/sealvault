@@ -8,13 +8,16 @@ use crate::{
     db::schema::local_settings, encryption::KdfNonce, utils::rfc3339_timestamp, Error,
 };
 
+// numeric_expr!(local_settings::dsl::backup_version);
+
 #[derive(Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(table_name = local_settings)]
 pub struct LocalSettings {
     pub id: String,
     pub profile_id: String,
     pub backup_enabled: bool,
-    pub completed_backup_version: i64,
+    /// Monotonously increasing, but may have gaps.
+    pub backup_version: i64,
     pub backup_completed_at: Option<String>,
     pub backup_password_updated_at: Option<String>,
     pub backup_kdf_nonce: Option<Vec<u8>>,
@@ -60,30 +63,28 @@ impl LocalSettings {
         Ok(())
     }
 
-    pub fn set_completed_backup_version(
+    // Returns the new version
+    pub fn increment_backup_version(
         connection: &mut SqliteConnection,
-        completed_backup_version: i64,
     ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 
         diesel::update(local_settings::table.find(&SINGLETON_ID))
-            .set(ls::completed_backup_version.eq(completed_backup_version))
+            .set(ls::backup_version.eq(ls::backup_version + 1))
             .execute(connection)?;
 
         Ok(())
     }
 
-    pub fn fetch_completed_backup_version(
-        connection: &mut SqliteConnection,
-    ) -> Result<i64, Error> {
+    pub fn fetch_backup_version(connection: &mut SqliteConnection) -> Result<i64, Error> {
         use local_settings::dsl as ls;
 
-        let pending_backup_version = local_settings::table
+        let backup_version = local_settings::table
             .find(&SINGLETON_ID)
-            .select(ls::completed_backup_version)
+            .select(ls::backup_version)
             .first(connection)?;
 
-        Ok(pending_backup_version)
+        Ok(backup_version)
     }
 
     pub fn fetch_backup_enabled(

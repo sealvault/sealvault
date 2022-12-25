@@ -97,21 +97,10 @@ table! {
         backup_enabled -> Bool,
         // !!! `BigInt` here is a manual override. Make sure to add it back if you regenerate the
         // schema. Context: https://github.com/diesel-rs/diesel/issues/1116
-        completed_backup_version -> BigInt,
+        backup_version -> BigInt,
         backup_completed_at -> Nullable<Text>,
         backup_password_updated_at -> Nullable<Text>,
         backup_kdf_nonce -> Nullable<Binary>,
-    }
-}
-
-table! {
-    profiles (deterministic_id) {
-        deterministic_id -> Text,
-        uuid -> Text,
-        name -> Text,
-        picture_id -> Text,
-        created_at -> Text,
-        updated_at -> Nullable<Text>,
     }
 }
 
@@ -121,6 +110,17 @@ table! {
         image_name -> Nullable<Text>,
         image_hash -> Binary,
         image -> Binary,
+        created_at -> Text,
+        updated_at -> Nullable<Text>,
+    }
+}
+
+table! {
+    profiles (deterministic_id) {
+        deterministic_id -> Text,
+        uuid -> Text,
+        name -> Text,
+        picture_id -> Text,
         created_at -> Text,
         updated_at -> Nullable<Text>,
     }

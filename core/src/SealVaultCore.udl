@@ -9,7 +9,7 @@ interface AppCore {
     [Throws=CoreError]
     void on_background();
 
-    [Throws=CoreError]
+    [Throws=CoreBackupError]
     void enable_backup();
 
     [Throws=CoreError]
@@ -68,6 +68,12 @@ enum CoreError{
     "Fatal",
     "Retriable",
     "User",
+};
+
+[Error]
+enum CoreBackupError{
+    "BackupDirectoryNotAvailable",
+    "Error"
 };
 
 dictionary CoreProfile {

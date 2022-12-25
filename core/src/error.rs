@@ -47,9 +47,15 @@ impl Error {
     }
 }
 
-// We don't use anyhow for `UnexpectedError` in order to have a single place where
-// all possible runtime invariant variations are listed.
-// TODO (abiro) add macro to derive `UnexpectedError` default implementations.
+impl From<CoreError> for Error {
+    fn from(error: CoreError) -> Self {
+        match error {
+            CoreError::Retriable { error } => Error::Retriable { error },
+            CoreError::Fatal { error } => Error::Fatal { error },
+            CoreError::User { explanation } => Error::User { explanation },
+        }
+    }
+}
 
 impl From<r2d2::PoolError> for Error {
     fn from(err: r2d2::PoolError) -> Self {

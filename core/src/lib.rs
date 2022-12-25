@@ -41,7 +41,10 @@ pub use crate::{
         AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
-    backup::{find_latest_backup as core_find_latest_backup, BackupRestoreData},
+    backup::{
+        find_latest_backup as core_find_latest_backup, BackupError as CoreBackupError,
+        BackupRestoreData,
+    },
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},

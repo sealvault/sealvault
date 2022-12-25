@@ -54,6 +54,41 @@ pub enum BackupScheme {
     V1,
 }
 
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum BackupError {
+    #[error("The backup directory is not available.")]
+    BackupDirectoryNotAvailable,
+
+    /// See crate::error;
+    #[error("{error}")]
+    Error { error: CoreError },
+}
+
+impl From<Error> for BackupError {
+    fn from(error: Error) -> Self {
+        let error: CoreError = error.into();
+        Self::Error { error }
+    }
+}
+
+impl From<BackupError> for Error {
+    fn from(error: BackupError) -> Self {
+        match error {
+            BackupError::BackupDirectoryNotAvailable => Error::Fatal {
+                error: error.to_string(),
+            },
+            BackupError::Error { error } => error.into(),
+        }
+    }
+}
+
+impl From<BackupError> for CoreError {
+    fn from(error: BackupError) -> Self {
+        let error: Error = error.into();
+        error.into()
+    }
+}
+
 /// Saved as a plaintext json file along with the encrypted backup.
 /// More info: https://sealvault.org/dev-docs/design/backup/#backup-contents
 #[derive(Debug, PartialEq, Serialize, Deserialize, TypedBuilder)]
@@ -235,15 +270,13 @@ pub fn is_backup_enabled(connection_pool: &ConnectionPool) -> Result<bool, Error
 /// https://sealvault.org/dev-docs/design/backup/#backup-contents
 pub fn create_backup(
     resources: Arc<dyn CoreResourcesI>,
-) -> Result<Option<BackupMetadata>, Error> {
-    if let Some(backup_dir) = resources.backup_dir() {
-        if let Some(metadata) = db_backup(resources.as_ref(), backup_dir)? {
-            remove_outdated_backups(&metadata, backup_dir)?;
-
-            return Ok(Some(metadata));
-        }
-    }
-    Ok(None)
+) -> Result<BackupMetadata, BackupError> {
+    let backup_dir = resources
+        .backup_dir()
+        .ok_or(BackupError::BackupDirectoryNotAvailable)?;
+    let metadata = db_backup(resources.as_ref(), backup_dir)?;
+    remove_outdated_backups(&metadata, backup_dir)?;
+    Ok(metadata)
 }
 
 pub fn restore_backup(
@@ -490,77 +523,54 @@ fn set_up_or_rotate_sk_kek(
 fn db_backup(
     resources: &dyn CoreResourcesI,
     backup_dir: &Path,
-) -> Result<Option<BackupMetadata>, Error> {
+) -> Result<BackupMetadata, Error> {
     let connection_pool = resources.connection_pool();
 
-    // We check this twice to avoid running the expensive wal checkpointing if a backup is not
-    // needed.
-    let pending = connection_pool
-        .exclusive_transaction(|mut tx_conn| pending_backup_version(&mut tx_conn))?;
-    if pending.is_none() {
-        return Ok(None);
-    }
     // Flush WAL to the DB file. Can't be inside exclusive transaction, because it acquires its own
     // lock.
     let mut conn = connection_pool.connection()?;
+    // Increment here to make sure it's part of backup. If there is an error later, it'll cause
+    // gaps in the backup versions, but that's ok.
+    m::LocalSettings::increment_backup_version(&mut conn)?;
     conn.batch_execute("PRAGMA wal_checkpoint(FULL);")?;
 
+    // Exclusive transaction here for copy
     connection_pool.exclusive_transaction(|mut tx_conn| {
-        if let Some(backup_version) = pending_backup_version(&mut tx_conn)? {
-            // Fetch these while holding the exclusive lock to make sure they match
-            // the secret key backup encryption key that was used to encrypt the secret key data
-            // encryption key which is stored inside the DB.
-            let kdf_nonce =
-                m::LocalSettings::fetch_kdf_nonce(tx_conn.as_mut())?.ok_or_else(|| {
-                    Error::Fatal {
-                        error: "No KDF nonce in DB. Make sure backup is set up before attempting \
-                        to create one.".into()
-                    }
-                })?;
-            let db_backup_dek = DataEncryptionKey::db_backup_dek(resources.keychain())?;
+        let backup_version = m::LocalSettings::fetch_backup_version(tx_conn.as_mut())?;
 
-            let backup_contents =
-                create_verified_backup(connection_pool.db_path(), backup_version)?;
+        // Fetch these while holding the exclusive lock to make sure they match
+        // the secret key backup encryption key that was used to encrypt the secret key data
+        // encryption key which is stored inside the DB.
+        let kdf_nonce =
+            m::LocalSettings::fetch_kdf_nonce(tx_conn.as_mut())?.ok_or_else(|| {
+                Error::Fatal {
+                error:
+                    "No KDF nonce in DB. Make sure backup is set up before attempting \
+                        to create one."
+                        .into(),
+            }
+            })?;
+        let db_backup_dek = DataEncryptionKey::db_backup_dek(resources.keychain())?;
 
-            let metadata = BackupMetadata::builder()
-                .backup_scheme(BackupScheme::V1)
-                .backup_version(backup_version)
-                .device_identifier(resources.device_id().clone())
-                .device_name(resources.device_name().clone())
-                .kdf_nonce(&kdf_nonce)
-                .build();
+        // Copies DB file
+        let backup_contents =
+            create_verified_backup(connection_pool.db_path(), backup_version)?;
 
-            let encryption_output =
-                db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
+        let metadata = BackupMetadata::builder()
+            .backup_scheme(BackupScheme::V1)
+            .backup_version(backup_version)
+            .device_identifier(resources.device_id().clone())
+            .device_name(resources.device_name().clone())
+            .kdf_nonce(&kdf_nonce)
+            .build();
 
-            create_backup_zip(backup_dir, &metadata, &encryption_output)?;
+        let encryption_output =
+            db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
 
-            m::LocalSettings::set_completed_backup_version(tx_conn.as_mut(), backup_version)?;
+        create_backup_zip(backup_dir, &metadata, &encryption_output)?;
 
-            Ok(Some(metadata))
-        } else {
-            Ok(None)
-        }
+        Ok(metadata)
     })
-}
-
-/// Returns the pending backup version if backups are enabled and we need a backup.
-/// We need a backup if we haven't backed up all keys yet.
-fn pending_backup_version(
-    tx_conn: &mut ExclusiveTxConnection,
-) -> Result<Option<i64>, Error> {
-    let backup_enabled = m::LocalSettings::fetch_backup_enabled(tx_conn.as_mut())?;
-    if !backup_enabled {
-        return Ok(None);
-    }
-    let num_keys = m::AsymmetricKey::num_keys(tx_conn.as_mut())?;
-    let completed_backup_version =
-        m::LocalSettings::fetch_completed_backup_version(tx_conn.as_mut())?;
-    if num_keys > completed_backup_version {
-        Ok(Some(num_keys))
-    } else {
-        Ok(None)
-    }
 }
 
 /// Create a verified backup of the DB and return it as bytes.
@@ -735,23 +745,17 @@ fn backup_connection_pool(backup_path: &Path) -> Result<ConnectionPool, Error> {
 fn verify_backup(backup_path: &Path, expected_backup_version: i64) -> Result<(), Error> {
     let backup_cp = backup_connection_pool(backup_path)?;
 
-    let maybe_version = backup_cp
-        .exclusive_transaction(|mut tx_conn| pending_backup_version(&mut tx_conn))?;
+    let mut conn = backup_cp.connection()?;
+    let backup_version = m::LocalSettings::fetch_backup_version(&mut conn)?;
 
-    if let Some(version) = maybe_version {
-        if version == expected_backup_version {
-            Ok(())
-        } else {
-            Err(Error::Fatal {
-                error: format!(
-                    "Expected pending backup version to be {expected_backup_version} in \
-                            backup, instead it is: {version}"
-                ),
-            })
-        }
+    if backup_version == expected_backup_version {
+        Ok(())
     } else {
         Err(Error::Fatal {
-            error: "Backups are not enabled in restored backup".into(),
+            error: format!(
+                "Expected backup version to be {expected_backup_version} in backup, instead it is: \
+                {backup_version}"
+            ),
         })
     }
 }
@@ -811,14 +815,12 @@ mod tests {
             Ok(res)
         }
 
-        fn create_backup(&self) -> Result<Option<BackupMetadata>> {
+        fn create_backup(&self) -> Result<BackupMetadata> {
             let metadata = create_backup(self.resources.clone())?;
             Ok(metadata)
         }
 
-        fn create_backup_without_deleting_outdated(
-            &self,
-        ) -> Result<Option<BackupMetadata>> {
+        fn create_backup_without_deleting_outdated(&self) -> Result<BackupMetadata> {
             let metadata = db_backup(
                 self.resources.as_ref(),
                 self.resources.backup_dir().unwrap(),
@@ -826,7 +828,7 @@ mod tests {
             Ok(metadata)
         }
 
-        fn trigger_need_new_backup(&self) -> Result<()> {
+        fn add_key(&self) -> Result<()> {
             self.resources
                 .connection_pool()
                 .deferred_transaction(|mut tx_conn| {
@@ -965,7 +967,7 @@ mod tests {
         let backup = BackupTest::new()?;
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_metadata = backup.create_backup()?;
         let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
         assert!(backup_enabled);
 
@@ -982,15 +984,12 @@ mod tests {
         let password = backup.backup_password()?;
 
         // First backup
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_metadata = backup.create_backup()?;
         let initial_backup_version = backup_metadata.backup_version;
         assert!(initial_backup_version > 0);
 
-        // No backup if no change.
-        assert_eq!(backup.create_backup()?, None);
-
-        backup.trigger_need_new_backup()?;
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        backup.add_key()?;
+        let backup_metadata = backup.create_backup()?;
         assert!(initial_backup_version < backup_metadata.backup_version);
 
         // Test cleanup
@@ -1013,7 +1012,7 @@ mod tests {
         backup.setup_or_rotate_backup()?;
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_metadata = backup.create_backup()?;
 
         let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
@@ -1031,14 +1030,14 @@ mod tests {
             backup.resources.keychain(),
             backup.resources.device_id(),
         )?;
+
         // Shouldn't create backup after rollback
-        assert_eq!(backup.create_backup()?, None);
         let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
         assert!(!backup_enabled);
 
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_metadata = backup.create_backup()?;
 
         let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
@@ -1057,11 +1056,14 @@ mod tests {
             backup.resources.keychain(),
             backup.resources.device_id(),
         )?;
-        assert_eq!(backup.create_backup()?, None);
+
+        let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
+        assert!(!backup_enabled);
+
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
 
-        let backup_metadata = backup.create_backup()?.expect("needs backup");
+        let backup_metadata = backup.create_backup()?;
 
         let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
@@ -1081,11 +1083,9 @@ mod tests {
     fn finds_restorable() -> Result<()> {
         let backup = BackupTest::new()?;
         backup.setup_or_rotate_backup()?;
-        let _ = backup.create_backup_without_deleting_outdated()?.unwrap();
-        backup.trigger_need_new_backup()?;
-        let metadata = backup
-            .create_backup_without_deleting_outdated()?
-            .expect("needs backup");
+        let _ = backup.create_backup_without_deleting_outdated()?;
+        backup.add_key()?;
+        let metadata = backup.create_backup_without_deleting_outdated()?;
 
         // Make sure it can handle an unexpected file name in the directory
         File::create(backup.backup_dir().join("some-random-file.zip"))?;
