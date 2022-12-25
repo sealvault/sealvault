@@ -19,12 +19,9 @@ pub mod dto;
 pub mod in_page_provider;
 pub mod protocols;
 
-// TODO remove allow dead code
-#[allow(dead_code)]
 mod backup;
 mod db;
 mod device;
-#[allow(dead_code)]
 mod encryption;
 mod error;
 mod favicon;
@@ -42,7 +39,8 @@ pub use crate::{
         EthTransferNativeTokenArgs,
     },
     backup::{
-        find_latest_backup as core_find_latest_backup, BackupError as CoreBackupError,
+        find_latest_backup as core_find_latest_backup,
+        restore_backup as core_restore_backup, BackupError as CoreBackupError,
         BackupRestoreData,
     },
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
