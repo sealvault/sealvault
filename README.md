@@ -32,7 +32,7 @@ You can also transfer a pre-configured amount automatically when you add a new d
 
 ### Isolated identities 🕶️
 
-Organize your dapps into accounts for isolated identities. 
+Organize your dapps into profiles for isolated identities. 
 [Learn more.](https://sealvault.org/privacy/)</figcaption>
 
 <div float="left" align="center">
