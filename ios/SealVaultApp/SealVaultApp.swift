@@ -30,10 +30,8 @@ struct AppInner: View {
             .task {
                 await model.refreshProfiles()
             }
-            .onChange(of: scenePhase) { newPhase in
-                if newPhase == .background {
-                    model.onBackground()
-                }
+            .onBackground {
+                model.onBackground()
             }
     }
 }
