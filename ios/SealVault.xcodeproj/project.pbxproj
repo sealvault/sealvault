@@ -168,10 +168,10 @@
 			isa = PBXGroup;
 			children = (
 				686D8BB328E4B91F00031375 /* dispatchBackground.swift */,
-				68EBBC262907C92200C367F4 /* sortAddressesBy.swift */,
 				68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */,
 				68BA3D0E295B4ABC00AB3CE8 /* onBackground.swift */,
 				68BA3D10295B4F8100AB3CE8 /* onInactive.swift */,
+				68EBBC262907C92200C367F4 /* sortAddressesBy.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
