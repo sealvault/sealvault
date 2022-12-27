@@ -414,13 +414,13 @@ event](https://developer.apple.com/library/archive/qa/qa1838/_index.html) is
 fired.
 
 We prevent the backup password from being saved insecurely as part of the UI
-state by not adding it to the UI state. Instead, the backup password is fetched
-from the local keychain when the user chooses to reveal it and it is added
-directly to the UI as a text element.
+state by removing it from the UI state when the application goes in the
+background.
 
-There is no officially supported method to prevent taking a screenshot, only
-various hacks that may break with any iOS release, therefore we take no measures
-against the user taking a screenshot of the revealed backup password.
+There is no officially supported method to prevent taking a screenshot on iOS,
+only the private `_UITextLayoutCanvasView` method and various hacks that may
+break with any iOS release, therefore we take no measures against the user
+taking a screenshot of the revealed backup password.
 
 ##### Clipboard Snooping
 
