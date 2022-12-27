@@ -7,17 +7,17 @@ import SwiftUI
 // Based on https://stackoverflow.com/a/72177271
 extension View {
     #if os(iOS)
-    func onBackground(_ f: @escaping () -> Void) -> some View {
+    func onBackground(_ callback: @escaping () -> Void) -> some View {
         self.onReceive(
             NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification),
-            perform: { _ in f() }
+            perform: { _ in callback() }
         )
     }
     #else
-    func onBackground(_ f: @escaping () -> Void) -> some View {
+    func onBackground(_ callback: @escaping () -> Void) -> some View {
         self.onReceive(
             NotificationCenter.default.publisher(for: NSApplication.didEnterBackgroundNotification),
-            perform: { _ in f() }
+            perform: { _ in callback() }
         )
     }
     #endif
