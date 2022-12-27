@@ -55,6 +55,7 @@ struct BackupSettings: View {
                 backupEnabledToggle = true
             })
         }
+        .banner(data: $model.bannerData)
         .navigationTitle("iCloud Storage Backup")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -168,10 +169,9 @@ but it's not possible to decrypt your backups with this secret alone.
 
                 if !step5 {
                     AsyncButton(action: {
-                        await model.enableBackup()
-
+                        let success = await model.enableBackup()
                         withAnimation {
-                            step5 = true
+                            step5 = success
                         }
                     }, label: {
                         Text("Generate Backup Password")

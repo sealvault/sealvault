@@ -197,7 +197,7 @@ class GlobalModel: ObservableObject {
         }
     }
 
-    func enableBackup() async {
+    func enableBackup() async -> Bool {
         let success = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.enableBackup()
@@ -211,9 +211,12 @@ class GlobalModel: ObservableObject {
             self.backupEnabled = await self.fetchBackupEnabled()
         } else {
             self.bannerData = BannerData(
-                title: "Error enabling backup", detail: "Make sure iCloud is enabled.", type: .error
+                title: "Error enabling backup",
+                detail: "Try to restart the app and make sure iCloud is enabled.",
+                type: .error
             )
         }
+        return success
     }
 
     func disableBackup() async {
