@@ -5,7 +5,6 @@
 import SwiftUI
 
 struct DialogButtons: View {
-    @State var approveDisabled: Bool = false
     @State var approveLabel: String = "OK"
     @State var rejectLabel: String = "Cancel"
 
@@ -34,7 +33,6 @@ struct DialogButtons: View {
             .accessibilityLabel("approve")
             .buttonStyle(.borderless)
             .controlSize(.large)
-            .disabled(approveDisabled)
         }
     }
 }
