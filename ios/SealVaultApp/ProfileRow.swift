@@ -6,6 +6,7 @@ import SwiftUI
 
 struct ProfileRow: View {
     @ObservedObject var profile: Profile
+    @State private var showCopyFeedback = false
 
     private let cornerRadius: Double = 10
     private let maxDapps = 3
@@ -27,8 +28,16 @@ struct ProfileRow: View {
         }
         .font(.subheadline)
         .accessibilityElement(children: .combine)
-    }
-}
+        .overlay(Text("Copied address").font(.footnote).opacity(showCopyFeedback ? 1 : 0), alignment: .topTrailing)
+        .onLongPressGesture {
+            UIPasteboard.general.string = profile.walletList.first?.checksumAddress
+            showCopyFeedback = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showCopyFeedback = false
+            }
+        }
+
+    }}
 
 #if DEBUG
 struct ProfileRow_Previews: PreviewProvider {
