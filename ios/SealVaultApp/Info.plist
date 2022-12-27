@@ -3,18 +3,20 @@
 <plist version="1.0">
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
-        <false/>
-    <key>NSUbiquitousContainers</key>
-        <dict>
-            <key>iCloud.SealVault</key>
-            <dict>
-                <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-                <false/>
-                <key>NSUbiquitousContainerName</key>
-                <string>iCloud.SealVault</string>
-                <key>NSUbiquitousContainerSupportedFolderLevels</key>
-                <string>Any</string>
-            </dict>
-        </dict>
+	<false/>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.SealVault</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<false/>
+			<key>NSUbiquitousContainerName</key>
+			<string>iCloud.SealVault</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock SealVault with FaceID</string>
 </dict>
 </plist>
