@@ -38,3 +38,10 @@ impl From<BackupError> for CoreError {
         error.into()
     }
 }
+
+impl From<CoreError> for BackupError {
+    fn from(error: CoreError) -> Self {
+        let error: Error = error.into();
+        error.into()
+    }
+}
