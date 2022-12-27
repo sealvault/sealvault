@@ -207,7 +207,7 @@ fn should_delete(
         Err(err) => {
             log::debug!("Error on should delete file in backup dir: {err}");
             // If it's not a backup file, we shouldn't delete it.
-            return Ok(false)
+            return Ok(false);
         }
     };
 

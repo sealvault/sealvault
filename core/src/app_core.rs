@@ -662,7 +662,7 @@ pub mod tests {
         public_suffix_list: PublicSuffixList,
         device_id: DeviceIdentifier,
         device_name: DeviceName,
-        disable_backup_dir: RwLock<bool>
+        disable_backup_dir: RwLock<bool>,
     }
 
     impl CoreResourcesMock {
@@ -696,7 +696,7 @@ pub mod tests {
                 public_suffix_list,
                 device_id,
                 device_name,
-                disable_backup_dir: RwLock::new(false)
+                disable_backup_dir: RwLock::new(false),
             })
         }
 
@@ -740,7 +740,8 @@ pub mod tests {
         }
 
         fn backup_dir(&self) -> Option<&PathBuf> {
-            let disable_backup_dir = self.disable_backup_dir.read().expect("not poisoned");
+            let disable_backup_dir =
+                self.disable_backup_dir.read().expect("not poisoned");
             if *disable_backup_dir {
                 None
             } else {
