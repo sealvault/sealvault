@@ -32,7 +32,6 @@ struct AppInner: View {
             }
             .onChange(of: scenePhase) { newPhase in
                 if newPhase == .background {
-                    print("on background")
                     model.onBackground()
                 }
             }
