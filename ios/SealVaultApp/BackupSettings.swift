@@ -21,11 +21,17 @@ struct BackupSettings: View {
                         Toggle(isOn: $backupEnabledToggle) {
                             BackupSettingsLabel()
                         }
+
+                        LastBackupRow()
+//                            .listRowInsets(EdgeInsets(top: 0, leading: 60, bottom: 0, trailing: 0))
+
                     } header: {
                         Text("Device Backup")
+                    } footer: {
+                        Text("Backups are created when you exit the app.")
                     }
 
-                    BackupSettingsInner()
+                    BackupPasswordDisplay()
                 }
             } else {
                 BackupSettingsOnboarding()
@@ -115,8 +121,8 @@ The backup password is protected by Secure Enclave and it never leaves your devi
                 Text(
 """
 In addition to the backup password, a secret is stored on your iCloud \
-Keychain that is then required to decrypt your backups. \
-This additional secret protects your keys in case your backup password is compromised, \
+Keychain that is required to decrypt your backups. \
+This additional secret protects your keys in case your backup password is stolen, \
 but it's not possible to decrypt your backups with this secret alone.
 """
                 )
@@ -180,13 +186,13 @@ but it's not possible to decrypt your backups with this secret alone.
             }
 
             if step5 {
-                BackupSettingsInner()
+                BackupPasswordDisplay()
             }
         }
     }
 }
 
-struct BackupSettingsInner: View {
+struct BackupPasswordDisplay: View {
     @EnvironmentObject private var model: GlobalModel
 
     @State var showPassword: Bool = false
@@ -240,6 +246,32 @@ struct BackupSettingsInner: View {
     }
 }
 
+struct LastBackupRow: View {
+    @EnvironmentObject private var model: GlobalModel
+
+    @State var lastBackup: Date?
+
+    var body: some View {
+        HStack {
+            Label("Last backup", systemImage: "clock")
+            Spacer()
+            if let lastBackup = self.lastBackup {
+                Text(lastBackup.formatted())
+            } else {
+                ProgressView()
+            }
+        }
+        .onAppear {
+            Task {
+                let lastBackup = await model.fetchLastBackup()
+                DispatchQueue.main.async {
+                    self.lastBackup = lastBackup
+                }
+            }
+        }
+    }
+}
+
 #if DEBUG
 struct BackupSettings_Previews: PreviewProvider {
     static var previews: some View {
@@ -247,12 +279,6 @@ struct BackupSettings_Previews: PreviewProvider {
             BackupSettings(backupEnabledToggle: true)
                 .environmentObject(GlobalModel.buildForPreview())
             BackupSettings(backupEnabledToggle: true)
-                .environmentObject(GlobalModel.buildForPreview())
-                .preferredColorScheme(.dark)
-
-            BackupSettings(backupEnabledToggle: false)
-                .environmentObject(GlobalModel.buildForPreview())
-            BackupSettings(backupEnabledToggle: false)
                 .environmentObject(GlobalModel.buildForPreview())
                 .preferredColorScheme(.dark)
         }

@@ -211,11 +211,28 @@ class GlobalModel: ObservableObject {
     }
 
     func fetchBackupEnabled() async -> Bool {
-        do {
-            return try self.core.isBackupEnabled()
-        } catch {
-            print("Error fetching whether backup is enabled: \(error)")
-            return false
+        return await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.isBackupEnabled()
+            } catch {
+                print("Error fetching whether backup is enabled: \(error)")
+                return false
+            }
+        }
+    }
+
+    func fetchLastBackup() async -> Date? {
+        return await dispatchBackground(.userInteractive) {
+            do {
+                if let lastBackup = try self.core.lastBackup() {
+                    return Date(timeIntervalSince1970: Double(lastBackup))
+                } else {
+                    return nil
+                }
+            } catch {
+                print("Error fetching last backup: \(error)")
+                return nil
+            }
         }
     }
 
@@ -456,6 +473,11 @@ class PreviewAppCore: AppCoreProtocol {
 
     func isBackupEnabled() throws -> Bool {
         self.backupEnabledToggle
+    }
+
+    func lastBackup() throws -> Int64? {
+        Thread.sleep(forTimeInterval: 0.5)
+        return Int64(Date().timeIntervalSince1970)
     }
 
     func displayBackupPassword() throws -> String {

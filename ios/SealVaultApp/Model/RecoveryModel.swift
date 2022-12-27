@@ -119,7 +119,7 @@ private actor BackupDownloader {
     private let pollFrequency: Duration
     private let timeoutSeconds: Int
 
-    init(url: URL, timeoutSeconds: Int = 15, pollFrequency: Duration = .milliseconds(500)) {
+    init(url: URL, timeoutSeconds: Int = 30, pollFrequency: Duration = .milliseconds(500)) {
         self.url = url
         self.polllURL = BackupDownloader.pollURL(url)
         self.pollFrequency = pollFrequency

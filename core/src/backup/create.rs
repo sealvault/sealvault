@@ -91,6 +91,8 @@ pub(in crate::backup) fn db_backup(
 
         create_backup_zip(backup_dir, &metadata, &encryption_output)?;
 
+        m::LocalSettings::update_backup_timestamp(tx_conn.as_mut())?;
+
         Ok(metadata)
     })
 }

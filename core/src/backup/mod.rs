@@ -242,7 +242,7 @@ mod tests {
         }
 
         fn verify(&self, password: &str, backup_metadata: &BackupMetadata) -> Result<()> {
-            let restore_metadata = self.restore(&password, backup_metadata)?;
+            let restore_metadata = self.restore(password, backup_metadata)?;
             self.verify_can_decrypt_key()?;
             assert_eq!(backup_metadata, &restore_metadata);
             Ok(())
@@ -255,6 +255,10 @@ mod tests {
         backup.setup_or_rotate_backup()?;
         let password = backup.backup_password()?;
         let backup_metadata = backup.create_backup()?;
+        let mut conn = backup.resources.connection_pool().connection()?;
+        m::LocalSettings::fetch_backup_timestamp(&mut conn)?
+            .expect("there is backup timestamp");
+
         let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
         assert!(backup_enabled);
 

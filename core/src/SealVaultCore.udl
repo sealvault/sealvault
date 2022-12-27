@@ -22,6 +22,9 @@ interface AppCore {
     boolean is_backup_enabled();
 
     [Throws=CoreError]
+    i64? last_backup();
+
+    [Throws=CoreError]
     sequence<CoreProfile> list_profiles();
 
     [Throws=CoreError]

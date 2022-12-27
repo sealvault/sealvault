@@ -157,6 +157,19 @@ impl LocalSettings {
         Ok(())
     }
 
+    pub fn fetch_backup_timestamp(
+        connection: &mut SqliteConnection,
+    ) -> Result<Option<String>, Error> {
+        use local_settings::dsl as ls;
+
+        let timestamp: Option<String> = local_settings::table
+            .find(&SINGLETON_ID)
+            .select(ls::backup_completed_at)
+            .first(connection)?;
+
+        Ok(timestamp)
+    }
+
     pub fn update_backup_password_timestamp(
         connection: &mut SqliteConnection,
     ) -> Result<(), Error> {

@@ -23,6 +23,7 @@ use crate::{
     public_suffix_list::PublicSuffixList,
     resources::{CoreResources, CoreResourcesI},
     ui_callback::TokenTransferResult,
+    utils::parse_rfc3339_timestamp,
     CoreError, CoreUICallbackI, DappApprovalParams,
 };
 
@@ -145,6 +146,17 @@ impl AppCore {
             self.device_id(),
         )?;
         Ok(())
+    }
+
+    /// Get the last backup time if any as unix timestamp.
+    pub fn last_backup(&self) -> Result<Option<i64>, CoreError> {
+        let mut conn = self.connection_pool().connection()?;
+        if let Some(timestamp) = m::LocalSettings::fetch_backup_timestamp(&mut conn)? {
+            let datetime = parse_rfc3339_timestamp(&timestamp)?;
+            Ok(Some(datetime.timestamp()))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn display_backup_password(&self) -> Result<String, CoreError> {
