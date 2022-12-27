@@ -5,12 +5,55 @@
 import SwiftUI
 
 struct RecoveryView: View {
+    @Binding var isDoneRestoring: Bool
+    @ObservedObject var recoveryModel: RecoveryModel
 
+    @State var showAlert: Bool = false
+
+    var body: some View {
+        if let restoreData = recoveryModel.restoreData {
+            RecoveryViewInner(isDone: $isDoneRestoring, restoreData: restoreData)
+        } else {
+            VStack {
+                Spacer()
+                VStack {
+                    Text("Downloading backups from iCloud Storage")
+                        .multilineTextAlignment(.center)
+                    ProgressView()
+                }
+                Spacer()
+            }
+            .onChange(of: recoveryModel.didFinish) { newValue in
+                if newValue && recoveryModel.restoreData == nil {
+                    showAlert = true
+                }
+            }
+            .alert("Error", isPresented: $showAlert) {
+                Button("Continue", role: .destructive) {
+                    withAnimation {
+                        isDoneRestoring = true
+                    }
+                }
+                Button("Try again", role: .cancel) {
+                    recoveryModel.start()
+                }
+            } message: {
+                Text("Failed to download backups from iCloud Storage. Continue without restoring or try again?")
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+struct RecoveryViewInner: View {
     @Binding var isDone: Bool
-    @State var restoreData: RestoreModel
+    @ObservedObject var restoreData: RestoreModel
+
     @State var backupPassword: String = ""
     @State var confirmationPresented: Bool = false
     @State var displayPassword: Bool = false
+    @State var processing: Bool = false
+    @State var banner: BannerData?
 
     var backupDate: String {
         restoreData.backupDate.formatted()
@@ -22,36 +65,74 @@ struct RecoveryView: View {
             Text("Restore Backup")
                 .font(.largeTitle)
                 .bold()
+                .padding(.top, 60)
+
+            Spacer()
 
             VStack(alignment: .leading, spacing: 20) {
                 Text("The last backup was created at \(backupDate) on \(restoreData.backupDeviceName).")
 
                 Text("Please enter your backup password to continue.")
-
             }
 
             HStack {
                 Spacer()
-                CustomSecureField(password: $backupPassword, placeholder: "XXXXX-XXXXX-XXXXX-XXXXX")
-                    .multilineTextAlignment(.center)
+                if processing {
+                    ProgressView()
+                } else {
+                    CustomSecureField(password: $backupPassword, placeholder: "XXXXX-XXXXX-XXXXX-XXXXX")
+                        .multilineTextAlignment(.center)
+                }
                 Spacer()
 
             }
             .frame(maxWidth: .infinity)
 
             Spacer()
-            DialogButtons(approveDisabled: backupPassword.isEmpty, onApprove: {
-                print("approved")
+            Spacer()
+            DialogButtons(onApprove: {
+                if backupPassword.isEmpty {
+                    banner = BannerData(title: "Please enter a backup password", detail: "", type: .error)
+                    return
+                }
+                Task {
+                    processing = true
+                    let success = await dispatchBackground(.userInteractive) {
+                        do {
+                            try coreRestoreBackup(
+                                coreArgs: GlobalModel.coreArgs(),
+                                fromPath: restoreData.backupFilePath,
+                                password: backupPassword
+                            )
+                            return true
+                        } catch {
+                            print("Error restoring backup: \(error)")
+                        }
+                        return false
+                    }
+                    if !success {
+                        banner = BannerData(
+                            title: "Failed to decrypt backup",
+                            detail: """
+Please make sure that the backup password is correct and that you have iCloud Keychain enabled.
+"""
+                            , type: .error)
+                    } else {
+                        isDone = true
+                    }
+                    processing = false
+                }
             }, onReject: {
-                print("cancelled")
+                confirmationPresented = true
             })
         }
-        .confirmationDialog("Are you store you don't want to restore from backup", isPresented: $confirmationPresented,
+        .banner(data: $banner)
+        .confirmationDialog("Are you store you don't want to restore from backup?", isPresented: $confirmationPresented,
             actions: {
-                Button("Yes", role: .destructive, action: {
+                Button("Abandon backup", role: .destructive, action: {
                     isDone = true
                 })
-                Button("Go back", role: .cancel, action: {
+                Button("Continue restoring", role: .cancel, action: {
                     confirmationPresented = false
                 })
         })
@@ -67,10 +148,12 @@ struct RecoveryView_Previews: PreviewProvider {
         var body: some View {
             let restoreData = RestoreModel(backupDate: Date.now, backupDeviceName: "Alice's iPhone", backupFilePath: "")
             Group {
-                RecoveryView(isDone: $isDone, restoreData: restoreData)
-                RecoveryView(isDone: $isDone, restoreData: restoreData)
+                RecoveryViewInner(isDone: $isDone, restoreData: restoreData)
+                RecoveryViewInner(isDone: $isDone, restoreData: restoreData)
                     .preferredColorScheme(.dark)
-
+                RecoveryView(isDoneRestoring: $isDone, recoveryModel: RecoveryModel.buildForPreview())
+                RecoveryView(isDoneRestoring: $isDone, recoveryModel: RecoveryModel.buildForPreview())
+                    .preferredColorScheme(.dark)
             }
         }
     }

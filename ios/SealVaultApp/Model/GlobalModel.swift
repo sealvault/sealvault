@@ -74,20 +74,26 @@ class GlobalModel: ObservableObject {
         return Self(core: core, profiles: [], activeProfileId: nil, callbackModel: callbackModel)
     }
 
-//    static func shouldRestoreBackup() -> RestoreModel? {
-//        let dbPath = dbFilePath()
-//        let hasDb = FileManager.default.fileExists(atPath: dbPath.absoluteString)
-//        // If we already have a db then we don't restore
-//        if hasDb {
-//            return nil
-//        }
-//        if let backupDir = self.backupDir() {
-//            if let backupData = findBackup(backupDir) {
-//                return RestoreModel(backupData)
-//            }
-//        }
-//        return nil
-//    }
+    static func shouldRestoreBackup() -> RecoveryModel? {
+        let dbPath = dbFilePath()
+        // If we already have a db then we don't restore
+        if FileManager.default.fileExists(atPath: dbPath.path) {
+            return nil
+        }
+
+        // If the backup directory is not available, because the user is not logged in to iCloud,
+        // then we don't restore.
+        if let backupDirURL = self.backupDirURL() {
+            // If the backup directory doesn't exist, the user hasn't installed the app before, so
+            // we don't restore.
+            if !FileManager.default.fileExists(atPath: backupDirURL.path) {
+                return nil
+            }
+
+            return RecoveryModel(backupDir: backupDirURL)
+        }
+        return nil
+    }
 
     private static func dbDirPath() -> URL {
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
