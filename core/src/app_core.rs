@@ -127,7 +127,15 @@ impl AppCore {
             self.keychain(),
             self.device_id(),
         )?;
-        Ok(())
+        // Check if we can create backups after enabling them.
+        match backup::create_backup(self.resources.clone()) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                // If we can't create backups, disable.
+                self.disable_backup()?;
+                Err(error)
+            }
+        }
     }
 
     pub fn disable_backup(&self) -> Result<(), CoreError> {
@@ -654,6 +662,7 @@ pub mod tests {
         public_suffix_list: PublicSuffixList,
         device_id: DeviceIdentifier,
         device_name: DeviceName,
+        disable_backup_dir: RwLock<bool>
     }
 
     impl CoreResourcesMock {
@@ -687,11 +696,21 @@ pub mod tests {
                 public_suffix_list,
                 device_id,
                 device_name,
+                disable_backup_dir: RwLock::new(false)
             })
         }
 
         pub fn set_keychain(&mut self, keychain: Keychain) {
             self.keychain = keychain
+        }
+
+        pub fn set_device_id(&mut self, device_id: DeviceIdentifier) {
+            self.device_id = device_id
+        }
+
+        pub fn disable_backup_dir(&self) {
+            let mut lock = self.disable_backup_dir.write().expect("not poisoned");
+            *lock = true;
         }
     }
 
@@ -721,7 +740,12 @@ pub mod tests {
         }
 
         fn backup_dir(&self) -> Option<&PathBuf> {
-            Some(&self.tmp_dir.backup_dir)
+            let disable_backup_dir = self.disable_backup_dir.read().expect("not poisoned");
+            if *disable_backup_dir {
+                None
+            } else {
+                Some(&self.tmp_dir.backup_dir)
+            }
         }
 
         fn device_id(&self) -> &DeviceIdentifier {
@@ -1425,6 +1449,28 @@ pub mod tests {
         let tmp = TmpCore::new()?;
         let top_dapps = tmp.core.top_dapps(10)?;
         assert!(!top_dapps.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn enable_backup_error_if_no_backup_dir() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        tmp.resources.disable_backup_dir();
+
+        let res = tmp.core.enable_backup();
+        assert!(matches!(res, Err(BackupError::BackupDirectoryNotAvailable)));
+        assert!(!tmp.core.is_backup_enabled()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_enable_backup() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        tmp.core.enable_backup()?;
+        assert!(tmp.core.is_backup_enabled()?);
+
         Ok(())
     }
 }
