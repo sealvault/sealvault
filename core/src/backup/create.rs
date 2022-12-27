@@ -16,7 +16,7 @@ use tempfile::NamedTempFile;
 use crate::{
     backup::{
         backup_error::BackupError, backup_scheme::BackupScheme,
-        metadata::BackupMetadataFromFileName, restore::verify_backup, BackupMetadata,
+        metadata::MetadataFromFileName, restore::verify_backup, BackupMetadata,
     },
     db::models as m,
     encryption::{DataEncryptionKey, EncryptionOutput},
@@ -202,7 +202,14 @@ fn should_delete(
     dir_entry: &fs::DirEntry,
     current_metadata: &BackupMetadata,
 ) -> Result<bool, Error> {
-    let meta_from_file_name: BackupMetadataFromFileName = dir_entry.try_into()?;
+    let meta_from_file_name = match MetadataFromFileName::try_from(dir_entry) {
+        Ok(meta) => meta,
+        Err(err) => {
+            log::debug!("Error on should delete file in backup dir: {err}");
+            // If it's not a backup file, we shouldn't delete it.
+            return Ok(false)
+        }
+    };
 
     // There may be other devices saving backups in the same directory.
     let same_device = meta_from_file_name.device_id == current_metadata.device_id;

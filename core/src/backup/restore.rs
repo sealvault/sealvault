@@ -11,8 +11,8 @@ use std::{
 use crate::{
     backup::{
         create::list_backup_dir,
-        metadata::{BackupMetadata, BackupMetadataFromFileName},
-        set_up_or_rotate_backup,
+        disable_backup,
+        metadata::{BackupMetadata, MetadataFromFileName},
         setup::{backup_connection_pool, set_up_or_rotate_sk_kek},
         ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
     },
@@ -93,9 +93,9 @@ pub(in crate::backup) fn find_latest_restorable_backup(
     let os: OperatingSystem = Default::default();
 
     let entries = list_backup_dir(backup_dir)?;
-    let mut metas: Vec<(BackupMetadataFromFileName, PathBuf)> = Default::default();
+    let mut metas: Vec<(MetadataFromFileName, PathBuf)> = Default::default();
     for entry in entries {
-        match BackupMetadataFromFileName::try_from(&entry) {
+        match MetadataFromFileName::try_from(&entry) {
             Ok(meta) => {
                 if meta.os == os {
                     metas.push((meta, entry.path()))

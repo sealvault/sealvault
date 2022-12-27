@@ -35,8 +35,11 @@ mod tests {
         backup::{
             backup_scheme::BackupScheme,
             create::db_backup,
-            metadata::BackupMetadataFromFileName,
-            restore::{backup_metadata_from_zip, find_latest_restorable_backup},
+            metadata::MetadataFromFileName,
+            restore::{
+                backup_metadata_from_zip, find_latest_restorable_backup,
+                restore_backup_inner,
+            },
         },
         db::{
             data_migrations, models as m, schema_migrations::run_migrations,

@@ -68,14 +68,14 @@ impl BackupMetadata {
 }
 
 #[derive(Debug, PartialEq)]
-pub(in crate::backup) struct BackupMetadataFromFileName {
+pub(in crate::backup) struct MetadataFromFileName {
     pub timestamp: i64,
     pub os: OperatingSystem,
     pub device_id: DeviceIdentifier,
     pub backup_version: i64,
 }
 
-impl FromStr for BackupMetadataFromFileName {
+impl FromStr for MetadataFromFileName {
     type Err = Error;
 
     fn from_str(file_name: &str) -> Result<Self, Self::Err> {
@@ -91,7 +91,7 @@ impl FromStr for BackupMetadataFromFileName {
         let device_id = parse_field_from_backup_file_name(&captures, "device_id")?;
         let backup_version = parse_field_from_backup_file_name(&captures, "version")?;
 
-        Ok(BackupMetadataFromFileName {
+        Ok(MetadataFromFileName {
             timestamp,
             os,
             backup_version,
@@ -100,7 +100,7 @@ impl FromStr for BackupMetadataFromFileName {
     }
 }
 
-impl TryFrom<&fs::DirEntry> for BackupMetadataFromFileName {
+impl TryFrom<&fs::DirEntry> for MetadataFromFileName {
     type Error = Error;
 
     fn try_from(dir_entry: &fs::DirEntry) -> Result<Self, Self::Error> {
