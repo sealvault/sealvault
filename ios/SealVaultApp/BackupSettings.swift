@@ -200,15 +200,25 @@ struct BackupSettingsInner: View {
     var body: some View {
         Section {
             AsyncButton(action: {
-                let pwd = await model.displayBackupPassword()
-                UIPasteboard.general.string = pwd
+                do {
+                    try await authenticate(reason: "Copy backup password")
+                    let pwd = await model.displayBackupPassword()
+                    UIPasteboard.general.string = pwd
+                } catch {
+                    print("Error copying backup password: \(error)")
+                }
             }, label: {
                 Text("Copy Backup Password")
             })
             if !showPassword {
                 AsyncButton(action: {
-                    password = await model.displayBackupPassword()
-                    showPassword = true
+                    do {
+                        try await authenticate(reason: "Reveal backup password")
+                        password = await model.displayBackupPassword()
+                        showPassword = true
+                    } catch {
+                        print("Error revealing backup password: \(error)")
+                    }
                 }, label: {
                     Text("Reveal Backup Password")
                 })
