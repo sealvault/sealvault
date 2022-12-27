@@ -54,11 +54,15 @@ class GlobalModel: ObservableObject {
         }
     }
 
-    static func buildOnStartup() -> Self {
-        let coreArgs = CoreArgs(
+    static func coreArgs() -> CoreArgs {
+        CoreArgs(
             deviceId: deviceId(), deviceName: deviceName(), cacheDir: cacheDir(),
-            dbFilePath: ensureDbFilePath(), backupDir: backupDir()
+            dbFilePath: ensureDbFilePath(), backupDir: ensureBackupDir()
         )
+    }
+
+    static func buildOnStartup() -> Self {
+        let coreArgs = coreArgs()
         let callbackModel = CallbackModel()
         var core: AppCoreProtocol
         do {
@@ -95,59 +99,10 @@ class GlobalModel: ObservableObject {
         dbDirPath().appendingPathComponent(Config.dbFileName)
     }
 
-    private static func ensureDbFilePath() -> String {
-        let dataProtectionAttributes = [
+    private static func dataProtectionAttributes() -> [FileAttributeKey: Any] {
+        return [
             FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
         ]
-
-        let fileManager = FileManager.default
-        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-
-        let dirPath = dbDirPath()
-        if !fileManager.fileExists(atPath: dirPath.path) {
-            // App can't start if it can't create this directory
-            // swiftlint:disable force_try
-            try! fileManager.createDirectory(
-                atPath: dirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes
-            )
-            // swiftlint:enable force_try
-        }
-
-        let dbFilePath = dbFilePath()
-        if !fileManager.fileExists(atPath: dbFilePath.path) {
-            fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes)
-        }
-
-        return dbFilePath.path
-    }
-
-    private static func cacheDir() -> String {
-        let fileManager = FileManager.default
-        let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
-
-        return cacheDirUrl.path
-    }
-
-    private static func deviceName() -> String {
-        UIDevice.current.name
-    }
-
-    private static func deviceId() -> String {
-        // TODO
-        // > If the value is nil, wait and get the value again later.
-        // > This happens, for example, after the device has been restarted but before the
-        // > user has unlocked the device.
-        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
-        UIDevice.current.identifierForVendor!.uuidString
-    }
-
-    private static func backupDir() -> String? {
-        let driveURL = FileManager
-            .default
-            .url(forUbiquityContainerIdentifier: Config.backupContainerIdentifier)?
-            .appendingPathComponent(Config.iCloudBackupDirName)
-
-        return driveURL?.path
     }
 
     private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
@@ -317,6 +272,82 @@ class GlobalModel: ObservableObject {
             }
         }
         return activeProfile?.dappList.filter { topDappIds.contains($0.id) } ?? []
+    }
+}
+
+// MARK: - File system
+extension GlobalModel {
+    private static func ensureDbFilePath() -> String {
+        let fileManager = FileManager.default
+
+        let dirPath = dbDirPath()
+        if !fileManager.fileExists(atPath: dirPath.path) {
+            // App can't start if it can't create this directory
+            // swiftlint:disable force_try
+            try! fileManager.createDirectory(
+                atPath: dirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
+            )
+            // swiftlint:enable force_try
+        }
+
+        let dbFilePath = dbFilePath()
+        if !fileManager.fileExists(atPath: dbFilePath.path) {
+            fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes())
+        }
+
+        return dbFilePath.path
+    }
+
+    private static func cacheDir() -> String {
+        let fileManager = FileManager.default
+        let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+
+        return cacheDirUrl.path
+    }
+
+    private static func deviceName() -> String {
+        UIDevice.current.name
+    }
+
+    private static func deviceId() -> String {
+        // TODO
+        // > If the value is nil, wait and get the value again later.
+        // > This happens, for example, after the device has been restarted but before the
+        // > user has unlocked the device.
+        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
+        UIDevice.current.identifierForVendor!.uuidString
+    }
+
+    private static func backupDirURL() -> URL? {
+        let driveURL = FileManager
+            .default
+            .url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent(Config.iCloudBackupDirName)
+        return driveURL
+    }
+
+    private static func backupDir() -> String? {
+        return backupDirURL()?.path
+    }
+
+    private static func ensureBackupDir() -> String? {
+        if let backupDir = self.backupDir() {
+            let fileManager = FileManager.default
+
+            if !fileManager.fileExists(atPath: backupDir) {
+                do {
+                    try fileManager.createDirectory(
+                        atPath: backupDir, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
+                    )
+                } catch {
+                    print("Failed to create backup dir with error: \(error)")
+                    return nil
+                }
+
+            }
+            return backupDir
+        }
+        return nil
     }
 }
 
