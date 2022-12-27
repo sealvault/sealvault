@@ -17,10 +17,11 @@ use crate::{
         ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
     },
     db::models as m,
-    device::OperatingSystem,
-    encryption::{DataEncryptionKey, EncryptionOutput, KeyEncryptionKey},
-    resources::CoreResourcesI,
-    CoreError, Error,
+    device::{DeviceIdentifier, OperatingSystem},
+    encryption::{
+        BackupPassword, EncryptionOutput, KdfNonce, KdfSecret, Keychain, RootBackupKey,
+    },
+    CoreArgs, CoreError, Error,
 };
 
 /// Exposed through FFI to UI.
@@ -50,30 +51,46 @@ impl BackupRestoreData {
 }
 
 pub fn restore_backup(
-    resources: &dyn CoreResourcesI,
-    db_backup_dek: &DataEncryptionKey,
-    sk_backup_kek: &KeyEncryptionKey,
+    core_args: CoreArgs,
+    from_path: String,
+    password: String,
+) -> Result<(), Error> {
+    let keychain = Keychain::new();
+    let from_zip = Path::new(&from_path);
+    let _ = restore_backup_inner(core_args, from_zip, &password, &keychain)?;
+    Ok(())
+}
+
+pub(in crate::backup) fn restore_backup_inner(
+    core_args: CoreArgs,
     from_zip: &Path,
-    to_path: &Path,
+    password: &str,
+    keychain: &Keychain,
 ) -> Result<BackupMetadata, Error> {
+    let password: BackupPassword = password.parse()?;
+    let device_id: DeviceIdentifier = core_args.device_id.parse()?;
     let metadata = backup_metadata_from_zip(from_zip)?;
+
+    let kdf_secret = KdfSecret::from_keychain(keychain, &metadata.device_id)?;
+    let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
+    let root_backup_key = RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
+    let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
+    let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
 
     let encrypted_backup_bytes =
         extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
     let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
 
     let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
-    restore_decrypted_backup(&metadata, &decrypted_backup, to_path)?;
+    let restore_path = Path::new(&core_args.db_file_path);
+    restore_decrypted_backup(&metadata, &decrypted_backup, restore_path)?;
 
-    let backup_connection_pool =
-        set_up_or_rotate_sk_kek(resources.keychain(), sk_backup_kek, to_path)?;
+    let restored_connection_pool =
+        set_up_or_rotate_sk_kek(keychain, &sk_backup_kek, restore_path)?;
 
-    // Rotate backup password and associated secrets
-    set_up_or_rotate_backup(
-        &backup_connection_pool,
-        resources.keychain(),
-        resources.device_id(),
-    )?;
+    // Disable backup in restored DB and on device keychain as user will need to generate new backup
+    // password for this device.
+    disable_backup(&restored_connection_pool, keychain, &device_id)?;
 
     Ok(metadata)
 }

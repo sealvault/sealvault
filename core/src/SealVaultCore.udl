@@ -220,8 +220,12 @@ callback interface InPageRequestContextI {
 
 namespace SealVaultCore {
     string? core_uri_fixup(string input);
+
     [Throws=CoreError]
     BackupRestoreData? core_find_latest_backup(string backup_dir);
+
+    [Throws=CoreError]
+    void core_restore_backup(CoreArgs core_args, string from_path, string password);
 };
 
 dictionary BackupRestoreData {

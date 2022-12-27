@@ -46,9 +46,10 @@ mod tests {
             ConnectionPool,
         },
         device::{DeviceIdentifier, DeviceName},
-        encryption::{BackupPassword, KdfNonce, KdfSecret, Keychain, RootBackupKey},
+        encryption::{KdfNonce, KdfSecret, Keychain},
         protocols::eth,
         resources::CoreResourcesI,
+        CoreArgs,
     };
 
     struct BackupTest {
@@ -142,7 +143,7 @@ mod tests {
         fn backup_versions_in_dir(&self) -> Result<Vec<i64>> {
             let mut res: Vec<i64> = Default::default();
             for file_name in self.backup_file_names()? {
-                let meta: BackupMetadataFromFileName = file_name.parse()?;
+                let meta: MetadataFromFileName = file_name.parse()?;
                 res.push(meta.backup_version);
             }
             Ok(res)
@@ -167,6 +168,7 @@ mod tests {
             let keychain = Keychain::new();
             kdf_secret.save_to_keychain(&keychain, resources.device_id())?;
             resources.set_keychain(keychain);
+            resources.set_device_id("restore-device-id".parse()?);
 
             Ok(Self {
                 resources: Arc::new(resources),
@@ -179,26 +181,36 @@ mod tests {
             password: &str,
             metadata: &BackupMetadata,
         ) -> Result<BackupMetadata> {
-            let password: BackupPassword = password.parse()?;
-            let kdf_secret =
-                KdfSecret::from_keychain(self.resources.keychain(), &metadata.device_id)?;
-            let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
-            let root_backup_key =
-                RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
-            let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
-            let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
-
             let restore_from = self
                 .resources
                 .backup_dir()
                 .unwrap()
                 .join(metadata.backup_file_name());
-            let backup_metadata = restore_backup(
-                &*self.resources,
-                &db_backup_dek,
-                &sk_backup_kek,
+
+            let backup_dir = Some(
+                self.resources
+                    .backup_dir()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            );
+            let db_file_path = self.restore_to.path().to_str().unwrap().to_string();
+
+            let core_args = CoreArgs {
+                device_id: self.resources.device_id().to_string(),
+                device_name: self.resources.device_name().to_string(),
+                // This is not used for restore
+                cache_dir: "".into(),
+                db_file_path,
+                backup_dir,
+            };
+
+            let backup_metadata = restore_backup_inner(
+                core_args,
                 restore_from.as_path(),
-                self.restore_to.path(),
+                password,
+                self.resources.keychain(),
             )?;
 
             Ok(backup_metadata)
@@ -391,7 +403,7 @@ mod tests {
             .build();
 
         let file_name = metadata.backup_file_name();
-        let meta_from_file_name: BackupMetadataFromFileName = file_name.parse()?;
+        let meta_from_file_name: MetadataFromFileName = file_name.parse()?;
 
         assert_eq!(meta_from_file_name.backup_version, metadata.backup_version);
         assert_eq!(meta_from_file_name.device_id, metadata.device_id);
