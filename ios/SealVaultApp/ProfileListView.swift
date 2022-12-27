@@ -6,6 +6,7 @@ import SwiftUI
 
 struct ProfileListView: View {
     @EnvironmentObject private var model: GlobalModel
+    @State var isSettingsPresented: Bool = false
 
     var body: some View {
         VStack {
@@ -27,11 +28,21 @@ struct ProfileListView: View {
                 })
             }
             .navigationTitle(Text("Profiles"))
+            .toolbar {
+                Button(action: {
+                    isSettingsPresented = true
+                }, label: {
+                    Image(systemName: "gear")
+                })
+            }
             .task {
                 await self.model.refreshProfiles()
             }
-
-//            Divider()
+            .sheet(isPresented: $isSettingsPresented, content: {
+                NavigationView {
+                    GlobalSettings()
+                }
+            })
         }
     }
 }

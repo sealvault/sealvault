@@ -23,13 +23,15 @@ use core_foundation_sys::{
     dictionary::CFDictionaryRef,
     string::CFStringRef,
 };
+use generic_array::ArrayLength;
 
 use crate::{
     config,
+    device::DeviceIdentifier,
     encryption::{
         key_material::KeyMaterial,
-        keychains::keychain::{soft_delete_rename, KeychainImpl},
-        KeyEncryptionKey,
+        keychains::keychain::{KeychainError, KeychainImpl},
+        KeyName,
     },
     Error,
 };
@@ -54,32 +56,66 @@ impl Debug for IOSKeychain {
 }
 
 impl KeychainImpl for IOSKeychain {
-    fn get(&self, name: &str) -> Result<KeyEncryptionKey, Error> {
+    fn get_local<N: ArrayLength<u8>>(
+        &self,
+        key_name: KeyName,
+    ) -> Result<KeyMaterial<N>, KeychainError> {
         let keychain = self.internal.lock()?;
-        let key_material = keychain.get(name, KeychainStorage::WhenUnlockedLocal)?;
-        Ok(KeyEncryptionKey::new(name.into(), key_material))
+        keychain.get::<N>(key_name.into(), KeychainStorage::WhenUnlockedLocal)
     }
 
-    /// Fails when a key by the same name already exists. This is on purpose to avoid overwriting
-    /// items by accident.
-    fn put_local_unlocked(&self, key: KeyEncryptionKey) -> Result<(), Error> {
+    fn get_synced<N: ArrayLength<u8>>(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        key_name: KeyName,
+    ) -> Result<KeyMaterial<N>, KeychainError> {
         let keychain = self.internal.lock()?;
-        keychain.put(key, KeychainStorage::WhenUnlockedLocal)
+        let name = synced_name(device_identifier, key_name);
+        keychain.get::<N>(&name, KeychainStorage::WhenUnlockedSynced)
     }
 
-    fn soft_delete(&self, name: &str) -> Result<(), Error> {
+    fn upsert_local<N: ArrayLength<u8>>(
+        &self,
+        key_name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), KeychainError> {
         let keychain = self.internal.lock()?;
-        let storage_class = KeychainStorage::WhenUnlockedLocal;
+        keychain.upsert(key_name.into(), key, KeychainStorage::WhenUnlockedLocal)
+    }
 
-        let key_material = keychain.get(name, storage_class)?;
-        let new_name = soft_delete_rename(name);
-        let key = KeyEncryptionKey::new(new_name, key_material);
-        keychain.put(key, storage_class)?;
+    fn upsert_synced<N: ArrayLength<u8>>(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        key_name: KeyName,
+        key: KeyMaterial<N>,
+    ) -> Result<(), KeychainError> {
+        let keychain = self.internal.lock()?;
+        let name = synced_name(device_identifier, key_name);
+        keychain.upsert(&name, key, KeychainStorage::WhenUnlockedSynced)
+    }
 
-        keychain.delete(name, storage_class)?;
-
+    fn delete_local(&self, key_name: KeyName) -> Result<(), KeychainError> {
+        let keychain = self.internal.lock()?;
+        keychain.delete(key_name.into(), KeychainStorage::WhenUnlockedLocal)?;
         Ok(())
     }
+
+    fn delete_synced(
+        &self,
+        device_identifier: &DeviceIdentifier,
+        key_name: KeyName,
+    ) -> Result<(), KeychainError> {
+        let keychain = self.internal.lock()?;
+        let name = synced_name(device_identifier, key_name);
+        keychain.delete(&name, KeychainStorage::WhenUnlockedSynced)?;
+        Ok(())
+    }
+}
+
+// We use sync for backup, not for simultaneous access from multiple devices. We use device specific
+// names to allow rotating secrets on a device without affecting other devices.
+fn synced_name(device_identifier: &DeviceIdentifier, name: KeyName) -> String {
+    format!("{}_{}", name.as_ref(), device_identifier.as_ref())
 }
 
 /// Helper that we mark as not sync due to unsafe calls.
@@ -96,11 +132,11 @@ impl IOSKeychainInternal {
         }
     }
 
-    fn get(
+    fn get<N: ArrayLength<u8>>(
         &self,
         name: &str,
         storage_class: KeychainStorage,
-    ) -> Result<KeyMaterial, Error> {
+    ) -> Result<KeyMaterial<N>, KeychainError> {
         let query = storage_class.get_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
 
@@ -109,13 +145,12 @@ impl IOSKeychainInternal {
             unsafe { SecItemCopyMatching(params.as_concrete_TypeRef(), &mut result) };
 
         return if status != 0 {
-            Err(Error::Fatal {
-                error: format!("Keychain returned error code: {}", status),
+            Err(KeychainError::FailedToGet {
+                name: name.into(),
+                code: status,
             })
         } else if result.is_null() {
-            Err(Error::Fatal {
-                error: format!("Key not found in keychain: '{}'", name),
-            })
+            Err(KeychainError::NotFound { name: name.into() })
         } else {
             let type_id = unsafe { CFGetTypeID(result) };
             if type_id != CFData::type_id() {
@@ -126,7 +161,8 @@ impl IOSKeychainInternal {
 
                 Err(Error::Fatal {
                     error: format!("Expected CFData type id, instead got '{}'", type_id),
-                })
+                }
+                .into())
             } else {
                 let result = result as CFDataRef;
                 let data = unsafe { CFData::wrap_under_create_rule(result) };
@@ -135,14 +171,15 @@ impl IOSKeychainInternal {
                     error: format!("Got negative buffer length: {}", data.len()),
                 })?;
 
-                let key = KeyMaterial::from_slice(data.bytes())?;
+                let key = KeyMaterial::<N>::from_slice(data.bytes())?;
 
                 // Zeroize the buffer returned by iOS keychain manually.
                 let ptr = data.bytes().as_ptr();
                 if ptr.is_null() {
                     Err(Error::Fatal {
                         error: "Keychain item data pointer is null.".into(),
-                    })
+                    }
+                    .into())
                 } else {
                     unsafe {
                         // SAFETY:
@@ -162,14 +199,29 @@ impl IOSKeychainInternal {
         };
     }
 
-    fn put(
+    fn upsert<N: ArrayLength<u8>>(
         &self,
-        key: KeyEncryptionKey,
+        name: &str,
+        key: KeyMaterial<N>,
         storage_class: KeychainStorage,
-    ) -> Result<(), Error> {
-        let (name, key_material) = key.into_keychain();
-        let wrapped_value = Arc::new(key_material);
-        let query = storage_class.put_query(&name, wrapped_value);
+    ) -> Result<(), KeychainError> {
+        let value = Arc::new(key);
+        self.put(name, value.clone(), storage_class)
+            .or_else(|err| match err {
+                KeychainError::DuplicateItem { .. } => {
+                    self.update(name, value, storage_class)
+                }
+                error => Err(error),
+            })
+    }
+
+    fn put<N: ArrayLength<u8>>(
+        &self,
+        name: &str,
+        key: Arc<KeyMaterial<N>>,
+        storage_class: KeychainStorage,
+    ) -> Result<(), KeychainError> {
+        let query = storage_class.put_query::<N>(name, key);
         let params = CFDictionary::from_CFType_pairs(&query);
 
         // We signal that we don't need the result by passing the null pointer.
@@ -178,30 +230,67 @@ impl IOSKeychainInternal {
 
         if status == 0 {
             Ok(())
+        } else if status == ERR_SEC_DUPLICATE_ITEM {
+            Err(KeychainError::DuplicateItem { name: name.into() })
         } else {
-            Err(Error::Fatal {
-                error: format!(
-                    "Saving '{}' to keychain failed with error {}",
-                    name, status
-                ),
+            Err(KeychainError::FailedToPut {
+                name: name.into(),
+                code: status,
+            })
+        }
+    }
+
+    fn update<N: ArrayLength<u8>>(
+        &self,
+        name: &str,
+        key: Arc<KeyMaterial<N>>,
+        storage_class: KeychainStorage,
+    ) -> Result<(), KeychainError> {
+        let query = storage_class.base_query(name);
+        let query_params = CFDictionary::from_CFType_pairs(&query);
+
+        let set_value = KeychainStorage::set_value(key);
+        let set_value_params = CFDictionary::from_CFType_pairs(&set_value);
+
+        let status = unsafe {
+            SecItemUpdate(
+                query_params.as_concrete_TypeRef(),
+                set_value_params.as_concrete_TypeRef(),
+            )
+        };
+
+        if status == 0 {
+            Ok(())
+        } else if status == ERR_SEC_ITEM_NOT_FOUND {
+            Err(KeychainError::NotFound { name: name.into() })
+        } else {
+            Err(KeychainError::FailedToUpdate {
+                name: name.into(),
+                code: status,
             })
         }
     }
 
     /// Delete the keychain entry for the name.
-    /// !!! Should be only called from soft delete. !!!
-    fn delete(&self, name: &str, storage_class: KeychainStorage) -> Result<(), Error> {
+    fn delete(
+        &self,
+        name: &str,
+        storage_class: KeychainStorage,
+    ) -> Result<(), KeychainError> {
         let query = storage_class.base_query(name);
         let params = CFDictionary::from_CFType_pairs(&query);
+
         let status = unsafe { SecItemDelete(params.as_concrete_TypeRef()) };
+
+        // Ok if not found to make it idempotent.
         if status == 0 {
             Ok(())
+        } else if status == ERR_SEC_ITEM_NOT_FOUND {
+            Err(KeychainError::NotFound { name: name.into() })
         } else {
-            Err(Error::Retriable {
-                error: format!(
-                    "Deleting '{}' from keychain failed with error {}",
-                    name, status
-                ),
+            Err(KeychainError::FailedToDelete {
+                name: name.into(),
+                code: status,
             })
         }
     }
@@ -210,6 +299,7 @@ impl IOSKeychainInternal {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum KeychainStorage {
     WhenUnlockedLocal,
+    WhenUnlockedSynced,
 }
 
 impl KeychainStorage {
@@ -259,28 +349,42 @@ impl KeychainStorage {
         query
     }
 
-    fn put_query(&self, name: &str, value: Arc<KeyMaterial>) -> Vec<(CFString, CFType)> {
+    fn put_query<N: ArrayLength<u8>>(
+        &self,
+        name: &str,
+        value: Arc<KeyMaterial<N>>,
+    ) -> Vec<(CFString, CFType)> {
         let mut query = self.base_query(name);
-        query.push((
+        let value = Self::set_value(value);
+        query.extend(value.into_iter());
+        query
+    }
+
+    fn set_value<N: ArrayLength<u8>>(
+        value: Arc<KeyMaterial<N>>,
+    ) -> Vec<(CFString, CFType)> {
+        vec![(
             unsafe { CFString::wrap_under_get_rule(kSecValueData) },
             // Best effort to create a `CFData` referencing buffer without creating a copy.
             // We want to avoid a copy to make sure we can zeroize the buffer.
             // Unfortunately, the underlying Core Foundation `CFDataCreateWithBytesNoCopy`
             // doesn't actually make a hard guarantee that there will be no copy.
             CFData::from_arc(value).as_CFType(),
-        ));
-        query
+        )]
     }
 
     unsafe fn sec_attr_accessible(&self) -> CFStringRef {
         match self {
             Self::WhenUnlockedLocal => kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+            // Synced implies that a passcode is set.
+            Self::WhenUnlockedSynced => kSecAttrAccessibleWhenUnlocked,
         }
     }
 
     fn sec_attr_synchronizable(&self) -> bool {
         match self {
             Self::WhenUnlockedLocal => false,
+            Self::WhenUnlockedSynced => true,
         }
     }
 }
@@ -296,6 +400,7 @@ extern "C" {
     static kSecAttrAccessible: CFStringRef;
 
     static kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly: CFStringRef;
+    static kSecAttrAccessibleWhenUnlocked: CFStringRef;
 
     static kSecAttrSynchronizable: CFStringRef;
 
@@ -306,6 +411,13 @@ extern "C" {
     /// Adds one or more items to a keychain.
     pub fn SecItemAdd(attributes: CFDictionaryRef, result: *mut CFTypeRef) -> OSStatus;
 
+    /// Modifies items that match a search query.
+    #[allow(non_snake_case)]
+    pub fn SecItemUpdate(
+        query: CFDictionaryRef,
+        attributesToUpdate: CFDictionaryRef,
+    ) -> OSStatus;
+
     /// Returns one or more keychain items that match a search query, or copies attributes of specific keychain items.
     pub fn SecItemCopyMatching(
         query: CFDictionaryRef,
@@ -315,3 +427,6 @@ extern "C" {
     /// Deletes items that match a search query.
     pub fn SecItemDelete(query: CFDictionaryRef) -> OSStatus;
 }
+
+const ERR_SEC_ITEM_NOT_FOUND: OSStatus = -25300;
+const ERR_SEC_DUPLICATE_ITEM: OSStatus = -25299;

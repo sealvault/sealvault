@@ -49,7 +49,7 @@ impl JsonValue {
     /// and it's important to use canonical serialization to allow unique constraints on JSON
     /// fields. Sqlite stores JSON as ordinary strings, but allows querying them with JSON
     /// operators.
-    pub fn serialize(&self) -> Result<String, Error> {
+    pub fn canonical_json(&self) -> Result<String, Error> {
         let mut buf = Vec::new();
         let mut ser =
             serde_json::Serializer::with_formatter(&mut buf, CanonicalFormatter::new());
@@ -57,7 +57,6 @@ impl JsonValue {
             error: "Failed to serialize json value.".into(),
         })?;
 
-        // .expect("serializing serde_json::Value never fails.");
         let s = std::str::from_utf8(&buf).map_err(|_| Error::Fatal {
             error: "Json serializer produced invalid utf8.".into(),
         })?;
@@ -100,7 +99,7 @@ impl ToSql<Text, Sqlite> for JsonValue {
         &self,
         out: &mut diesel::serialize::Output<Sqlite>,
     ) -> diesel::serialize::Result {
-        let s = self.serialize()?;
+        let s = self.canonical_json()?;
         out.set_value(s);
         Ok(diesel::serialize::IsNull::No)
     }

@@ -182,7 +182,7 @@ impl ChainEntity {
         let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
         Ok(Self {
             protocol: BlockchainProtocol::Ethereum.to_string(),
-            protocol_data: protocol_data.serialize()?,
+            protocol_data: protocol_data.canonical_json()?,
         })
     }
 }

@@ -94,6 +94,13 @@ table! {
     local_settings (id) {
         id -> Text,
         profile_id -> Text,
+        backup_enabled -> Bool,
+        // !!! `BigInt` here is a manual override. Make sure to add it back if you regenerate the
+        // schema. Context: https://github.com/diesel-rs/diesel/issues/1116
+        backup_version -> BigInt,
+        backup_completed_at -> Nullable<Text>,
+        backup_password_updated_at -> Nullable<Text>,
+        backup_kdf_nonce -> Nullable<Binary>,
     }
 }
 

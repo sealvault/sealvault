@@ -13,4 +13,5 @@ struct Config {
     static let searchQueryParamName = "q"
     // There are two dapps by default
     static let showDisclosureDappCount = 7
+    static let iCloudBackupDirName = "Backups"
 }

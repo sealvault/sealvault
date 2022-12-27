@@ -47,9 +47,15 @@ impl Error {
     }
 }
 
-// We don't use anyhow for `UnexpectedError` in order to have a single place where
-// all possible runtime invariant variations are listed.
-// TODO (abiro) add macro to derive `UnexpectedError` default implementations.
+impl From<CoreError> for Error {
+    fn from(error: CoreError) -> Self {
+        match error {
+            CoreError::Retriable { error } => Error::Retriable { error },
+            CoreError::Fatal { error } => Error::Fatal { error },
+            CoreError::User { explanation } => Error::User { explanation },
+        }
+    }
+}
 
 impl From<r2d2::PoolError> for Error {
     fn from(err: r2d2::PoolError) -> Self {
@@ -173,8 +179,26 @@ impl From<jsonrpsee::core::Error> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::Retriable {
-            // Error is opaque, OK to expose.
+            // Error is opaque, ok to log.
             error: err.to_string(),
+        }
+    }
+}
+
+impl From<argon2::Error> for Error {
+    fn from(err: argon2::Error) -> Self {
+        Error::Fatal {
+            // Error is opaque, ok to log.
+            error: err.to_string(),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for Error {
+    fn from(err: std::num::ParseIntError) -> Self {
+        Error::Retriable {
+            // Error is opaque, ok to log.
+            error: format!("Failed to parse int due to error: {err}"),
         }
     }
 }

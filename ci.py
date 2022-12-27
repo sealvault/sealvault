@@ -2,6 +2,7 @@
 """Run builds, linters and tests.
 """
 
+import argparse
 from pathlib import Path
 import subprocess as sp
 import signal
@@ -14,16 +15,20 @@ IOS_DIR = REPO_ROOT / "ios"
 
 
 def main():
-    mpl_header_check()
-    run_rustfmt_check()
-    run_clippy()
-    # Platform specific code only gets linted when compiled for that target.
-    run_clippy("aarch64-apple-ios")
+    static_analysis()
 
     run_rust_tests()
 
     start_dev_server()
     run_ios_ui_tests()
+
+
+def static_analysis():
+    mpl_header_check()
+    run_rustfmt_check()
+    run_clippy()
+    # Platform specific code only gets linted when compiled for that target.
+    run_clippy("aarch64-apple-ios")
 
 
 def cleanup():
@@ -95,12 +100,23 @@ def run_ios_ui_tests():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--static",
+        action="store_true",
+        help="Run static analysis only",
+    )
+    args = parser.parse_args()
+
     # Finally block is not enough in case another interrupt is received
     # while it's executing.
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        main()
+        if args.static:
+            static_analysis()
+        else:
+            main()
     finally:
         cleanup()
 

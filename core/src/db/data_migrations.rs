@@ -9,16 +9,12 @@ use generic_array::typenum::U32;
 use lazy_static::lazy_static;
 use url::Url;
 
+use crate::db::deterministic_id::DeterministicId;
 #[allow(deprecated)]
 use crate::{
     config,
-    db::{
-        deterministic_id::DeterministicId,
-        models as m,
-        models::{AccountEntity, AccountPictureEntity},
-        DeferredTxConnection, ExclusiveTxConnection,
-    },
-    encryption::{DataEncryptionKey, KeyEncryptionKey, Keychain},
+    db::{models as m, DeferredTxConnection, ExclusiveTxConnection},
+    encryption::{DataEncryptionKey, KeyEncryptionKey, KeyName, Keychain},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
     utils::{new_uuid, try_random_bytes},
@@ -61,19 +57,17 @@ impl Migration for MigrationV0 {
         keychain: &Keychain,
         _: &PublicSuffixList,
     ) -> Result<(), Error> {
-        // Generate SK-DEK and SK-KEK
-        let sk_dek = DataEncryptionKey::random(config::SK_DEK_NAME.to_string())?;
-        let sk_kek = KeyEncryptionKey::random(config::SK_KEK_NAME.to_string())?;
-        keychain.put_local_unlocked(sk_kek)?;
-        let sk_kek = keychain.get_sk_kek()?;
+        // Create SK-KEK and save it on keychain
+        let sk_kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
+        sk_kek.upsert_to_local_keychain(keychain)?;
+        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
 
-        // Create SK-DEK entity in DB
+        // Create SK-DEK and save it encrypted with SK-KEK in DB
+        let sk_dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let sk_dek_id = m::NewDataEncryptionKey::builder()
             .name(sk_dek.name())
             .build()
             .insert(tx_conn.as_mut())?;
-
-        // Generate SK-DEK and store it encrypted with SK-KEK in DB
         let encrypted_dek = sk_dek.to_encrypted(&sk_kek)?;
         m::NewLocalEncryptedDek::builder()
             .dek_id(&sk_dek_id)
@@ -97,7 +91,10 @@ impl Migration for MigrationV0 {
     fn rollback(&self, keychain: &Keychain) -> Result<(), Error> {
         // Allow rerunning the tx if there was a failure.
         // Database mutations are rolled back automatically by Diesel on error in the tx closure.
-        keychain.soft_delete_sk_kek()
+        KeyEncryptionKey::delete_from_keychain_if_exists(
+            keychain,
+            KeyName::SkKeyEncryptionKey,
+        )
     }
 }
 
@@ -187,7 +184,7 @@ impl MigrationV2 {
         let profiles = m::Profile::list_all(tx_conn.as_mut())?;
         for mut profile in profiles.into_iter() {
             #[allow(deprecated)]
-            let deprecated_account_entity = AccountEntity {
+            let deprecated_account_entity = m::AccountEntity {
                 uuid: &profile.uuid,
             };
             let deprecated_det_id = deprecated_account_entity.deterministic_id()?;
@@ -246,7 +243,7 @@ impl MigrationV2 {
         let profile_pictures = m::ProfilePicture::list_all(tx_conn.as_mut())?;
         for mut pp in profile_pictures.into_iter() {
             #[allow(deprecated)]
-            let deprecated_pp_entity = AccountPictureEntity {
+            let deprecated_pp_entity = m::AccountPictureEntity {
                 image_hash: &pp.image_hash,
             };
             let deprecated_det_id = deprecated_pp_entity.deterministic_id()?;
@@ -441,19 +438,17 @@ mod tests {
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
     ) -> Result<(), Error> {
-        // Generate SK-DEK and SK-KEK
-        let sk_dek = DataEncryptionKey::random(config::SK_DEK_NAME.to_string())?;
-        let sk_kek = KeyEncryptionKey::random(config::SK_KEK_NAME.to_string())?;
-        keychain.put_local_unlocked(sk_kek)?;
-        let sk_kek = keychain.get_sk_kek()?;
+        // Create SK-KEK and save it on keychain
+        let sk_kek = KeyEncryptionKey::random(KeyName::SkKeyEncryptionKey)?;
+        sk_kek.upsert_to_local_keychain(keychain)?;
+        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
 
-        // Create SK-DEK entity in DB
+        // Create SK-DEK and save it encrypted with SK-KEK in DB
+        let sk_dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let sk_dek_id = m::NewDataEncryptionKey::builder()
             .name(sk_dek.name())
             .build()
             .insert(tx_conn.as_mut())?;
-
-        // Generate SK-DEK and store it encrypted with SK-KEK in DB
         let encrypted_dek = sk_dek.to_encrypted(&sk_kek)?;
         m::NewLocalEncryptedDek::builder()
             .dek_id(&sk_dek_id)
@@ -468,10 +463,10 @@ mod tests {
             .bundled_picture_name(config::DEFAULT_ACCOUNT_PICTURE_NAME)
             .build();
         #[allow(deprecated)]
-        let account_id =
+        let profile_id =
             m::Account::create_eth_account(tx_conn, keychain, &profile_params)?;
 
-        m::LocalSettings::create(tx_conn.as_mut(), &account_id)?;
+        m::LocalSettings::create(tx_conn.as_mut(), &profile_id)?;
 
         Ok(())
     }

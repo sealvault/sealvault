@@ -78,8 +78,8 @@ pub struct CoreEthChain {
 }
 
 /// Errors passed to the UI.
-/// Fallible functions exposed through FFI should use this error type.
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+/// Fallible functions exposed through FFI should use this error type by default.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CoreError {
     /// The operation resulted in an error, but it can be retried.
     #[error("Retriable Error: '{error}'")]

@@ -71,7 +71,11 @@ itertools = "0.10.3"
 email_address = "0.2.3"
 rust_decimal = { version = "1.26.1", features = ["maths"] }
 data-encoding = "2.3.2"
+tempfile = "3.3.0"
 dyn-clone = "1.0.9"
+argon2 = { version = "0.4.1", features = ["std", "zeroize"] }
+zip = "0.6.3"
+derive_more = "0.99.17"
 
 [build-dependencies]
 # Important to match uniffi dep version in `embedded-uniff-bindgen`
@@ -80,7 +84,6 @@ uniffi_build = { version = "0.20.0", features=["builtin-bindgen"] }
 [dev-dependencies]
 anyhow = { version = "1.0.57", features = ["backtrace"] }
 ethers = { git = "https://github.com/agostbiro/ethers-rs", features = ["legacy", "eip712", "abigen-offline", "solc-full"] }
-tempfile = "3.3.0"
 
 [features]
 without_global_executor = []

@@ -19,7 +19,9 @@ pub mod dto;
 pub mod in_page_provider;
 pub mod protocols;
 
+mod backup;
 mod db;
+mod device;
 mod encryption;
 mod error;
 mod favicon;
@@ -36,6 +38,11 @@ pub use crate::{
         AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
+    backup::{
+        find_latest_backup as core_find_latest_backup,
+        restore_backup as core_restore_backup, BackupError as CoreBackupError,
+        BackupRestoreData,
+    },
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,
     in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
@@ -44,7 +51,7 @@ pub use crate::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
         DappTransactionApproved, DappTransactionResult, TokenTransferResult,
     },
-    utils::uri_fixup,
+    utils::uri_fixup as core_uri_fixup,
 };
 
 // Build FFI based on SealVaultCore.udl.

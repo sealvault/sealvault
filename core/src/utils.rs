@@ -5,7 +5,7 @@
 use std::{collections::HashSet, time::SystemTime};
 
 use chacha20poly1305::aead::generic_array::{ArrayLength, GenericArray};
-use chrono::{DateTime, SecondsFormat, Utc};
+use chrono::{DateTime, FixedOffset, SecondsFormat, Utc};
 use email_address::EmailAddress;
 use lazy_static::lazy_static;
 use rand::{thread_rng, RngCore};
@@ -22,10 +22,15 @@ pub fn rfc3339_timestamp() -> String {
     dt.to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
+pub fn parse_rfc3339_timestamp(s: &str) -> Result<DateTime<FixedOffset>, Error> {
+    DateTime::parse_from_rfc3339(s).map_err(|err| Error::Retriable {
+        error: err.to_string(),
+    })
+}
+
 /// Number of seconds since unix epoch
 pub fn unix_timestamp() -> i64 {
-    let now = SystemTime::now();
-    let dt: DateTime<Utc> = now.into();
+    let dt: DateTime<Utc> = SystemTime::now().into();
     dt.timestamp()
 }
 
@@ -123,6 +128,13 @@ mod tests {
     use chacha20poly1305::aead::generic_array::typenum::U32;
 
     use super::*;
+
+    #[test]
+    fn rfc_timestamp() -> Result<()> {
+        let timestamp = rfc3339_timestamp();
+        let _ = parse_rfc3339_timestamp(&timestamp)?;
+        Ok(())
+    }
 
     #[test]
     fn fills_random_bytes() -> Result<()> {

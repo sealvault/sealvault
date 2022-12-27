@@ -2,13 +2,27 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-namespace SealVaultCore {
-    string? uri_fixup(string input);
-};
-
 interface AppCore {
     [Throws=CoreError]
     constructor(CoreArgs args, CoreUICallbackI ui_callback);
+
+    [Throws=CoreError]
+    void on_background();
+
+    [Throws=CoreBackupError]
+    void enable_backup();
+
+    [Throws=CoreError]
+    void disable_backup();
+
+    [Throws=CoreError]
+    string display_backup_password();
+
+    [Throws=CoreError]
+    boolean is_backup_enabled();
+
+    [Throws=CoreError]
+    i64? last_backup();
 
     [Throws=CoreError]
     sequence<CoreProfile> list_profiles();
@@ -59,6 +73,12 @@ enum CoreError{
     "User",
 };
 
+[Error]
+enum CoreBackupError{
+    "BackupDirectoryNotAvailable",
+    "Error"
+};
+
 dictionary CoreProfile {
     string id;
     string name;
@@ -105,8 +125,11 @@ dictionary CoreToken {
 };
 
 dictionary CoreArgs {
+    string device_id;
+    string device_name;
     string cache_dir;
     string db_file_path;
+    string? backup_dir;
 };
 
 dictionary CoreEthChain {
@@ -197,3 +220,20 @@ callback interface InPageRequestContextI {
     string page_url();
     CoreInPageCallbackI callbacks();
 };
+
+namespace SealVaultCore {
+    string? core_uri_fixup(string input);
+
+    [Throws=CoreError]
+    BackupRestoreData? core_find_latest_backup(string backup_dir);
+
+    [Throws=CoreError]
+    void core_restore_backup(CoreArgs core_args, string from_path, string password);
+};
+
+dictionary BackupRestoreData {
+    i64 timestamp;
+    string device_name;
+    string file_path;
+};
+

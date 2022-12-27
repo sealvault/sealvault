@@ -94,29 +94,13 @@ struct DappApproval: View {
 
             Spacer()
 
-            VStack(spacing: 20) {
-                HStack(spacing: 0) {
-                    Button(action: {
-                        request.reject()
-                        dismiss()
-                    }, label: {
-                        Text("Cancel").frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    })
-                    .accessibilityLabel("rejectDapp")
-                    .buttonStyle(.borderless)
-                    .controlSize(.large)
-
-                    Button(action: {
-                        request.approve()
-                        dismiss()
-                    }, label: {
-                        Text("OK").frame(maxWidth: .infinity)
-                    })
-                    .accessibilityLabel("approveDapp")
-                    .buttonStyle(.borderless)
-                    .controlSize(.large)
-                }
-            }
+            DialogButtons(onApprove: {
+                request.approve()
+                dismiss()
+            }, onReject: {
+                request.reject()
+                dismiss()
+            })
         }
     }
 }

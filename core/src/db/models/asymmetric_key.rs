@@ -12,6 +12,7 @@ use crate::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
         schema::asymmetric_keys,
+        DeferredTxConnection,
     },
     encryption::EncryptionOutput,
     signatures::EllipticCurve,
@@ -37,6 +38,11 @@ pub struct AsymmetricKey {
 impl AsymmetricKey {
     pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Self>, Error> {
         Ok(asymmetric_keys::table.load::<Self>(conn)?)
+    }
+
+    pub fn num_keys(conn: &mut SqliteConnection) -> Result<i64, Error> {
+        let count: i64 = asymmetric_keys::table.count().get_result(conn)?;
+        Ok(count)
     }
 
     pub fn fetch_eth_public_key(
@@ -110,7 +116,7 @@ pub struct NewAsymmetricKey<'a> {
 
 impl<'a> NewAsymmetricKey<'a> {
     /// Create a new asymmetric key and return its deterministic id.
-    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn insert(&self, tx_conn: &mut DeferredTxConnection) -> Result<String, Error> {
         use asymmetric_keys::dsl as ak;
 
         let deterministic_id = self.deterministic_id()?;
@@ -122,7 +128,7 @@ impl<'a> NewAsymmetricKey<'a> {
                 ak::deterministic_id.eq(&deterministic_id),
                 ak::created_at.eq(&created_at),
             ))
-            .execute(conn)?;
+            .execute(tx_conn.as_mut())?;
 
         Ok(deterministic_id)
     }

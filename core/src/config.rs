@@ -7,7 +7,7 @@ use std::time::Duration;
 // Thread pools
 // We're just one app among many on the user's device, keep the footprint low.
 pub const DB_CONNECTION_POOL_SIZE: u32 = 4;
-pub const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(1);
+pub const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(10);
 pub const TOKIO_WORKER_THREADS: usize = 1;
 pub const TOKIO_MAX_BLOCKING_THREADS: usize = 8;
 pub const MAX_ASYNC_CONCURRENT_REQUESTS: usize = 8;
@@ -15,10 +15,6 @@ pub const MAX_ASYNC_CONCURRENT_REQUESTS: usize = 8;
 // User
 pub const DEFAULT_ACCOUNT_NAME: &str = "Default";
 pub const DEFAULT_ACCOUNT_PICTURE_NAME: &str = "cat-green";
-
-// Cryptography
-pub const SK_DEK_NAME: &str = "SK-DATA-ENCRYPTION-KEY";
-pub const SK_KEK_NAME: &str = "SK-KEY-ENCRYPTION-KEY";
 
 // In-page provider
 pub const MAX_JSONRPC_REQUEST_SIZE_BYTES: usize = 1000000;

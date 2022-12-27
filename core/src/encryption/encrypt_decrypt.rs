@@ -19,7 +19,7 @@ pub(super) fn encrypt<'msg, 'aad, 'key>(
     let nonce: XNonce = utils::try_random_bytes()?;
     // The cipher will make a copy of the reference, but the library takes care of zeroizing the
     // copy properly.
-    let cipher = XChaCha20Poly1305::new(key.expose_key_material().as_ref());
+    let cipher = XChaCha20Poly1305::new(key.expose_secret().as_ref());
     let cipher_text = cipher.encrypt(&nonce, plaintext)?;
     Ok(EncryptionOutput::builder()
         .nonce(nonce)
@@ -32,7 +32,7 @@ pub(super) fn decrypt<'msg, 'aad, 'key>(
     key: &'key impl ExposeKeyMaterial<'key>,
     nonce: &XNonce,
 ) -> Result<Vec<u8>, Error> {
-    let cipher = XChaCha20Poly1305::new(key.expose_key_material().as_ref());
+    let cipher = XChaCha20Poly1305::new(key.expose_secret().as_ref());
     let plain_text = cipher.decrypt(nonce, ciphertext)?;
     Ok(plain_text)
 }
@@ -42,11 +42,11 @@ mod tests {
     use anyhow::Result;
 
     use super::*;
-    use crate::encryption::encryption_key::DataEncryptionKey;
+    use crate::encryption::{encryption_key::DataEncryptionKey, KeyName};
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {
-        let key = DataEncryptionKey::random("key".into())?;
+        let key = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let message = b"hello-world";
         let aad = b"aad";
         let encryption_payload = Payload { msg: message, aad };

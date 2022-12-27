@@ -87,13 +87,17 @@ device and metadata about the backup in a JSON file.  The metadata is stored in
 plaintext, but it's authenticated with our chosen [AEAD](./cryptography.md#aead)
 construct.  The metadata consists of:
 
-- device identifier,
-- timestamp when the backup was created,
 - backup scheme version,
+- backup version on the device,
+- device identifier,
+- operating system of the device,
+- timestamp when the backup was created,
 - KDF nonce,
 - encryption nonce.
 
-The backup scheme version is `org.sealvault.ios.backup.v0` initially.
+The backup version is a monotonically increasing integer on each device. The
+number of keys in the backup can be deduced from the backup version (it can be
+also deduced from the backup size).
 
 ### Backup Password
 

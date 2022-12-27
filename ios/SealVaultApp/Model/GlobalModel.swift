@@ -15,6 +15,9 @@ class GlobalModel: ObservableObject {
     @Published var browserTwoUrl: URL?
     @Published var topDapps: [Dapp]
     @Published var bannerData: BannerData?
+    @Published var backupEnabled: Bool = false
+
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
 
     var activeProfile: Profile? {
         return profileList.first(where: { acc in acc.id == activeProfileId })
@@ -51,8 +54,15 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    static func coreArgs() -> CoreArgs {
+        CoreArgs(
+            deviceId: deviceId(), deviceName: deviceName(), cacheDir: cacheDir(),
+            dbFilePath: ensureDbFilePath(), backupDir: ensureBackupDir()
+        )
+    }
+
     static func buildOnStartup() -> Self {
-        let coreArgs = CoreArgs(cacheDir: cacheDir(), dbFilePath: ensureDbFilePath())
+        let coreArgs = coreArgs()
         let callbackModel = CallbackModel()
         var core: AppCoreProtocol
         do {
@@ -64,37 +74,41 @@ class GlobalModel: ObservableObject {
         return Self(core: core, profiles: [], activeProfileId: nil, callbackModel: callbackModel)
     }
 
-    private static func ensureDbFilePath() -> String {
-        let dataProtectionAttributes = [
-            FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
-        ]
-
-        let fileManager = FileManager.default
-        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-
-        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
-        if !fileManager.fileExists(atPath: dbDirPath.path) {
-            // App can't start if it can't create this directory
-            // swiftlint:disable force_try
-            try! fileManager.createDirectory(
-                atPath: dbDirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes
-            )
-            // swiftlint:enable force_try
+    static func shouldRestoreBackup() -> RecoveryModel? {
+        let dbPath = dbFilePath()
+        // If we already have a db then we don't restore
+        if FileManager.default.fileExists(atPath: dbPath.path) {
+            return nil
         }
 
-        let dbFilePath = dbDirPath.appendingPathComponent(Config.dbFileName)
-        if !fileManager.fileExists(atPath: dbFilePath.path) {
-            fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes)
-        }
+        // If the backup directory is not available, because the user is not logged in to iCloud,
+        // then we don't restore.
+        if let backupDirURL = self.backupDirURL() {
+            // If the backup directory doesn't exist, the user hasn't installed the app before, so
+            // we don't restore.
+            if !FileManager.default.fileExists(atPath: backupDirURL.path) {
+                return nil
+            }
 
-        return dbFilePath.path
+            return RecoveryModel(backupDir: backupDirURL)
+        }
+        return nil
     }
 
-    private static func cacheDir() -> String {
-        let fileManager = FileManager.default
-        let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+    private static func dbDirPath() -> URL {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
+        return dbDirPath
+    }
 
-        return cacheDirUrl.path
+    private static func dbFilePath() -> URL {
+        dbDirPath().appendingPathComponent(Config.dbFileName)
+    }
+
+    private static func dataProtectionAttributes() -> [FileAttributeKey: Any] {
+        return [
+            FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+        ]
     }
 
     private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
@@ -119,6 +133,109 @@ class GlobalModel: ObservableObject {
         }
     }
 
+    func onBackground() {
+        DispatchQueue.global(qos: .background).async {
+            // Request the task assertion and save the ID.
+            DispatchQueue.main.sync {
+                self.backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "App Core On Background") {
+                    // End the task if time expires.
+                    UIApplication.shared.endBackgroundTask(self.backgroundTaskID!)
+                    self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+                }
+            }
+
+            do {
+                try self.core.onBackground()
+            } catch {
+                print("Error for core onBackground: \(error)")
+            }
+
+            // End the task assertion.
+            DispatchQueue.main.sync {
+                UIApplication.shared.endBackgroundTask(self.backgroundTaskID!)
+                self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+            }
+        }
+    }
+
+    func enableBackup() async -> Bool {
+        let success = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.enableBackup()
+                return true
+            } catch {
+                print("Error enabling backup: \(error)")
+                return false
+            }
+        }
+        if success {
+            self.backupEnabled = await self.fetchBackupEnabled()
+        } else {
+            self.bannerData = BannerData(
+                title: "Error enabling backup",
+                detail: "Try to restart the app and make sure iCloud is enabled.",
+                type: .error
+            )
+        }
+        return success
+    }
+
+    func disableBackup() async {
+        let success = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.disableBackup()
+                return true
+            } catch {
+                print("Error enabling backup: \(error)")
+                return false
+            }
+        }
+        if success {
+            self.backupEnabled = await self.fetchBackupEnabled()
+        } else {
+            self.bannerData = BannerData(
+                title: "Error disabling backup", detail: "", type: .error
+            )
+        }
+    }
+
+    func displayBackupPassword() async -> String? {
+        await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.displayBackupPassword()
+            } catch {
+                print("Error enabling backup: \(error)")
+                return nil
+            }
+        }
+    }
+
+    func fetchBackupEnabled() async -> Bool {
+        return await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.isBackupEnabled()
+            } catch {
+                print("Error fetching whether backup is enabled: \(error)")
+                return false
+            }
+        }
+    }
+
+    func fetchLastBackup() async -> Date? {
+        return await dispatchBackground(.userInteractive) {
+            do {
+                if let lastBackup = try self.core.lastBackup() {
+                    return Date(timeIntervalSince1970: Double(lastBackup))
+                } else {
+                    return nil
+                }
+            } catch {
+                print("Error fetching last backup: \(error)")
+                return nil
+            }
+        }
+    }
+
     func tabBarColor(_ colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? .black : Color(UIColor.systemGray6)
     }
@@ -133,6 +250,7 @@ class GlobalModel: ObservableObject {
         if let activeProfileId = activeProfileId {
             self.activeProfileId = activeProfileId
         }
+        self.backupEnabled = await self.fetchBackupEnabled()
         self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
 
@@ -180,6 +298,82 @@ class GlobalModel: ObservableObject {
     }
 }
 
+// MARK: - File system
+extension GlobalModel {
+    private static func ensureDbFilePath() -> String {
+        let fileManager = FileManager.default
+
+        let dirPath = dbDirPath()
+        if !fileManager.fileExists(atPath: dirPath.path) {
+            // App can't start if it can't create this directory
+            // swiftlint:disable force_try
+            try! fileManager.createDirectory(
+                atPath: dirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
+            )
+            // swiftlint:enable force_try
+        }
+
+        let dbFilePath = dbFilePath()
+        if !fileManager.fileExists(atPath: dbFilePath.path) {
+            fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes())
+        }
+
+        return dbFilePath.path
+    }
+
+    private static func cacheDir() -> String {
+        let fileManager = FileManager.default
+        let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+
+        return cacheDirUrl.path
+    }
+
+    private static func deviceName() -> String {
+        UIDevice.current.name
+    }
+
+    private static func deviceId() -> String {
+        // TODO
+        // > If the value is nil, wait and get the value again later.
+        // > This happens, for example, after the device has been restarted but before the
+        // > user has unlocked the device.
+        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
+        UIDevice.current.identifierForVendor!.uuidString
+    }
+
+    private static func backupDirURL() -> URL? {
+        let driveURL = FileManager
+            .default
+            .url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent(Config.iCloudBackupDirName)
+        return driveURL
+    }
+
+    private static func backupDir() -> String? {
+        return backupDirURL()?.path
+    }
+
+    private static func ensureBackupDir() -> String? {
+        if let backupDir = self.backupDir() {
+            let fileManager = FileManager.default
+
+            if !fileManager.fileExists(atPath: backupDir) {
+                do {
+                    try fileManager.createDirectory(
+                        atPath: backupDir, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
+                    )
+                } catch {
+                    print("Failed to create backup dir with error: \(error)")
+                    return nil
+                }
+
+            }
+            return backupDir
+        }
+        return nil
+    }
+}
+
 // MARK: - Development
 
 #if DEBUG
@@ -188,6 +382,8 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+    private var backupEnabledToggle: Bool = false
+
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
         let picture = [UInt8](profile.picture.pngData()!)
         let wallets = profile.walletList.map(Self.toCoreAddress)
@@ -255,6 +451,37 @@ class PreviewAppCore: AppCoreProtocol {
         return DispatchQueue.main.sync {
             return Self.toCoreToken(token)
         }
+    }
+
+    func onBackground() throws {
+        print("on background starting")
+        // Simulate creating backup
+        Thread.sleep(forTimeInterval: 1)
+        print("on background finished")
+    }
+
+    func enableBackup() throws {
+        // Simulate password KDF
+        Thread.sleep(forTimeInterval: 1)
+        self.backupEnabledToggle = true
+    }
+
+    func disableBackup() throws {
+        Thread.sleep(forTimeInterval: 0.5)
+        backupEnabledToggle = false
+    }
+
+    func isBackupEnabled() throws -> Bool {
+        self.backupEnabledToggle
+    }
+
+    func lastBackup() throws -> Int64? {
+        Thread.sleep(forTimeInterval: 0.5)
+        return Int64(Date().timeIntervalSince1970)
+    }
+
+    func displayBackupPassword() throws -> String {
+        "AAA1-BBB2-CCC3-DDD4"
     }
 
     func fetchFavicon(rawUrl: String) throws -> [UInt8]? {

@@ -4,6 +4,7 @@
 
 use std::{
     fmt::{Debug, Formatter},
+    path::{Path, PathBuf},
     time::Duration,
 };
 
@@ -19,6 +20,7 @@ use crate::{async_runtime as rt, config, Error};
 #[derive(Debug)]
 pub struct ConnectionPool {
     pool: Pool<ConnectionManager<SqliteConnection>>,
+    db_path: PathBuf,
 }
 
 type PooledSqliteConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
@@ -33,7 +35,14 @@ impl ConnectionPool {
                 busy_timeout: config::DB_BUSY_TIMEOUT,
             }))
             .build(manager)?;
-        Ok(Self { pool })
+        Ok(Self {
+            pool,
+            db_path: db_path.into(),
+        })
+    }
+
+    pub fn db_path(&self) -> &Path {
+        self.db_path.as_path()
     }
 
     /// Get a Sqlite connection.
@@ -135,15 +144,17 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
     for ConnectionOptions
 {
     fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
-        (|| {
-            let timeout = self.busy_timeout.as_millis();
-            conn.batch_execute(&format!("PRAGMA busy_timeout = {};", timeout))?;
-            conn.batch_execute(
-                "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;",
-            )?;
-            conn.batch_execute("PRAGMA foreign_keys = ON;")?;
-            Ok(())
-        })()
-        .map_err(diesel::r2d2::Error::QueryError)
+        // No SQLite injection with u128.
+        let timeout: u128 = self.busy_timeout.as_millis();
+        let query = &format!(
+            "
+            PRAGMA busy_timeout = {timeout};
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA foreign_keys = ON;
+        "
+        );
+        conn.batch_execute(query)
+            .map_err(diesel::r2d2::Error::QueryError)
     }
 }
