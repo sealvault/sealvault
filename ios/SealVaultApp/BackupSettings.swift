@@ -188,7 +188,6 @@ but it's not possible to decrypt your backups with this secret alone.
 
 struct BackupSettingsInner: View {
     @EnvironmentObject private var model: GlobalModel
-    @Environment(\.scenePhase) private var scenePhase
 
     @State var showPassword: Bool = false
     @State var password: String?
@@ -221,10 +220,8 @@ struct BackupSettingsInner: View {
                 })
 
                 Text(password ?? "Error")
-                    .onChange(of: scenePhase) { newPhase in
-                        if newPhase == .inactive || newPhase == .background {
-                            hidePassword()
-                        }
+                    .onInactive {
+                        hidePassword()
                     }
             }
         } header: {

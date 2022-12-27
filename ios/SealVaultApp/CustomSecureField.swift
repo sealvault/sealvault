@@ -40,6 +40,9 @@ struct CustomSecureField: View {
             }
             .keyboardType(.asciiCapable)
         }
+        .onInactive {
+            showPassword = false
+        }
     }
     // Using the enum makes the code clear as to what field is focused.
     enum FocusedField {
