@@ -42,6 +42,7 @@ struct CustomSecureField: View {
         }
         .onInactive {
             showPassword = false
+            password = ""
         }
     }
     // Using the enum makes the code clear as to what field is focused.
