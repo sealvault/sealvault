@@ -23,7 +23,7 @@ struct ProfileListView: View {
                                     Button(action: {
                                         UIPasteboard.general.string = profile.walletList.first?.checksumAddress
                                     }, label: {
-                                        Text("Copy wallet address")
+                                        Text("Copy Wallet Address")
                                     })
                                 }
                         }
