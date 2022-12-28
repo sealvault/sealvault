@@ -70,7 +70,7 @@ Sealvault** due to a combination of the following factors:
 
 When users enable iCloud backups in the SealVault app settings, they can recover
 their [data](./data.md) if they lose access to their device or delete the
-app.[^50] Once we support [syncing,](./sync.md) users will be able to recover
+app. Once we support [syncing,](./sync.md) users will be able to recover
 from other devices as well and iCloud backups will be only necessary to recover
 in case all devices are lost.
 
@@ -318,6 +318,3 @@ We think this is an acceptable risk.
 [^40]:
     Remember, the blockchain key pairs would be long broken at this point by 
     Shor's algorithm.  See what we store in the [data section.](./data.md)
-
-[^50]:
-    Implementation is [WIP.](https://github.com/sealvault/sealvault/issues/32)
