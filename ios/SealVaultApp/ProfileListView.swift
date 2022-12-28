@@ -19,6 +19,13 @@ struct ProfileListView: View {
                             ProfileRow(profile: profile)
                                 .padding(.vertical, 8)
                                 .accessibilityIdentifier("\(profile.displayName) profile")
+                                .contextMenu {
+                                    Button(action: {
+                                        UIPasteboard.general.string = profile.walletList.first?.checksumAddress
+                                    }, label: {
+                                        Text("Copy wallet address")
+                                    })
+                                }
                         }
                     }
                 }
