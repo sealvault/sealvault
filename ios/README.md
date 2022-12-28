@@ -31,9 +31,16 @@ support.
 
 ## UI Tests
 
+Prerequisite: the [dev-server](../tools/dev-server) must be running for browser
+tests.
+
 UI tests can be run from the `ios` directory with the `fastlane tests` command.
 This command takes care of running the [pre-build](#pre-build) script, and it
 also :warning: resets all iOS simulators on your machine.
+
+Note that running the [CI script](../README.md#tests) locally also runs the UI
+tests and takes care of starting and shutting down the
+[dev-server](../tools/dev-server) for you.
 
 ## Linter
 

@@ -1,6 +1,15 @@
 # SealVault Dev Server
 
-Provides in-page provider integration tests.
+Provides test doubles for in-page provider integration and browser UI tests.
+
+## Development
+
+Please refer to the [read me](../README.md) in the repo root for development
+setup instructions.
+
+## Run
+
+Run from this directory with: `cargo run`.
 
 ## Useful commands
 
