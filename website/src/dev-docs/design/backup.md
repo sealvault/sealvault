@@ -7,14 +7,19 @@ solution, the [SealVault iCloud Backup.](#sealvault-icloud-backup)
 
 When a user
 [enables](https://support.apple.com/en-gb/guide/iphone/iph3ecf67d29/ios) iCloud
-backups for their device, their local keychain and all app data including the
-[SealVault database](./data.md) gets backed up as part of that. However, items
-stored on the local keychain can be only restored on the same device as their
-encryption key is tangled with the root key of the device's hardware security
-module.[^0] Since the [SK-KEK](./data.md#secret-key-encryption-keys) is stored
-on the local keychain, this means a user will be **only able to restore
+backups for their device, their local keychain and app data gets backed up as
+part of that. However, items stored on the local keychain can be only restored
+on the same device as their encryption key is tangled with the root key of the
+device's hardware security module.[^0] 
+
+The [SK-KEK](./data.md#secret-key-encryption-keys) is stored on the local
+keychain, which means that SealVault users would be only able to restore
 SealVault to full functionality from an iCloud device backup on the same device
-where it was created.**
+where it was created. Reinstalling on the same device is not the intended use
+case for iCloud device backups, and if we just supported that it would lead to
+confusion, so we 
+**[exclude](https://developer.apple.com/documentation/foundation/optimizing_your_app_s_data_for_icloud_backup)
+the user's SealVault data from iCloud device backups.**
 
 ## iCloud Keychain
 

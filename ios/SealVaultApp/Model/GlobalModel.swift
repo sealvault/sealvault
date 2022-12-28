@@ -313,9 +313,20 @@ extension GlobalModel {
             // swiftlint:enable force_try
         }
 
-        let dbFilePath = dbFilePath()
+        var dbFilePath = dbFilePath()
         if !fileManager.fileExists(atPath: dbFilePath.path) {
             fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes())
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            try? dbFilePath.setResourceValues(resourceValues)
+        }
+
+        // Exclude DB file from iCloud Backup since it won't work due to missing keys from local keychain
+        // More info https://sealvault.org/dev-docs/design/backup/#icloud-device-backup
+        if var resourceValues = try? dbFilePath.resourceValues(forKeys: [URLResourceKey.isExcludedFromBackupKey]) {
+            if resourceValues.isExcludedFromBackup != true {
+                try? dbFilePath.setResourceValues(resourceValues)
+            }
         }
 
         return dbFilePath.path
