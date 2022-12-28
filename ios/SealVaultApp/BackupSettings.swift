@@ -21,10 +21,7 @@ struct BackupSettings: View {
                         Toggle(isOn: $backupEnabledToggle) {
                             BackupSettingsLabel()
                         }
-
                         LastBackupRow()
-//                            .listRowInsets(EdgeInsets(top: 0, leading: 60, bottom: 0, trailing: 0))
-
                     } header: {
                         Text("Device Backup")
                     } footer: {
@@ -35,6 +32,7 @@ struct BackupSettings: View {
                 }
             } else {
                 BackupSettingsOnboarding()
+
             }
         }
         .onChange(of: backupEnabledToggle) { newValue in
@@ -53,9 +51,9 @@ struct BackupSettings: View {
         }
         .confirmationDialog("Are you sure you want to disable backups?", isPresented: $presentConfirmation) {
             Button("Disable Backups", role: .destructive, action: {
-              Task {
-                  await model.disableBackup()
-              }
+                Task {
+                    await model.disableBackup()
+                }
             })
             Button("Cancel", role: .cancel, action: {
                 backupEnabledToggle = true
@@ -68,130 +66,207 @@ struct BackupSettings: View {
 }
 
 struct BackupSettingsOnboarding: View {
-    @EnvironmentObject private var model: GlobalModel
     @Environment(\.colorScheme) private var colorScheme
 
+    @State var step: Int = 0
+    @State var showPopUp: Bool = false
+
+    var progress: Double {
+        (Double(step) / BackupSettingsOnboardingInner.maxStep)
+    }
+    var icloudSyncScreenshot: String {
+        colorScheme == .dark ? "icloud-sync-setting-screenshot-dark" : "icloud-sync-setting-screenshot-light"
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            BackupSettingsOnboardingInner(step: $step, showPopUp: $showPopUp)
+            ProgressView(value: progress)
+
+            if showPopUp {
+                ZStack {
+                    Color
+                        .black
+                        .opacity(0.4)
+                        .ignoresSafeArea()
+                    VStack {
+                        Text(
+"""
+You can enable iCloud Keychain in *Settings* -> *Apple ID* -> *iCloud* -> *Passwords and Keychain* as pictured on the
+screenshot below:
+"""
+                        )
+                            .padding()
+                        Image(icloudSyncScreenshot)
+                            .resizable()
+                            .scaledToFit()
+
+                        Button(action: {
+                            showPopUp = false
+                        }, label: {
+                            Text("Close")
+                        })
+                        .padding()
+                    }
+                    .background(Color(UIColor.systemGray5))
+                    .frame(width: 350, height: 525)
+                    .cornerRadius(20)
+                    .shadow(radius: 20)
+                    .padding()
+                }
+            }
+        }
+    }
+}
+
+struct BackupSettingsOnboardingInner: View {
+    @EnvironmentObject private var model: GlobalModel
+
+    @Binding var step: Int
+    static let maxStep = 5.0
+
+    @Binding var showPopUp: Bool
+
+    // We can't derive from `step` bc then it'd rerender every change and screw up scrolling
     @State var step1: Bool = false
     @State var step2: Bool = false
     @State var step3: Bool = false
     @State var step4: Bool = false
     @State var step5: Bool = false
 
-    var icloudSyncScreenshot: String {
-        colorScheme == .dark ? "icloud-sync-setting-screenshot-dark" : "icloud-sync-setting-screenshot-light"
+    func setStep(_ step: Int) {
+        DispatchQueue.main.async {
+            withAnimation {
+                self.step = step
+
+                switch step {
+                case 1:
+                    step1 = true
+                case 2:
+                    step2 = true
+                case 3:
+                    step3 = true
+                case 4:
+                    step4 = true
+                case 5:
+                    step5 = true
+                default:
+                    print("Unexpected step: \(step)")
+                }
+            }
+        }
     }
 
     var body: some View {
-        Form {
-            Text(
+        ScrollViewReader { proxy in
+            Form {
+
+                Text(
 """
 Automatically back up your keys and profiles to your iCloud Storage so that you can \
 restore them if you lose your device or get a new one.
 """
-            )
-            .foregroundColor(step1 ? .secondary : .primary)
+                )
+                .foregroundColor(step1 ? .secondary : .primary)
+                .id(0)
 
-            if !step1 {
-                Button("Enable Backups") {
-                    withAnimation {
-                        step1 = true
+                if !step1 {
+                    Button("Enable Backups") {
+                        setStep(1)
                     }
                 }
-            }
 
-            if step1 {
-                Text(
+                if step1 {
+                    Text(
 """
 All backups are encrypted with a strong backup password generated on your device. \
 The backup password is protected by Secure Enclave and it never leaves your device.
 """
-                )
-                .foregroundColor(step2 ? .secondary : .primary)
+                    )
+                    .foregroundColor(step2 ? .secondary : .primary)
+                    .id(1)
 
-                if !step2 {
-                    Button("Set Up Backup Password") {
-                        withAnimation {
-                            step2 = true
+                    if !step2 {
+                        Button("Set Up Backup Password") {
+                            setStep(2)
                         }
                     }
                 }
-            }
 
-            if step2 {
-                Text(
+                if step2 {
+                    Text(
 """
 In addition to the backup password, a secret is stored on your iCloud \
 Keychain that is required to decrypt your backups. \
 This additional secret protects your keys in case your backup password is stolen, \
 but it's not possible to decrypt your backups with this secret alone.
 """
-                )
-                .foregroundColor(step3 ? .secondary : .primary)
+                    )
+                    .foregroundColor(step3 ? .secondary : .primary)
+                    .id(2)
 
-                if !step3 {
-                    Button("Enable iCloud Keychain") {
-                        withAnimation {
-                            step3 = true
+                    if !step3 {
+                        Button("Enable iCloud Keychain") {
+                            setStep(3)
                         }
                     }
                 }
-            }
 
-            if step3 {
-
-                VStack {
+                if step3 {
                     Text(
-    """
-    Make sure that iCloud Keychain sync is \
-    enabled in your device settings, **otherwise you won't be able to restore the backup on a \
-    new device.**
-    """
+"""
+Make sure that iCloud Keychain sync is \
+enabled in your device settings, **otherwise you won't be able to restore the backup on a \
+new device.**
+"""
                     )
                     .foregroundColor(step4 ? .secondary : .primary)
+                    .id(3)
 
-                    Image(icloudSyncScreenshot)
-                        .resizable()
-                        .scaledToFit()
-                        .opacity(step4 ? 0.5 : 1)
-                }
-
-                if !step4 {
-                    Button("I have enabled iCloud Keychain") {
-                        withAnimation {
-                            step4 = true
+                    if !step4 {
+                        Button("Show Me How") {
+                            showPopUp = true
+                        }
+                        Button("I Have Enabled iCloud Keychain") {
+                            setStep(4)
                         }
                     }
                 }
-            }
 
-            if step4 {
-                Text(
-    """
-    Make sure to write down the backup password on paper or save it in a password manager. \
-    **You won't be able to recover from iCloud Storage without the backup password.**
-    """
-                )
-                .foregroundColor(step5 ? .secondary : .primary)
+                if step4 {
+                    Text(
+"""
+Make sure to write down the backup password on paper or save it in a password manager. \
+**You won't be able to recover from iCloud Storage without the backup password.**
+"""
+                    )
+                    .foregroundColor(step5 ? .secondary : .primary)
+                    .id(4)
 
-                if !step5 {
-                    AsyncButton(action: {
-                        let success = await model.enableBackup()
-                        withAnimation {
-                            step5 = success
-                        }
-                    }, label: {
-                        Text("Generate Backup Password")
-                    })
+                    if !step5 {
+                        AsyncButton(action: {
+                            let success = await model.enableBackup()
+                            if success {
+                                setStep(5)
+                            }
+                        }, label: {
+                            Text("Generate Backup Password")
+                        })
+                    }
                 }
-            }
-
-            if step5 {
                 BackupPasswordDisplay()
+                    .id(5)
+                    .disabled(!step5)
+
+            }
+            .onChange(of: step) { _ in
+                withAnimation {
+                    proxy.scrollTo(5)
+                }
             }
         }
     }
 }
-
 struct BackupPasswordDisplay: View {
     @EnvironmentObject private var model: GlobalModel
 
