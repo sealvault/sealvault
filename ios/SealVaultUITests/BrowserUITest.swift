@@ -50,7 +50,7 @@ final class BrowserUITest: XCTestCase {
         _ = quickswapButton.waitForExistence(timeout: buttonTimeoutSeconds)
         quickswapButton.press(forDuration: 1)
 
-        tapButton(app, "Open in Browser 2")
+        tapButton(app, "Open in Right Browser")
 
         _ = app.buttons["Reload page"].waitForExistence(timeout: buttonTimeoutSeconds)
 
@@ -94,7 +94,7 @@ final class BrowserUITest: XCTestCase {
 func startBrowserApp() throws -> XCUIApplication {
     let app = XCUIApplication()
     app.launch()
-    tapButton(app, "Browser 1", tabBar: true)
+    tapButton(app, "Left Browser", tabBar: true)
     return app
 }
 

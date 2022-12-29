@@ -34,13 +34,8 @@ struct AppTabNavigationInner: View {
                     BrowserView(browserModel: browserModelOne)
                 }
                 .tabItem {
-                    let menuText = Text("Browser 1")
-                    Label {
-                        menuText
-                    } icon: {
-                        Image(systemName: "network")
-                    }
-                    .accessibility(label: menuText)
+                    Image(systemName: "network")
+                        .accessibility(label: Text("Left Browser"))
                 }
                 .tag(Tab.browserOne)
 
@@ -48,19 +43,8 @@ struct AppTabNavigationInner: View {
                     ProfileListView()
                 }
                 .tabItem {
-                    let menuText = Text("Profiles")
-
-                    Label {
-                        menuText
-                    } icon: {
-                        if let profile = model.activeProfile {
-                            // TODO add blue circle around icon when selected
-                            TabIcon(icon: profile.picture)
-                        } else {
-                            Image(systemName: "person")
-                        }
-                    }
-                    .accessibility(label: menuText)
+                    Image(systemName: "person")
+                        .accessibility(label: Text("Profiles"))
                 }
                 .tag(Tab.profiles)
 
@@ -68,13 +52,8 @@ struct AppTabNavigationInner: View {
                     BrowserView(browserModel: browserModelTwo)
                 }
                 .tabItem {
-                    let menuText = Text("Browser 2")
-                    Label {
-                        menuText
-                    } icon: {
-                        Image(systemName: "network")
-                    }
-                    .accessibility(label: menuText)
+                    Image(systemName: "network")
+                        .accessibility(label: Text("Right Browser"))
                 }
                 .tag(Tab.browserTwo)
             }

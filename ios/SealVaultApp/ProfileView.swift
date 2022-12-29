@@ -36,14 +36,14 @@ struct ProfileView: View {
                                             model.browserOneUrl = url
                                         }
                                     }, label: {
-                                        Text("Open in Browser 1")
+                                        Text("Open in Left Browser")
                                     })
                                     Button(action: {
                                         if let url = dapp.url {
                                             model.browserTwoUrl = url
                                         }
                                     }, label: {
-                                        Text("Open in Browser 2")
+                                        Text("Open in Right Browser")
                                     })
                                 }
                                 .accessibilityIdentifier("\(dapp.displayName) dapp")
