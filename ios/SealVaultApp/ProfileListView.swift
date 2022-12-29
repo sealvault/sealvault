@@ -46,7 +46,9 @@ struct ProfileListView: View {
                         Circle()
                             .fill(.red)
                             .scaleEffect(0.33)
-                            .offset(x: 11.5, y: -11.5) : nil
+                            .offset(x: 11.5, y: -11.5)
+                            .accessibilityLabel(Text("Backups are disabled warning"))
+                    : nil
                 )
             }
             .task {
