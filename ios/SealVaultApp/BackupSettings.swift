@@ -92,7 +92,7 @@ struct BackupSettingsOnboarding: View {
                     VStack {
                         Text(
 """
-You can enable iCloud Keychain in *Settings* -> *Apple ID* -> *iCloud* -> *Passwords and Keychain* as pictured on the
+You can enable iCloud Keychain in *Settings* -> *Apple ID* -> *iCloud* -> *Passwords and Keychain* as pictured on the \
 screenshot below:
 """
                         )
