@@ -41,6 +41,13 @@ struct ProfileListView: View {
                 }, label: {
                     Image(systemName: "gear")
                 })
+                .overlay(
+                    !model.backupEnabled ?
+                        Circle()
+                            .fill(.red)
+                            .scaleEffect(0.33)
+                            .offset(x: 11.5, y: -11.5) : nil
+                )
             }
             .task {
                 await self.model.refreshProfiles()

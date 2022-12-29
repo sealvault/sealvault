@@ -46,11 +46,11 @@ struct BackupSettingsLabel: View {
     @EnvironmentObject private var model: GlobalModel
 
     var iconName: String {
-        model.backupEnabled ? "checkmark.icloud":  "icloud"
+        model.backupEnabled ? "checkmark.icloud":  "xmark.icloud"
     }
 
     var iconColor: Color {
-        model.backupEnabled ? Color.green : Color.secondary
+        model.backupEnabled ?.green : .red
     }
 
     var body: some View {

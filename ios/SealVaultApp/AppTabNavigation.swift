@@ -288,9 +288,8 @@ struct AppTabNavigation_Previews: PreviewProvider {
         }
 
         return Group {
-            AppTabNavigationInner(callbackModel: CallbackModel(), selection: .browserOne)
+            AppTabNavigationInner(callbackModel: CallbackModel(), selection: .profiles)
                 .environmentObject(model)
-                .preferredColorScheme(.dark)
 
             AppTabNavigationInner(callbackModel: callbackTokenSent, selection: .profiles)
                 .environmentObject(model)
