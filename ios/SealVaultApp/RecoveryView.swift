@@ -29,7 +29,7 @@ struct RecoveryView: View {
                 }
             }
             .alert("Error", isPresented: $showAlert) {
-                Button("Continue", role: .destructive) {
+                Button("Start app without restoring", role: .destructive) {
                     withAnimation {
                         isDoneRestoring = true
                     }
@@ -38,7 +38,7 @@ struct RecoveryView: View {
                     recoveryModel.start()
                 }
             } message: {
-                Text("Failed to download backups from iCloud Storage. Continue without restoring or try again?")
+                Text("Failed to download backups from iCloud Storage. Start app without restoring or try again?")
             }
             .padding(.horizontal, 20)
         }
