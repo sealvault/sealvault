@@ -79,10 +79,6 @@ impl AppCore {
         self.resources.connection_pool()
     }
 
-    fn device_id(&self) -> &DeviceIdentifier {
-        self.resources.device_id()
-    }
-
     fn keychain(&self) -> &Keychain {
         self.resources.keychain()
     }
@@ -117,19 +113,15 @@ impl AppCore {
     /// Method called by the UI when the application enters the background.
     pub fn on_background(&self) -> Result<(), CoreError> {
         if self.is_backup_enabled()? {
-            backup::create_backup(self.resources.clone())?;
+            backup::create_backup(self.resources.as_ref())?;
         }
         Ok(())
     }
 
     pub fn enable_backup(&self) -> Result<(), BackupError> {
-        backup::set_up_or_rotate_backup(
-            self.connection_pool(),
-            self.keychain(),
-            self.device_id(),
-        )?;
+        backup::set_up_or_rotate_backup(self.resources.as_ref())?;
         // Check if we can create backups after enabling them.
-        match backup::create_backup(self.resources.clone()) {
+        match backup::create_backup(self.resources.as_ref()) {
             Ok(_) => Ok(()),
             Err(error) => {
                 // If we can't create backups, disable.
@@ -140,11 +132,7 @@ impl AppCore {
     }
 
     pub fn disable_backup(&self) -> Result<(), CoreError> {
-        backup::disable_backup(
-            self.connection_pool(),
-            self.keychain(),
-            self.device_id(),
-        )?;
+        backup::disable_backup(self.resources.as_ref())?;
         Ok(())
     }
 

@@ -5,7 +5,10 @@
 use diesel::prelude::*;
 
 use crate::{
-    db::schema::local_settings, encryption::KdfNonce, utils::rfc3339_timestamp, Error,
+    db::{schema::local_settings, DeferredTxConnection},
+    encryption::KdfNonce,
+    utils::rfc3339_timestamp,
+    Error,
 };
 
 // numeric_expr!(local_settings::dsl::backup_version);
@@ -178,6 +181,26 @@ impl LocalSettings {
         diesel::update(local_settings::table.find(&SINGLETON_ID))
             .set(ls::backup_password_updated_at.eq(rfc3339_timestamp()))
             .execute(connection)?;
+
+        Ok(())
+    }
+
+    pub fn disable_backups(tx_conn: &mut DeferredTxConnection) -> Result<(), Error> {
+        use local_settings::dsl as ls;
+
+        // We don't reset the backup version as it should be monotonically increasing for each
+        // device.
+
+        Self::set_backup_kdf_nonce(tx_conn.as_mut(), None)?;
+        Self::set_backup_enabled(tx_conn.as_mut(), false)?;
+
+        let updated_at: Option<String> = None;
+        diesel::update(local_settings::table.find(&SINGLETON_ID))
+            .set(ls::backup_password_updated_at.eq(&updated_at))
+            .execute(tx_conn.as_mut())?;
+        diesel::update(local_settings::table.find(&SINGLETON_ID))
+            .set(ls::backup_completed_at.eq(&updated_at))
+            .execute(tx_conn.as_mut())?;
 
         Ok(())
     }

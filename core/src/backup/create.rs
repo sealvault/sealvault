@@ -7,7 +7,6 @@ use std::{
     fs::File,
     io::{Read, Seek, Write},
     path::Path,
-    sync::Arc,
 };
 
 use diesel::connection::SimpleConnection;
@@ -32,12 +31,12 @@ use crate::{
 /// the path to the zip file. More info:
 /// https://sealvault.org/dev-docs/design/backup/#backup-contents
 pub fn create_backup(
-    resources: Arc<dyn CoreResourcesI>,
+    resources: &dyn CoreResourcesI,
 ) -> Result<BackupMetadata, BackupError> {
     let backup_dir = resources
         .backup_dir()
         .ok_or(BackupError::BackupDirectoryNotAvailable)?;
-    let metadata = db_backup(resources.as_ref(), backup_dir)?;
+    let metadata = db_backup(resources, backup_dir)?;
     remove_outdated_backups(&metadata, backup_dir)?;
     Ok(metadata)
 }
@@ -156,21 +155,23 @@ fn remove_outdated_backups(
     let entries = list_backup_dir(backup_dir)?;
     for entry in entries {
         if should_delete(&entry, current_metadata)? {
-            // It might be that file was deleted by other backup inbetween.
-            fs::remove_file(entry.path()).or_else(|err| {
-                if err.kind() == std::io::ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(Error::Fatal {
-                        error: format!(
-                            "Failed to delete backup file due to error: {err}"
-                        ),
-                    })
-                }
-            })?;
+            delete_entry(&entry)?;
         }
     }
     Ok(())
+}
+
+pub(in crate::backup) fn delete_entry(entry: &fs::DirEntry) -> Result<(), Error> {
+    // It might be that file was deleted by other backup inbetween.
+    fs::remove_file(entry.path()).or_else(|err| {
+        if err.kind() == std::io::ErrorKind::NotFound {
+            Ok(())
+        } else {
+            Err(Error::Fatal {
+                error: format!("Failed to delete backup file due to error: {err}"),
+            })
+        }
+    })
 }
 
 pub(in crate::backup) fn list_backup_dir(

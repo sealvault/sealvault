@@ -5,36 +5,42 @@
 use std::path::Path;
 
 use crate::{
-    db::{models as m, ConnectionPool, DeferredTxConnection, ExclusiveTxConnection},
+    backup::{
+        create::{delete_entry, list_backup_dir},
+        metadata::MetadataFromFileName,
+    },
+    db::{models as m, ConnectionPool, ExclusiveTxConnection},
     device::DeviceIdentifier,
     encryption::{
         BackupPassword, DataEncryptionKey, KdfNonce, KdfSecret, KeyEncryptionKey,
         KeyName, Keychain, RootBackupKey,
     },
+    resources::CoreResourcesI,
     Error,
 };
 
 /// Set up backup keys for the user and return the backup password that can be displayed to the
 /// user. Calling the function again will rotate the password and associated keys.
-pub fn set_up_or_rotate_backup(
-    connection_pool: &ConnectionPool,
-    keychain: &Keychain,
-    device_identifier: &DeviceIdentifier,
-) -> Result<(), Error> {
+pub fn set_up_or_rotate_backup(resources: &dyn CoreResourcesI) -> Result<(), Error> {
     // In an exclusive transaction to prevent running in parallel and potentially ending up with
     // mixed up keychain items.
-    let res = connection_pool.exclusive_transaction(|mut tx_conn| {
-        let kdf_nonce =
-            setup_or_rotate_keys_for_backup(keychain, device_identifier, &mut tx_conn)?;
+    let res = resources
+        .connection_pool()
+        .exclusive_transaction(|mut tx_conn| {
+            let kdf_nonce = setup_or_rotate_keys_for_backup(
+                resources.keychain(),
+                resources.device_id(),
+                &mut tx_conn,
+            )?;
 
-        enable_backups_in_db(&mut tx_conn, &kdf_nonce)?;
+            enable_backups_in_db(&mut tx_conn, &kdf_nonce)?;
 
-        Ok(())
-    });
+            Ok(())
+        });
 
     // Rollback on error
     if res.is_err() {
-        disable_backup(connection_pool, keychain, device_identifier)?;
+        disable_backup(resources)?;
     }
 
     res
@@ -120,7 +126,25 @@ fn enable_backups_in_db(
     Ok(())
 }
 
-pub fn disable_backup(
+/// Disable backups in DB, delete keys from keychain and delete backups created on this device if
+/// any.
+pub fn disable_backup(resources: &dyn CoreResourcesI) -> Result<(), Error> {
+    rollback_enable_backup(
+        resources.connection_pool(),
+        resources.keychain(),
+        resources.device_id(),
+    )?;
+
+    // Delete backups that were created on this device.
+    if let Some(backup_dir) = resources.backup_dir() {
+        delete_backups_for_device(backup_dir, resources.device_id())?;
+    }
+
+    Ok(())
+}
+
+/// Disable backups in DB and delete keys from keychain
+pub(in crate::backup) fn rollback_enable_backup(
     connection_pool: &ConnectionPool,
     keychain: &Keychain,
     device_identifier: &DeviceIdentifier,
@@ -128,14 +152,17 @@ pub fn disable_backup(
     // First make sure we disable backups as keychain might be in inconsistent state.
     // Rolling back the changes from the transaction is not enough, because backups might have
     // been enabled prior.
-    connection_pool.deferred_transaction(disable_backups_in_db)?;
+    connection_pool.deferred_transaction(|mut tx_conn| {
+        m::LocalSettings::disable_backups(&mut tx_conn)?;
+        Ok(())
+    })?;
     // Try to clean up keychain items. The application works correctly even if they're not
     // all successfully cleaned up.
     remove_keys_for_backup(keychain, device_identifier);
     Ok(())
 }
 
-fn remove_keys_for_backup(keychain: &Keychain, device_identifier: &DeviceIdentifier) {
+pub fn remove_keys_for_backup(keychain: &Keychain, device_identifier: &DeviceIdentifier) {
     let _ = KdfSecret::delete_from_keychain_if_exists(keychain, device_identifier);
     let _ = BackupPassword::delete_from_keychain_if_exists(keychain);
     let _ = KeyEncryptionKey::delete_from_keychain_if_exists(
@@ -148,9 +175,17 @@ fn remove_keys_for_backup(keychain: &Keychain, device_identifier: &DeviceIdentif
     );
 }
 
-fn disable_backups_in_db(mut tx_conn: DeferredTxConnection) -> Result<(), Error> {
-    m::LocalSettings::set_backup_kdf_nonce(tx_conn.as_mut(), None)?;
-    m::LocalSettings::set_backup_enabled(tx_conn.as_mut(), false)?;
+fn delete_backups_for_device(
+    backup_dir: &Path,
+    device_id: &DeviceIdentifier,
+) -> Result<(), Error> {
+    for entry in list_backup_dir(backup_dir)? {
+        if let Ok(meta_from_file_name) = MetadataFromFileName::try_from(&entry) {
+            if &meta_from_file_name.device_id == device_id {
+                delete_entry(&entry)?;
+            }
+        }
+    }
     Ok(())
 }
 

@@ -40,6 +40,7 @@ mod tests {
                 backup_metadata_from_zip, find_latest_restorable_backup,
                 restore_backup_inner,
             },
+            setup::rollback_enable_backup,
         },
         db::{
             data_migrations, models as m, schema_migrations::run_migrations,
@@ -80,11 +81,7 @@ mod tests {
         }
 
         fn setup_or_rotate_backup(&self) -> Result<()> {
-            set_up_or_rotate_backup(
-                self.resources.connection_pool(),
-                self.resources.keychain(),
-                self.resources.device_id(),
-            )?;
+            set_up_or_rotate_backup(self.resources.as_ref())?;
             Ok(())
         }
 
@@ -94,7 +91,7 @@ mod tests {
         }
 
         fn create_backup(&self) -> Result<BackupMetadata> {
-            let metadata = create_backup(self.resources.clone())?;
+            let metadata = create_backup(self.resources.as_ref())?;
             Ok(metadata)
         }
 
@@ -316,7 +313,7 @@ mod tests {
         let backup = BackupTest::new()?;
 
         backup.setup_or_rotate_backup()?;
-        disable_backup(
+        rollback_enable_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
             backup.resources.device_id(),
@@ -342,7 +339,7 @@ mod tests {
 
         backup.setup_or_rotate_backup()?;
         backup.setup_or_rotate_backup()?;
-        disable_backup(
+        rollback_enable_backup(
             backup.resources.connection_pool(),
             backup.resources.keychain(),
             backup.resources.device_id(),
@@ -358,6 +355,57 @@ mod tests {
 
         let restore = RestoreTest::new(backup)?;
         restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_disable_backups() -> Result<()> {
+        let backup = BackupTest::new()?;
+
+        backup.setup_or_rotate_backup()?;
+        let backup_metadata = backup.create_backup()?;
+
+        disable_backup(backup.resources.as_ref())?;
+
+        let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
+        assert!(!backup_enabled);
+        let res = find_latest_restorable_backup(backup.backup_dir())?;
+        assert!(res.is_none());
+
+        let mut conn = backup.resources.connection_pool().connection()?;
+        let backup_version = m::LocalSettings::fetch_backup_version(&mut conn)?;
+        // Backup version shouldn't be reset after disabling as it should be monotonously
+        // increasing.
+        assert_eq!(backup_version, backup_metadata.backup_version);
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_enable_after_disable_backups() -> Result<()> {
+        let backup = BackupTest::new()?;
+
+        backup.setup_or_rotate_backup()?;
+
+        disable_backup(backup.resources.as_ref())?;
+
+        backup.setup_or_rotate_backup()?;
+        let password = backup.backup_password()?;
+
+        let backup_metadata = backup.create_backup()?;
+
+        let restore = RestoreTest::new(backup)?;
+        restore.verify(&password, &backup_metadata)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_disable_backups_if_not_enabled() -> Result<()> {
+        let backup = BackupTest::new()?;
+
+        disable_backup(backup.resources.as_ref())?;
 
         Ok(())
     }

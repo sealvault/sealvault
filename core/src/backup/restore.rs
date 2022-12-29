@@ -11,9 +11,10 @@ use std::{
 use crate::{
     backup::{
         create::list_backup_dir,
-        disable_backup,
         metadata::{BackupMetadata, MetadataFromFileName},
-        setup::{backup_connection_pool, set_up_or_rotate_sk_kek},
+        setup::{
+            backup_connection_pool, rollback_enable_backup, set_up_or_rotate_sk_kek,
+        },
         ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
     },
     db::models as m,
@@ -88,9 +89,9 @@ pub(in crate::backup) fn restore_backup_inner(
     let restored_connection_pool =
         set_up_or_rotate_sk_kek(keychain, &sk_backup_kek, restore_path)?;
 
-    // Disable backup in restored DB and on device keychain as user will need to generate new backup
-    // password for this device.
-    disable_backup(&restored_connection_pool, keychain, &device_id)?;
+    // Disable backup in restored DB and delete keys on device keychain as user will need to
+    // generate new backup password for this device.
+    rollback_enable_backup(&restored_connection_pool, keychain, &device_id)?;
 
     Ok(metadata)
 }
