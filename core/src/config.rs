@@ -14,7 +14,7 @@ pub const MAX_ASYNC_CONCURRENT_REQUESTS: usize = 8;
 
 // User
 pub const DEFAULT_ACCOUNT_NAME: &str = "Default";
-pub const DEFAULT_ACCOUNT_PICTURE_NAME: &str = "cat-green";
+pub const DEFAULT_ACCOUNT_PICTURE_NAME: &str = "seal-0";
 
 // In-page provider
 pub const MAX_JSONRPC_REQUEST_SIZE_BYTES: usize = 1000000;
@@ -24,7 +24,7 @@ pub const MAX_JSONRPC_RESPONSE_SIZE_BYTES: usize = 1000000;
 pub const IN_PAGE_PROVIDER_FILE_NAME: &str = "in-page-provider.js";
 pub const JS_PREFIX: &str = "js";
 pub const PROFILE_PIC_PREFIX: &str = "profile-pics";
-pub const PROFILE_PIC_EXTENSION: &str = ".jpeg";
+pub const PROFILE_PIC_EXTENSION: &str = ".png";
 pub const RPC_PROVIDER_PLACEHOLDER: &str = "<SEALVAULT_RPC_PROVIDER>";
 pub const REQUEST_HANDLER_PLACEHOLDER: &str = "<SEALVAULT_REQUEST_HANDLER>";
 pub const DEFAULT_CHAIN_ID_PLACEHOLDER: &str = "<SEALVAULT_DEFAULT_CHAIN_ID>";

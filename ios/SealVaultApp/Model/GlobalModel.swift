@@ -527,7 +527,7 @@ class PreviewAppCore: AppCoreProtocol {
         let profiles = [
             Profile(
                 self,
-                id: activeProfileId, name: activeProfileName, picture: UIImage(named: "cat-green")!,
+                id: activeProfileId, name: activeProfileName, picture: UIImage(named: "seal-0")!,
                 wallets: wallets,
                 dapps: [
                     Dapp.ens(),
@@ -544,22 +544,22 @@ class PreviewAppCore: AppCoreProtocol {
             ),
             Profile(
                 self,
-                id: "2", name: "DeFi Anon", picture: UIImage(named: "orangutan")!, wallets: wallets,
+                id: "2", name: "DeFi Anon", picture: UIImage(named: "seal-1")!, wallets: wallets,
                 dapps: [Dapp.dhedge(), Dapp.sushi(), Dapp.aave(), Dapp.oneInch(), Dapp.quickswap(), Dapp.uniswap()]
             ),
             Profile(
                 self,
-                id: "3", name: "Dark Forest General", picture: UIImage(named: "owl-chatty")!, wallets: wallets,
+                id: "3", name: "Dark Forest General", picture: UIImage(named: "seal-2")!, wallets: wallets,
                 dapps: [Dapp.darkForest()]
             ),
             Profile(
                 self,
-                id: "4", name: "D&D Magician", picture: UIImage(named: "dog-derp")!, wallets: wallets,
+                id: "4", name: "D&D Magician", picture: UIImage(named: "seal-7")!, wallets: wallets,
                 dapps: [Dapp.dnd()]
             ),
             Profile(
                 self,
-                id: "5", name: "NSFW", picture: UIImage(named: "dog-pink")!, wallets: wallets,
+                id: "5", name: "NSFW", picture: UIImage(named: "seal-6")!, wallets: wallets,
                 dapps: [Dapp.opensea()]
             )
         ]

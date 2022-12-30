@@ -1218,12 +1218,12 @@ pub mod tests {
         let initial_count = tmp.core.list_profiles()?.len();
 
         let name = "foo".to_string();
-        let profiles = tmp.core.create_profile(name.clone(), "pug-yellow".into())?;
+        let profiles = tmp.core.create_profile(name.clone(), "seal-1".into())?;
         assert_eq!(profiles.len(), initial_count + 1);
         assert_eq!(profiles[initial_count].name, name);
 
         let name = "bar".to_string();
-        let profiles = tmp.core.create_profile(name.clone(), "pug-denim".into())?;
+        let profiles = tmp.core.create_profile(name.clone(), "seal-2".into())?;
         assert_eq!(profiles.len(), initial_count + 2);
         assert_eq!(profiles[initial_count + 1].name, name);
 
@@ -1265,7 +1265,7 @@ pub mod tests {
     fn setup_profiles(core: &AppCore) -> Result<(String, String)> {
         let keychain = core.resources.keychain();
 
-        let profiles = core.create_profile("profile-two".into(), "pug-yellow".into())?;
+        let profiles = core.create_profile("profile-two".into(), "seal-1".into())?;
         assert_eq!(profiles.len(), 2);
 
         let profile_id_one = &profiles[0].id;

@@ -78,16 +78,16 @@ mod tests {
 
         dbg!(profile_pics.clone());
 
-        assert!(profile_pics.len() > 10);
-        assert!(profile_pics.contains(&"dog-derp".to_string()));
-        assert!(profile_pics.contains(&"flamingo".to_string()));
+        assert_eq!(profile_pics.len(), 10);
+        assert!(profile_pics.contains(&"seal-0".to_string()));
+        assert!(profile_pics.contains(&"seal-9".to_string()));
 
         Ok(())
     }
 
     #[test]
     fn loads_profile_pic() -> Result<()> {
-        let data = load_profile_pic("pug-yellow")?;
+        let data = load_profile_pic("seal-1")?;
         assert!(data.len() > 1000);
 
         Ok(())
