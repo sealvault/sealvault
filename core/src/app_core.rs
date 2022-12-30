@@ -2,11 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{fmt::Debug, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, fmt::Debug, path::PathBuf, sync::Arc};
 
+use rand::seq::IteratorRandom;
 use typed_builder::TypedBuilder;
 
 use crate::{
+    assets::list_profile_pics,
     async_runtime as rt, backup,
     backup::BackupError,
     db::{
@@ -187,6 +189,22 @@ impl AppCore {
         })?;
 
         self.list_profiles()
+    }
+
+    /// Return the name of a random bundled profile picture that can be used for a new profile.
+    /// Returns none if there are no unused.
+    pub fn random_bundled_profile_picture(&self) -> Result<Option<String>, CoreError> {
+        let mut conn = self.connection_pool().connection()?;
+        let taken_names: HashSet<String> = m::ProfilePicture::list_names(&mut conn)?
+            .into_iter()
+            .collect();
+        let bundled_names: HashSet<String> = list_profile_pics().into_iter().collect();
+
+        let res = bundled_names
+            .difference(&taken_names)
+            .choose(&mut rand::thread_rng());
+
+        Ok(res.cloned())
     }
 
     pub fn native_token_for_address(

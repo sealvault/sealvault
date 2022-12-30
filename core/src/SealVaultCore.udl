@@ -28,6 +28,12 @@ interface AppCore {
     sequence<CoreProfile> list_profiles();
 
     [Throws=CoreError]
+    sequence<CoreProfile> create_profile(string name, string bundled_picture_name);
+
+    [Throws=CoreError]
+    string? random_bundled_profile_picture();
+
+    [Throws=CoreError]
     string active_profile_id();
 
     [Throws=CoreError]

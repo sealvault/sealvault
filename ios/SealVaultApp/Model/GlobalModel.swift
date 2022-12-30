@@ -567,6 +567,21 @@ class PreviewAppCore: AppCoreProtocol {
         return profiles.map(Self.toCoreProfile)
     }
 
+    func createProfile(name: String, bundledPictureName: String) throws -> [CoreProfile] {
+        let profile = Self.toCoreProfile(Profile(
+            self,
+            id: name, name: "name", picture: UIImage(named: "seal-7")!, wallets: [Address.polygonWallet()],
+            dapps: []
+        ))
+        var profiles = try! self.listProfiles()
+        profiles.append(profile)
+        return profiles
+    }
+
+    func randomBundledProfilePicture() throws -> String? {
+        "seal-9"
+    }
+
     func activeProfileId() throws -> String {
         return "1"
     }

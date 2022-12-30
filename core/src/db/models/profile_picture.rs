@@ -33,6 +33,15 @@ impl ProfilePicture {
         Ok(profile_pictures::table.load::<ProfilePicture>(conn)?)
     }
 
+    pub fn list_names(conn: &mut SqliteConnection) -> Result<Vec<String>, Error> {
+        use profile_pictures::dsl as pp;
+
+        let names: Vec<Option<String>> =
+            profile_pictures::table.select(pp::image_name).load(conn)?;
+
+        Ok(names.into_iter().flatten().collect())
+    }
+
     pub fn fetch_image(conn: &mut SqliteConnection, id: &str) -> Result<Vec<u8>, Error> {
         use profile_pictures::dsl as pp;
 
