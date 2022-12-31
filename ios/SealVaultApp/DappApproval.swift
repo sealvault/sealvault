@@ -83,7 +83,8 @@ struct DappApproval: View {
                     Label {
                         Text(profile.displayName)
                     } icon: {
-                        ProfileImageCircle(profile: profile).accessibilityLabel("profile image")
+                        ProfileImageCircle(profile: profile)
+                            .accessibilityLabel("Profile Picture")
                     }
                     Text("profile").fontWeight(.light)
                 }

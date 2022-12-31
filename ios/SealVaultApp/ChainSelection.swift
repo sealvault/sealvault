@@ -37,7 +37,7 @@ struct ChainSelection: View {
                             .frame(maxWidth: .infinity)
                             .foregroundColor(.secondary)
                     })
-                    .accessibilityLabel("rejectAddChain")
+                    .accessibilityLabel("Reject Add Chain")
                     .buttonStyle(.borderless)
                     .controlSize(.large)
 
@@ -53,7 +53,7 @@ struct ChainSelection: View {
                     }, label: {
                         Text("OK").frame(maxWidth: .infinity)
                     })
-                    .accessibilityLabel("approveAddChain")
+                    .accessibilityLabel("Approve Add Chain")
                     .buttonStyle(.borderless)
                     .controlSize(.large)
                 }

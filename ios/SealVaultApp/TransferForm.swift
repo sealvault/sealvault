@@ -240,7 +240,7 @@ struct InAppPicker: View {
                             .frame(maxWidth: .infinity)
                             .foregroundColor(.secondary)
                     })
-                    .accessibilityLabel("cancelInAppSelection")
+                    .accessibilityLabel("Cancel In-App Selection")
                     .buttonStyle(.borderless)
                     .controlSize(.large)
 
@@ -250,7 +250,7 @@ struct InAppPicker: View {
                     }, label: {
                         Text("OK").frame(maxWidth: .infinity)
                     })
-                    .accessibilityLabel("approveInAppSelection")
+                    .accessibilityLabel("Approve In-App Selection")
                     .buttonStyle(.borderless)
                     .controlSize(.large)
                 }
