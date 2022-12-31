@@ -28,6 +28,16 @@ struct ProfileListView: View {
                                     })
                                 }
                         }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                Task {
+                                    await model.setActiveProfileId(profileId: profile.id)
+                                }
+                            } label: {
+                                Image(systemName: "checkmark.square")
+                            }
+                            .tint(.green)
+                        }
                     }
                 }
                 .accessibilityRotor("Profiles", entries: model.profileList, entryLabel: \.displayName)

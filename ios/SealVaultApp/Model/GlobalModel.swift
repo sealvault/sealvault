@@ -98,28 +98,6 @@ class GlobalModel: ObservableObject {
 
 // MARK: - App Core
 extension GlobalModel {
-    private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
-        return await dispatchBackground(qos) {
-            do {
-                return try self.core.listProfiles()
-            } catch {
-                print("Error fetching profile data: \(error)")
-                return nil
-            }
-        }
-    }
-
-    private func fetchActiveProfileId(_ qos: DispatchQoS.QoSClass) async -> String? {
-        return await dispatchBackground(qos) {
-            do {
-                return try self.core.activeProfileId()
-            } catch {
-                print("Error fetching active profile id: \(error)")
-                return nil
-            }
-        }
-    }
-
     func onBackground() {
         DispatchQueue.global(qos: .background).async {
             // Request the task assertion and save the ID.
@@ -143,6 +121,51 @@ extension GlobalModel {
                 self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
             }
         }
+    }
+
+    private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
+        return await dispatchBackground(qos) {
+            do {
+                return try self.core.listProfiles()
+            } catch {
+                print("Error fetching profile data: \(error)")
+                return nil
+            }
+        }
+    }
+
+    private func fetchActiveProfileId(_ qos: DispatchQoS.QoSClass) async -> String? {
+        return await dispatchBackground(qos) {
+            do {
+                return try self.core.activeProfileId()
+            } catch {
+                print("Error fetching active profile id: \(error)")
+                return nil
+            }
+        }
+    }
+
+    func setActiveProfileId(profileId: String) async {
+        let errorMessage: String? = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.setActiveProfileId(profileId: profileId)
+                return nil
+            } catch CoreError.Retriable(let message) {
+                print("Retriable error changing active profile: \(message)")
+                return Config.retriableErrorMessage
+            } catch let error {
+                print("Fatal error changing active profile: \(error)")
+                return Config.fatalErrorMessage
+            }
+        }
+        if let message = errorMessage {
+            self.bannerData = BannerData(
+                title: "Error changing active profile",
+                detail: message,
+                type: .error
+            )
+        }
+        await self.refreshProfiles()
     }
 
     func enableBackup() async -> Bool {
@@ -634,6 +657,10 @@ class PreviewAppCore: AppCoreProtocol {
 
     func activeProfileId() throws -> String {
         return "1"
+    }
+
+    func setActiveProfileId(profileId: String) throws {
+        throw CoreError.Fatal(message: "not implemented")
     }
 
     func getInPageScript(rpcProviderName _: String, requestHandlerName _: String) throws -> String {

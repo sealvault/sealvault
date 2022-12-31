@@ -40,6 +40,9 @@ interface AppCore {
     string active_profile_id();
 
     [Throws=CoreError]
+    void set_active_profile_id(string profile_id);
+
+    [Throws=CoreError]
     CoreToken native_token_for_address(string address_id);
 
     [Throws=CoreError]

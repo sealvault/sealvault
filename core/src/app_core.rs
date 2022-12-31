@@ -170,6 +170,12 @@ impl AppCore {
         Ok(res)
     }
 
+    pub fn set_active_profile_id(&self, profile_id: String) -> Result<(), CoreError> {
+        let mut conn = self.connection_pool().connection()?;
+        m::LocalSettings::set_active_profile_id(&mut conn, &profile_id)?;
+        Ok(())
+    }
+
     pub fn create_profile(
         &self,
         name: String,
@@ -1238,6 +1244,7 @@ pub mod tests {
     fn create_profile() -> Result<()> {
         let tmp = TmpCore::new()?;
 
+        let first_profile = tmp.first_profile();
         let initial_count = tmp.core.list_profiles()?.len();
 
         let name = "foo".to_string();
@@ -1251,6 +1258,15 @@ pub mod tests {
         let profiles = tmp.core.list_profiles()?;
         assert_eq!(profiles.len(), initial_count + 2);
         assert_eq!(profiles[initial_count + 1].name, name);
+
+        let last_profile = profiles.last().unwrap();
+
+        let active_profile_id = tmp.core.active_profile_id()?;
+        assert_eq!(&active_profile_id, &first_profile.id);
+
+        tmp.core.set_active_profile_id(last_profile.id.clone())?;
+        let active_profile_id = tmp.core.active_profile_id()?;
+        assert_eq!(&active_profile_id, &last_profile.id);
 
         Ok(())
     }
