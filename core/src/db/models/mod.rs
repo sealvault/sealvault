@@ -36,5 +36,5 @@ pub use local_dapp_session::{
 };
 pub use local_encrypted_dek::{LocalEncryptedDek, NewLocalEncryptedDek};
 pub use local_settings::LocalSettings;
-pub use profile::{Profile, ProfileEntity, ProfileParams};
+pub use profile::{Profile, ProfileEntity, ProfileName};
 pub use profile_picture::{ProfilePicture, ProfilePictureEntity};

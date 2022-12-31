@@ -2,11 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
+use derive_more::{AsRef, Display, Into};
 use diesel::{prelude::*, SqliteConnection};
 use generic_array::{typenum::U1, GenericArray};
-use typed_builder::TypedBuilder;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     db::{
@@ -42,13 +43,12 @@ impl Profile {
     pub fn create_eth_profile(
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
-        params: &ProfileParams,
+        name: &ProfileName,
+        bundled_picture_name: &str,
     ) -> Result<String, Error> {
-        let picture_id = m::ProfilePicture::insert_bundled(
-            tx_conn.as_mut(),
-            params.bundled_picture_name,
-        )?;
-        let profile_id = Self::create(tx_conn.as_mut(), params.name, &picture_id)?;
+        let picture_id =
+            m::ProfilePicture::insert_bundled(tx_conn.as_mut(), bundled_picture_name)?;
+        let profile_id = Self::create(tx_conn.as_mut(), name, &picture_id)?;
 
         let create_params = m::CreateEthAddressParams::builder()
             .profile_id(&profile_id)
@@ -64,7 +64,7 @@ impl Profile {
     /// Create a new profile and return its deterministic id.
     fn create(
         conn: &mut SqliteConnection,
-        name: &str,
+        name: &ProfileName,
         picture_id: &str,
     ) -> Result<String, Error> {
         use profiles::dsl as p;
@@ -78,7 +78,7 @@ impl Profile {
             .values((
                 p::deterministic_id.eq(&deterministic_id),
                 p::uuid.eq(&entity.uuid),
-                p::name.eq(name),
+                p::name.eq(name.as_ref()),
                 p::picture_id.eq(picture_id),
                 p::created_at.eq(&created_at),
             ))
@@ -138,15 +138,35 @@ impl Profile {
     }
 }
 
-// Struct with typed builder ensures that arguments of same type aren't mixed up as Rust doesn't
-// have named parameters.
-#[derive(TypedBuilder)]
-#[readonly::make]
-pub struct ProfileParams<'a> {
-    #[builder(setter(into))]
-    name: &'a str,
-    #[builder(setter(into))]
-    bundled_picture_name: &'a str,
+/// The device name that let's the user identifies the device.
+#[derive(
+    Debug, Display, Clone, Eq, PartialEq, Hash, Into, AsRef, Serialize, Deserialize,
+)]
+#[serde(try_from = "String")]
+#[serde(into = "String")]
+#[repr(transparent)]
+pub struct ProfileName(String);
+
+impl TryFrom<String> for ProfileName {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if !value.is_empty() {
+            Ok(Self(value))
+        } else {
+            Err(Error::User {
+                explanation: "Profile name must not be empty".into(),
+            })
+        }
+    }
+}
+
+impl FromStr for ProfileName {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
+    }
 }
 
 pub struct ProfileEntity<'a> {

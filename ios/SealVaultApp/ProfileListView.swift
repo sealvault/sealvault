@@ -7,6 +7,7 @@ import SwiftUI
 struct ProfileListView: View {
     @EnvironmentObject private var model: GlobalModel
     @State var isSettingsPresented: Bool = false
+    @State var showAddNewProfile: Bool = false
 
     var body: some View {
         VStack {
@@ -36,24 +37,41 @@ struct ProfileListView: View {
             }
             .navigationTitle(Text("Profiles"))
             .toolbar {
-                Button(action: {
-                    isSettingsPresented = true
-                }, label: {
-                    Image(systemName: "gear")
-                })
-                .overlay(
-                    !model.backupEnabled ?
-                        Circle()
-                            .fill(.red)
-                            .scaleEffect(0.33)
-                            .offset(x: 11.5, y: -11.5)
-                            .accessibilityLabel(Text("Backups are disabled warning"))
-                    : nil
-                )
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu("Edit") {
+                        Button("Add New Profile") {
+                            showAddNewProfile = true
+                        }
+                        .accessibilityLabel(Text("Add New Profile"))
+                        .disabled(model.profileList.count >= Config.maxProfiles)
+                    }
+                    .accessibilityLabel(Text("Edit Profiles"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        isSettingsPresented = true
+                    }, label: {
+                        Image(systemName: "gear")
+                    })
+                    .overlay(
+                        !model.backupEnabled ?
+                            Circle()
+                                .fill(.red)
+                                .scaleEffect(0.33)
+                                .offset(x: 11.5, y: -11.5)
+                                .accessibilityLabel(Text("Backups are disabled warning"))
+                        : nil
+                    )
+                }
             }
             .task {
                 await self.model.refreshProfiles()
             }
+            .sheet(isPresented: $showAddNewProfile, content: {
+                AddProfile()
+                    .presentationDetents([.medium])
+                    .background(.ultraThinMaterial)
+            })
             .sheet(isPresented: $isSettingsPresented, content: {
                 NavigationView {
                     GlobalSettings()

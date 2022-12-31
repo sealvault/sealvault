@@ -16,6 +16,23 @@ final class NativeUITest: XCTestCase {
         XCTAssert(rowCount >= 1)
     }
 
+    func testCreateProfile() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        tapButton(app, "Profiles", tabBar: true)
+
+        tapButton(app, "Edit Profiles")
+        tapButton(app, "Add New Profile")
+
+        let profileName = "New Profile Name"
+        enterText(app, "Enter Profile Name", text: profileName)
+        tapButton(app, "Approve")
+
+        let newProfileButton = app.buttons["\(profileName) profile"]
+        XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
+    }
+
 //    func testProfileSearch() throws {
 //        // UI tests must launch the application that they test.
 //        let app = XCUIApplication()

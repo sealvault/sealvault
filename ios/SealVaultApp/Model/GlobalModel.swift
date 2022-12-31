@@ -94,23 +94,10 @@ class GlobalModel: ObservableObject {
         }
         return nil
     }
+}
 
-    private static func dbDirPath() -> URL {
-        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
-        return dbDirPath
-    }
-
-    private static func dbFilePath() -> URL {
-        dbDirPath().appendingPathComponent(Config.dbFileName)
-    }
-
-    private static func dataProtectionAttributes() -> [FileAttributeKey: Any] {
-        return [
-            FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
-        ]
-    }
-
+// MARK: - App Core
+extension GlobalModel {
     private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
         return await dispatchBackground(qos) {
             do {
@@ -254,6 +241,54 @@ class GlobalModel: ObservableObject {
         self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
 
+    func randomBundledProfilePicture() async -> String? {
+        return await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.randomBundledProfilePicture()
+            } catch {
+                print("Error fetching profile name: \(error)")
+                return nil
+            }
+        }
+    }
+
+    func fetchBundledProfilePicture(pictureName: String) async -> [UInt8]? {
+        return await dispatchBackground(.userInteractive) {
+            do {
+                return try self.core.fetchBundledProfilePicture(pictureName: pictureName)
+            } catch {
+                print("Error fetching profile picture: \(error)")
+                return nil
+            }
+        }
+    }
+
+    func createProfile(name: String, bundledProfilePic: String) async {
+        let errorMessage: String? = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.createProfile(name: name, bundledPictureName: bundledProfilePic)
+                return nil
+            } catch CoreError.User(let message) {
+                return message
+            } catch CoreError.Retriable(let message) {
+                print("Retriable error creating profile: \(message)")
+                return Config.retriableErrorMessage
+            } catch let error {
+                print("Fatal error creating profile: \(error)")
+                return Config.fatalErrorMessage
+            }
+        }
+        if let message = errorMessage {
+            self.bannerData = BannerData(
+                title: "Error creating profile",
+                detail: message,
+                type: .error
+            )
+        }
+
+        await self.refreshProfiles()
+    }
+
     func addEthChain(chainId: UInt64, addressId: String) async {
         await dispatchBackground(.userInteractive) {
             do {
@@ -296,10 +331,27 @@ class GlobalModel: ObservableObject {
         }
         return activeProfile?.dappList.filter { topDappIds.contains($0.id) } ?? []
     }
+
 }
 
-// MARK: - File system
+// MARK: - File System
 extension GlobalModel {
+    private static func dbDirPath() -> URL {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
+        return dbDirPath
+    }
+
+    private static func dbFilePath() -> URL {
+        dbDirPath().appendingPathComponent(Config.dbFileName)
+    }
+
+    private static func dataProtectionAttributes() -> [FileAttributeKey: Any] {
+        return [
+            FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+        ]
+    }
+
     private static func ensureDbFilePath() -> String {
         let fileManager = FileManager.default
 
@@ -567,19 +619,17 @@ class PreviewAppCore: AppCoreProtocol {
         return profiles.map(Self.toCoreProfile)
     }
 
-    func createProfile(name: String, bundledPictureName: String) throws -> [CoreProfile] {
-        let profile = Self.toCoreProfile(Profile(
-            self,
-            id: name, name: "name", picture: UIImage(named: "seal-7")!, wallets: [Address.polygonWallet()],
-            dapps: []
-        ))
-        var profiles = try! self.listProfiles()
-        profiles.append(profile)
-        return profiles
+    func createProfile(name: String, bundledPictureName: String) throws {
+        throw CoreError.Fatal(message: "not implemented")
     }
 
     func randomBundledProfilePicture() throws -> String? {
         "seal-9"
+    }
+
+    func fetchBundledProfilePicture(pictureName: String) throws -> [UInt8] {
+        let name = try! randomBundledProfilePicture()
+        return [UInt8](UIImage(named: name!)!.pngData()!)
     }
 
     func activeProfileId() throws -> String {

@@ -8,7 +8,7 @@ use rand::seq::IteratorRandom;
 use typed_builder::TypedBuilder;
 
 use crate::{
-    assets::list_profile_pics,
+    assets::{list_profile_pics, load_profile_pic},
     async_runtime as rt, backup,
     backup::BackupError,
     db::{
@@ -174,21 +174,18 @@ impl AppCore {
         &self,
         name: String,
         bundled_picture_name: String,
-    ) -> Result<Vec<dto::CoreProfile>, CoreError> {
+    ) -> Result<(), CoreError> {
+        let name: m::ProfileName = name.try_into()?;
         self.connection_pool().deferred_transaction(|mut tx_conn| {
-            let profile_params = m::ProfileParams::builder()
-                .name(&*name)
-                .bundled_picture_name(&*bundled_picture_name)
-                .build();
             m::Profile::create_eth_profile(
                 &mut tx_conn,
                 self.keychain(),
-                &profile_params,
+                &name,
+                &bundled_picture_name,
             )?;
             Ok(())
         })?;
-
-        self.list_profiles()
+        Ok(())
     }
 
     /// Return the name of a random bundled profile picture that can be used for a new profile.
@@ -205,6 +202,14 @@ impl AppCore {
             .choose(&mut rand::thread_rng());
 
         Ok(res.cloned())
+    }
+
+    pub fn fetch_bundled_profile_picture(
+        &self,
+        picture_name: String,
+    ) -> Result<Vec<u8>, CoreError> {
+        let picture = load_profile_pic(&picture_name)?;
+        Ok(picture)
     }
 
     pub fn native_token_for_address(
@@ -1236,12 +1241,14 @@ pub mod tests {
         let initial_count = tmp.core.list_profiles()?.len();
 
         let name = "foo".to_string();
-        let profiles = tmp.core.create_profile(name.clone(), "seal-1".into())?;
+        tmp.core.create_profile(name.clone(), "seal-1".into())?;
+        let profiles = tmp.core.list_profiles()?;
         assert_eq!(profiles.len(), initial_count + 1);
         assert_eq!(profiles[initial_count].name, name);
 
         let name = "bar".to_string();
-        let profiles = tmp.core.create_profile(name.clone(), "seal-2".into())?;
+        tmp.core.create_profile(name.clone(), "seal-2".into())?;
+        let profiles = tmp.core.list_profiles()?;
         assert_eq!(profiles.len(), initial_count + 2);
         assert_eq!(profiles[initial_count + 1].name, name);
 
@@ -1283,7 +1290,8 @@ pub mod tests {
     fn setup_profiles(core: &AppCore) -> Result<(String, String)> {
         let keychain = core.resources.keychain();
 
-        let profiles = core.create_profile("profile-two".into(), "seal-1".into())?;
+        core.create_profile("profile-two".into(), "seal-1".into())?;
+        let profiles = core.list_profiles()?;
         assert_eq!(profiles.len(), 2);
 
         let profile_id_one = &profiles[0].id;

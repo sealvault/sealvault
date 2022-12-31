@@ -361,15 +361,17 @@ struct TransferButton: View {
                 return false
             } catch CoreError.Retriable(let message) {
                 DispatchQueue.main.async {
-                    let message = "Something went wrong. Please try again!"
-                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                    model.bannerData = BannerData(
+                        title: "Error transferring token", detail: Config.retriableErrorMessage, type: .error
+                    )
                 }
                 print("Retriable error while transferring token: \(message)")
                 return false
             } catch let error {
                 DispatchQueue.main.async {
-                    let message = "An unexpected error occurred. Please restart the application!"
-                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                    model.bannerData = BannerData(
+                        title: "Error transferring token", detail: Config.fatalErrorMessage, type: .error
+                    )
                 }
                 print("\(error)")
                 return false

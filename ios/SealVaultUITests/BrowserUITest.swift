@@ -20,7 +20,7 @@ final class BrowserUITest: XCTestCase {
 
         enterAddressBar(app, text: ethereumTestUrl)
 
-        tapButton(app, "approve")
+        tapButton(app, "Approve")
 
         let finishedOk = app.webViews.staticTexts["Finished OK"]
         XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
@@ -98,23 +98,27 @@ func startBrowserApp() throws -> XCUIApplication {
     return app
 }
 
-func enterAddressBar(_ app: XCUIApplication, text: String) {
-    let addressBar = app.textFields["browserAddressBar"]
-    _ = addressBar.waitForExistence(timeout: buttonTimeoutSeconds)
+func enterText(_ app: XCUIApplication, _ textFieldName: String, text: String) {
+    let textField = app.textFields[textFieldName]
+    _ = textField.waitForExistence(timeout: buttonTimeoutSeconds)
 
     let pasteMenuItem = app.menuItems.firstMatch
     UIPasteboard.general.string = "Preparing Pasteboard"
 
-    addressBar.tap()
-    addressBar.tap()
+    textField.tap()
+    textField.tap()
     _ = pasteMenuItem.waitForExistence(timeout: buttonTimeoutSeconds)
 
     UIPasteboard.general.string = text
     pasteMenuItem.tap()
 
-    addressBar.tap()
+    textField.tap()
     // new line at end submits. doesn't work if appended to pasted string
-    addressBar.typeText("\n")
+    textField.typeText("\n")
+}
+
+func enterAddressBar(_ app: XCUIApplication, text: String) {
+    enterText(app, "browserAddressBar", text: text)
 }
 
 func tapButton(_ app: XCUIApplication, _ accessibilityIdentifier: String, tabBar: Bool = false) {

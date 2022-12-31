@@ -7,9 +7,16 @@ import SwiftUI
 struct DialogButtons: View {
     @State var approveLabel: String = "OK"
     @State var rejectLabel: String = "Cancel"
+    @Binding var approveDisabled: Bool
 
     var onApprove: () -> Void
     var onReject: () -> Void
+
+    init(onApprove: @escaping () -> Void, onReject: @escaping () -> Void, approveDisabled: Binding<Bool>? = nil) {
+        self._approveDisabled = approveDisabled ?? Binding.constant(false)
+        self.onApprove = onApprove
+        self.onReject = onReject
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,7 +27,7 @@ struct DialogButtons: View {
                     .frame(maxWidth: .infinity)
                     .foregroundColor(.secondary)
             })
-            .accessibilityLabel("reject")
+            .accessibilityLabel(Text("Reject"))
             .buttonStyle(.borderless)
             .controlSize(.large)
 
@@ -30,7 +37,8 @@ struct DialogButtons: View {
                 Text(approveLabel)
                     .frame(maxWidth: .infinity)
             })
-            .accessibilityLabel("approve")
+            .disabled(approveDisabled)
+            .accessibilityLabel(Text("Approve"))
             .buttonStyle(.borderless)
             .controlSize(.large)
         }

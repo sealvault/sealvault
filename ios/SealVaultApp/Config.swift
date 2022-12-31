@@ -14,4 +14,8 @@ struct Config {
     // There are two dapps by default
     static let showDisclosureDappCount = 7
     static let iCloudBackupDirName = "Backups"
+    // Temporary until we let users add custom profile pics.
+    static let maxProfiles = 10
+    static let fatalErrorMessage = "An unexpected error occurred. Please restart the application!"
+    static let retriableErrorMessage = "Something went wrong. Please try again!"
 }

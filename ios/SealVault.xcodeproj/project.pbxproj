@@ -44,6 +44,7 @@
 		688C29EB284102FC00474900 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29EA284102FC00474900 /* Address.swift */; };
 		68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C3FC28426B040025BCEA /* DappRow.swift */; };
 		68B6C40128426C120025BCEA /* Dapp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C40028426C120025BCEA /* Dapp.swift */; };
+		68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA09A6295E06D0007D2340 /* AddProfile.swift */; };
 		68BA3D0F295B4ABC00AB3CE8 /* onBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D0E295B4ABC00AB3CE8 /* onBackground.swift */; };
 		68BA3D11295B4F8100AB3CE8 /* onInactive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D10295B4F8100AB3CE8 /* onInactive.swift */; };
 		68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D12295B531D00AB3CE8 /* authenticate.swift */; };
@@ -110,6 +111,7 @@
 		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
 		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
 		68B6C40028426C120025BCEA /* Dapp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dapp.swift; sourceTree = "<group>"; };
+		68BA09A6295E06D0007D2340 /* AddProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProfile.swift; sourceTree = "<group>"; };
 		68BA3D0E295B4ABC00AB3CE8 /* onBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = onBackground.swift; sourceTree = "<group>"; };
 		68BA3D10295B4F8100AB3CE8 /* onInactive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = onInactive.swift; sourceTree = "<group>"; };
 		68BA3D12295B531D00AB3CE8 /* authenticate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = authenticate.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
+				68BA09A6295E06D0007D2340 /* AddProfile.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
@@ -419,6 +422,7 @@
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
 				688C29BC283FF32300474900 /* ProfileView.swift in Sources */,
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
+				68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */,
 				68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */,
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
 				686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */,
