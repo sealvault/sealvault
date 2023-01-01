@@ -84,10 +84,12 @@ struct AddProfile: View {
     }
 }
 
+#if DEBUG
 struct AddProfile_Previews: PreviewProvider {
     static var previews: some View {
         AddProfile()
             .environmentObject(GlobalModel.buildForPreview())
-//            .preferredColorScheme(.dark)
+            .preferredColorScheme(.dark)
     }
 }
+#endif
