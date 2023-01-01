@@ -22,6 +22,14 @@ struct ProfileListView: View {
                                 .accessibilityIdentifier("\(profile.displayName) profile")
                                 .contextMenu {
                                     Button(action: {
+                                        Task {
+                                            await model.setActiveProfileId(profileId: profile.id)
+                                        }
+                                    }, label: {
+                                        Text("Set Active")
+                                    })
+
+                                    Button(action: {
                                         UIPasteboard.general.string = profile.walletList.first?.checksumAddress
                                     }, label: {
                                         Text("Copy Wallet Address")
