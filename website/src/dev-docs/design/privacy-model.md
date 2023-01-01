@@ -29,4 +29,7 @@ prevent correlating addresses based on IP addresses.
 
 Profiles may be merged, but they may not be split.
 
+When the user switches their active profile, the SealVault iOS app clears
+browser history.
+
 
