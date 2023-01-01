@@ -10,7 +10,7 @@ final class NativeUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        tapButton(app, "Profiles", tabBar: true)
+        tapButton(app, "Profiles (Default is active)", tabBar: true)
 
         let rowCount = app.collectionViews.element(boundBy: 0).cells.count
         XCTAssert(rowCount >= 1)
@@ -20,7 +20,7 @@ final class NativeUITest: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        tapButton(app, "Profiles", tabBar: true)
+        tapButton(app, "Profiles (Default is active)", tabBar: true)
 
         tapButton(app, "Edit Profiles")
         tapButton(app, "Add New Profile")
@@ -33,11 +33,31 @@ final class NativeUITest: XCTestCase {
         XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
     }
 
+    func testSwitchProfile() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-createProfile"]
+        app.launch()
+
+        let newProfileButton = app.buttons["New Profile profile"]
+        XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
+        newProfileButton.press(forDuration: 1)
+        tapButton(app, "Set Active")
+        var tabProfileIcon = app.buttons["Profiles (New Profile is active)"]
+        XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))
+
+        let defaultPofileButton = app.buttons["Default profile"]
+        XCTAssert(defaultPofileButton.waitForExistence(timeout: buttonTimeoutSeconds))
+        defaultPofileButton.press(forDuration: 1)
+        tapButton(app, "Set Active")
+        tabProfileIcon = app.buttons["Profiles (Default is active)"]
+        XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))
+    }
+
 //    func testProfileSearch() throws {
 //        // UI tests must launch the application that they test.
 //        let app = XCUIApplication()
 //        app.launch()
-//        app.tabBars.buttons["Profiles"].tap()
+//        app.tabBars.buttons["Profiles (Default is active)"].tap()
 //
 //        let cells = app.tables.element(boundBy: 0).cells
 //        let rowCount = cells.count
@@ -66,6 +86,6 @@ final class NativeUITest: XCTestCase {
 //
 //        // Check that profile view was opened by existence of back button to profiles overview
 //        let firstNavBarButtonLabel = app.navigationBars.buttons.element(boundBy: 0).label
-//        XCTAssert(firstNavBarButtonLabel == "Profiles")
+//        XCTAssert(firstNavBarButtonLabel == "Profiles (Default is active)")
 //    }
 }

@@ -29,6 +29,16 @@ struct AppInner: View {
             .environmentObject(model)
             .task {
                 await model.refreshProfiles()
+
+                #if DEBUG
+                if CommandLine.arguments.contains(Config.createProfileArg) {
+                    Task {
+                        if let picName = await model.randomBundledProfilePicture() {
+                            await model.createProfile(name: Config.secondProfileName, bundledProfilePic: picName)
+                        }
+                    }
+                }
+                #endif
             }
             .onBackground {
                 model.onBackground()

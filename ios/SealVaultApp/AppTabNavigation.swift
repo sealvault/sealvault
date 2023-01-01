@@ -43,14 +43,13 @@ struct AppTabNavigationInner: View {
                     ProfileListView()
                 }
                 .tabItem {
-                    let label = Text("Profiles")
+                    let label = Text("Profiles (\(model.activeProfile?.displayName ?? "No profile") is active)")
                     if let profile = model.activeProfile {
                         TabIcon(icon: profile.picture)
                             .accessibility(label: label)
                     } else {
                         Image(systemName: "person")
                             .accessibility(label: label)
-
                     }
                 }
                 .tag(Tab.profiles)
