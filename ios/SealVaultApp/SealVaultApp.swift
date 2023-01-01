@@ -32,9 +32,9 @@ struct AppInner: View {
 
                 #if DEBUG
                 if CommandLine.arguments.contains(Config.createProfileArg) {
-                    Task {
+                    if !model.profileList.contains(where: { $0.name == Config.cliProfileName}) {
                         if let picName = await model.randomBundledProfilePicture() {
-                            await model.createProfile(name: Config.secondProfileName, bundledProfilePic: picName)
+                            await model.createProfile(name: Config.cliProfileName, bundledProfilePic: picName)
                         }
                     }
                 }
