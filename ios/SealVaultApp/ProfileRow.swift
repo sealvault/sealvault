@@ -5,6 +5,7 @@
 import SwiftUI
 
 struct ProfileRow: View {
+    @EnvironmentObject var model: GlobalModel
     @ObservedObject var profile: Profile
 
     private let cornerRadius: Double = 10
@@ -15,8 +16,13 @@ struct ProfileRow: View {
             ProfileImageRectangle(profile: profile)
 
             VStack(alignment: .leading) {
-                Text(profile.displayName)
-                    .font(.headline)
+                HStack(spacing: 5) {
+                    Text(profile.displayName)
+                    if model.activeProfileId == profile.id {
+                        Image(systemName: "checkmark.circle")
+                            .foregroundColor(.green)
+                    }
+                }.font(.headline)
 
                 Text(profile.topDapps)
                     .lineLimit(2)
@@ -35,6 +41,7 @@ struct ProfileRow_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         return PreviewWrapper(profile: model.activeProfile!)
+            .environmentObject(model)
     }
 
     struct PreviewWrapper: View {
