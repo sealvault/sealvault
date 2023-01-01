@@ -13,8 +13,9 @@ pub const TOKIO_MAX_BLOCKING_THREADS: usize = 8;
 pub const MAX_ASYNC_CONCURRENT_REQUESTS: usize = 8;
 
 // User
-pub const DEFAULT_ACCOUNT_NAME: &str = "Default";
-pub const DEFAULT_ACCOUNT_PICTURE_NAME: &str = "seal-0";
+pub const DEFAULT_PROFILE_NAME: &str = "Default";
+pub const DEFAULT_PROFILE_PICTURE_NAME: &str = "seal-7";
+pub const MAX_PROFILE_NAME_LENGTH: usize = 30;
 
 // In-page provider
 pub const MAX_JSONRPC_REQUEST_SIZE_BYTES: usize = 1000000;

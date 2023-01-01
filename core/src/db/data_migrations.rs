@@ -76,12 +76,12 @@ impl Migration for MigrationV0 {
             .build()
             .insert(tx_conn.as_mut())?;
 
-        let name: m::ProfileName = config::DEFAULT_ACCOUNT_NAME.parse()?;
+        let name: m::ProfileName = config::DEFAULT_PROFILE_NAME.parse()?;
         let profile_id = m::Profile::create_eth_profile(
             tx_conn,
             keychain,
             &name,
-            config::DEFAULT_ACCOUNT_PICTURE_NAME,
+            config::DEFAULT_PROFILE_PICTURE_NAME,
         )?;
 
         m::LocalSettings::create(tx_conn.as_mut(), &profile_id)?;
@@ -460,8 +460,8 @@ mod tests {
 
         #[allow(deprecated)]
         let profile_params = m::AccountParams::builder()
-            .name(config::DEFAULT_ACCOUNT_NAME)
-            .bundled_picture_name(config::DEFAULT_ACCOUNT_PICTURE_NAME)
+            .name(config::DEFAULT_PROFILE_NAME)
+            .bundled_picture_name(config::DEFAULT_PROFILE_PICTURE_NAME)
             .build();
         #[allow(deprecated)]
         let profile_id =

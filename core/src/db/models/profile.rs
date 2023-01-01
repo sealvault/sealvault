@@ -10,6 +10,7 @@ use generic_array::{typenum::U1, GenericArray};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config,
     db::{
         deterministic_id::{DeterministicId, EntityName},
         models as m,
@@ -151,12 +152,21 @@ impl TryFrom<String> for ProfileName {
     type Error = Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        if !value.is_empty() {
-            Ok(Self(value))
-        } else {
+        if value.is_empty() {
             Err(Error::User {
                 explanation: "Profile name must not be empty".into(),
             })
+        // String in length in Rust returns number of bytes, but we want to check number of chars
+        // due to unicode.
+        } else if value.chars().count() > config::MAX_PROFILE_NAME_LENGTH {
+            Err(Error::User {
+                explanation: format!(
+                    "Profile name too long. Please limit to {} characters",
+                    config::MAX_PROFILE_NAME_LENGTH
+                ),
+            })
+        } else {
+            Ok(Self(value))
         }
     }
 }
@@ -183,5 +193,30 @@ impl<'a> DeterministicId<'a, &'a str, U1> for ProfileEntity<'a> {
         // hence the uuid as deterministic id. The name should be changeable without creating a new
         // entity.
         [self.uuid].into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_profile_name() {
+        let res: Result<ProfileName, Error> = "".parse();
+        assert!(matches!(res, Err(Error::User { .. })))
+    }
+
+    #[test]
+    fn too_long_profile_name() {
+        let name = "x".repeat(config::MAX_PROFILE_NAME_LENGTH + 1);
+        let res: Result<ProfileName, Error> = name.parse();
+        assert!(matches!(res, Err(Error::User { .. })))
+    }
+
+    #[test]
+    fn profile_name_with_emoji_count() {
+        // Edge case: too long when counting bytes, ok when counting chars.
+        let res: Result<ProfileName, Error> = "Some Random Profile Name ✈️".parse();
+        assert!(res.is_ok());
     }
 }
