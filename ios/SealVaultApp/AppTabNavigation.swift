@@ -21,7 +21,7 @@ struct AppTabNavigationInner: View {
 
     @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
-    @State var selection: Tab = .browserOne
+    @State var selection: Tab = .profiles
     @StateObject var browserModelOne = BrowserModel()
     @StateObject var browserModelTwo = BrowserModel()
 
