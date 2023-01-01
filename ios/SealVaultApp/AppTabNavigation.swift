@@ -22,9 +22,9 @@ struct AppTabNavigationInner: View {
     @EnvironmentObject private var model: GlobalModel
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .profiles
+    @State var activeProfileId: String?
     @StateObject var browserModelOne = BrowserModel()
     @StateObject var browserModelTwo = BrowserModel()
-
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -151,6 +151,20 @@ struct AppTabNavigationInner: View {
         .edgesIgnoringSafeArea(.bottom)
         .onChange(of: selection) { _ in
             model.bannerData = nil
+        }
+        .onChange(of: activeProfileId) { [activeProfileId] _ in
+            // Active profile id is nil when the app starts and the model is loading from the DB. We don't want to reset
+            // then since the user didn't change the profile in this case.
+            if activeProfileId == nil {
+                return
+            }
+            // Disconnect dapps when active profile id changes. No action needed in Rust since in-page-provider
+            // is stateless and works in the context of the currently active profile id.
+            browserModelOne.clearHistory()
+            browserModelTwo.clearHistory()
+        }
+        .onChange(of: model.activeProfileId) { newValue in
+            self.activeProfileId = newValue
         }
         .onChange(of: model.browserOneUrl) { newValue in
             if let url = newValue {

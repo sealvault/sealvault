@@ -10,6 +10,7 @@ class BrowserModel: ObservableObject {
     @Published var doLoad: Bool = false
     @Published var doReload: Bool = false
     @Published var doStop: Bool = false
+    @Published var doClearHistory: Bool = true
     @Published var loading: Bool = false
     @Published var canGoBack: Bool = false
     @Published var goBack: Bool = false
@@ -62,12 +63,17 @@ class BrowserModel: ObservableObject {
 
     func setRawUrl(_ url: URL?) {
         // File is used for the error page
-        if let url = url, url.scheme != "file" {
+        if let url = url, url.scheme != "file", url.absoluteString != Config.blankPageAddress {
             self.urlRaw = url.absoluteString
             if url.absoluteString != self.addressBarText {
                 self.addressBarText = url.absoluteString
             }
         }
+    }
+
+    func clearHistory() {
+        self.addressBarText = ""
+        self.doClearHistory = true
     }
 
     @MainActor

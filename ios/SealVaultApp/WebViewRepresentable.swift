@@ -12,10 +12,12 @@ import WebKit
 public struct WebViewRepresentable: UIViewRepresentable {
     private var model: BrowserModel
     private var scriptHandler: WebViewScriptHandler
+    private var websiteDataStore: WKWebsiteDataStore
 
     init(core: AppCoreProtocol, model: BrowserModel) {
         self.model = model
         self.scriptHandler = WebViewScriptHandler(core: core, stateModel: model)
+        self.websiteDataStore = WKWebsiteDataStore.default()
     }
 
     // TODO: deinit: https://stackoverflow.com/a/65270084/2650622
@@ -42,7 +44,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
         }
 
         // Private browsing (stores data in memory, gone on app restart)
-        webViewConfiguration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        webViewConfiguration.websiteDataStore = self.websiteDataStore
         webViewConfiguration.upgradeKnownHostsToHTTPS = true
 
         let webView = WKWebView(frame: CGRect.zero, configuration: webViewConfiguration)
@@ -76,7 +78,11 @@ public struct WebViewRepresentable: UIViewRepresentable {
     public func updateUIView(_ webView: WKWebView, context _: Context) {
         DispatchQueue.main.async {
             let model = self.model
-            if model.doStop {
+            if model.doClearHistory {
+                self.clearHistory()
+                webView.load(URLRequest(url: URL(string: Config.blankPageAddress)!))
+                model.doClearHistory = false
+            } else if model.doStop {
                 webView.stopLoading()
                 model.doStop = false
             } else if model.doReload {
@@ -122,6 +128,14 @@ public struct WebViewRepresentable: UIViewRepresentable {
     func loadUrlIfValid(webView: WKWebView) {
         if let url = model.url {
             webView.load(URLRequest(url: url))
+        }
+    }
+
+    func clearHistory() {
+        self.websiteDataStore.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
+            records.forEach { record in
+                WKWebsiteDataStore.default().removeData(ofTypes: record.dataTypes, for: [record], completionHandler: {})
+            }
         }
     }
 }
