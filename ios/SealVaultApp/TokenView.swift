@@ -26,10 +26,11 @@ struct TokenView: View {
                 }
             }
         } header: {
-            HStack {
+            HStack(spacing: 5) {
                 Text(address.chainDisplayName)
                 if address.selectedForDapp {
                     Image(systemName: "checkmark.circle")
+                        .foregroundColor(.green)
                 }
             }
             .padding(.top, paddingTop)
