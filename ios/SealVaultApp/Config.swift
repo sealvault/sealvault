@@ -27,6 +27,6 @@ struct Config {
 extension Config {
     // Create an additional profile on startup for UI testing
     static let createProfileArg = "-createProfile"
-    static let secondProfileName = "New Profile"
+    static let secondProfileName = "CLI Profile"
 }
 #endif

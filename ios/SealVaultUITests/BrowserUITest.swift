@@ -14,6 +14,7 @@ final class BrowserUITest: XCTestCase {
 
     let ethereumTestUrl = "http://localhost:8080/ethereum.html"
     let newTabTestUrl = "http://localhost:8080/open-new-tab.html"
+    let cookieTestUrl = "http://localhost:8080/cookie-test.html"
 
     func testEthereumDapp() throws {
         let app = try! startBrowserApp()
@@ -88,6 +89,36 @@ final class BrowserUITest: XCTestCase {
 
         let finishedOk = app.webViews.staticTexts["Failed to load page"]
         XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
+    }
+
+    func testClearHistoryOnProfileSwitch() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-createProfile"]
+        app.launch()
+
+        setActiveProfile(app, profileName: "CLI Profile")
+
+        tapButton(app, "Left Browser", tabBar: true)
+        // Sets the cookie on first load
+        enterAddressBar(app, text: cookieTestUrl)
+        // No cookie before first load
+        var noCookie = app.webViews.staticTexts["No cookie"]
+        XCTAssert(noCookie.waitForExistence(timeout: browserTimeoutSeconds))
+
+        // There should be a cookie on the second load
+        tapButton(app, "Reload page")
+        let hasCookie = app.webViews.staticTexts["Has cookie"]
+        XCTAssert(hasCookie.waitForExistence(timeout: browserTimeoutSeconds))
+
+        tapButton(app, "Profiles (CLI Profile is active)", tabBar: true)
+        // This should clear browser history
+        setActiveProfile(app, profileName: "Default")
+
+        tapButton(app, "Left Browser", tabBar: true)
+        enterAddressBar(app, text: cookieTestUrl)
+        // So there should be no cookie when loaded for the first time with a different profile
+        noCookie = app.webViews.staticTexts["No cookie"]
+        XCTAssert(noCookie.waitForExistence(timeout: browserTimeoutSeconds))
     }
 }
 

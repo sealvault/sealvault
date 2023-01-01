@@ -38,19 +38,9 @@ final class NativeUITest: XCTestCase {
         app.launchArguments = ["-createProfile"]
         app.launch()
 
-        let newProfileButton = app.buttons["New Profile profile"]
-        XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
-        newProfileButton.press(forDuration: 1)
-        tapButton(app, "Set Active")
-        var tabProfileIcon = app.buttons["Profiles (New Profile is active)"]
-        XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))
+        setActiveProfile(app, profileName: "CLI Profile")
 
-        let defaultPofileButton = app.buttons["Default profile"]
-        XCTAssert(defaultPofileButton.waitForExistence(timeout: buttonTimeoutSeconds))
-        defaultPofileButton.press(forDuration: 1)
-        tapButton(app, "Set Active")
-        tabProfileIcon = app.buttons["Profiles (Default is active)"]
-        XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))
+        setActiveProfile(app, profileName: "Default")
     }
 
 //    func testProfileSearch() throws {
@@ -88,4 +78,13 @@ final class NativeUITest: XCTestCase {
 //        let firstNavBarButtonLabel = app.navigationBars.buttons.element(boundBy: 0).label
 //        XCTAssert(firstNavBarButtonLabel == "Profiles (Default is active)")
 //    }
+}
+
+func setActiveProfile(_ app: XCUIApplication, profileName: String) {
+    let newProfileButton = app.buttons["\(profileName) profile"]
+    XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
+    newProfileButton.press(forDuration: 1)
+    tapButton(app, "Set Active")
+    let tabProfileIcon = app.buttons["Profiles (\(profileName) is active)"]
+    XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))
 }

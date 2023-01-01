@@ -50,9 +50,7 @@ platform :ios do
   lane :tests do
     desc "Run linter, unit and UI tests"
     lint()
-    reset_simulator_contents()
     pre_build()
-    testplan = "FullTest"
-    run_tests(scheme: "SealVault", devices: ["iPhone 14"], clean: true, testplan: testplan)
+    run_tests(scheme: "SealVault", devices: ["iPhone 14"], clean: true, reset_simulator: true, parallel_testing: true, testplan: "FullTest")
   end
 end
