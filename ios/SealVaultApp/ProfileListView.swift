@@ -28,15 +28,23 @@ struct ProfileListView: View {
                                     })
                                 }
                         }
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        .swipeActions(edge: .leading) {
                             Button {
                                 Task {
                                     await model.setActiveProfileId(profileId: profile.id)
                                 }
                             } label: {
-                                Image(systemName: "checkmark.square")
+                                Image(systemName: "checkmark.circle")
                             }
                             .tint(.green)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                UIPasteboard.general.string = profile.walletList.first?.checksumAddress
+                            } label: {
+                                Image(systemName: "doc.on.doc.fill")
+                            }
+                            .tint(.blue)
                         }
                     }
                 }
