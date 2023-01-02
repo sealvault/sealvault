@@ -95,7 +95,7 @@ struct ProfileListView: View {
             }
             .sheet(isPresented: $showAddNewProfile, content: {
                 AddProfile()
-                    .presentationDetents([.medium])
+                    .presentationDetents([.medium, .large])
                     .background(.ultraThinMaterial)
             })
             .sheet(isPresented: $isSettingsPresented, content: {

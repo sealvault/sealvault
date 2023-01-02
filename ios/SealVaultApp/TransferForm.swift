@@ -456,7 +456,6 @@ struct TransferView_Previews: PreviewProvider {
     struct PreviewWrapper: View {
         var model: GlobalModel
         var state: TransferState
-        @Environment(\.dynamicTypeSize) var size
 
         var body: some View {
             TransferForm(state: state)

@@ -13,16 +13,19 @@ struct AddProfile: View {
     @State var imageName: String?
     @State var approveDisabled: Bool = true
 
-    @ScaledMetric var size: CGFloat = 120
+    @ScaledMetric var imageSize: CGFloat = 120
+    @ScaledMetric var titlePadding: CGFloat = 40
+    @ScaledMetric var vStackSpacing: CGFloat = 20
+
     private let cornerRadius: Double = 10
 
     var body: some View {
         let clipShape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
-        VStack(spacing: 20) {
+        VStack(spacing: vStackSpacing) {
             Text("Create Profile")
                 .font(.largeTitle)
-                .padding(.top, 40)
+                .padding(.top, titlePadding)
 
             Spacer()
 
@@ -30,14 +33,12 @@ struct AddProfile: View {
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: size, maxHeight: size)
+                    .frame(maxWidth: imageSize, maxHeight: imageSize)
                     .clipShape(clipShape)
                     .overlay(clipShape.strokeBorder(.quaternary, lineWidth: 0.5))
             } else {
                 ProgressView()
             }
-
-            Spacer()
 
             Form {
                 TextField("Enter profile name", text: $profileName)
