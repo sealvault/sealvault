@@ -651,11 +651,11 @@ pub mod tests {
 
     impl TmpCoreDir {
         pub fn new() -> Result<Self, Error> {
-            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
-            // mode.
             let tmp_dir = tempfile::tempdir().map_err(|err| Error::Fatal {
                 error: err.to_string(),
             })?;
+            // Important not to use in-memory DB as Sqlite has subtle differences in in memory
+            // mode.
             let db_dir = tmp_dir.path().join("db");
             let cache_dir = tmp_dir.path().join("cache");
             let backup_dir = tmp_dir.path().join("backups");
