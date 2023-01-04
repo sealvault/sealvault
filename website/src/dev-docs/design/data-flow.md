@@ -106,7 +106,7 @@ flowchart TB
   -->|TLS| blockchain_api
 
   inpage
-  <--> browser_engine
+  <-->|XSS Defense| browser_engine
 
   browser_engine
   <--> dapp_frontend
