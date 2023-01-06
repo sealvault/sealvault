@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-table! {
+diesel::table! {
     addresses (deterministic_id) {
         deterministic_id -> Text,
         asymmetric_key_id -> Text,
@@ -13,7 +13,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     asymmetric_keys (deterministic_id) {
         deterministic_id -> Text,
         profile_id -> Text,
@@ -28,7 +28,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     chains (deterministic_id) {
         deterministic_id -> Text,
         protocol -> Text,
@@ -39,7 +39,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     dapps (deterministic_id) {
         deterministic_id -> Text,
         identifier -> Text,
@@ -49,7 +49,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     data_encryption_keys (deterministic_id) {
         deterministic_id -> Text,
         name -> Text,
@@ -58,7 +58,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     data_migrations (deterministic_id) {
         deterministic_id -> Text,
         version -> Text,
@@ -68,7 +68,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     local_dapp_sessions (uuid) {
         uuid -> Text,
         address_id -> Text,
@@ -79,7 +79,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     local_encrypted_deks (id) {
         id -> Integer,
         dek_id -> Text,
@@ -90,7 +90,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     local_settings (id) {
         id -> Text,
         profile_id -> Text,
@@ -104,7 +104,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     profile_pictures (deterministic_id) {
         deterministic_id -> Text,
         image_name -> Nullable<Text>,
@@ -115,7 +115,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     profiles (deterministic_id) {
         deterministic_id -> Text,
         uuid -> Text,
@@ -126,15 +126,18 @@ table! {
     }
 }
 
-joinable!(addresses -> asymmetric_keys (asymmetric_key_id));
-joinable!(addresses -> chains (chain_id));
-joinable!(asymmetric_keys -> dapps (dapp_id));
-joinable!(asymmetric_keys -> data_encryption_keys (dek_id));
-joinable!(local_dapp_sessions -> addresses (address_id));
-joinable!(local_dapp_sessions -> dapps (dapp_id));
-joinable!(local_encrypted_deks -> data_encryption_keys (dek_id));
+diesel::joinable!(addresses -> asymmetric_keys (asymmetric_key_id));
+diesel::joinable!(addresses -> chains (chain_id));
+diesel::joinable!(asymmetric_keys -> dapps (dapp_id));
+diesel::joinable!(asymmetric_keys -> data_encryption_keys (dek_id));
+diesel::joinable!(asymmetric_keys -> profiles (profile_id));
+diesel::joinable!(local_dapp_sessions -> addresses (address_id));
+diesel::joinable!(local_dapp_sessions -> dapps (dapp_id));
+diesel::joinable!(local_encrypted_deks -> data_encryption_keys (dek_id));
+diesel::joinable!(local_settings -> profiles (profile_id));
+diesel::joinable!(profiles -> profile_pictures (picture_id));
 
-allow_tables_to_appear_in_same_query!(
+diesel::allow_tables_to_appear_in_same_query!(
     addresses,
     asymmetric_keys,
     chains,

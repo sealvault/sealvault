@@ -103,8 +103,10 @@ running `fastlane pre_build` in the `ios` directory.
   [`Brewfile`.](./Brewfile)
 - Run `rustup init` which was installed from the [`Brewfile`](./Brewfile) 
   toolchain and follow the instructions to set up your Rust toolchain.
-- The [Diesel](https://diesel.rs/) ORM CLI that we use to manage Sqlite:
-  - `cargo install diesel_cli --no-default-features --features sqlite` 
+- The [Diesel](https://diesel.rs/) ORM CLI that we use to manage Sqlite (it's
+  very important to use the bundled Sqlite version as outdated Sqlite make cause
+  migrations to fail):
+  - `cargo install diesel_cli --no-default-features --features sqlite-bundled` 
 - The [Solidity](https://docs.soliditylang.org/en/v0.8.16/index.html) compiler 
   version manager and `solc 0.8.16` that are needed to compile test contracts 
   for unit tests:
