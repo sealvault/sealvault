@@ -822,6 +822,14 @@ pub mod tests {
             })
         }
 
+        pub fn connection_pool(&self) -> &ConnectionPool {
+            self.resources.connection_pool()
+        }
+
+        pub fn keychain(&self) -> &Keychain {
+            self.resources.keychain()
+        }
+
         pub fn data_migration_version(&self) -> Result<Option<String>, Error> {
             let mut conn = self.core.connection_pool().connection()?;
             let migrations = m::DataMigration::list_versions_sorted(&mut conn)?;

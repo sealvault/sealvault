@@ -530,3 +530,42 @@ pub struct CreateEthAddressParams<'a> {
     #[builder(default = false)]
     pub is_profile_wallet: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use super::*;
+    use crate::app_core::tests::TmpCore;
+
+    #[test]
+    fn profile_id_fk_is_enforced() -> Result<()> {
+        let tmp_core = TmpCore::new()?;
+
+        let params = m::CreateEthAddressParams::builder()
+            .profile_id("invalid-profile-id")
+            .chain_id(eth::ChainId::EthMainnet)
+            .is_profile_wallet(true)
+            .build();
+
+        let res = tmp_core
+            .connection_pool()
+            .deferred_transaction(|mut tx_conn| {
+                Address::create_eth_key_and_address(
+                    &mut tx_conn,
+                    tmp_core.keychain(),
+                    &params,
+                )
+            });
+
+        assert!(res.is_err());
+        assert!(res
+            .err()
+            .unwrap()
+            .to_string()
+            .to_lowercase()
+            .contains("foreignkey"));
+
+        Ok(())
+    }
+}
