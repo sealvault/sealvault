@@ -10,7 +10,7 @@ can be dangerous to users and disincentivize attackers.
 
 The One-Dapp-per-Key (1DK) model is a novel isolation mechanism for Web3
 clients.  As the name suggests, in the 1DK model **one key is only allowed to
-approve transactions for one dapp.** This isolation
+approve transactions for one dapp** without restrictions. This isolation
 [prevents](./attack-tree.md#phishing-and-social-engineering) phishing attacks
 with fraudulent dapps and [mitigates](./attack-tree.md#compromised-dapp) damage
 from compromised dapps by denying them access to data from other dapps.  As an
@@ -84,11 +84,11 @@ The requirement to transfer funds to a different address before changing the
 dapp for an address allows us to let users handle unforeseen circumstances while
 mitigating social engineering attacks.
 
-## Porting Data
+## Transferring Data
 
 The 1DK model prevents one dapp mutating data that was produced by an other
 dapp, but sometimes it's necessary to port such data between dapps.  SealVault
-offers two solutions:
+offers two solutions for transferring data between dapps:
 
 1. Standardized tokens (ERC20, ERC721, SPL etc.) can be moved between dapps
    through the SealVault app where informed consent about the transfer's
@@ -98,6 +98,19 @@ offers two solutions:
    fork a dapp whose data is not in transferable tokens, they can prompt the
    user for an off-chain signature to verify their ownership and then copy the
    data to their contract.
+
+## Connect With NFT
+
+Some dapps require that the address that is connected to the dapp holds the
+NFT that is the prerequisite for a mint or some other interaction. This is
+fundamentally unsafe as it exposes users to phishing, and the industry is slowly
+moving away from this model with signature based delegation,[^5] but many dapps
+rely on it.[^7]
+
+In order to support dapps that require that the same address is connected to the
+dapp that holds the NFT, we allow connecting addresses to different domains, but
+disable automatic tx approval and only allow limited transactions that we can
+guarantee to be safe, such as mints.[^10]
 
 ## Airdrops
 
@@ -138,9 +151,19 @@ The table below displays the various criteria configurations:
 
 |            criterion           | pull w/ any address | pull restricted to address |
 |:------------------------------:|:-------------------:|:--------------------------:|
+|   _holds transferable token_   |          OK         |             OK             |
 |            _address_           |         OK*         |            OK**            |
 | _holds non-transferable token_ |         OK*         |            OK**            |
-|   _holds transferable token_   |          OK         |             OK             |
+
+##### OK: Holds transferable token
+
+1. For NFT-based airdrops, the user can use
+   [connect-to-mint](#connect-with-nft).
+2. If the criterion a fungible token, then it can be transferred through the
+   app's native UI to any address, therefore the user can simply transfer them
+   to the dapp address with which they wish to claim the token in order to
+   become eligible. We've only seen this requirement in scams and the act of
+   having to transfer an asset to a specific dapp gives warning to users.
 
 ##### OK*: Pull with any address
 
@@ -150,7 +173,7 @@ If the airdrop is by the same dapp, then the 1DK model poses no difficulties
 If a user is eligible to claim an airdrop of `new-dapp.com` based on their usage
 of `og-dapp.com` and the airdrop contract of `new-dapp.com` doesn't restrict the
 message sender to be the same address that is eligible for the airdrop then the
-user has the following options:
+user has the following options:[^20]
 
 1. The user may transfer funds from the address associated with `og-dapp.com` to
 a different address and [change the dapp identifier](#changing-dapp-for-address)
@@ -162,12 +185,6 @@ their key for `new-dapp.com`.
 1. If the front end doesn't support it, the user can go to Etherscan or
 equivalent and call the contract manually.
 
-We note that it seems to be common practice, at least in the EVM ecosystem, not
-to restrict the claimant to the message sender as evidenced by the
-[Uniswap airdrop contract](https://github.com/Uniswap/merkle-distributor/blob/c3255bfa2b684594ecd562cacd7664b0f18330bf/contracts/MerkleDistributor.sol#L34)
-which is often used as a model for others.  There is also no security reason to
-restrict the claimant to the message sender.
-
 The same applies if the criterion is not an address, but a non-transferable token.
 
 ##### OK**: Pull restricted to address
@@ -178,14 +195,6 @@ sign up and assign the mint dapp to it later or [change the dapp
 identifier](#Changing-Dapp-for-Address) of an existing address to claim the
 airdrop.  Such restrictions are common for NFT-mints where users have to apply
 to be placed on an allow list before the mint based on some off-chain criteria.
-
-##### OK: Holds transferable token
-
-Transferable tokens can be transferred through the app's native UI to any
-address, therefore the user can simply transfer them to the dapp address with
-which they wish to claim the token in order to become eligible.
-We've only seen this requirement in scams and the act of having to transfer
-an asset to a specific dapp gives warning to users.
 
 ## Q&A
 
@@ -237,8 +246,8 @@ off-chain signatures to prove ownership of data from an other dapp. [Off-chain
 signatures](#what-about-off-chain-signatures) are not restricted by the 1DK
 model.
 
-See the [Airdrops](#airdrops) section for more info on current composability
-patterns.
+See the [Connect With NFT](#connect-with-nft) and [Airdrops](#airdrops) sections
+for more info on current composability patterns.
 
 #### Can non-transferable tokens be used with multiple dapps?
 
@@ -275,11 +284,27 @@ We maintain our own append only version of the [public suffix
 list](https://publicsuffix.org/list/public_suffix_list.dat) to prevent sharing
 keys for dapps that used to resolve to different registrable domains.
 
-
-
 ## Related Standards
 
 - [Same-Site Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite)
 - [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
 - [Dfinity Webauthn](https://medium.com/dfinity/web-authentication-and-identity-on-the-internet-computer-a9bd5754c547)
 - [Solana Mobile Wallet Spec](https://solana-mobile.github.io/mobile-wallet-adapter/spec/spec.html)
+
+[^5]:
+   Eg. [Farcaster](https://www.youtube.com/watch?v=ZzySey1azWM), [Delegatable](https://delegatable.org/), [MUD](https://github.com/latticexyz/mud/issues/327).
+
+[^7]:
+   Eg. [Sunflower Land](https://sunflower-land.com/), [Phi](https://philand.xyz/), [Lens](https://www.lens.xyz/) ecosystem.
+   
+[^10]:
+   The design for this feature is [WIP.](https://github.com/sealvault/sealvault/issues/42)
+
+[^20]:
+   We note that it seems to be common practice, at least in the EVM ecosystem, not
+   to restrict the claimant to the message sender as evidenced by the [Uniswap
+   airdrop
+   contract](https://github.com/Uniswap/merkle-distributor/blob/c3255bfa2b684594ecd562cacd7664b0f18330bf/contracts/MerkleDistributor.sol#L34)
+   which is often used as a model for others.  There is also no security reason to
+   restrict the claimant to the message sender.
+
