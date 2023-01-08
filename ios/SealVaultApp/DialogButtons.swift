@@ -8,12 +8,15 @@ struct DialogButtons: View {
     @State var approveLabel: String = "OK"
     @State var rejectLabel: String = "Cancel"
     @Binding var approveDisabled: Bool
+    @Binding var rejectDisabled: Bool
 
     var onApprove: () -> Void
     var onReject: () -> Void
 
-    init(onApprove: @escaping () -> Void, onReject: @escaping () -> Void, approveDisabled: Binding<Bool>? = nil) {
+    init(onApprove: @escaping () -> Void, onReject: @escaping () -> Void,
+         approveDisabled: Binding<Bool>? = nil, rejectDisabled: Binding<Bool>? = nil) {
         self._approveDisabled = approveDisabled ?? Binding.constant(false)
+        self._rejectDisabled = rejectDisabled ?? Binding.constant(false)
         self.onApprove = onApprove
         self.onReject = onReject
     }
@@ -27,6 +30,7 @@ struct DialogButtons: View {
                     .frame(maxWidth: .infinity)
                     .foregroundColor(.secondary)
             })
+            .disabled(rejectDisabled)
             .accessibilityLabel(Text("Reject"))
             .buttonStyle(.borderless)
             .controlSize(.large)

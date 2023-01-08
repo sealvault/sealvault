@@ -2,11 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{fmt::Debug, path::PathBuf};
+use std::fmt::Debug;
 
 use typed_builder::TypedBuilder;
 
 use crate::{
+    backup::BackupStorageI,
     db::ConnectionPool,
     device::{DeviceIdentifier, DeviceName},
     encryption::Keychain,
@@ -24,7 +25,7 @@ pub trait CoreResourcesI: Debug + Send + Sync {
     fn http_client(&self) -> &HttpClient;
     fn rpc_manager(&self) -> &dyn eth::RpcManagerI;
     fn public_suffix_list(&self) -> &PublicSuffixList;
-    fn backup_dir(&self) -> Option<&PathBuf>;
+    fn backup_storage(&self) -> &dyn BackupStorageI;
     fn device_id(&self) -> &DeviceIdentifier;
     fn device_name(&self) -> &DeviceName;
 }
@@ -39,7 +40,7 @@ pub struct CoreResources {
     http_client: HttpClient,
     rpc_manager: Box<dyn eth::RpcManagerI>,
     public_suffix_list: PublicSuffixList,
-    backup_dir: Option<PathBuf>,
+    backup_storage: Box<dyn BackupStorageI>,
     device_name: DeviceName,
     device_id: DeviceIdentifier,
 }
@@ -69,8 +70,8 @@ impl CoreResourcesI for CoreResources {
         &self.public_suffix_list
     }
 
-    fn backup_dir(&self) -> Option<&PathBuf> {
-        self.backup_dir.as_ref()
+    fn backup_storage(&self) -> &dyn BackupStorageI {
+        &*self.backup_storage
     }
 
     fn device_id(&self) -> &DeviceIdentifier {

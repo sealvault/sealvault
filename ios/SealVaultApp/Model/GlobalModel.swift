@@ -37,28 +37,24 @@ class GlobalModel: ObservableObject {
         self.topDapps = []
     }
 
-    private func updateProfiles(_ coreProfiles: [CoreProfile]) {
-        let newIds = Set(coreProfiles.map {$0.id})
-        let oldIds = Set(self.profiles.keys)
-        let toRemoveIds = oldIds.subtracting(newIds)
-        for id in toRemoveIds {
-            self.profiles.removeValue(forKey: id)
-        }
-        for coreProfile in coreProfiles {
-            if let profile = self.profiles[coreProfile.id] {
-                profile.updateFromCore(coreProfile)
-            } else {
-                let profile = Profile.fromCore(self.core, coreProfile)
-                self.profiles[profile.id] = profile
-            }
-        }
-    }
-
     static func coreArgs() -> CoreArgs {
         CoreArgs(
-            deviceId: deviceId(), deviceName: deviceName(), cacheDir: cacheDir(),
-            dbFilePath: ensureDbFilePath(), backupDir: ensureBackupDir()
+            deviceId: deviceId(), deviceName: deviceName(), cacheDir: LocalFiles.cacheDir(),
+            dbFilePath: LocalFiles.ensureDbFilePath()
         )
+    }
+
+    private static func deviceName() -> String {
+        UIDevice.current.name
+    }
+
+    private static func deviceId() -> String {
+        // TODO
+        // > If the value is nil, wait and get the value again later.
+        // > This happens, for example, after the device has been restarted but before the
+        // > user has unlocked the device.
+        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
+        UIDevice.current.identifierForVendor!.uuidString
     }
 
     static func buildOnStartup() -> Self {
@@ -66,7 +62,9 @@ class GlobalModel: ObservableObject {
         let callbackModel = CallbackModel()
         var core: AppCoreProtocol
         do {
-            core = try AppCore(args: coreArgs, uiCallback: CoreUICallback(callbackModel))
+            core = try AppCore(
+                args: coreArgs, backupStorage: CoreBackupStorage(), uiCallback: CoreUICallback(callbackModel)
+            )
         } catch {
             print("Failed to create core: \(error)")
             exit(1)
@@ -75,25 +73,28 @@ class GlobalModel: ObservableObject {
     }
 
     static func shouldRestoreBackup() -> RecoveryModel? {
-        let dbPath = dbFilePath()
+        let dbPath = LocalFiles.dbFilePath()
         // If we already have a db then we don't restore
         if FileManager.default.fileExists(atPath: dbPath.path) {
             return nil
         }
 
+        let backupStorage = CoreBackupStorage()
+
         // If the backup directory is not available, because the user is not logged in to iCloud,
         // then we don't restore.
-        if let backupDirURL = self.backupDirURL() {
+        if backupStorage.canBackup() {
             // If the backup directory doesn't exist, the user hasn't installed the app before, so
             // we don't restore.
-            if !FileManager.default.fileExists(atPath: backupDirURL.path) {
+            if !CoreBackupStorage.backupDirExists() {
                 return nil
             }
 
-            return RecoveryModel(backupDir: backupDirURL)
+            return RecoveryModel()
         }
         return nil
     }
+
 }
 
 // MARK: - App Core
@@ -264,6 +265,23 @@ extension GlobalModel {
         self.topDapps = await self.fetchTopDapps(limit: Config.topDappsLimit)
     }
 
+    private func updateProfiles(_ coreProfiles: [CoreProfile]) {
+        let newIds = Set(coreProfiles.map {$0.id})
+        let oldIds = Set(self.profiles.keys)
+        let toRemoveIds = oldIds.subtracting(newIds)
+        for id in toRemoveIds {
+            self.profiles.removeValue(forKey: id)
+        }
+        for coreProfile in coreProfiles {
+            if let profile = self.profiles[coreProfile.id] {
+                profile.updateFromCore(coreProfile)
+            } else {
+                let profile = Profile.fromCore(self.core, coreProfile)
+                self.profiles[profile.id] = profile
+            }
+        }
+    }
+
     func randomBundledProfilePicture() async -> String? {
         return await dispatchBackground(.userInteractive) {
             do {
@@ -355,107 +373,6 @@ extension GlobalModel {
         return activeProfile?.dappList.filter { topDappIds.contains($0.id) } ?? []
     }
 
-}
-
-// MARK: - File System
-extension GlobalModel {
-    private static func dbDirPath() -> URL {
-        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let dbDirPath = documentsURL.appendingPathComponent(Config.dbFileDir)
-        return dbDirPath
-    }
-
-    private static func dbFilePath() -> URL {
-        dbDirPath().appendingPathComponent(Config.dbFileName)
-    }
-
-    private static func dataProtectionAttributes() -> [FileAttributeKey: Any] {
-        return [
-            FileAttributeKey.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
-        ]
-    }
-
-    private static func ensureDbFilePath() -> String {
-        let fileManager = FileManager.default
-
-        let dirPath = dbDirPath()
-        if !fileManager.fileExists(atPath: dirPath.path) {
-            // App can't start if it can't create this directory
-            // swiftlint:disable force_try
-            try! fileManager.createDirectory(
-                atPath: dirPath.path, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
-            )
-            // swiftlint:enable force_try
-        }
-
-        var dbFilePath = dbFilePath()
-        if !fileManager.fileExists(atPath: dbFilePath.path) {
-            fileManager.createFile(atPath: dbFilePath.path, contents: nil, attributes: dataProtectionAttributes())
-        }
-
-        // Exclude DB file from iCloud Backup since it won't work due to missing keys from local keychain
-        // More info https://sealvault.org/dev-docs/design/backup/#icloud-device-backup
-        if var resourceValues = try? dbFilePath.resourceValues(forKeys: [URLResourceKey.isExcludedFromBackupKey]) {
-            if resourceValues.isExcludedFromBackup != true {
-                resourceValues.isExcludedFromBackup = true
-                try? dbFilePath.setResourceValues(resourceValues)
-            }
-        }
-
-        return dbFilePath.path
-    }
-
-    private static func cacheDir() -> String {
-        let fileManager = FileManager.default
-        let cacheDirUrl = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
-
-        return cacheDirUrl.path
-    }
-
-    private static func deviceName() -> String {
-        UIDevice.current.name
-    }
-
-    private static func deviceId() -> String {
-        // TODO
-        // > If the value is nil, wait and get the value again later.
-        // > This happens, for example, after the device has been restarted but before the
-        // > user has unlocked the device.
-        // https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor
-        UIDevice.current.identifierForVendor!.uuidString
-    }
-
-    private static func backupDirURL() -> URL? {
-        let driveURL = FileManager
-            .default
-            .url(forUbiquityContainerIdentifier: nil)?
-            .appendingPathComponent(Config.iCloudBackupDirName)
-        return driveURL
-    }
-
-    private static func backupDir() -> String? {
-        return backupDirURL()?.path
-    }
-
-    private static func ensureBackupDir() -> String? {
-        if let backupDir = self.backupDir() {
-            let fileManager = FileManager.default
-
-            if !fileManager.fileExists(atPath: backupDir) {
-                do {
-                    try fileManager.createDirectory(
-                        atPath: backupDir, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
-                    )
-                } catch {
-                    print("Failed to create backup dir with error: \(error)")
-                    return nil
-                }
-
-            }
-            return backupDir
-        }
-        return nil
-    }
 }
 
 // MARK: - Development

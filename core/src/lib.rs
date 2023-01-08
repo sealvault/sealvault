@@ -41,7 +41,7 @@ pub use crate::{
     backup::{
         find_latest_backup as core_find_latest_backup,
         restore_backup as core_restore_backup, BackupError as CoreBackupError,
-        BackupRestoreData,
+        BackupRestoreData, BackupStorageI as CoreBackupStorageI,
     },
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,

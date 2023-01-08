@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{fs, str::FromStr};
+use std::str::FromStr;
 
 use lazy_static::lazy_static;
 use olpc_cjson::CanonicalFormatter;
@@ -97,18 +97,6 @@ impl FromStr for MetadataFromFileName {
             backup_version,
             device_id,
         })
-    }
-}
-
-impl TryFrom<&fs::DirEntry> for MetadataFromFileName {
-    type Error = Error;
-
-    fn try_from(dir_entry: &fs::DirEntry) -> Result<Self, Self::Error> {
-        let file_name = dir_entry.file_name();
-        let file_name = file_name.to_str().ok_or_else(|| Error::Fatal {
-            error: "Invalid characters in backup file name".into(),
-        })?;
-        file_name.parse()
     }
 }
 

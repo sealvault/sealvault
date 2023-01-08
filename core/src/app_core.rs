@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashSet, fmt::Debug, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, fmt::Debug, sync::Arc};
 
 use rand::seq::IteratorRandom;
 use typed_builder::TypedBuilder;
@@ -10,7 +10,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     assets::{list_profile_pics, load_profile_pic},
     async_runtime as rt, backup,
-    backup::BackupError,
+    backup::{BackupError, BackupStorageI},
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
@@ -44,6 +44,7 @@ impl AppCore {
     // then.
     pub fn new(
         args: CoreArgs,
+        backup_storage: Box<dyn BackupStorageI>,
         ui_callbacks: Box<dyn CoreUICallbackI>,
     ) -> Result<Self, CoreError> {
         let rpc_manager = Box::new(eth::RpcManager::new());
@@ -55,12 +56,10 @@ impl AppCore {
         let CoreArgs {
             device_name,
             device_id,
-            backup_dir,
             ..
         } = args;
         let device_id: DeviceIdentifier = device_id.try_into()?;
         let device_name: DeviceName = device_name.try_into()?;
-        let backup_dir: Option<PathBuf> = backup_dir.map(|bd| bd.into());
 
         let resources = CoreResources::builder()
             .ui_callbacks(ui_callbacks)
@@ -69,7 +68,7 @@ impl AppCore {
             .keychain(keychain)
             .http_client(http_client)
             .public_suffix_list(public_suffix_list)
-            .backup_dir(backup_dir)
+            .backup_storage(backup_storage)
             .device_id(device_id)
             .device_name(device_name)
             .build();
@@ -418,8 +417,6 @@ pub struct CoreArgs {
     pub device_name: String,
     pub cache_dir: String,
     pub db_file_path: String,
-    /// Optional backup dir that is synced in the user's cloud storage.
-    pub backup_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -622,7 +619,7 @@ fn handle_token_callback_error(
 #[cfg(test)]
 pub mod tests {
 
-    use std::{fs, sync::RwLock, thread, time::Duration};
+    use std::{fs, path::PathBuf, sync::RwLock, thread, time::Duration};
 
     use anyhow::Result;
     use strum::IntoEnumIterator;
@@ -632,9 +629,10 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        protocols::ChecksumAddress, CoreInPageCallbackI, DappAllotmentTransferResult,
-        DappApprovalParams, DappSignatureResult, DappTransactionApproved,
-        DappTransactionResult,
+        backup::{BackupStorageI, TmpBackupStorage},
+        protocols::ChecksumAddress,
+        CoreInPageCallbackI, DappAllotmentTransferResult, DappApprovalParams,
+        DappSignatureResult, DappTransactionApproved, DappTransactionResult,
     };
 
     #[derive(Debug)]
@@ -646,7 +644,6 @@ pub mod tests {
         pub tmp_dir: TempDir,
         pub cache_dir: PathBuf,
         pub db_file_path: String,
-        pub backup_dir: PathBuf,
     }
 
     impl TmpCoreDir {
@@ -658,11 +655,9 @@ pub mod tests {
             // mode.
             let db_dir = tmp_dir.path().join("db");
             let cache_dir = tmp_dir.path().join("cache");
-            let backup_dir = tmp_dir.path().join("backups");
 
             fs::create_dir(&db_dir).unwrap();
             fs::create_dir(&cache_dir).unwrap();
-            fs::create_dir(&backup_dir).unwrap();
 
             let db_file_path = db_dir
                 .join("tmp-db.sqlite3")
@@ -674,7 +669,6 @@ pub mod tests {
                 tmp_dir,
                 cache_dir,
                 db_file_path,
-                backup_dir,
             })
         }
     }
@@ -689,13 +683,13 @@ pub mod tests {
         http_client: HttpClient,
         rpc_manager: Box<eth::AnvilRpcManager>,
         public_suffix_list: PublicSuffixList,
+        backup_storage: Box<TmpBackupStorage>,
         device_id: DeviceIdentifier,
         device_name: DeviceName,
-        disable_backup_dir: RwLock<bool>,
     }
 
     impl CoreResourcesMock {
-        pub fn new(tmp_dir: TmpCoreDir) -> Result<Self, Error> {
+        pub fn new(tmp_dir: TmpCoreDir, disable_backups: bool) -> Result<Self, Error> {
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
             let ui_callback_state = Arc::new(UICallbackState::new());
             let ui_callbacks =
@@ -712,6 +706,8 @@ pub mod tests {
             let http_client = HttpClient::new(cache_dir);
 
             let public_suffix_list = PublicSuffixList::new()?;
+
+            let backup_storage = Box::new(TmpBackupStorage::new(!disable_backups)?);
             let device_id = "test-device-id".parse()?;
             let device_name = "test-device-name".parse()?;
 
@@ -723,9 +719,9 @@ pub mod tests {
                 keychain,
                 http_client,
                 public_suffix_list,
+                backup_storage,
                 device_id,
                 device_name,
-                disable_backup_dir: RwLock::new(false),
             })
         }
 
@@ -735,11 +731,6 @@ pub mod tests {
 
         pub fn set_device_id(&mut self, device_id: DeviceIdentifier) {
             self.device_id = device_id
-        }
-
-        pub fn disable_backup_dir(&self) {
-            let mut lock = self.disable_backup_dir.write().expect("not poisoned");
-            *lock = true;
         }
     }
 
@@ -768,14 +759,8 @@ pub mod tests {
             &self.public_suffix_list
         }
 
-        fn backup_dir(&self) -> Option<&PathBuf> {
-            let disable_backup_dir =
-                self.disable_backup_dir.read().expect("not poisoned");
-            if *disable_backup_dir {
-                None
-            } else {
-                Some(&self.tmp_dir.backup_dir)
-            }
+        fn backup_storage(&self) -> &dyn BackupStorageI {
+            &*self.backup_storage
         }
 
         fn device_id(&self) -> &DeviceIdentifier {
@@ -802,11 +787,15 @@ pub mod tests {
 
     impl TmpCore {
         pub fn new() -> Result<Self, CoreError> {
+            Self::with_overrides(false)
+        }
+
+        pub fn with_overrides(disable_backups: bool) -> Result<Self, CoreError> {
             // Important not to use in-memory DB as Sqlite has subtle differences in in memory
             // mode.
             let tmp_dir = TmpCoreDir::new()?;
 
-            let resources = Arc::new(CoreResourcesMock::new(tmp_dir)?);
+            let resources = Arc::new(CoreResourcesMock::new(tmp_dir, disable_backups)?);
             let core = Arc::new(AppCore::new_with_overrides(resources.clone())?);
             let ui_callback_state = resources.ui_callbacks.state.clone();
 
@@ -1504,12 +1493,11 @@ pub mod tests {
     }
 
     #[test]
-    fn enable_backup_error_if_no_backup_dir() -> Result<()> {
-        let tmp = TmpCore::new()?;
-        tmp.resources.disable_backup_dir();
+    fn enable_backup_error_if_cant_backup() -> Result<()> {
+        let tmp = TmpCore::with_overrides(true)?;
 
         let res = tmp.core.enable_backup();
-        assert!(matches!(res, Err(BackupError::BackupDirectoryNotAvailable)));
+        assert!(matches!(res, Err(BackupError::BackupDisabled)));
         assert!(!tmp.core.is_backup_enabled()?);
 
         Ok(())

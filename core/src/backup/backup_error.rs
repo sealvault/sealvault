@@ -6,8 +6,17 @@ use crate::{CoreError, Error};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum BackupError {
-    #[error("The backup directory is not available.")]
-    BackupDirectoryNotAvailable,
+    #[error("Backup is disabled.")]
+    BackupDisabled,
+
+    #[error("Failed to put backup file into backup storage.")]
+    FailedToStoreBackup,
+
+    #[error("Failed to fetch the backup file from backup storage.")]
+    FailedToFetchBackup,
+
+    #[error("Failed to delete a backup file from backup storage.")]
+    FailedToDeleteBackup,
 
     /// See crate::error;
     #[error("{error}")]
@@ -24,10 +33,10 @@ impl From<Error> for BackupError {
 impl From<BackupError> for Error {
     fn from(error: BackupError) -> Self {
         match error {
-            BackupError::BackupDirectoryNotAvailable => Error::Fatal {
+            BackupError::Error { error } => error.into(),
+            error => Error::Retriable {
                 error: error.to_string(),
             },
-            BackupError::Error { error } => error.into(),
         }
     }
 }

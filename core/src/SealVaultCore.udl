@@ -4,7 +4,7 @@
 
 interface AppCore {
     [Throws=CoreError]
-    constructor(CoreArgs args, CoreUICallbackI ui_callback);
+    constructor(CoreArgs args, CoreBackupStorageI backup_storage, CoreUICallbackI ui_callback);
 
     [Throws=CoreError]
     void on_background();
@@ -87,7 +87,10 @@ enum CoreError{
 
 [Error]
 enum CoreBackupError{
-    "BackupDirectoryNotAvailable",
+    "BackupDisabled",
+    "FailedToStoreBackup",
+    "FailedToFetchBackup",
+    "FailedToDeleteBackup",
     "Error"
 };
 
@@ -141,7 +144,6 @@ dictionary CoreArgs {
     string device_name;
     string cache_dir;
     string db_file_path;
-    string? backup_dir;
 };
 
 dictionary CoreEthChain {
@@ -213,6 +215,14 @@ dictionary DappTransactionResult {
     string? error_message;
 };
 
+callback interface CoreBackupStorageI {
+    boolean can_backup();
+    sequence<string> list_backup_file_names();
+    boolean copy_to_storage(string backup_file_name, string tmp_file_path);
+    boolean copy_from_storage(string backup_file_name, string tmp_file_path);
+    boolean delete_backup(string backup_file_name);
+};
+
 callback interface CoreUICallbackI {
     void sent_token_transfer(TokenTransferResult result);
     void token_transfer_result(TokenTransferResult result);
@@ -237,15 +247,15 @@ namespace SealVaultCore {
     string? core_uri_fixup(string input);
 
     [Throws=CoreError]
-    BackupRestoreData? core_find_latest_backup(string backup_dir);
+    BackupRestoreData? core_find_latest_backup(CoreBackupStorageI backup_storage);
 
     [Throws=CoreError]
-    void core_restore_backup(CoreArgs core_args, string from_path, string password);
+    void core_restore_backup(CoreArgs core_args, CoreBackupStorageI backup_storage, string backup_file_name, string password);
 };
 
 dictionary BackupRestoreData {
     i64 timestamp;
     string device_name;
-    string file_path;
+    string backup_file_name;
 };
 

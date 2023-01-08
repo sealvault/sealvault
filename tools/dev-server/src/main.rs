@@ -12,9 +12,10 @@ use actix_web::{
 use dotenv::dotenv;
 use ethers_core::utils::hex;
 use uniffi_sealvault_core::{
-    AppCore, CoreArgs, CoreInPageCallbackI, CoreUICallbackI, DappAllotmentTransferResult,
-    DappApprovalParams, DappSignatureResult, DappTransactionApproved,
-    DappTransactionResult, InPageRequestContextI, TokenTransferResult,
+    AppCore, CoreArgs, CoreBackupStorageI, CoreInPageCallbackI, CoreUICallbackI,
+    DappAllotmentTransferResult, DappApprovalParams, DappSignatureResult,
+    DappTransactionApproved, DappTransactionResult, InPageRequestContextI,
+    TokenTransferResult,
 };
 
 const DB_PATH: &str = ":memory:";
@@ -36,11 +37,14 @@ async fn main() -> std::io::Result<()> {
         device_name: "dev-server".into(),
         cache_dir: "./cache".into(),
         db_file_path: DB_PATH.into(),
-        backup_dir: None,
     };
     let backend_service = Arc::new(
-        AppCore::new(backend_args, Box::new(CoreUICallBackMock::new()))
-            .expect("core initializes"),
+        AppCore::new(
+            backend_args,
+            Box::new(CoreBackupStorage::new()),
+            Box::new(CoreUICallBackMock::new()),
+        )
+        .expect("core initializes"),
     );
 
     HttpServer::new(move || {
@@ -223,5 +227,38 @@ impl CoreInPageCallbackI for CoreInPageCallbackMock {
         let event = hex::decode(message_hex).expect("valid hex");
         let event = String::from_utf8_lossy(&event);
         log::info!("CoreInPageCallbackMock.notify: '{:?}'", event);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CoreBackupStorage {}
+
+impl CoreBackupStorage {
+    // We don't want to create the mock by accident with `Default::default`.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl CoreBackupStorageI for CoreBackupStorage {
+    fn can_backup(&self) -> bool {
+        false
+    }
+
+    fn list_backup_file_names(&self) -> Vec<String> {
+        Default::default()
+    }
+
+    fn copy_to_storage(&self, _: String, _: String) -> bool {
+        false
+    }
+
+    fn copy_from_storage(&self, _: String, _: String) -> bool {
+        false
+    }
+
+    fn delete_backup(&self, _: String) -> bool {
+        false
     }
 }

@@ -2,13 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 
 use crate::{
-    backup::{
-        create::{delete_entry, list_backup_dir},
-        metadata::MetadataFromFileName,
-    },
+    backup::{metadata::MetadataFromFileName, BackupError},
     db::{models as m, ConnectionPool, ExclusiveTxConnection},
     device::DeviceIdentifier,
     encryption::{
@@ -136,9 +133,7 @@ pub fn disable_backup(resources: &dyn CoreResourcesI) -> Result<(), Error> {
     )?;
 
     // Delete backups that were created on this device.
-    if let Some(backup_dir) = resources.backup_dir() {
-        delete_backups_for_device(backup_dir, resources.device_id())?;
-    }
+    delete_backups_for_device(resources)?;
 
     Ok(())
 }
@@ -175,18 +170,28 @@ pub fn remove_keys_for_backup(keychain: &Keychain, device_identifier: &DeviceIde
     );
 }
 
-fn delete_backups_for_device(
-    backup_dir: &Path,
-    device_id: &DeviceIdentifier,
-) -> Result<(), Error> {
-    for entry in list_backup_dir(backup_dir)? {
-        if let Ok(meta_from_file_name) = MetadataFromFileName::try_from(&entry) {
+fn delete_backups_for_device(resources: &dyn CoreResourcesI) -> Result<(), BackupError> {
+    let device_id = resources.device_id();
+    let backup_storage = resources.backup_storage();
+
+    let mut did_err = false;
+    for backup_file_name in backup_storage.list_backup_file_names() {
+        if let Ok(meta_from_file_name) = MetadataFromFileName::from_str(&backup_file_name)
+        {
             if &meta_from_file_name.device_id == device_id {
-                delete_entry(&entry)?;
+                let success = backup_storage.delete_backup(backup_file_name);
+                if !success {
+                    // Don't break on first error, in order to try to delete as many as possible.
+                    did_err = true;
+                }
             }
         }
     }
-    Ok(())
+    if did_err {
+        Err(BackupError::FailedToDeleteBackup)
+    } else {
+        Ok(())
+    }
 }
 
 /// Set up SK-KEK if we're on new device as it's not on the local keychain. Rotate if the app is

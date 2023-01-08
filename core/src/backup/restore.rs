@@ -6,22 +6,25 @@ use std::{
     fs::File,
     io::{Read, Write},
     path::{Path, PathBuf},
+    str::FromStr,
 };
+
+use tempfile::TempDir;
 
 use crate::{
     backup::{
-        create::list_backup_dir,
         metadata::{BackupMetadata, MetadataFromFileName},
         setup::{
             backup_connection_pool, rollback_enable_backup, set_up_or_rotate_sk_kek,
         },
-        ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
+        BackupError, BackupStorageI, ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
     },
     db::models as m,
     device::{DeviceIdentifier, OperatingSystem},
     encryption::{
         BackupPassword, EncryptionOutput, KdfNonce, KdfSecret, Keychain, RootBackupKey,
     },
+    utils::path_to_string,
     CoreArgs, CoreError, Error,
 };
 
@@ -32,12 +35,12 @@ pub struct BackupRestoreData {
     pub timestamp: i64,
     /// The device name set by the user.
     pub device_name: String,
-    /// The path to the backup.
-    pub file_path: String,
+    /// The backup file name in backup storage.
+    pub backup_file_name: String,
 }
 
 impl BackupRestoreData {
-    fn new(metadata: BackupMetadata, file_path: String) -> Self {
+    fn new(metadata: BackupMetadata, backup_file_name: String) -> Self {
         let BackupMetadata {
             timestamp,
             device_name,
@@ -46,31 +49,71 @@ impl BackupRestoreData {
         Self {
             timestamp,
             device_name: device_name.into(),
-            file_path,
+            backup_file_name,
         }
+    }
+}
+
+#[derive(Debug)]
+pub(in crate::backup) struct RestoreWorkDir {
+    // The `TempDir` is not accessed, but we want to retain for the life time of this struct,
+    // as it's destroyed on drop.
+    #[allow(dead_code)]
+    tmp_dir: TempDir,
+    zip_path: PathBuf,
+}
+
+impl RestoreWorkDir {
+    pub fn new(backup_file_name: &str) -> Result<Self, Error> {
+        let tmp_dir = tempfile::tempdir().map_err(|err| Error::Retriable {
+            error: err.to_string(),
+        })?;
+        let zip_path = tmp_dir.path().join(Path::new(backup_file_name));
+        Ok(Self { tmp_dir, zip_path })
+    }
+
+    pub fn zip_path(&self) -> &Path {
+        self.zip_path.as_path()
+    }
+
+    pub fn zip_path_string(&self) -> Result<String, Error> {
+        path_to_string(self.zip_path())
     }
 }
 
 pub fn restore_backup(
     core_args: CoreArgs,
-    from_path: String,
+    backup_storage: Box<dyn BackupStorageI>,
+    backup_file_name: String,
     password: String,
-) -> Result<(), Error> {
+) -> Result<(), BackupError> {
     let keychain = Keychain::new();
-    let from_zip = Path::new(&from_path);
-    let _ = restore_backup_inner(core_args, from_zip, &password, &keychain)?;
+    let _ = restore_backup_inner(
+        core_args,
+        &*backup_storage,
+        backup_file_name,
+        &keychain,
+        &password,
+    )?;
     Ok(())
 }
 
 pub(in crate::backup) fn restore_backup_inner(
     core_args: CoreArgs,
-    from_zip: &Path,
-    password: &str,
+    backup_storage: &dyn BackupStorageI,
+    backup_file_name: String,
     keychain: &Keychain,
-) -> Result<BackupMetadata, Error> {
+    password: &str,
+) -> Result<BackupMetadata, BackupError> {
     let password: BackupPassword = password.parse()?;
     let device_id: DeviceIdentifier = core_args.device_id.parse()?;
-    let metadata = backup_metadata_from_zip(from_zip)?;
+    let work_dir = RestoreWorkDir::new(&backup_file_name)?;
+
+    if !backup_storage.copy_from_storage(backup_file_name, work_dir.zip_path_string()?) {
+        return Err(BackupError::FailedToFetchBackup);
+    }
+
+    let metadata = backup_metadata_from_zip(work_dir.zip_path())?;
 
     let kdf_secret = KdfSecret::from_keychain(keychain, &metadata.device_id)?;
     let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
@@ -79,7 +122,8 @@ pub(in crate::backup) fn restore_backup_inner(
     let sk_backup_kek = root_backup_key.derive_sk_backup_kek()?;
 
     let encrypted_backup_bytes =
-        extract_from_zip(from_zip, ENCRYPTED_BACKUP_FILE_NAME).map_err(map_zip_error)?;
+        extract_from_zip(work_dir.zip_path(), ENCRYPTED_BACKUP_FILE_NAME)
+            .map_err(map_zip_error)?;
     let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
 
     let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
@@ -97,31 +141,29 @@ pub(in crate::backup) fn restore_backup_inner(
 }
 
 pub fn find_latest_backup(
-    backup_dir: String,
+    backup_storage: Box<dyn BackupStorageI>,
 ) -> Result<Option<BackupRestoreData>, CoreError> {
-    let path = Path::new(&backup_dir);
-    let res = find_latest_restorable_backup(path)?;
+    let res = find_latest_backup_inner(&*backup_storage)?;
     Ok(res)
 }
 
-pub(in crate::backup) fn find_latest_restorable_backup(
-    backup_dir: &Path,
-) -> Result<Option<BackupRestoreData>, Error> {
+pub(in crate::backup) fn find_latest_backup_inner(
+    backup_storage: &dyn BackupStorageI,
+) -> Result<Option<BackupRestoreData>, BackupError> {
     // Get the current os
     let os: OperatingSystem = Default::default();
 
-    let entries = list_backup_dir(backup_dir)?;
-    let mut metas: Vec<(MetadataFromFileName, PathBuf)> = Default::default();
-    for entry in entries {
-        match MetadataFromFileName::try_from(&entry) {
+    // Gather backup metadata from backups created on the same OS.
+    // We might relax restricting to the same OS in the future.
+    let mut metas: Vec<(MetadataFromFileName, String)> = Default::default();
+    for backup_file_name in backup_storage.list_backup_file_names() {
+        match MetadataFromFileName::from_str(&backup_file_name) {
             Ok(meta) => {
                 if meta.os == os {
-                    metas.push((meta, entry.path()))
+                    metas.push((meta, backup_file_name))
                 }
             }
-            Err(err) => {
-                log::warn!("{}", err);
-            }
+            Err(err) => log::warn!("Error parsing backup file name: '{err}'"),
         }
     }
     metas.sort_by(|a_tup, b_tup| {
@@ -134,13 +176,22 @@ pub(in crate::backup) fn find_latest_restorable_backup(
             .then(a.device_id.cmp(&b.device_id))
     });
 
-    if let Some((_, file_path)) = metas.last() {
-        let metadata = backup_metadata_from_zip(file_path.as_path())?;
-        let file_path = file_path.to_str().ok_or_else(|| Error::Fatal {
-            error: "Invalid characters in backup file path".into(),
-        })?;
+    let last_el: Option<(_, _)> = if metas.is_empty() {
+        None
+    } else {
+        Some(metas.swap_remove(metas.len() - 1))
+    };
+
+    if let Some((_, backup_file_name)) = last_el {
+        let work_dir = RestoreWorkDir::new(&backup_file_name)?;
+        let success = backup_storage
+            .copy_from_storage(backup_file_name.clone(), work_dir.zip_path_string()?);
+        if !success {
+            return Err(BackupError::FailedToFetchBackup);
+        }
+        let metadata = backup_metadata_from_zip(work_dir.zip_path())?;
         // Metadata will be authenticated when backup is decrypted on restore
-        let restore_data = BackupRestoreData::new(metadata, file_path.into());
+        let restore_data = BackupRestoreData::new(metadata, backup_file_name);
         Ok(Some(restore_data))
     } else {
         Ok(None)

@@ -4,6 +4,7 @@
 
 mod backup_error;
 mod backup_scheme;
+mod backup_storage;
 mod create;
 mod metadata;
 mod restore;
@@ -15,6 +16,9 @@ pub(in crate::backup) const ENCRYPTED_BACKUP_FILE_NAME: &str = "backup.sqlite3.e
 pub(in crate::backup) const METADATA_FILE_NAME: &str = "metadata.json";
 
 pub use backup_error::BackupError;
+#[cfg(test)]
+pub use backup_storage::tmp_backup_storage::TmpBackupStorage;
+pub use backup_storage::BackupStorageI;
 pub use create::create_backup;
 pub use metadata::BackupMetadata;
 pub use restore::{find_latest_backup, restore_backup, BackupRestoreData};
@@ -24,7 +28,7 @@ pub use setup::{
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, fs::File, path::Path, sync::Arc};
+    use std::{io::Write, sync::Arc};
 
     use anyhow::Result;
     use tempfile::NamedTempFile;
@@ -37,8 +41,8 @@ mod tests {
             create::db_backup,
             metadata::MetadataFromFileName,
             restore::{
-                backup_metadata_from_zip, find_latest_restorable_backup,
-                restore_backup_inner,
+                backup_metadata_from_zip, find_latest_backup_inner, restore_backup_inner,
+                RestoreWorkDir,
             },
             setup::rollback_enable_backup,
         },
@@ -50,6 +54,7 @@ mod tests {
         encryption::{KdfNonce, KdfSecret, Keychain},
         protocols::eth,
         resources::CoreResourcesI,
+        utils::{path_to_string, tmp_file},
         CoreArgs,
     };
 
@@ -60,7 +65,7 @@ mod tests {
     impl BackupTest {
         fn new() -> Result<Self> {
             let tmp_dir = TmpCoreDir::new()?;
-            let resources = Arc::new(CoreResourcesMock::new(tmp_dir)?);
+            let resources = Arc::new(CoreResourcesMock::new(tmp_dir, false)?);
 
             resources
                 .connection_pool()
@@ -76,8 +81,8 @@ mod tests {
             Ok(Self { resources })
         }
 
-        fn backup_dir(&self) -> &Path {
-            self.resources.backup_dir().expect("has backup dir")
+        fn backup_storage(&self) -> &dyn BackupStorageI {
+            self.resources.backup_storage()
         }
 
         fn setup_or_rotate_backup(&self) -> Result<()> {
@@ -96,50 +101,14 @@ mod tests {
         }
 
         fn create_backup_without_deleting_outdated(&self) -> Result<BackupMetadata> {
-            let metadata = db_backup(
-                self.resources.as_ref(),
-                self.resources.backup_dir().unwrap(),
-            )?;
+            let metadata = db_backup(self.resources.as_ref())?;
             Ok(metadata)
-        }
-
-        fn add_key(&self) -> Result<()> {
-            self.resources
-                .connection_pool()
-                .deferred_transaction(|mut tx_conn| {
-                    let profile = m::Profile::list_all(tx_conn.as_mut())?
-                        .into_iter()
-                        .next()
-                        .expect("there is an profile");
-                    let params = m::CreateEthAddressParams::builder()
-                        .profile_id(&profile.deterministic_id)
-                        .chain_id(eth::ChainId::default_wallet_chain())
-                        .is_profile_wallet(true)
-                        .build();
-                    m::Address::create_eth_key_and_address(
-                        &mut tx_conn,
-                        &self.resources.keychain(),
-                        &params,
-                    )?;
-                    Ok(())
-                })?;
-            Ok(())
-        }
-
-        fn backup_file_names(&self) -> Result<Vec<String>> {
-            let mut file_names: Vec<String> = Default::default();
-            let entries = fs::read_dir(self.backup_dir())?;
-            for entry in entries {
-                let file_name = entry?.file_name();
-                let file_name = file_name.to_str().expect("valid string filename");
-                file_names.push(file_name.into());
-            }
-            Ok(file_names)
         }
 
         fn backup_versions_in_dir(&self) -> Result<Vec<i64>> {
             let mut res: Vec<i64> = Default::default();
-            for file_name in self.backup_file_names()? {
+            let backup_storage = self.backup_storage();
+            for file_name in backup_storage.list_backup_file_names() {
                 let meta: MetadataFromFileName = file_name.parse()?;
                 res.push(meta.backup_version);
             }
@@ -178,36 +147,21 @@ mod tests {
             password: &str,
             metadata: &BackupMetadata,
         ) -> Result<BackupMetadata> {
-            let restore_from = self
-                .resources
-                .backup_dir()
-                .unwrap()
-                .join(metadata.backup_file_name());
-
-            let backup_dir = Some(
-                self.resources
-                    .backup_dir()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            );
             let db_file_path = self.restore_to.path().to_str().unwrap().to_string();
-
             let core_args = CoreArgs {
                 device_id: self.resources.device_id().to_string(),
                 device_name: self.resources.device_name().to_string(),
                 // This is not used for restore
                 cache_dir: "".into(),
                 db_file_path,
-                backup_dir,
             };
 
             let backup_metadata = restore_backup_inner(
                 core_args,
-                restore_from.as_path(),
-                password,
+                self.resources.backup_storage(),
+                metadata.backup_file_name(),
                 self.resources.keychain(),
+                password,
             )?;
 
             Ok(backup_metadata)
@@ -276,7 +230,6 @@ mod tests {
         let initial_backup_version = backup_metadata.backup_version;
         assert!(initial_backup_version > 0);
 
-        backup.add_key()?;
         let backup_metadata = backup.create_backup()?;
         assert!(initial_backup_version < backup_metadata.backup_version);
 
@@ -370,7 +323,7 @@ mod tests {
 
         let backup_enabled = is_backup_enabled(backup.resources.connection_pool())?;
         assert!(!backup_enabled);
-        let res = find_latest_restorable_backup(backup.backup_dir())?;
+        let res = find_latest_backup_inner(backup.backup_storage())?;
         assert!(res.is_none());
 
         let mut conn = backup.resources.connection_pool().connection()?;
@@ -413,7 +366,7 @@ mod tests {
     #[test]
     fn empty_dir_ok_for_finding_restorable() -> Result<()> {
         let backup = BackupTest::new()?;
-        let res = find_latest_restorable_backup(backup.backup_dir())?;
+        let res = find_latest_backup_inner(backup.backup_storage())?;
         assert!(res.is_none());
         Ok(())
     }
@@ -423,19 +376,31 @@ mod tests {
         let backup = BackupTest::new()?;
         backup.setup_or_rotate_backup()?;
         let _ = backup.create_backup_without_deleting_outdated()?;
-        backup.add_key()?;
         let metadata = backup.create_backup_without_deleting_outdated()?;
 
         // Make sure it can handle an unexpected file name in the directory
-        File::create(backup.backup_dir().join("some-random-file.zip"))?;
+        let mut file = tmp_file()?;
+        file.write(b"some random data")?;
+        file.flush()?;
+        let backup_storage = backup.backup_storage();
+        backup_storage
+            .copy_to_storage("some-random-file.zip".into(), path_to_string(file.path())?);
 
-        let res = find_latest_restorable_backup(backup.backup_dir())?.unwrap();
+        let res = find_latest_backup_inner(backup.backup_storage())?
+            .expect("there is a restorable backup");
+        let device_name: DeviceName = res.device_name.parse()?;
+        assert_eq!(&metadata.device_name, &device_name);
+        assert_eq!(&metadata.timestamp, &res.timestamp);
+        assert_eq!(&metadata.backup_file_name(), &res.backup_file_name);
 
-        assert_eq!(metadata.timestamp, res.timestamp);
-
-        let path = Path::new(&res.file_path);
-        let meta_from_zip = backup_metadata_from_zip(path)?;
+        let work_dir = RestoreWorkDir::new(&metadata.backup_file_name())?;
+        assert!(backup_storage.copy_from_storage(
+            res.backup_file_name.clone(),
+            work_dir.zip_path_string()?
+        ));
+        let meta_from_zip = backup_metadata_from_zip(work_dir.zip_path())?;
         assert_eq!(meta_from_zip, metadata);
+        assert_eq!(&meta_from_zip.backup_file_name(), &res.backup_file_name);
 
         Ok(())
     }

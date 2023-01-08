@@ -17,7 +17,7 @@ struct RecoveryView: View {
             VStack {
                 Spacer()
                 VStack {
-                    Text("Downloading backups from iCloud Storage")
+                    Text("Searching for backups in iCloud Storage")
                         .multilineTextAlignment(.center)
                     ProgressView()
                 }
@@ -59,6 +59,18 @@ struct RecoveryViewInner: View {
         restoreData.backupDate.formatted()
     }
 
+    func setErrorBanner(title: String, detail: String = "") {
+        DispatchQueue.main.async {
+            self.banner = BannerData(title: title, detail: detail, type: .error)
+        }
+    }
+
+    func setProcessing(_ value: Bool) {
+        DispatchQueue.main.async {
+            self.processing = value
+        }
+    }
+
     var body: some View {
         VStack(alignment: .center, spacing: 40) {
 
@@ -95,36 +107,39 @@ struct RecoveryViewInner: View {
                     banner = BannerData(title: "Please enter a backup password", detail: "", type: .error)
                     return
                 }
-                Task {
-                    processing = true
-                    let success = await dispatchBackground(.userInteractive) {
-                        do {
-                            try coreRestoreBackup(
-                                coreArgs: GlobalModel.coreArgs(),
-                                fromPath: restoreData.backupFilePath,
-                                password: backupPassword
-                            )
-                            return true
-                        } catch {
-                            print("Error restoring backup: \(error)")
-                        }
-                        return false
-                    }
-                    if !success {
-                        banner = BannerData(
+                DispatchQueue.global(qos: .userInitiated).async {
+                    self.setProcessing(true)
+                    var success = false
+                    do {
+                        try coreRestoreBackup(
+                            coreArgs: GlobalModel.coreArgs(),
+                            backupStorage: CoreBackupStorage(),
+                            backupFileName: restoreData.backupFileName,
+                            password: backupPassword
+                        )
+                        success = true
+                    } catch CoreBackupError.FailedToFetchBackup(message: _) {
+                        self.setErrorBanner(title: "Failed to download backup", detail: "Please try again")
+                    } catch {
+                        self.setErrorBanner(
                             title: "Failed to decrypt backup",
                             detail: """
 Please make sure that the backup password is correct and that you have iCloud Keychain enabled.
 """
-                            , type: .error)
-                    } else {
-                        isDone = true
+                        )
+                        print("Error restoring backup: \(error)")
                     }
-                    processing = false
+                    self.setProcessing(false)
+
+                    if success {
+                        DispatchQueue.main.async {
+                            isDone = true
+                        }
+                    }
                 }
             }, onReject: {
                 confirmationPresented = true
-            })
+            }, approveDisabled: $processing, rejectDisabled: $processing)
         }
         .banner(data: $banner)
         .confirmationDialog("Are you store you don't want to restore from backup?", isPresented: $confirmationPresented,
@@ -146,9 +161,10 @@ struct RecoveryView_Previews: PreviewProvider {
         @State private var isDone = false
 
         var body: some View {
-            let restoreData = RestoreModel(backupDate: Date.now, backupDeviceName: "Alice's iPhone", backupFilePath: "")
+            let restoreData = RestoreModel(backupDate: Date.now, backupDeviceName: "Alice's iPhone", backupFileName: "")
             Group {
                 RecoveryViewInner(isDone: $isDone, restoreData: restoreData)
+                RecoveryViewInner(isDone: $isDone, restoreData: restoreData, processing: true)
                 RecoveryViewInner(isDone: $isDone, restoreData: restoreData)
                     .preferredColorScheme(.dark)
                 RecoveryView(isDoneRestoring: $isDone, recoveryModel: RecoveryModel.buildForPreview())

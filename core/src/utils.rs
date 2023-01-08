@@ -2,13 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashSet, time::SystemTime};
+use std::{collections::HashSet, path::Path, time::SystemTime};
 
 use chacha20poly1305::aead::generic_array::{ArrayLength, GenericArray};
 use chrono::{DateTime, FixedOffset, SecondsFormat, Utc};
 use email_address::EmailAddress;
 use lazy_static::lazy_static;
 use rand::{thread_rng, RngCore};
+use tempfile::NamedTempFile;
 use url::Url;
 use uuid::Uuid;
 
@@ -34,7 +35,21 @@ pub fn unix_timestamp() -> i64 {
     dt.timestamp()
 }
 
-/// Generate a new v4 UUID.
+pub fn path_to_string(path: &Path) -> Result<String, Error> {
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| Error::Fatal {
+            error: "Got invalid utf-8 string for path".into(),
+        })
+}
+
+pub fn tmp_file() -> Result<NamedTempFile, Error> {
+    NamedTempFile::new().map_err(|err| Error::Retriable {
+        error: format!("Failed to create temporary file with error: '{err}'"),
+    })
+}
+
+/// Generate a v4 UUID.
 pub fn new_uuid() -> String {
     Uuid::new_v4().to_string()
 }

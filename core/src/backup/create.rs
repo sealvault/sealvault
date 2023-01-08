@@ -3,23 +3,24 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use std::{
-    fs,
     fs::File,
     io::{Read, Seek, Write},
     path::Path,
+    str::FromStr,
 };
 
 use diesel::connection::SimpleConnection;
-use tempfile::NamedTempFile;
 
 use crate::{
     backup::{
         backup_error::BackupError, backup_scheme::BackupScheme,
         metadata::MetadataFromFileName, restore::verify_backup, BackupMetadata,
+        BackupStorageI,
     },
     db::models as m,
     encryption::{DataEncryptionKey, EncryptionOutput},
     resources::CoreResourcesI,
+    utils::{path_to_string, tmp_file},
     Error,
 };
 
@@ -33,17 +34,16 @@ use crate::{
 pub fn create_backup(
     resources: &dyn CoreResourcesI,
 ) -> Result<BackupMetadata, BackupError> {
-    let backup_dir = resources
-        .backup_dir()
-        .ok_or(BackupError::BackupDirectoryNotAvailable)?;
-    let metadata = db_backup(resources, backup_dir)?;
-    remove_outdated_backups(&metadata, backup_dir)?;
+    if !resources.backup_storage().can_backup() {
+        return Err(BackupError::BackupDisabled);
+    }
+    let metadata = db_backup(resources)?;
+    remove_outdated_backups(resources.backup_storage(), &metadata)?;
     Ok(metadata)
 }
 
 pub(in crate::backup) fn db_backup(
     resources: &dyn CoreResourcesI,
-    backup_dir: &Path,
 ) -> Result<BackupMetadata, Error> {
     let connection_pool = resources.connection_pool();
 
@@ -88,7 +88,7 @@ pub(in crate::backup) fn db_backup(
         let encryption_output =
             db_backup_dek.encrypt_backup(&backup_contents, &metadata)?;
 
-        create_backup_zip(backup_dir, &metadata, &encryption_output)?;
+        store_backup_zip(resources.backup_storage(), &metadata, &encryption_output)?;
 
         m::LocalSettings::update_backup_timestamp(tx_conn.as_mut())?;
 
@@ -102,9 +102,7 @@ fn create_verified_backup(db_path: &Path, backup_version: i64) -> Result<Vec<u8>
         error: format!("Failed to open DB file: {err}"),
     })?;
 
-    let mut backup_file = NamedTempFile::new().map_err(|err| Error::Retriable {
-        error: format!("Failed to create temporary file with error: '{err}'"),
-    })?;
+    let mut backup_file = tmp_file()?;
 
     // Sqlite C backup api would be preferable to copying, but it's not supported by Diesel.
     // Copy while holding lock to make sure DB doesn't change.
@@ -127,85 +125,50 @@ fn create_verified_backup(db_path: &Path, backup_version: i64) -> Result<Vec<u8>
     Ok(backup_contents)
 }
 
-fn create_backup_zip(
-    out_dir: &Path,
+fn store_backup_zip(
+    backup_storage: &dyn BackupStorageI,
     metadata: &BackupMetadata,
     encryption_output: &EncryptionOutput,
-) -> Result<(), Error> {
-    let out_path = out_dir.join(metadata.backup_file_name());
-    // Overwrites existing file which is important to rerun if setting the completed backup
-    // version fails.
-    let out_file = File::create(out_path).map_err(|err| Error::Retriable {
-        error: format!("Failed to create backup archive file with error: '{err}'"),
-    })?;
+) -> Result<(), BackupError> {
+    let mut tmp_file = tmp_file()?;
 
     let meta_ser = metadata.canonical_json()?;
-
-    create_backup_zip_inner(out_file, encryption_output, &meta_ser)
+    create_backup_zip(tmp_file.as_file_mut(), encryption_output, &meta_ser)
         .map_err(map_zip_error)?;
 
-    Ok(())
+    let tmp_file_path = path_to_string(tmp_file.path())?;
+
+    let is_ok =
+        backup_storage.copy_to_storage(metadata.backup_file_name(), tmp_file_path);
+    if is_ok {
+        Ok(())
+    } else {
+        Err(BackupError::FailedToStoreBackup)
+    }
 }
 
 /// Removes the outdated backups that were created on this device.
 fn remove_outdated_backups(
+    backup_storage: &dyn BackupStorageI,
     current_metadata: &BackupMetadata,
-    backup_dir: &Path,
-) -> Result<(), Error> {
-    let entries = list_backup_dir(backup_dir)?;
-    for entry in entries {
-        if should_delete(&entry, current_metadata)? {
-            delete_entry(&entry)?;
+) -> Result<(), BackupError> {
+    let backup_file_names = backup_storage.list_backup_file_names();
+    for file_name in backup_file_names {
+        if should_delete(&file_name, current_metadata)? {
+            let is_ok = backup_storage.delete_backup(file_name);
+            if !is_ok {
+                log::error!("Failed to delete backup file.")
+            }
         }
     }
     Ok(())
 }
 
-pub(in crate::backup) fn delete_entry(entry: &fs::DirEntry) -> Result<(), Error> {
-    // It might be that file was deleted by other backup inbetween.
-    fs::remove_file(entry.path()).or_else(|err| {
-        if err.kind() == std::io::ErrorKind::NotFound {
-            Ok(())
-        } else {
-            Err(Error::Fatal {
-                error: format!("Failed to delete backup file due to error: {err}"),
-            })
-        }
-    })
-}
-
-pub(in crate::backup) fn list_backup_dir(
-    backup_dir: &Path,
-) -> Result<Vec<fs::DirEntry>, Error> {
-    let entries = fs::read_dir(backup_dir).map_err(|err| Error::Retriable {
-        // Retriable because not necessarily logic error; it's possible that directory is
-        // temporarily unavailable.
-        error: format!("Failed to list backup directory due to error: {err}"),
-    })?;
-    let mut results: Vec<fs::DirEntry> = Default::default();
-    for entry_res in entries {
-        // If the file was removed between listing accessing, do nothing.
-        let maybe_entry = entry_res.map(Some).or_else(|err| {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                Ok(None)
-            } else {
-                Err(Error::Fatal {
-                    error: format!("Failed to access backup file due to error: {err}"),
-                })
-            }
-        })?;
-        if let Some(entry) = maybe_entry {
-            results.push(entry)
-        }
-    }
-    Ok(results)
-}
-
 fn should_delete(
-    dir_entry: &fs::DirEntry,
+    backup_file_name: &str,
     current_metadata: &BackupMetadata,
 ) -> Result<bool, Error> {
-    let meta_from_file_name = match MetadataFromFileName::try_from(dir_entry) {
+    let meta_from_file_name = match MetadataFromFileName::from_str(backup_file_name) {
         Ok(meta) => meta,
         Err(err) => {
             log::debug!("Error on should delete file in backup dir: {err}");
@@ -222,8 +185,8 @@ fn should_delete(
     Ok(same_device && earlier_version)
 }
 
-fn create_backup_zip_inner(
-    out_file: File,
+fn create_backup_zip(
+    out_file: &mut File,
     encryption_output: &EncryptionOutput,
     metadata_serialized: &[u8],
 ) -> Result<(), zip::result::ZipError> {

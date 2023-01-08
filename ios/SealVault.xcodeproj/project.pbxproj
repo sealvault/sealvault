@@ -48,6 +48,8 @@
 		68BA3D0F295B4ABC00AB3CE8 /* onBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D0E295B4ABC00AB3CE8 /* onBackground.swift */; };
 		68BA3D11295B4F8100AB3CE8 /* onInactive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D10295B4F8100AB3CE8 /* onInactive.swift */; };
 		68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA3D12295B531D00AB3CE8 /* authenticate.swift */; };
+		68CBB5A8296A0E2800E84ADA /* CoreBackupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */; };
+		68CBB5AA296A13E300E84ADA /* LocalFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CBB5A9296A13E300E84ADA /* LocalFiles.swift */; };
 		68CCACFA28F85BC70043692D /* Banner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACF928F85BC70043692D /* Banner.swift */; };
 		68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFD28FC2A740043692D /* CoreUICallback.swift */; };
 		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
@@ -116,6 +118,8 @@
 		68BA3D10295B4F8100AB3CE8 /* onInactive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = onInactive.swift; sourceTree = "<group>"; };
 		68BA3D12295B531D00AB3CE8 /* authenticate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = authenticate.swift; sourceTree = "<group>"; };
 		68CB392B29240507004BDD20 /* SealVaultApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SealVaultApp.entitlements; sourceTree = "<group>"; };
+		68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreBackupStorage.swift; sourceTree = "<group>"; };
+		68CBB5A9296A13E300E84ADA /* LocalFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFiles.swift; sourceTree = "<group>"; };
 		68CCACF928F85BC70043692D /* Banner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Banner.swift; sourceTree = "<group>"; };
 		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
@@ -184,11 +188,14 @@
 		688C29E72840F5C500474900 /* Model */ = {
 			isa = PBXGroup;
 			children = (
-				688C29E82840F69100474900 /* Profile.swift */,
 				688C29EA284102FC00474900 /* Address.swift */,
 				68CCACFF28FC42670043692D /* CallbackModel.swift */,
+				68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */,
+				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
 				68B6C40028426C120025BCEA /* Dapp.swift */,
+				68CBB5A9296A13E300E84ADA /* LocalFiles.swift */,
 				688C29B3283FD78000474900 /* GlobalModel.swift */,
+				688C29E82840F69100474900 /* Profile.swift */,
 				688AD66829547066001EC192 /* RecoveryModel.swift */,
 				5850C0ECACCBB3AEF2D72B92 /* Token.swift */,
 				68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */,
@@ -239,7 +246,6 @@
 				5850C9596FBB2A1B6086BFA9 /* ChainLabel.swift */,
 				68091D4C2900859E00CC4A54 /* ChainSelection.swift */,
 				686C1D042827C9DC00011311 /* Config.swift */,
-				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
 				68194EE22955DD4F00D2D813 /* CustomSecureField.swift */,
 				68EE265028DB4A710058CE25 /* DappApproval.swift */,
 				68B6C3FC28426B040025BCEA /* DappRow.swift */,
@@ -408,6 +414,7 @@
 				688C29BA283FE94300474900 /* AppTabNavigation.swift in Sources */,
 				686D8BB428E4B91F00031375 /* dispatchBackground.swift in Sources */,
 				68145F4D2950D96F005FA1C1 /* GlobalSettings.swift in Sources */,
+				68CBB5AA296A13E300E84ADA /* LocalFiles.swift in Sources */,
 				68194EE32955DD4F00D2D813 /* CustomSecureField.swift in Sources */,
 				688C29BE283FF33A00474900 /* ProfileRow.swift in Sources */,
 				68745A802826E0F000E7B915 /* BrowserView.swift in Sources */,
@@ -421,6 +428,7 @@
 				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,
 				688C29BC283FF32300474900 /* ProfileView.swift in Sources */,
+				68CBB5A8296A0E2800E84ADA /* CoreBackupStorage.swift in Sources */,
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
 				68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */,
 				68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */,
