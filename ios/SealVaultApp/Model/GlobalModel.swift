@@ -184,7 +184,7 @@ extension GlobalModel {
         } else {
             self.bannerData = BannerData(
                 title: "Error enabling backup",
-                detail: "Try to restart the app and make sure iCloud is enabled.",
+                detail: "Make sure iCloud is enabled and try to restart the app.",
                 type: .error
             )
         }
