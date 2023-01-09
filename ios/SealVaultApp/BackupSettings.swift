@@ -10,6 +10,7 @@ struct BackupSettings: View {
     @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
     @State var backupEnabledToggle: Bool = false
+    @State var isDeveloper: Bool = false
     @State var presentConfirmation: Bool = false
     @State var wasOnboarding: Bool = false
 
@@ -29,6 +30,21 @@ struct BackupSettings: View {
                     }
 
                     BackupPasswordDisplay()
+
+                    Section {
+                        Toggle(isOn: $isDeveloper) {
+                            Text("Developer Enabled")
+                        }
+                        if isDeveloper {
+                            NavigationLink {
+                                BackupDebug(debugInfo: [])
+                            } label: {
+                                Text("Debug")
+                            }
+                        }
+                    } header: {
+                        Text("Developer Mode")
+                    }
                 }
             } else {
                 BackupSettingsOnboarding()
@@ -267,6 +283,7 @@ Make sure to write down the backup password on paper or save it in a password ma
         }
     }
 }
+
 struct BackupPasswordDisplay: View {
     @EnvironmentObject private var model: GlobalModel
 
@@ -341,6 +358,41 @@ struct LastBackupRow: View {
                 let lastBackup = await model.fetchLastBackup()
                 DispatchQueue.main.async {
                     self.lastBackup = lastBackup
+                }
+            }
+        }
+    }
+}
+
+struct BackupDebug: View {
+    @State var debugInfo: [BackupDebugInfo]
+
+    var body: some View {
+        VStack {
+            List(debugInfo) { info in
+                /*@START_MENU_TOKEN@*/Text(info.path)/*@END_MENU_TOKEN@*/
+                    .font(.subheadline)
+                ForEach(info.attributes.sorted(by: <), id: \.key) { key, value in
+                    HStack {
+                        Text(key)
+                            .font(.caption)
+                        Spacer()
+                        Text(value)
+                            .font(.caption2)
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 60, bottom: 0, trailing: 0))
+                }
+            }
+            .padding()
+            .listStyle(.inset)
+        }
+        .onAppear {
+            DispatchQueue.global(qos: .userInitiated).async {
+                let debugInfo = CoreBackupStorage.debugInfo()
+                DispatchQueue.main.async {
+                    withAnimation {
+                        self.debugInfo = debugInfo
+                    }
                 }
             }
         }

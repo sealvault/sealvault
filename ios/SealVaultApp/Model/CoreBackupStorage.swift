@@ -41,6 +41,56 @@ class CoreBackupStorage {
 
         return FileManager.default.fileExists(atPath: backupDir.path)
     }
+
+    static func debugInfo() -> [BackupDebugInfo] {
+        var results = [BackupDebugInfo]()
+        guard let backupDir = LocalFiles.backupDirURL() else {
+            return results
+        }
+        let dirCoordinator = NSFileCoordinator(filePresenter: nil)
+        dirCoordinator.coordinate(
+            readingItemAt: backupDir,
+            options: NSFileCoordinator.ReadingOptions(),
+            error: nil
+        ) { dirURL in
+            do {
+                let contents = try FileManager.default.contentsOfDirectory(
+                    at: dirURL, includingPropertiesForKeys: nil
+                )
+                results.append(debugInfoForUrl(dirURL))
+
+                for url in contents {
+                    let fileCoordinator = NSFileCoordinator(filePresenter: nil)
+                    fileCoordinator.coordinate(
+                        readingItemAt: url,
+                        options: NSFileCoordinator.ReadingOptions(),
+                        error: nil
+                    ) { fileURL in
+                        results.append(debugInfoForUrl(fileURL))
+                    }
+                }
+            } catch {
+                print("Error listing backup files: '\(error)'")
+            }
+        }
+        return results
+    }
+
+    private static func debugInfoForUrl(_ url: URL) -> BackupDebugInfo {
+        var attributes = [String: String]()
+        do {
+            let values = try url.resourceValues(forKeys: Set(BackupDebugInfo.keys.keys))
+            for (key, display) in BackupDebugInfo.keys {
+                let value = values.allValues[key]
+                attributes[display] = "\(value ?? "<None>")"
+            }
+            print(values)
+        } catch {
+            print("Error retrieving url resource values: \(error)")
+        }
+
+        return BackupDebugInfo(path: url.path, attributes: attributes)
+    }
 }
 
 extension CoreBackupStorage: CoreBackupStorageI {
@@ -146,5 +196,29 @@ extension CoreBackupStorage: CoreBackupStorageI {
             }
         }
         return success
+    }
+}
+
+struct BackupDebugInfo {
+    static let keys: [URLResourceKey: String] = [
+        URLResourceKey.isDirectoryKey: "isDir",
+        URLResourceKey.fileProtectionKey: "fileProt",
+        URLResourceKey.isUbiquitousItemKey: "isUbiq",
+        URLResourceKey.ubiquitousItemIsExcludedFromSyncKey: "excludedFromSync",
+        URLResourceKey.ubiquitousItemIsUploadedKey: "isUploaded",
+        URLResourceKey.ubiquitousItemIsUploadingKey: "isUploading",
+        URLResourceKey.ubiquitousItemUploadingErrorKey: "uploadingError",
+        URLResourceKey.ubiquitousItemHasUnresolvedConflictsKey: "unresolvedConflicts"
+    ]
+
+    var path: String
+    var attributes: [
+        String: String
+    ]
+}
+
+extension BackupDebugInfo: Identifiable {
+    var id: String {
+        self.path
     }
 }
