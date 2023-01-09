@@ -33,7 +33,7 @@ struct BackupSettings: View {
 
                     Section {
                         Toggle(isOn: $isDeveloper) {
-                            Text("Developer Enabled")
+                            Text("Developer Mode")
                         }
                         if isDeveloper {
                             NavigationLink {
