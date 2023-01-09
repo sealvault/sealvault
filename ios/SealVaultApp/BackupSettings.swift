@@ -129,6 +129,9 @@ screenshot below:
                     .cornerRadius(20)
                     .shadow(radius: 20)
                     .padding()
+                    .onTapGesture {
+                        showPopUp = false
+                    }
                 }
             }
         }
