@@ -16,11 +16,12 @@ pub(in crate::backup) const ENCRYPTED_BACKUP_FILE_NAME: &str = "backup.sqlite3.e
 pub(in crate::backup) const METADATA_FILE_NAME: &str = "metadata.json";
 
 pub use backup_error::BackupError;
+pub use backup_scheme::BackupScheme;
 #[cfg(test)]
 pub use backup_storage::tmp_backup_storage::TmpBackupStorage;
 pub use backup_storage::BackupStorageI;
 pub use create::create_backup;
-pub use metadata::BackupMetadata;
+pub use metadata::{get_backup_file_name, BackupMetadata, BackupVersion};
 pub use restore::{find_latest_backup, restore_backup, BackupRestoreData};
 pub use setup::{
     disable_backup, display_backup_password, is_backup_enabled, set_up_or_rotate_backup,
@@ -39,7 +40,7 @@ mod tests {
         backup::{
             backup_scheme::BackupScheme,
             create::db_backup,
-            metadata::MetadataFromFileName,
+            metadata::{get_backup_file_name, BackupVersion, MetadataFromFileName},
             restore::{
                 backup_metadata_from_zip, find_latest_backup_inner, restore_backup_inner,
                 RestoreWorkDir,
@@ -50,11 +51,11 @@ mod tests {
             data_migrations, models as m, schema_migrations::run_migrations,
             ConnectionPool,
         },
-        device::{DeviceIdentifier, DeviceName},
-        encryption::{KdfNonce, KdfSecret, Keychain},
+        device::{DeviceIdentifier, DeviceName, OperatingSystem},
+        encryption::{KdfSecret, Keychain},
         protocols::eth,
         resources::CoreResourcesI,
-        utils::{path_to_string, tmp_file},
+        utils::{path_to_string, tmp_file, unix_timestamp},
         CoreArgs,
     };
 
@@ -105,8 +106,8 @@ mod tests {
             Ok(metadata)
         }
 
-        fn backup_versions_in_dir(&self) -> Result<Vec<i64>> {
-            let mut res: Vec<i64> = Default::default();
+        fn backup_versions_in_dir(&self) -> Result<Vec<BackupVersion>> {
+            let mut res: Vec<BackupVersion> = Default::default();
             let backup_storage = self.backup_storage();
             for file_name in backup_storage.list_backup_file_names() {
                 let meta: MetadataFromFileName = file_name.parse()?;
@@ -228,7 +229,8 @@ mod tests {
         // First backup
         let backup_metadata = backup.create_backup()?;
         let initial_backup_version = backup_metadata.backup_version;
-        assert!(initial_backup_version > 0);
+        let zero_backup_version: BackupVersion = 0.into();
+        assert!(initial_backup_version > zero_backup_version);
 
         let backup_metadata = backup.create_backup()?;
         assert!(initial_backup_version < backup_metadata.backup_version);
@@ -407,23 +409,25 @@ mod tests {
 
     #[test]
     fn device_id_from_filename_ok() -> Result<()> {
-        let device_name: DeviceName = "test-device".parse()?;
+        let os: OperatingSystem = Default::default();
         let device_id: DeviceIdentifier =
             "475dda83-9447-4626-9cf1-ecc4ddbe5bbd".parse()?;
-        let kdf_nonce = KdfNonce::random()?;
-        let metadata = BackupMetadata::builder()
-            .backup_scheme(BackupScheme::V1)
-            .backup_version(16)
-            .device_id(device_id.clone())
-            .device_name(device_name)
-            .kdf_nonce(&kdf_nonce)
-            .build();
+        let backup_version: BackupVersion = 16.into();
+        let timestamp = unix_timestamp();
 
-        let file_name = metadata.backup_file_name();
+        let file_name = get_backup_file_name(
+            BackupScheme::V1,
+            &os,
+            timestamp,
+            &device_id,
+            backup_version,
+        );
         let meta_from_file_name: MetadataFromFileName = file_name.parse()?;
 
-        assert_eq!(meta_from_file_name.backup_version, metadata.backup_version);
-        assert_eq!(meta_from_file_name.device_id, metadata.device_id);
+        assert_eq!(&meta_from_file_name.os, &os);
+        assert_eq!(&meta_from_file_name.device_id, &device_id);
+        assert_eq!(meta_from_file_name.backup_version, backup_version);
+        assert_eq!(meta_from_file_name.timestamp, timestamp);
 
         Ok(())
     }

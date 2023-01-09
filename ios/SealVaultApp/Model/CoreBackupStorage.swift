@@ -28,14 +28,64 @@ class CoreBackupStorage {
     }
 
     private static func backupFileURL(backupFileName: String) -> URL? {
-        guard let backupDir = LocalFiles.ensureBackupDir() else {
+        guard let backupDir = CoreBackupStorage.ensureBackupDir() else {
             return nil
         }
         return backupDir.appending(path: backupFileName)
     }
 
+    static func backupDirURL() -> URL? {
+        let driveURL = FileManager
+            .default
+            .url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent(Config.iCloudBackupDirName)
+        return driveURL
+    }
+
+    static func ensureBackupDir() -> URL? {
+        guard let backupDir = CoreBackupStorage.backupDirURL()  else {
+            return nil
+        }
+
+        let fileCoordinator = NSFileCoordinator(filePresenter: nil)
+        var success = false
+        fileCoordinator.coordinate(
+            writingItemAt: backupDir,
+            options: NSFileCoordinator.WritingOptions(),
+            error: nil
+        ) { dirURL in
+            let fileManager = FileManager.default
+
+            if !fileManager.fileExists(atPath: dirURL.path) {
+                do {
+                    try fileManager.createDirectory(
+                        at: dirURL,
+                        withIntermediateDirectories: true,
+                        attributes: LocalFiles.dataProtectionAttributes()
+                    )
+                    let resourceValues = try dirURL.resourceValues(forKeys: [URLResourceKey.isUbiquitousItemKey])
+                    if resourceValues.isUbiquitousItem != true {
+                        print("Error: backup directory is not ubiquitous")
+                        success = false
+                    } else {
+                        success = true
+                    }
+                } catch {
+                    print("Failed to create backup dir with error: \(error)")
+                }
+            } else {
+                success = true
+            }
+        }
+        if success {
+            return backupDir
+        } else {
+            return nil
+        }
+    }
+
     static func backupDirExists() -> Bool {
-        guard let backupDir = LocalFiles.ensureBackupDir() else {
+        guard let backupDir = CoreBackupStorage.ensureBackupDir() else {
             return false
         }
 
@@ -44,7 +94,7 @@ class CoreBackupStorage {
 
     static func debugInfo() -> [BackupDebugInfo] {
         var results = [BackupDebugInfo]()
-        guard let backupDir = LocalFiles.backupDirURL() else {
+        guard let backupDir = CoreBackupStorage.backupDirURL() else {
             return results
         }
         let dirCoordinator = NSFileCoordinator(filePresenter: nil)
@@ -98,10 +148,36 @@ extension CoreBackupStorage: CoreBackupStorageI {
         FileManager.default.ubiquityIdentityToken != nil
     }
 
+    func isUploaded(backupFileName: String) -> Bool {
+        var result = false
+
+        guard let fileURL = CoreBackupStorage.backupFileURL(backupFileName: backupFileName) else {
+            return result
+        }
+
+        let fileCoordinator = NSFileCoordinator(filePresenter: nil)
+        fileCoordinator.coordinate(
+            readingItemAt: fileURL,
+            options: NSFileCoordinator.ReadingOptions(),
+            error: nil
+        ) { readingURL in
+            do {
+                let resourceValues = try readingURL.resourceValues(
+                    forKeys: [URLResourceKey.ubiquitousItemIsUploadedKey]
+                )
+                result = resourceValues.ubiquitousItemIsUploaded == true
+            } catch {
+                print("Error fetching isUploaded: '\(error)'")
+            }
+        }
+
+        return result
+    }
+
     func listBackupFileNames() -> [String] {
         var results = [String]()
 
-        guard let backupDir = LocalFiles.backupDirURL() else {
+        guard let backupDir = CoreBackupStorage.backupDirURL() else {
             return results
         }
 
@@ -149,7 +225,6 @@ extension CoreBackupStorage: CoreBackupStorageI {
             }
         }
         return success
-
     }
 
     func copyFromStorage(backupFileName: String, tmpFilePath: String) -> Bool {

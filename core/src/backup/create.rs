@@ -15,7 +15,7 @@ use crate::{
     backup::{
         backup_error::BackupError, backup_scheme::BackupScheme,
         metadata::MetadataFromFileName, restore::verify_backup, BackupMetadata,
-        BackupStorageI,
+        BackupStorageI, BackupVersion,
     },
     db::models as m,
     encryption::{DataEncryptionKey, EncryptionOutput},
@@ -97,7 +97,10 @@ pub(in crate::backup) fn db_backup(
 }
 
 /// Create a verified backup of the DB and return it as bytes.
-fn create_verified_backup(db_path: &Path, backup_version: i64) -> Result<Vec<u8>, Error> {
+fn create_verified_backup(
+    db_path: &Path,
+    backup_version: BackupVersion,
+) -> Result<Vec<u8>, Error> {
     let mut db_file = File::open(db_path).map_err(|err| Error::Retriable {
         error: format!("Failed to open DB file: {err}"),
     })?;

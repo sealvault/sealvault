@@ -246,6 +246,10 @@ impl CoreBackupStorageI for CoreBackupStorage {
         false
     }
 
+    fn is_uploaded(&self, _: String) -> bool {
+        false
+    }
+
     fn list_backup_file_names(&self) -> Vec<String> {
         Default::default()
     }

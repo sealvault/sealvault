@@ -217,6 +217,7 @@ dictionary DappTransactionResult {
 
 callback interface CoreBackupStorageI {
     boolean can_backup();
+    boolean is_uploaded(string backup_file_name);
     sequence<string> list_backup_file_names();
     boolean copy_to_storage(string backup_file_name, string tmp_file_path);
     boolean copy_from_storage(string backup_file_name, string tmp_file_path);

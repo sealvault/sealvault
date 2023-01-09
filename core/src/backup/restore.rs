@@ -17,7 +17,8 @@ use crate::{
         setup::{
             backup_connection_pool, rollback_enable_backup, set_up_or_rotate_sk_kek,
         },
-        BackupError, BackupStorageI, ENCRYPTED_BACKUP_FILE_NAME, METADATA_FILE_NAME,
+        BackupError, BackupStorageI, BackupVersion, ENCRYPTED_BACKUP_FILE_NAME,
+        METADATA_FILE_NAME,
     },
     db::models as m,
     device::{DeviceIdentifier, OperatingSystem},
@@ -249,7 +250,7 @@ fn map_zip_error(err: zip::result::ZipError) -> Error {
 
 pub(in crate::backup) fn verify_backup(
     backup_path: &Path,
-    expected_backup_version: i64,
+    expected_backup_version: BackupVersion,
 ) -> Result<(), Error> {
     let backup_cp = backup_connection_pool(backup_path)?;
 

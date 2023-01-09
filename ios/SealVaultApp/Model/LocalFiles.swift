@@ -57,33 +57,4 @@ class LocalFiles {
 
         return cacheDirUrl.path
     }
-
-    static func backupDirURL() -> URL? {
-        let driveURL = FileManager
-            .default
-            .url(forUbiquityContainerIdentifier: nil)?
-            .appendingPathComponent(Config.iCloudBackupDirName)
-        return driveURL
-    }
-
-    static func ensureBackupDir() -> URL? {
-        if let backupDir = LocalFiles.backupDirURL() {
-            let fileManager = FileManager.default
-
-            if !fileManager.fileExists(atPath: backupDir.path) {
-                do {
-                    try fileManager.createDirectory(
-                        at: backupDir, withIntermediateDirectories: true, attributes: dataProtectionAttributes()
-                    )
-                } catch {
-                    print("Failed to create backup dir with error: \(error)")
-                    return nil
-                }
-
-            }
-            return backupDir
-        }
-        return nil
-    }
-
 }

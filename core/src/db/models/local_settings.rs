@@ -5,6 +5,7 @@
 use diesel::prelude::*;
 
 use crate::{
+    backup::BackupVersion,
     db::{schema::local_settings, DeferredTxConnection},
     encryption::KdfNonce,
     utils::rfc3339_timestamp,
@@ -79,15 +80,17 @@ impl LocalSettings {
         Ok(())
     }
 
-    pub fn fetch_backup_version(connection: &mut SqliteConnection) -> Result<i64, Error> {
+    pub fn fetch_backup_version(
+        connection: &mut SqliteConnection,
+    ) -> Result<BackupVersion, Error> {
         use local_settings::dsl as ls;
 
-        let backup_version = local_settings::table
+        let backup_version: i64 = local_settings::table
             .find(&SINGLETON_ID)
             .select(ls::backup_version)
             .first(connection)?;
 
-        Ok(backup_version)
+        Ok(backup_version.into())
     }
 
     pub fn fetch_backup_enabled(

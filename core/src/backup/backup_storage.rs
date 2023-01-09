@@ -10,6 +10,9 @@ pub trait BackupStorageI: Send + Sync + Debug {
     /// Whether synced backup storage is available.
     fn can_backup(&self) -> bool;
 
+    /// Whether the backup file has been uploaded to backup storage.
+    fn is_uploaded(&self, backup_file_name: String) -> bool;
+
     /// List of backup file names in backup storage.
     fn list_backup_file_names(&self) -> Vec<String>;
 
@@ -58,6 +61,11 @@ pub(crate) mod tmp_backup_storage {
                 can_backup,
             })
         }
+
+        fn backup_file_path(&self, backup_file_name: &str) -> PathBuf {
+            let backup_file_name: PathBuf = backup_file_name.into();
+            self.tmp_dir.path().join(backup_file_name)
+        }
     }
 
     impl Default for TmpBackupStorage {
@@ -69,6 +77,11 @@ pub(crate) mod tmp_backup_storage {
     impl BackupStorageI for TmpBackupStorage {
         fn can_backup(&self) -> bool {
             self.can_backup
+        }
+
+        fn is_uploaded(&self, backup_file_name: String) -> bool {
+            let path = self.backup_file_path(&backup_file_name);
+            path.exists()
         }
 
         fn list_backup_file_names(&self) -> Vec<String> {
@@ -103,9 +116,7 @@ pub(crate) mod tmp_backup_storage {
             backup_file_name: String,
             tmp_file_path: String,
         ) -> bool {
-            let backup_file_name: PathBuf = backup_file_name.into();
-            let to_path: PathBuf = self.tmp_dir.path().join(backup_file_name);
-
+            let to_path = self.backup_file_path(&backup_file_name);
             let tmp_file_path: PathBuf = tmp_file_path.into();
 
             match fs::copy(tmp_file_path.as_path(), to_path.as_path()) {
@@ -125,8 +136,7 @@ pub(crate) mod tmp_backup_storage {
             to_file_path: String,
         ) -> bool {
             let to_file_path: PathBuf = to_file_path.into();
-            let backup_file_name: PathBuf = backup_file_name.into();
-            let from_file_path = self.tmp_dir.path().join(backup_file_name.as_path());
+            let from_file_path = self.backup_file_path(&backup_file_name);
             match fs::copy(from_file_path.as_path(), to_file_path.as_path()) {
                 Ok(_) => true,
                 Err(err) => {
@@ -140,8 +150,7 @@ pub(crate) mod tmp_backup_storage {
         }
 
         fn delete_backup(&self, backup_file_name: String) -> bool {
-            let backup_file_name: PathBuf = backup_file_name.into();
-            let file_path = self.tmp_dir.path().join(backup_file_name.as_path());
+            let file_path = self.backup_file_path(&backup_file_name);
             match fs::remove_file(file_path.as_path()) {
                 Ok(_) => true,
                 Err(err) => {

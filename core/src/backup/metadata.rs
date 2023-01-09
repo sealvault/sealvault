@@ -4,6 +4,7 @@
 
 use std::str::FromStr;
 
+use derive_more::{AsRef, Display, Into};
 use lazy_static::lazy_static;
 use olpc_cjson::CanonicalFormatter;
 use regex::Regex;
@@ -22,14 +23,51 @@ lazy_static! {
         Regex::new(r"^sealvault_backup_(?P<scheme>[A-Za-z0-9-]+)_(?P<os>[A-Za-z0-9-]+)_(?P<timestamp>\d+)_(?P<device_id>[A-Za-z0-9-]+)_(?P<version>\d+)\.zip$").expect("static is ok");
 }
 
+/// The backup version from the database. Monotonically increasing integer within a device.
+#[derive(
+    Debug,
+    Display,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    AsRef,
+    Serialize,
+    Deserialize,
+)]
+#[serde(try_from = "i64")]
+#[serde(into = "i64")]
+#[repr(transparent)]
+pub struct BackupVersion(i64);
+
+impl From<i64> for BackupVersion {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
+impl FromStr for BackupVersion {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value: i64 = s.parse().map_err(|err| Error::Retriable {
+            error: format!("Failed to parse str to backup version with error '{err}'"),
+        })?;
+        Ok(value.into())
+    }
+}
+
 /// Saved as a plaintext json file along with the encrypted backup.
 /// More info: https://sealvault.org/dev-docs/design/backup/#backup-contents
 #[derive(Debug, PartialEq, Serialize, Deserialize, TypedBuilder)]
 pub struct BackupMetadata {
     /// The backup implementation version
     pub backup_scheme: BackupScheme,
-    /// The backup version from the database. Monotonically increasing integer within a device.
-    pub backup_version: i64,
+    pub backup_version: BackupVersion,
     /// Unix timestamp
     #[builder(default_code = "unix_timestamp()")]
     pub timestamp: i64,
@@ -44,13 +82,12 @@ pub struct BackupMetadata {
 
 impl BackupMetadata {
     pub(in crate::backup) fn backup_file_name(&self) -> String {
-        format!(
-            "sealvault_backup_{}_{}_{}_{}_{}.zip",
+        get_backup_file_name(
             self.backup_scheme,
-            self.operating_system,
+            &self.operating_system,
             self.timestamp,
-            self.device_id,
-            self.backup_version
+            &self.device_id,
+            self.backup_version,
         )
     }
 
@@ -72,7 +109,7 @@ pub(in crate::backup) struct MetadataFromFileName {
     pub timestamp: i64,
     pub os: OperatingSystem,
     pub device_id: DeviceIdentifier,
-    pub backup_version: i64,
+    pub backup_version: BackupVersion,
 }
 
 impl FromStr for MetadataFromFileName {
@@ -98,6 +135,19 @@ impl FromStr for MetadataFromFileName {
             device_id,
         })
     }
+}
+
+pub fn get_backup_file_name(
+    backup_scheme: BackupScheme,
+    os: &OperatingSystem,
+    timestamp: i64,
+    device_id: &DeviceIdentifier,
+    backup_version: BackupVersion,
+) -> String {
+    format!(
+        "sealvault_backup_{}_{}_{}_{}_{}.zip",
+        backup_scheme, os, timestamp, device_id, backup_version
+    )
 }
 
 fn parse_field_from_backup_file_name<T>(

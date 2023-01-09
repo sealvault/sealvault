@@ -10,11 +10,11 @@ use typed_builder::TypedBuilder;
 use crate::{
     assets::{list_profile_pics, load_profile_pic},
     async_runtime as rt, backup,
-    backup::{BackupError, BackupStorageI},
+    backup::{get_backup_file_name, BackupError, BackupScheme, BackupStorageI},
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
-    device::{DeviceIdentifier, DeviceName},
+    device::{DeviceIdentifier, DeviceName, OperatingSystem},
     dto,
     encryption::Keychain,
     error::Error,
@@ -137,14 +137,42 @@ impl AppCore {
         Ok(())
     }
 
-    /// Get the last backup time if any as unix timestamp.
+    /// Get the last backup time if any as unix timestamp. Returns None if there are no backups or
+    /// the last backup hasn't been uploaded yet to cloud storage.
     pub fn last_backup(&self) -> Result<Option<i64>, CoreError> {
-        let mut conn = self.connection_pool().connection()?;
-        if let Some(timestamp) = m::LocalSettings::fetch_backup_timestamp(&mut conn)? {
-            let datetime = parse_rfc3339_timestamp(&timestamp)?;
-            Ok(Some(datetime.timestamp()))
-        } else {
-            Ok(None)
+        let (backup_version, datestamp) =
+            self.connection_pool().deferred_transaction(|mut tx_conn| {
+                let timestamp =
+                    m::LocalSettings::fetch_backup_timestamp(tx_conn.as_mut())?;
+                let backup_version =
+                    m::LocalSettings::fetch_backup_version(tx_conn.as_mut())?;
+                Ok((backup_version, timestamp))
+            })?;
+        match datestamp {
+            None => Ok(None),
+            Some(datestamp) => {
+                let datetime = parse_rfc3339_timestamp(&datestamp)?;
+                let timestamp = datetime.timestamp();
+                let os: OperatingSystem = Default::default();
+                let backup_file_name = get_backup_file_name(
+                    BackupScheme::V1,
+                    &os,
+                    timestamp,
+                    self.resources.device_id(),
+                    backup_version,
+                );
+
+                let is_uploaded = self
+                    .resources
+                    .backup_storage()
+                    .is_uploaded(backup_file_name);
+
+                if is_uploaded {
+                    Ok(Some(timestamp))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 
