@@ -253,4 +253,25 @@ mod tests {
             "8FD93-EYWZR-GB7HX-QAVNS-QAVNS".parse();
         assert!(matches!(result, Err(Error::User { .. })))
     }
+
+    #[test]
+    fn lowercase_equals_uppercase() -> Result<(), Error> {
+        let pwd = "8FD93-EYWZR-GB7HX-QAVNS";
+        let uppercase: BackupPassword = pwd.parse()?;
+        let lowercase: BackupPassword = pwd.to_lowercase().parse()?;
+        assert_eq!(uppercase.expose_secret(), lowercase.expose_secret());
+        Ok(())
+    }
+
+    #[test]
+    fn missing_separator_ok() -> Result<(), Error> {
+        let pwd = "8FD93-EYWZR-GB7HX-QAVNS";
+        let with_separator: BackupPassword = pwd.parse()?;
+        let without_separator: BackupPassword = pwd.replace('-', "").parse()?;
+        assert_eq!(
+            with_separator.expose_secret(),
+            without_separator.expose_secret()
+        );
+        Ok(())
+    }
 }
