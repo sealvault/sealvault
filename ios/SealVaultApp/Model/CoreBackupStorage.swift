@@ -78,19 +78,28 @@ extension CoreBackupStorage: CoreBackupStorageI {
     }
 
     func copyToStorage(backupFileName: String, tmpFilePath: String) -> Bool {
-        let sourceURL = URL(filePath: tmpFilePath)
-
         guard let destinationURL = CoreBackupStorage.backupFileURL(backupFileName: backupFileName) else {
             return false
         }
 
-        do {
-            try FileManager.default.setUbiquitous(true, itemAt: sourceURL, destinationURL: destinationURL)
-            return true
-        } catch {
-            print("Error deleting backup file: '\(error)'")
-            return false
+        let sourceURL = URL(filePath: tmpFilePath)
+
+        let fileCoordinator = NSFileCoordinator(filePresenter: nil)
+        var success = false
+        fileCoordinator.coordinate(
+            writingItemAt: destinationURL,
+            options: NSFileCoordinator.WritingOptions(),
+            error: nil
+        ) { writingURL in
+            do {
+                try FileManager.default.setUbiquitous(true, itemAt: sourceURL, destinationURL: writingURL)
+                success = true
+            } catch {
+                print("Error moving backup file to storage: '\(error)'")
+            }
         }
+        return success
+
     }
 
     func copyFromStorage(backupFileName: String, tmpFilePath: String) -> Bool {
