@@ -92,8 +92,8 @@ class CoreBackupStorage {
         return FileManager.default.fileExists(atPath: backupDir.path)
     }
 
-    static func debugInfo() -> [BackupDebugInfo] {
-        var results = [BackupDebugInfo]()
+    static func debugInfo() -> [BackupFileInfo] {
+        var results = [BackupFileInfo]()
         guard let backupDir = CoreBackupStorage.backupDirURL() else {
             return results
         }
@@ -126,11 +126,11 @@ class CoreBackupStorage {
         return results
     }
 
-    private static func debugInfoForUrl(_ url: URL) -> BackupDebugInfo {
+    private static func debugInfoForUrl(_ url: URL) -> BackupFileInfo {
         var attributes = [String: String]()
         do {
-            let values = try url.resourceValues(forKeys: Set(BackupDebugInfo.keys.keys))
-            for (key, display) in BackupDebugInfo.keys {
+            let values = try url.resourceValues(forKeys: Set(BackupFileInfo.keys.keys))
+            for (key, display) in BackupFileInfo.keys {
                 let value = values.allValues[key]
                 attributes[display] = "\(value ?? "<None>")"
             }
@@ -139,7 +139,7 @@ class CoreBackupStorage {
             print("Error retrieving url resource values: \(error)")
         }
 
-        return BackupDebugInfo(path: url.path, attributes: attributes)
+        return BackupFileInfo(path: url.path, attributes: attributes)
     }
 }
 
@@ -274,7 +274,7 @@ extension CoreBackupStorage: CoreBackupStorageI {
     }
 }
 
-struct BackupDebugInfo {
+struct BackupFileInfo {
     static let keys: [URLResourceKey: String] = [
         URLResourceKey.isDirectoryKey: "isDir",
         URLResourceKey.fileProtectionKey: "fileProt",
@@ -292,7 +292,7 @@ struct BackupDebugInfo {
     ]
 }
 
-extension BackupDebugInfo: Identifiable {
+extension BackupFileInfo: Identifiable {
     var id: String {
         self.path
     }

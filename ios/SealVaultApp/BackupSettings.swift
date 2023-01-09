@@ -37,9 +37,9 @@ struct BackupSettings: View {
                         }
                         if isDeveloper {
                             NavigationLink {
-                                BackupDebug(debugInfo: [])
+                                BackupFilesView(debugInfo: [])
                             } label: {
-                                Text("Debug")
+                                Text("Show Backup Files")
                             }
                         }
                     } header: {
@@ -364,8 +364,8 @@ struct LastBackupRow: View {
     }
 }
 
-struct BackupDebug: View {
-    @State var debugInfo: [BackupDebugInfo]
+struct BackupFilesView: View {
+    @State var debugInfo: [BackupFileInfo]
 
     var body: some View {
         VStack {
@@ -386,6 +386,7 @@ struct BackupDebug: View {
             .padding()
             .listStyle(.inset)
         }
+        .navigationTitle("Backup Files")
         .onAppear {
             DispatchQueue.global(qos: .userInitiated).async {
                 let debugInfo = CoreBackupStorage.debugInfo()
