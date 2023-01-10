@@ -15,7 +15,8 @@ class GlobalModel: ObservableObject {
     @Published var browserTwoUrl: URL?
     @Published var topDapps: [Dapp]
     @Published var bannerData: BannerData?
-    @Published var backupEnabled: Bool = false
+    // True by default to avoid showing warning while data is loading
+    @Published var backupEnabled: Bool = true
 
     private var backgroundTaskID: UIBackgroundTaskIdentifier?
 
