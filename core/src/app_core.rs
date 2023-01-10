@@ -10,11 +10,11 @@ use typed_builder::TypedBuilder;
 use crate::{
     assets::{list_profile_pics, load_profile_pic},
     async_runtime as rt, backup,
-    backup::{get_backup_file_name, BackupError, BackupScheme, BackupStorageI},
+    backup::{BackupError, BackupStorageI},
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
     },
-    device::{DeviceIdentifier, DeviceName, OperatingSystem},
+    device::{DeviceIdentifier, DeviceName},
     dto,
     encryption::Keychain,
     error::Error,
@@ -25,7 +25,6 @@ use crate::{
     public_suffix_list::PublicSuffixList,
     resources::{CoreResources, CoreResourcesI},
     ui_callback::TokenTransferResult,
-    utils::parse_rfc3339_timestamp,
     CoreError, CoreUICallbackI, DappApprovalParams,
 };
 
@@ -139,41 +138,9 @@ impl AppCore {
 
     /// Get the last backup time if any as unix timestamp. Returns None if there are no backups or
     /// the last backup hasn't been uploaded yet to cloud storage.
-    pub fn last_backup(&self) -> Result<Option<i64>, CoreError> {
-        let (backup_version, datestamp) =
-            self.connection_pool().deferred_transaction(|mut tx_conn| {
-                let timestamp =
-                    m::LocalSettings::fetch_backup_timestamp(tx_conn.as_mut())?;
-                let backup_version =
-                    m::LocalSettings::fetch_backup_version(tx_conn.as_mut())?;
-                Ok((backup_version, timestamp))
-            })?;
-        match datestamp {
-            None => Ok(None),
-            Some(datestamp) => {
-                let datetime = parse_rfc3339_timestamp(&datestamp)?;
-                let timestamp = datetime.timestamp();
-                let os: OperatingSystem = Default::default();
-                let backup_file_name = get_backup_file_name(
-                    BackupScheme::V1,
-                    &os,
-                    timestamp,
-                    self.resources.device_id(),
-                    backup_version,
-                );
-
-                let is_uploaded = self
-                    .resources
-                    .backup_storage()
-                    .is_uploaded(backup_file_name);
-
-                if is_uploaded {
-                    Ok(Some(timestamp))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
+    pub fn last_uploaded_backup(&self) -> Result<Option<i64>, CoreError> {
+        let result = backup::last_uploaded_backup(self.resources.as_ref())?;
+        Ok(result)
     }
 
     pub fn display_backup_password(&self) -> Result<String, CoreError> {

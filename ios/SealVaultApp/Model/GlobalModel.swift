@@ -236,7 +236,7 @@ extension GlobalModel {
     func fetchLastBackup() async -> Date? {
         return await dispatchBackground(.userInteractive) {
             do {
-                if let lastBackup = try self.core.lastBackup() {
+                if let lastBackup = try self.core.lastUploadedBackup() {
                     return Date(timeIntervalSince1970: Double(lastBackup))
                 } else {
                     return nil
@@ -477,7 +477,7 @@ class PreviewAppCore: AppCoreProtocol {
         self.backupEnabledToggle
     }
 
-    func lastBackup() throws -> Int64? {
+    func lastUploadedBackup() throws -> Int64? {
         Thread.sleep(forTimeInterval: 0.5)
         return Int64(Date().timeIntervalSince1970)
     }

@@ -13,8 +13,10 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     backup::backup_scheme::BackupScheme,
+    db::models as m,
     device::{DeviceIdentifier, DeviceName, OperatingSystem},
-    utils::unix_timestamp,
+    resources::CoreResourcesI,
+    utils::{parse_rfc3339_timestamp, unix_timestamp},
     Error,
 };
 
@@ -137,7 +139,7 @@ impl FromStr for MetadataFromFileName {
     }
 }
 
-pub fn get_backup_file_name(
+pub(in crate::backup) fn get_backup_file_name(
     backup_scheme: BackupScheme,
     os: &OperatingSystem,
     timestamp: i64,
@@ -163,4 +165,44 @@ where
     })?;
     let value: T = group.as_str().parse()?;
     Ok(value)
+}
+
+/// Get the last backup time if any as unix timestamp. Returns None if there are no backups or
+/// the last backup hasn't been uploaded yet to cloud storage.
+pub fn last_uploaded_backup(
+    resources: &dyn CoreResourcesI,
+) -> Result<Option<i64>, Error> {
+    let (backup_version, datestamp) =
+        resources
+            .connection_pool()
+            .deferred_transaction(|mut tx_conn| {
+                let timestamp =
+                    m::LocalSettings::fetch_backup_timestamp(tx_conn.as_mut())?;
+                let backup_version =
+                    m::LocalSettings::fetch_backup_version(tx_conn.as_mut())?;
+                Ok((backup_version, timestamp))
+            })?;
+    match datestamp {
+        None => Ok(None),
+        Some(datestamp) => {
+            let datetime = parse_rfc3339_timestamp(&datestamp)?;
+            let timestamp = datetime.timestamp();
+            let os: OperatingSystem = Default::default();
+            let backup_file_name = get_backup_file_name(
+                BackupScheme::V1,
+                &os,
+                timestamp,
+                resources.device_id(),
+                backup_version,
+            );
+
+            let is_uploaded = resources.backup_storage().is_uploaded(backup_file_name);
+
+            if is_uploaded {
+                Ok(Some(timestamp))
+            } else {
+                Ok(None)
+            }
+        }
+    }
 }

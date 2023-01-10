@@ -21,7 +21,7 @@ pub use backup_scheme::BackupScheme;
 pub use backup_storage::tmp_backup_storage::TmpBackupStorage;
 pub use backup_storage::BackupStorageI;
 pub use create::create_backup;
-pub use metadata::{get_backup_file_name, BackupMetadata, BackupVersion};
+pub use metadata::{last_uploaded_backup, BackupMetadata, BackupVersion};
 pub use restore::{find_latest_backup, restore_backup, BackupRestoreData};
 pub use setup::{
     disable_backup, display_backup_password, is_backup_enabled, set_up_or_rotate_backup,
