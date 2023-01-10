@@ -276,4 +276,31 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn leading_whitespace_ok() -> Result<(), Error> {
+        let pwd = "8FD93-EYWZR-GB7HX-QAVNS";
+        let password: BackupPassword = pwd.parse()?;
+        let test_password: BackupPassword = format!(" {pwd}").parse()?;
+        assert_eq!(password.expose_secret(), test_password.expose_secret());
+        Ok(())
+    }
+
+    #[test]
+    fn trailing_whitespace_ok() -> Result<(), Error> {
+        let pwd = "8FD93-EYWZR-GB7HX-QAVNS";
+        let password: BackupPassword = pwd.parse()?;
+        let test_password: BackupPassword = format!("{pwd}  ").parse()?;
+        assert_eq!(password.expose_secret(), test_password.expose_secret());
+        Ok(())
+    }
+
+    #[test]
+    fn leading_and_trailing_whitespace_ok() -> Result<(), Error> {
+        let pwd = "8FD93-EYWZR-GB7HX-QAVNS";
+        let password: BackupPassword = pwd.parse()?;
+        let test_password: BackupPassword = format!("   {pwd}  ").parse()?;
+        assert_eq!(password.expose_secret(), test_password.expose_secret());
+        Ok(())
+    }
 }
