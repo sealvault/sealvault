@@ -127,8 +127,10 @@ impl FromStr for BackupPassword {
                         explanation: "Password too long".to_string(),
                     });
                 }
-                // Symbols in the character set are guaranteed to fit into u8.
-                password[i] = symbol as u8;
+                password[i] = symbol.try_into().map_err(|_| Error::Fatal {
+                    // Symbols in the hard-coded character set are guaranteed to fit into u8.
+                    error: "Unexpected character in backup password character set".into(),
+                })?;
                 i += 1;
             }
         }
