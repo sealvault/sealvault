@@ -91,6 +91,8 @@ enum CoreBackupError{
     "FailedToStoreBackup",
     "FailedToFetchBackup",
     "FailedToDeleteBackup",
+    "InvalidPassword",
+    "KDFSecretNotAvailable",
     "Error"
 };
 
@@ -250,7 +252,7 @@ namespace SealVaultCore {
     [Throws=CoreError]
     BackupRestoreData? core_find_latest_backup(CoreBackupStorageI backup_storage);
 
-    [Throws=CoreError]
+    [Throws=CoreBackupError]
     void core_restore_backup(CoreArgs core_args, CoreBackupStorageI backup_storage, string backup_file_name, string password);
 };
 

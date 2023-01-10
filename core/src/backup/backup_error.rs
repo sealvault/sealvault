@@ -18,6 +18,12 @@ pub enum BackupError {
     #[error("Failed to delete a backup file from backup storage.")]
     FailedToDeleteBackup,
 
+    #[error("Invalid password for backup.")]
+    InvalidPassword,
+
+    #[error("The KDF secret is not available from the keychain.")]
+    KDFSecretNotAvailable,
+
     /// See crate::error;
     #[error("{error}")]
     Error { error: CoreError },

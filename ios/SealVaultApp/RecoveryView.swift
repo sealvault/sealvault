@@ -120,12 +120,18 @@ struct RecoveryViewInner: View {
                         success = true
                     } catch CoreBackupError.FailedToFetchBackup(message: _) {
                         self.setErrorBanner(title: "Failed to download backup", detail: "Please try again")
+                    } catch CoreBackupError.InvalidPassword(message: _) {
+                        self.setErrorBanner(title: "Invalid backup password", detail: "Please try again")
+                    } catch CoreBackupError.KdfSecretNotAvailable(message: _) {
+                        self.setErrorBanner(
+                            title: "iCloud Keychain not synced",
+                            detail: """
+Please make sure the you have iCloud Keychain sync enabled and try again a few minutes later.
+""")
                     } catch {
                         self.setErrorBanner(
-                            title: "Failed to decrypt backup",
-                            detail: """
-Please make sure that the backup password is correct and that you have iCloud Keychain enabled.
-"""
+                            title: "Unexpected error restoring the backup",
+                            detail: "Please restart the application and try again."
                         )
                         print("Error restoring backup: \(error)")
                     }

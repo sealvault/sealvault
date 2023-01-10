@@ -106,7 +106,11 @@ pub(in crate::backup) fn restore_backup_inner(
     keychain: &Keychain,
     password: &str,
 ) -> Result<BackupMetadata, BackupError> {
-    let password: BackupPassword = password.parse()?;
+    let password: BackupPassword = password.parse().map_err(|err| {
+        log::debug!("Error parsing backup password: {err}");
+        BackupError::InvalidPassword
+    })?;
+
     let device_id: DeviceIdentifier = core_args.device_id.parse()?;
     let work_dir = RestoreWorkDir::new(&backup_file_name)?;
 
@@ -116,7 +120,12 @@ pub(in crate::backup) fn restore_backup_inner(
 
     let metadata = backup_metadata_from_zip(work_dir.zip_path())?;
 
-    let kdf_secret = KdfSecret::from_keychain(keychain, &metadata.device_id)?;
+    let kdf_secret =
+        KdfSecret::from_keychain(keychain, &metadata.device_id).map_err(|err| {
+            log::debug!("Error fetching KDF secret from keychain: {err}");
+            BackupError::KDFSecretNotAvailable
+        })?;
+
     let kdf_nonce: KdfNonce = metadata.kdf_nonce.parse()?;
     let root_backup_key = RootBackupKey::derive_from(&password, &kdf_secret, &kdf_nonce)?;
     let db_backup_dek = root_backup_key.derive_db_backup_dek()?;
@@ -127,7 +136,15 @@ pub(in crate::backup) fn restore_backup_inner(
             .map_err(map_zip_error)?;
     let encryption_output: EncryptionOutput = encrypted_backup_bytes.try_into()?;
 
-    let decrypted_backup = db_backup_dek.decrypt_backup(&encryption_output, &metadata)?;
+    let decrypted_backup = db_backup_dek
+        .decrypt_backup(&encryption_output, &metadata)
+        .map_err(|err| {
+            log::debug!("Error decrypting backup: {err}");
+            // It might be possible that the KDF secret is invalid if there is a logic error in the
+            // application or the keychain provides the wrong secret, but in the absence of bugs, the
+            // error is due to the user providing the wrong password.
+            BackupError::InvalidPassword
+        })?;
     let restore_path = Path::new(&core_args.db_file_path);
     restore_decrypted_backup(&metadata, &decrypted_backup, restore_path)?;
 
