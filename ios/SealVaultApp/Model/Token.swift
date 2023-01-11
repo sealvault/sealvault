@@ -87,14 +87,14 @@ extension Token {
             let symbol = "ETH"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "45.5122312", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "45.51", nativeToken: true)
         }
 
         static func matic(_ address: String) -> Token {
             let symbol = "MATIC"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "236.9123", nativeToken: true)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "236.91", nativeToken: true)
         }
 
         static func usdc(_ address: String) -> Token {
@@ -108,7 +108,7 @@ extension Token {
             let symbol = "DAI"
             let id = "\(symbol)-\(address)"
             let icon = UIImage(named: symbol.lowercased())!
-            return Token(id: id, symbol: symbol, icon: icon, amount: "4.321", nativeToken: false)
+            return Token(id: id, symbol: symbol, icon: icon, amount: "4.32", nativeToken: false)
         }
 
         static func busd(_ address: String) -> Token {

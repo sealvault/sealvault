@@ -254,6 +254,36 @@ extension Dapp {
             )
         }
 
+        static func lilNouns() -> Self {
+            let id = "lilnouns.wtf"
+            let url = URL(string: "https://\(id)")
+            let favicon = UIImage(named: "nouns")!
+            let addresses = [Address.ethereumDapp()]
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
+            )
+        }
+
+        static func poap() -> Self {
+            let id = "poap.xyz"
+            let url = URL(string: "https://\(id)")
+            let favicon = UIImage(named: "poap")!
+            let addresses = [Address.ethereumDapp()]
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
+            )
+        }
+
+        static func xmpt() -> Self {
+            let id = "xmtp.chat"
+            let url = URL(string: "https://\(id)")
+            let favicon = UIImage(named: "xmtp")!
+            let addresses = [Address.polygonDapp()]
+            return build(
+                id: id, humanIdentifier: id, url: url, addresses: addresses, favicon: favicon
+            )
+        }
+
     }
 // swiftlint:enable force_try
 #endif

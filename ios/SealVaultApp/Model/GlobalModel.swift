@@ -384,7 +384,7 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
-    private var backupEnabledToggle: Bool = false
+    private var backupEnabledToggle: Bool = true
 
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
         let picture = [UInt8](profile.picture.pngData()!)
@@ -520,19 +520,19 @@ class PreviewAppCore: AppCoreProtocol {
         let profiles = [
             Profile(
                 self,
-                id: activeProfileId, name: activeProfileName, picture: UIImage(named: "seal-0")!,
+                id: activeProfileId, name: activeProfileName, picture: UIImage(named: "seal-7")!,
                 wallets: wallets,
                 dapps: [
                     Dapp.ens(),
                     Dapp.opensea(),
                     Dapp.uniswap(),
-                    Dapp.dhedge(),
                     Dapp.sushi(),
                     Dapp.aave(),
                     Dapp.oneInch(),
                     Dapp.quickswap(),
                     Dapp.darkForest(),
-                    Dapp.dnd()
+                    Dapp.dnd(),
+                    Dapp.lilNouns()
                 ]
             ),
             Profile(
@@ -542,18 +542,18 @@ class PreviewAppCore: AppCoreProtocol {
             ),
             Profile(
                 self,
-                id: "3", name: "Dark Forest General", picture: UIImage(named: "seal-2")!, wallets: wallets,
+                id: "3", name: "Dark Forest Commander", picture: UIImage(named: "seal-2")!, wallets: wallets,
                 dapps: [Dapp.darkForest()]
             ),
             Profile(
                 self,
-                id: "4", name: "D&D Magician", picture: UIImage(named: "seal-7")!, wallets: wallets,
-                dapps: [Dapp.dnd()]
+                id: "5", name: "NSFW", picture: UIImage(named: "seal-6")!, wallets: wallets,
+                dapps: [Dapp.xmpt()]
             ),
             Profile(
                 self,
-                id: "5", name: "NSFW", picture: UIImage(named: "seal-6")!, wallets: wallets,
-                dapps: [Dapp.opensea()]
+                id: "6", name: "Vacation Mode", picture: UIImage(named: "seal-0")!, wallets: wallets,
+                dapps: [Dapp.poap()]
             )
         ]
 
