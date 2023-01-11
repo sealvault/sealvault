@@ -167,7 +167,11 @@ concerns.
 
 A 256-bit KDF secret (**KDF-S**) is generated on the device with the
 [CSPRNG](./cryptography.md#csprng) and stored on the user's iCloud Keychain. The
-KDF-S is transparent to the user.
+KDF-S is never displayed to the user.
+
+There is no way to test whether the user has iCloud Keychain sync enabled from
+the application code, so we warn the user when they enable backups to check
+whether they have [iCloud Keychain sync enabled.](https://archive.ph/xP8VE)
 
 The KDF-S serves as a defense-in-depth measure against lax treatment of the
 backup password as iCloud Keychain items have stronger
@@ -227,12 +231,15 @@ disabling backups first then enabling again.
 
 When installing the SealVault app on an iOS device, users may choose to recover
 from the chronologically latest backup if there are any and they're logged in to
-iCloud and iCloud Keychain is enabled.  
+iCloud with their Apple ID and iCloud Keychain is unlocked via their passcode.
 
 In order to recover, the user has to enter their [backup
 password](#backup-password) via the device keyboard. Once recovered, backups
 have to be enabled anew on the device and a new backup password will be
 generated.
+
+The number of tries for the backup password is not limited, because an attacker
+could trivially bypass any limits by reinstalling the application.[^10]
 
 ### Post-Quantum Security
 
@@ -242,7 +249,7 @@ $O(2^{0.5N})$ time using [Grover's
 algorithm.](https://en.wikipedia.org/wiki/Grover%27s_algorithm)  For this reason
 it is recommended to switch from 128-bit to 256-bit symmetric encryption
 algorithms to render such attacks unfeasible due to $2^{128}$ theoretical time
-cost.[^10]
+cost.[^15]
 
 Our chosen [AEAD](./cryptography.md#aead) construct has 256-bit keys, but the
 [backup password](#backup-password) has only 100-bit entropy.  Does this make
@@ -302,7 +309,10 @@ We think this is an acceptable risk.
         (Apple acknowledged the vulnerability, but claimed that it couldn't lead to
         account takeover by itself.)
     - 2022: [T2 security chip retry limit bypass.](https://9to5mac.com/2022/02/17/t2-mac-security-vulnerability-passware/)
-[^10]: 
+[^10]:
+    iOS rotates the device id when the app is reinstalled, so the app doesn't know
+    if it's installed for the first time or if it's reinstalled on the device.
+[^15]: 
     [Bernstein & Lange, 2017: Post-quantum cryptography.](https://eprint.iacr.org/2017/314.pdf)
 [^20]: 
     A potential weakness of our choice of [KDFs](./cryptography.md#kdfs) and
