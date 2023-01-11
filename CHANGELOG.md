@@ -18,6 +18,8 @@
 - New profile pic selection with seals
 - Change default tab to profiles
 - Allow copying profile wallet with swipe
+- Add browser history. Previously, user was always browsing in incognito mode.
+  Now the browser history is retained until the user switches profiles.
 
 #### Fixes
 
