@@ -199,7 +199,7 @@ restore them if you lose your device or get a new one.
                     Text(
 """
 All backups are encrypted with a strong backup password generated on your device. \
-The backup password is protected by Secure Enclave and it never leaves your device.
+The backup password is protected by Secure Enclave and it's not synced between your devices.
 """
                     )
                     .foregroundColor(step2 ? .secondary : .primary)

@@ -53,6 +53,7 @@ nav:
     - index.md
     - One-Dapp-per-Key: one-dapp-per-key.md
     - Privacy: privacy.md
+    - Backup: backup.md
   - Blog: blog/index.md
   - Developer Docs:
       - dev-docs/index.md

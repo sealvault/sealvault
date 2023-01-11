@@ -68,6 +68,12 @@ title: Web3 Key Manager App
     <figcaption>
     Open two dapps side-by-side and switch with a single tap while both of them remain connected.
     </figure>
+    
+-   __Self-Custody Backup__
+    <figure markdown>
+    ![iOS backup settings](./assets/images/screenshots/backup-settings.png){ loading=lazy }
+    </figure>
+    Automatically back up your keys and profiles to your iCloud Storage. [More](./backup.md)
 
 -   __Multi Chain__
     - Currently: Ethereum and Polygon PoS
@@ -75,9 +81,8 @@ title: Web3 Key Manager App
 
 -   __Cross Platform__
     - Currently: iOS
-    - Next: Android
-    - Planned: MacOS, Window, Linux
-    - Self-custody backups and E2EE sync
+    - Next: MacOS + E2EE sync
+    - Planned: Androind, Window, Linux
 
 -   __Open Source for Real__
     - [GitHub Repo](https://github.com/sealvault/sealvault)
