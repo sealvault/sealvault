@@ -11,8 +11,8 @@ class GlobalModel: ObservableObject {
     /// The profile currently used for dapp interactions
     @Published var activeProfileId: String?
     @Published var callbackModel: CallbackModel
-    @Published var browserOneUrl: URL?
-    @Published var browserTwoUrl: URL?
+    @Published var leftBrowserURL: URL?
+    @Published var rightBrowserURL: URL?
     @Published var topDapps: [Dapp]
     @Published var bannerData: BannerData?
     // True by default to avoid showing warning while data is loading
@@ -168,6 +168,18 @@ extension GlobalModel {
             )
         }
         await self.refreshProfiles()
+    }
+
+    func launchInBrowser(_ browser: BrowserWindow, profile: Profile, url: URL) async {
+        if activeProfileId != profile.id {
+            await setActiveProfileId(profileId: profile.id)
+        }
+        switch browser {
+        case .left:
+            leftBrowserURL = url
+        case .right:
+            rightBrowserURL = url
+        }
     }
 
     func enableBackup() async -> Bool {
@@ -373,7 +385,6 @@ extension GlobalModel {
         }
         return activeProfile?.dappList.filter { topDappIds.contains($0.id) } ?? []
     }
-
 }
 
 // MARK: - Development

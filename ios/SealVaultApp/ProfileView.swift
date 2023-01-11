@@ -31,16 +31,16 @@ struct ProfileView: View {
                         } label: {
                             DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
                                 .contextMenu {
-                                    Button(action: {
+                                    AsyncButton(action: {
                                         if let url = dapp.url {
-                                            model.browserOneUrl = url
+                                            await model.launchInBrowser(.left, profile: profile, url: url)
                                         }
                                     }, label: {
                                         Text("Open in Left Browser")
                                     })
-                                    Button(action: {
+                                    AsyncButton(action: {
                                         if let url = dapp.url {
-                                            model.browserTwoUrl = url
+                                            await model.launchInBrowser(.right, profile: profile, url: url)
                                         }
                                     }, label: {
                                         Text("Open in Right Browser")

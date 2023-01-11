@@ -38,14 +38,16 @@ final class BrowserUITest: XCTestCase {
     }
 
     func testOpenDappInBrowser() {
-        let app = XCUIApplication()
-        app.launch()
+        let app = try! startBrowserApp(createSecondProfile: true, switchToBrowser: false)
+
+        // Set other profile active to test that the app switches the active profile when dapp is
+        // launched from inactive profile.
+        setActiveProfile(app, profileName: "CLI Profile")
 
         let dapp = "quickswap.exchange"
 
-        tapButton(app, "Profiles (Default is active)")
+        tapButton(app, "Profiles (CLI Profile is active)", tabBar: true)
         tapButton(app, "Default profile")
-        print("app.webViews.count", app.webViews.count)
 
         let quickswapButton = app.buttons["\(dapp) dapp"]
         _ = quickswapButton.waitForExistence(timeout: buttonTimeoutSeconds)
@@ -57,7 +59,12 @@ final class BrowserUITest: XCTestCase {
 
         let addressBar = app.textFields[browserAddressBar]
         let addressText = addressBar.value as? String
+        // Test that dapp was loaded in the browser
         XCTAssert(addressText?.contains(dapp) ?? false)
+
+        // Test that active profile was switched to Default
+        let profilesButton = app.tabBars.buttons["Profiles (Default is active)"]
+        XCTAssert(profilesButton.waitForExistence(timeout: buttonTimeoutSeconds))
     }
 
     // TODO don't rely on web page loading
@@ -92,9 +99,7 @@ final class BrowserUITest: XCTestCase {
     }
 
     func testClearHistoryOnProfileSwitch() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-createProfile"]
-        app.launch()
+        let app = try! startBrowserApp(createSecondProfile: true, switchToBrowser: false)
 
         setActiveProfile(app, profileName: "CLI Profile")
 
@@ -122,10 +127,15 @@ final class BrowserUITest: XCTestCase {
     }
 }
 
-func startBrowserApp() throws -> XCUIApplication {
+func startBrowserApp(createSecondProfile: Bool = false, switchToBrowser: Bool = true) throws -> XCUIApplication {
     let app = XCUIApplication()
+    if createSecondProfile {
+        app.launchArguments = ["-createProfile"]
+    }
     app.launch()
-    tapButton(app, "Left Browser", tabBar: true)
+    if switchToBrowser {
+        tapButton(app, "Left Browser", tabBar: true)
+    }
     return app
 }
 

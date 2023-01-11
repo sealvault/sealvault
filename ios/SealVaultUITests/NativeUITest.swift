@@ -81,9 +81,9 @@ final class NativeUITest: XCTestCase {
 }
 
 func setActiveProfile(_ app: XCUIApplication, profileName: String) {
-    let newProfileButton = app.buttons["\(profileName) profile"]
-    XCTAssert(newProfileButton.waitForExistence(timeout: buttonTimeoutSeconds))
-    newProfileButton.press(forDuration: 1)
+    let profilesButton = app.buttons["\(profileName) profile"]
+    XCTAssert(profilesButton.waitForExistence(timeout: buttonTimeoutSeconds))
+    profilesButton.press(forDuration: 1)
     tapButton(app, "Set Active")
     let tabProfileIcon = app.buttons["Profiles (\(profileName) is active)"]
     XCTAssert(tabProfileIcon.waitForExistence(timeout: buttonTimeoutSeconds))

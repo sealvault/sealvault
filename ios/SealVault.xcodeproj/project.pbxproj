@@ -53,6 +53,9 @@
 		68CCACFA28F85BC70043692D /* Banner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACF928F85BC70043692D /* Banner.swift */; };
 		68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFD28FC2A740043692D /* CoreUICallback.swift */; };
 		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
+		68D159A6296F09C400B0E717 /* (null) in Sources */ = {isa = PBXBuildFile; };
+		68D159A8296F0A9C00B0E717 /* ProfileName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A7296F0A9C00B0E717 /* ProfileName.swift */; };
+		68D159AA296F0C4500B0E717 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A9296F0C4500B0E717 /* BrowserWindow.swift */; };
 		68EBBC272907C92200C367F4 /* sortAddressesBy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC262907C92200C367F4 /* sortAddressesBy.swift */; };
 		68EBBC29290E9B4D00C367F4 /* displayChecksumAddress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */; };
 		68EBBC2B290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */; };
@@ -124,6 +127,7 @@
 		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
 		68D159A7296F0A9C00B0E717 /* ProfileName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileName.swift; sourceTree = "<group>"; };
+		68D159A9296F0C4500B0E717 /* BrowserWindow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
 		68E9F88229223CFA007316B6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		68EBBC262907C92200C367F4 /* sortAddressesBy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sortAddressesBy.swift; sourceTree = "<group>"; };
 		68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = displayChecksumAddress.swift; sourceTree = "<group>"; };
@@ -190,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				688C29EA284102FC00474900 /* Address.swift */,
+				68D159A9296F0C4500B0E717 /* BrowserWindow.swift */,
 				68CCACFF28FC42670043692D /* CallbackModel.swift */,
 				68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */,
 				68CCACFD28FC2A740043692D /* CoreUICallback.swift */,
@@ -273,6 +278,7 @@
 				686D8BB228E4B90D00031375 /* Util */,
 				5850CBB6EF5849DD76087101 /* WalletRow.swift */,
 				68745A812826E11500E7B915 /* WebViewRepresentable.swift */,
+				68D159A7296F0A9C00B0E717 /* ProfileName.swift */,
 			);
 			path = SealVaultApp;
 			sourceTree = "<group>";
@@ -436,12 +442,14 @@
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
 				686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */,
 				688AD66329532B1B001EC192 /* BackupSettings.swift in Sources */,
+				68D159A8296F0A9C00B0E717 /* ProfileName.swift in Sources */,
 				68EBBC29290E9B4D00C367F4 /* displayChecksumAddress.swift in Sources */,
 				688C29B6283FE73E00474900 /* ProfileListView.swift in Sources */,
 				68145F4F295219A4005FA1C1 /* AsyncButton.swift in Sources */,
 				5850C1A79F19C90DBB15EB9D /* Token.swift in Sources */,
 				5850CE62B626F0A8D83744FB /* TokenRow.swift in Sources */,
 				68091D4D2900859E00CC4A54 /* ChainSelection.swift in Sources */,
+				68D159AA296F0C4500B0E717 /* BrowserWindow.swift in Sources */,
 				5850CE3EB5ADD54FD2A81B97 /* TransferForm.swift in Sources */,
 				5850CBD0176884BC3B64B08C /* IconView.swift in Sources */,
 				68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */,

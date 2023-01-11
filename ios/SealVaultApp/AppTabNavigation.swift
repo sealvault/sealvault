@@ -165,13 +165,13 @@ struct AppTabNavigationInner: View {
         .onChange(of: model.activeProfileId) { newValue in
             self.activeProfileId = newValue
         }
-        .onChange(of: model.browserOneUrl) { newValue in
+        .onChange(of: model.leftBrowserURL) { newValue in
             if let url = newValue {
                 browserModelOne.loadUrl(url)
                 selection = .browserOne
             }
         }
-        .onChange(of: model.browserTwoUrl) { newValue in
+        .onChange(of: model.rightBrowserURL) { newValue in
             if let url = newValue {
                 browserModelTwo.loadUrl(url)
                 selection = .browserTwo
