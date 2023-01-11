@@ -1,5 +1,29 @@
 # Changelog
 
+## 2023-01-11
+
+### iOS Beta v0.6.0
+
+#### Features
+
+- [Self-custody backups](https://sealvault.org/backup)
+- Add new profile and allow switching profiles
+
+#### Improvements
+
+- Change chain to network in UI
+- Improve address menu UX
+- Add profile name to wallet row
+- Remove labels for nav bar buttons
+- New profile pic selection with seals
+- Change default tab to profiles
+- Allow copying profile wallet with swipe
+
+#### Fixes
+
+- Exclude DB file from iCloud Backup since it won't work due to missing keys
+  from local keychain.
+
 ## 2022-12-23
 
 ### iOS Beta v0.5.3
