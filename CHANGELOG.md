@@ -18,7 +18,7 @@
 #### Features
 
 - [Self-custody backups](https://sealvault.org/backup)
-- Create new profile and allow switching profiles
+- Create new profiles and allow switching profiles
 
 #### Improvements
 
