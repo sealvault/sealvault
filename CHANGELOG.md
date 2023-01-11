@@ -2,6 +2,17 @@
 
 ## 2023-01-11
 
+### iOS Beta v0.6.1
+
+#### Improvements
+
+- Add active profile checkmark in profile view
+
+#### Fixes
+
+- Make launching dapp from inactive profile turn that profile active.
+  ([#99](https://github.com/sealvault/sealvault/issues/99))
+
 ### iOS Beta v0.6.0
 
 #### Features
