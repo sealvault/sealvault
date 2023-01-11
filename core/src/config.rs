@@ -37,11 +37,6 @@ pub const FALLBACK_FAVICON_ASSET: &str = "fallback-favicon.png";
 
 // Public Suffix List
 pub const PUBLIC_SUFFIX_LIST_ASSET: &str = "public-suffix-list.dat.txt";
-// Latest version
-pub const PUBLIC_SUFFIX_LIST_URL: &str =
-    "https://publicsuffix.org/list/public_suffix_list.dat";
-// 1 day recommended by https://publicsuffix.org/list/
-pub const PUBLIC_SUFFIX_POLL: Duration = Duration::from_secs(24 * 60 * 60);
 
 // Favicons
 pub const FAVICON_API: &str = "https://icons.duckduckgo.com/ip3/";
