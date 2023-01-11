@@ -58,6 +58,11 @@ struct ProfileView: View {
             })
             .accessibilityRotor("Dapps", entries: profile.dappList, entryLabel: \.displayName)
         }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ProfileName(profile: profile)
+            }
+        }
         .navigationTitle(Text(profile.displayName))
         .navigationBarTitleDisplayMode(.inline)
         .task {

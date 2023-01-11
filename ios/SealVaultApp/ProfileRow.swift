@@ -16,13 +16,7 @@ struct ProfileRow: View {
             ProfileImageRectangle(profile: profile)
 
             VStack(alignment: .leading) {
-                HStack(spacing: 5) {
-                    Text(profile.displayName)
-                    if model.activeProfileId == profile.id {
-                        Image(systemName: "checkmark.circle")
-                            .foregroundColor(.green)
-                    }
-                }.font(.headline)
+                ProfileName(profile: profile)
 
                 Text(profile.topDapps)
                     .lineLimit(2)

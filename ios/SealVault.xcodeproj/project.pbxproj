@@ -123,6 +123,7 @@
 		68CCACF928F85BC70043692D /* Banner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Banner.swift; sourceTree = "<group>"; };
 		68CCACFD28FC2A740043692D /* CoreUICallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreUICallback.swift; sourceTree = "<group>"; };
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
+		68D159A7296F0A9C00B0E717 /* ProfileName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileName.swift; sourceTree = "<group>"; };
 		68E9F88229223CFA007316B6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		68EBBC262907C92200C367F4 /* sortAddressesBy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sortAddressesBy.swift; sourceTree = "<group>"; };
 		68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = displayChecksumAddress.swift; sourceTree = "<group>"; };
