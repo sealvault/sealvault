@@ -19,7 +19,7 @@ diesel = { version = "2.0.0", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "2.0.0-rc.0", features = ["sqlite"] }
 # `serde` feauture implicitly depends on `pem` in 0.12.1
 ecdsa = {version = "0.14", features = ["digest", "sign"]}
-# Needed to fork to resolve dependency conflict. Pending https://github.com/roynalnaruto/svm-rs/pull/62
+# Had to fork to resolve dependency conflict. Pending release of https://github.com/roynalnaruto/svm-rs/pull/67
 ethers = { git = "https://github.com/agostbiro/ethers-rs", features = ["legacy", "eip712", "abigen"] }
 futures = "0.3.21"
 # Git version needed for unreleased https://github.com/paritytech/jsonrpsee/pull/845
