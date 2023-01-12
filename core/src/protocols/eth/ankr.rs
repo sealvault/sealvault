@@ -268,13 +268,13 @@ mod tests {
     use std::{net::SocketAddr, time::Instant};
 
     use jsonrpsee::{
-        core::{
-            async_trait,
-            logger::{Body, HttpLogger, MethodKind, Params, Request},
-            RpcResult,
-        },
+        core::{async_trait, RpcResult},
         http_client::{HttpClient, HttpClientBuilder},
-        http_server::{HttpServerBuilder, HttpServerHandle},
+        server::{
+            logger::{HttpRequest, Logger, MethodKind, TransportProtocol},
+            RpcModule, ServerBuilder, ServerHandle,
+        },
+        types::{Params, Request},
     };
     use serde_json::json;
 
@@ -283,13 +283,13 @@ mod tests {
 
     pub struct AnkrRpc {
         client: HttpClient,
-        _sever_handle: HttpServerHandle,
+        _sever_handle: ServerHandle,
     }
 
     impl AnkrRpc {
         pub fn new() -> Result<Self, Error> {
             let server = rt::block_on(
-                HttpServerBuilder::default()
+                ServerBuilder::default()
                     .custom_tokio_runtime(rt::handle())
                     .set_logger(ServerLogger)
                     .build("127.0.0.1:0"),
@@ -399,43 +399,61 @@ mod tests {
     #[derive(Clone)]
     struct ServerLogger;
 
-    impl HttpLogger for ServerLogger {
+    impl Logger for ServerLogger {
         type Instant = Instant;
 
-        fn on_request(
+        fn on_connect(
             &self,
             remote_addr: SocketAddr,
-            request: &Request<Body>,
-        ) -> Self::Instant {
-            println!(
-                "[Logger::on_request] remote_addr {}, request: {:?}",
-                remote_addr, request
-            );
+            req: &HttpRequest,
+            _t: TransportProtocol,
+        ) {
+            println!("[Logger::on_connect] remote_addr {remote_addr:?}, req: {req:?}");
+        }
+
+        fn on_request(&self, _t: TransportProtocol) -> Self::Instant {
             Instant::now()
         }
 
-        fn on_call(&self, name: &str, params: Params, kind: MethodKind) {
+        fn on_call(
+            &self,
+            name: &str,
+            params: Params,
+            kind: MethodKind,
+            _t: TransportProtocol,
+        ) {
             println!(
-                "[Logger::on_call] method: '{}', params: {:?}, kind: {}",
-                name, params, kind
+                "[Logger::on_call] method: '{name}', params: {params:?}, kind: {kind}"
             );
         }
 
-        fn on_result(&self, name: &str, succeess: bool, started_at: Self::Instant) {
+        fn on_result(
+            &self,
+            name: &str,
+            success: bool,
+            started_at: Self::Instant,
+            _t: TransportProtocol,
+        ) {
             println!(
-                "[Logger::on_result] '{}', worked? {}, time elapsed {:?}",
-                name,
-                succeess,
+                "[Logger::on_result] '{name}', worked? {success}, time elapsed {:?}",
                 started_at.elapsed()
             );
         }
 
-        fn on_response(&self, result: &str, started_at: Self::Instant) {
+        fn on_response(
+            &self,
+            result: &str,
+            started_at: Self::Instant,
+            _t: TransportProtocol,
+        ) {
             println!(
-                "[Logger::on_response] result: {}, time elapsed {:?}",
-                result,
+                "[Logger::on_response] result: {result}, time elapsed {:?}",
                 started_at.elapsed()
             );
+        }
+
+        fn on_disconnect(&self, remote_addr: SocketAddr, _t: TransportProtocol) {
+            println!("[Logger::on_disconnect] remote_addr: {remote_addr:?}");
         }
     }
 

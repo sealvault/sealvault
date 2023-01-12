@@ -43,6 +43,7 @@
     }
 
     async function executeTest(name, func) {
+      console.debug(`Executing '${name}' test`)
       let ok = false
       try {
         await func(name)

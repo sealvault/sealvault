@@ -249,7 +249,7 @@
          * @returns {Promise}
          */
         request(jsonRpcRequest) {
-          console.log('sv request', jsonRpcRequest)
+          console.debug('sv request', jsonRpcRequest)
           const requestPromise = new Promise((resolve, reject) => {
             const { parent, value: requestHandler } = getPropByString(
               window,
@@ -288,7 +288,7 @@
             // Prevent reflected XSS by passing the result as hexadecimal utf-8 bytes to JS.
             // See the security model in the developer docs for more.
             response = JSON.parse(hexBytesToString(responseHex))
-            console.log('sv response', response)
+            console.debug('sv response', response)
           } catch (error) {
             // We don't know which request to respond to
             console.error(

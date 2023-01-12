@@ -23,7 +23,7 @@ ecdsa = {version = "0.14", features = ["digest", "sign"]}
 ethers = { git = "https://github.com/agostbiro/ethers-rs", features = ["legacy", "eip712", "abigen"] }
 futures = "0.3.21"
 # Git version needed for unreleased https://github.com/paritytech/jsonrpsee/pull/845
-jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee", rev="41b8a2c", features = ["server", "http-client", "macros"] }
+jsonrpsee = { version = "0.16", features = ["server", "http-client", "macros"] }
 # Ethers Core has this
 k256 = { version = "0.11", features = ["digest", "ecdsa", "keccak256", "pkcs8", "pem"] }
 # This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)

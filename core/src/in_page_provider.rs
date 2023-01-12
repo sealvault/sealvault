@@ -1209,7 +1209,7 @@ mod tests {
         fn test_call(self, method: &str, params: ArrayParams) -> Result<()> {
             let id = Id::Str(new_uuid().into());
             let params = params.to_rpc_params().expect("rpc params serialize");
-            let request = RequestSer::new(&id, method, params);
+            let request = RequestSer::owned(id, method.to_string(), params);
             let raw_request =
                 serde_json::to_string(&request).expect("request serializes");
             let handle = self.in_page_request(raw_request);
