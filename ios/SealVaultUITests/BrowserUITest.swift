@@ -83,9 +83,9 @@ final class BrowserUITest: XCTestCase {
     func testPartialUrl() throws {
         let app = try! startBrowserApp()
 
-        enterAddressBar(app, text: "example.com")
+        enterAddressBar(app, text: "sealvault.org")
 
-        let finishedOk = app.webViews.staticTexts["Example Domain"]
+        let finishedOk = app.webViews.staticTexts["SealVault"]
         XCTAssert(finishedOk.waitForExistence(timeout: browserTimeoutSeconds))
     }
 
