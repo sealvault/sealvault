@@ -10,7 +10,7 @@ use actix_web::{
     HttpServer, Responder,
 };
 use dotenv::dotenv;
-use ethers_core::utils::hex;
+use ethers::core::utils::hex;
 use uniffi_sealvault_core::{
     AppCore, CoreArgs, CoreBackupStorageI, CoreInPageCallbackI, CoreUICallbackI,
     DappAllotmentTransferResult, DappApprovalParams, DappSignatureResult,

@@ -4,6 +4,7 @@
 
 use std::str::FromStr;
 
+use base64::Engine;
 use generic_array::{typenum::U16, GenericArray};
 
 use crate::{utils::try_random_bytes, Error};
@@ -37,7 +38,8 @@ impl TryFrom<Vec<u8>> for KdfNonce {
 
 impl From<&KdfNonce> for String {
     fn from(value: &KdfNonce) -> Self {
-        base64::encode(value)
+        use base64::engine::general_purpose::STANDARD as engine;
+        engine.encode(value)
     }
 }
 
@@ -45,7 +47,24 @@ impl FromStr for KdfNonce {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let buffer = base64::decode(s)?;
+        use base64::engine::general_purpose::STANDARD as engine;
+        let buffer = engine.decode(s)?;
         buffer.try_into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use super::*;
+
+    #[test]
+    fn encode_decode() -> Result<()> {
+        let nonce = KdfNonce::random()?;
+        let nonce_str: String = (&nonce).into();
+        let parsed_nonce: KdfNonce = nonce_str.parse()?;
+        assert_eq!(nonce.0, parsed_nonce.0);
+        Ok(())
     }
 }

@@ -2,9 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use ethers::core::{
-    types::{U256, U64},
-    utils::parse_units,
+use ethers::{
+    core::{
+        types::{U256, U64},
+        utils::parse_units,
+    },
+    utils::ParseUnits,
 };
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -131,7 +134,7 @@ impl ChainId {
     }
 
     fn default_dapp_allotment(&self) -> NativeTokenAmount {
-        let amount = match *self {
+        let units = match *self {
             Self::EthMainnet => parse_units("0", "ether"),
             Self::EthGoerli => parse_units("0.1", "ether"),
             Self::PolygonMainnet => parse_units("0.1", "ether"),
@@ -139,7 +142,11 @@ impl ChainId {
         }
         .expect("unit test catches panics");
 
-        NativeTokenAmount::new(*self, amount)
+        match units {
+            ParseUnits::U256(amount) => NativeTokenAmount::new(*self, amount),
+            // Default dapp allotment cannot be negative. Unit test checks this exhaustively.
+            ParseUnits::I256(_) => unreachable!(),
+        }
     }
 
     pub fn default_user_settings(&self) -> ChainSettings {

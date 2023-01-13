@@ -145,7 +145,7 @@ impl Address {
             .profile_id(params.profile_id)
             .dek_id(dek_id.as_str())
             .elliptic_curve(signing_key.curve)
-            .public_key(public_key.as_ref())
+            .public_key(public_key.as_slice())
             .encrypted_der(&encrypted_signing_key)
             .dapp_id(params.dapp_id)
             .is_profile_wallet(params.is_profile_wallet)
