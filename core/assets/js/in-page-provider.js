@@ -2,10 +2,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+/**
+ * The in-page providers are designed to have no dependencies for security reasons.
+ * The source is separated into modules with native JavaScript
+ * closures in order to avoid the complexity and security considerations
+ * of introducing a JavaScript build tool to an Xcode project.
+ * Some modules depend on other modules, therefore it's important to
+ * preserve their order within this source file.
+ *
+ * Targets iOS 15 Safari.
+ *
+ */
 ;(function SealVaultProviders() {
   "use strict"
 
-  // These values are injected by the app provider when the page is loaded.
+  // The values for the placeholders are injected by the app provider when the page is
+  // loaded.
+
   // Must not be nested property
   const SEALVAULT_RPC_PROVIDER = "<SEALVAULT_RPC_PROVIDER>"
   // Can be nested property
@@ -183,27 +196,18 @@
     return Object.freeze(eventEmitter)
   }
 
+  /**
+   * Ethereum provider that is injected into web pages to expose transaction
+   * signing functionality from the SealVault iOS app to dapps.
+   *
+   * Supports
+   * [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193): provider object and events spec
+   * [EIP-747](https://eips.ethereum.org/EIPS/eip-747): wallet_watchAsset (TODO)
+   * [EIP-3085](https://eips.ethereum.org/EIPS/eip-3085): wallet_addEthereumChain
+   * [EIP-3326](https://ethereum-magicians.org/t/eip-3326-wallet-switchethereumchain/5471): wallet_switchEthereumChain
+   *
+   */
   ;(function EthereumProvider() {
-    /**
-     * Ethereum provider that is injected into web pages to expose transaction
-     * signing functionality from the SealVault iOS app to dapps.
-     *
-     * Supports
-     * [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193): provider object and events spec
-     * [EIP-747](https://eips.ethereum.org/EIPS/eip-747): wallet_watchAsset (TODO)
-     * [EIP-3085](https://eips.ethereum.org/EIPS/eip-3085): wallet_addEthereumChain
-     * [EIP-3326](https://ethereum-magicians.org/t/eip-3326-wallet-switchethereumchain/5471): wallet_switchEthereumChain
-     *
-     * The provider is designed to have no dependencies for security reasons.
-     * The source is separated into modules with native JavaScript
-     * closures in order to avoid the complexity and security considerations
-     * of introducing a JavaScript build tool to an Xcode project.
-     * Some modules depend on other modules, therefore it's important to
-     * preserve their order within this source file.
-     *
-     * Targets iOS 15 Safari.
-     *
-     */
 
     console.debug(`Initializing ${EthereumProvider.name}`)
 
@@ -546,13 +550,7 @@
 
     // Expose certain modules globally
 
-    if (window[SEALVAULT_RPC_PROVIDER]) {
-      console.warn(
-        `${EthereumProvider.name}: 'window.${SEALVAULT_RPC_PROVIDER}' is already defined, it will be overwritten.`
-      )
-    }
-
-    // Called from Swift
+    // The SealVault RPC provider is called from Swift
     Object.defineProperty(window, SEALVAULT_RPC_PROVIDER, {
       value: EthereumProvider.modules.sealVaultRpc,
     })
@@ -563,7 +561,7 @@
       )
     }
 
-    // Called by dapp front end
+    // The Ethereum provider is called by the dapp front end
     Object.defineProperty(window, ETHEREUM_PROVIDER, {
       value: EthereumProvider.modules.ethereum,
       writable: false,
