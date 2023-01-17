@@ -1,5 +1,15 @@
 # Changelog
 
+## 2023-01-17
+
+### iOS Beta v0.6.2
+
+#### Fixes
+
+- Fix notification resetting selection.
+  ([#100](https://github.com/sealvault/sealvault/issues/100))
+
+
 ## 2023-01-11
 
 ### iOS Beta v0.6.1
