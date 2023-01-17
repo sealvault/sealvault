@@ -234,7 +234,7 @@ impl InPageProvider {
             selected_address,
         };
         let data = serde_json::to_value(&event).map_err(|_| Error::Fatal {
-            error: format!("Failed to deserialize SealVaultConnect event: {:?}", event),
+            error: format!("Failed to deserialize SealVaultConnect event: {event:?}"),
         })?;
         let message = ProviderMessage {
             event: ProviderEvent::SealVaultConnect,
