@@ -4232,6 +4232,7 @@ dependencies = [
 name = "sealvault_dev_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "dotenv",
  "env_logger",
@@ -4249,9 +4250,11 @@ dependencies = [
 name = "sealvault_tools_lib"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "hex 0.4.3",
  "log",
  "sealvault_core",
+ "tempfile",
 ]
 
 [[package]]

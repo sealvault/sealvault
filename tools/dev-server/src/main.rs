@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Result;
 use axum::{
     body::{boxed, BoxBody},
     extract::State,
@@ -14,14 +15,11 @@ use axum::{
 };
 use dotenv::dotenv;
 use hyper::Body;
-use sealvault_tools_lib::{
-    CoreBackupStorageMock, CoreUICallBackMock, InPageRequestContextMock,
-};
+use sealvault_tools_lib::{InPageRequestContextMock, ToolAppCore};
 use tower::ServiceExt;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use uniffi_sealvault_core::{async_runtime, AppCore, CoreArgs};
+use uniffi_sealvault_core::async_runtime;
 
-const DB_PATH: &str = ":memory:";
 const STATIC_FOLDER: &str = "./static";
 const ADDRESS: &str = "127.0.0.1:8080";
 
@@ -30,30 +28,18 @@ const ADDRESS: &str = "127.0.0.1:8080";
 /// Serves the static directory at `http://localhost:8080/` and proxies requests to the backend
 /// at http://localhost:8080/backend
 ///
-fn main() {
+fn main() -> Result<()> {
     dotenv().ok();
 
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let backend_args = CoreArgs {
-        device_id: "dev-server".into(),
-        device_name: "dev-server".into(),
-        cache_dir: "./cache".into(),
-        db_file_path: DB_PATH.into(),
-    };
-    let app_core = Arc::new(
-        AppCore::new(
-            backend_args,
-            Box::new(CoreBackupStorageMock::new()),
-            Box::new(CoreUICallBackMock::new()),
-        )
-        .expect("core initializes"),
-    );
+    let app_core = Arc::new(ToolAppCore::new()?);
 
     async_runtime::block_on(run_server(app_core));
+    Ok(())
 }
 
-async fn run_server(app_core: Arc<AppCore>) {
+async fn run_server(app_core: Arc<ToolAppCore>) {
     let app = Router::new()
         .route("/backend", post(backend))
         .route("/js/in-page-provider.js", get(in_page_provider))
@@ -113,11 +99,11 @@ async fn get_static_file(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, Str
     }
 }
 
-async fn in_page_provider(State(app_core): State<Arc<AppCore>>) -> impl IntoResponse {
+async fn in_page_provider(State(app_core): State<Arc<ToolAppCore>>) -> impl IntoResponse {
     const SEALVAULT_RPC_PROVIDER: &str = "sealVaultRpcProvider";
     const SEALVAULT_REQUEST_HANDLER: &str = "sealVaultRequestHandler";
 
-    let in_page_script = app_core.get_in_page_script(
+    let in_page_script = app_core.core.get_in_page_script(
         SEALVAULT_RPC_PROVIDER.into(),
         SEALVAULT_REQUEST_HANDLER.into(),
     );
@@ -140,7 +126,7 @@ async fn in_page_provider(State(app_core): State<Arc<AppCore>>) -> impl IntoResp
 }
 
 async fn backend(
-    State(app_core): State<Arc<AppCore>>,
+    State(app_core): State<Arc<ToolAppCore>>,
     headers: HeaderMap,
     req_body: String,
 ) -> impl IntoResponse {
@@ -149,7 +135,9 @@ async fn backend(
     // TODO support respond and notify
     let in_page_request_context = Box::new(InPageRequestContextMock::new(&referer));
     let result = tokio::task::spawn_blocking(move || {
-        app_core.in_page_request(in_page_request_context, req_body)
+        app_core
+            .core
+            .in_page_request(in_page_request_context, req_body)
     })
     .await
     .expect("thread can be joined");

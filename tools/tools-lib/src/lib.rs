@@ -2,12 +2,44 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::fs;
+
+use anyhow::Result;
+use tempfile::{tempdir, TempDir};
 use uniffi_sealvault_core::{
-    CoreBackupStorageI, CoreInPageCallbackI, CoreUICallbackI,
+    AppCore, CoreArgs, CoreBackupStorageI, CoreInPageCallbackI, CoreUICallbackI,
     DappAllotmentTransferResult, DappApprovalParams, DappSignatureResult,
     DappTransactionApproved, DappTransactionResult, InPageRequestContextI,
     TokenTransferResult,
 };
+
+pub struct ToolAppCore {
+    // It isn't accessed, but it must held on for the lifetime of the struct, as the directory is
+    // deleted on drop.
+    #[allow(unused)]
+    work_dir: TempDir,
+    pub core: AppCore,
+}
+
+impl ToolAppCore {
+    pub fn new() -> Result<Self> {
+        let work_dir = tempdir()?;
+        let cache_dir = work_dir.path().join("cache");
+        fs::create_dir_all(cache_dir.as_path())?;
+        let backend_args = CoreArgs {
+            device_id: "dev-tools".into(),
+            device_name: "dev-tools-device-id".into(),
+            cache_dir: cache_dir.to_str().expect("utf-8 path").into(),
+            db_file_path: ":memory:".into(),
+        };
+        let core = AppCore::new(
+            backend_args,
+            Box::new(CoreBackupStorageMock::new()),
+            Box::new(CoreUICallBackMock::new()),
+        )?;
+        Ok(Self { work_dir, core })
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct CoreUICallBackMock {}
