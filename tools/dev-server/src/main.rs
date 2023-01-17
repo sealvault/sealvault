@@ -13,16 +13,13 @@ use axum::{
     Router,
 };
 use dotenv::dotenv;
-use ethers::core::utils::hex;
 use hyper::Body;
+use sealvault_tools_lib::{
+    CoreBackupStorageMock, CoreUICallBackMock, InPageRequestContextMock,
+};
 use tower::ServiceExt;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use uniffi_sealvault_core::{
-    async_runtime, AppCore, CoreArgs, CoreBackupStorageI, CoreInPageCallbackI,
-    CoreUICallbackI, DappAllotmentTransferResult, DappApprovalParams,
-    DappSignatureResult, DappTransactionApproved, DappTransactionResult,
-    InPageRequestContextI, TokenTransferResult,
-};
+use uniffi_sealvault_core::{async_runtime, AppCore, CoreArgs};
 
 const DB_PATH: &str = ":memory:";
 const STATIC_FOLDER: &str = "./static";
@@ -174,131 +171,4 @@ fn get_header_value(headers: &HeaderMap, name: &str) -> String {
         .to_str()
         .expect("referrer is valid utf-8");
     referer.to_string()
-}
-
-#[derive(Debug, Default)]
-pub struct CoreUICallBackMock {}
-
-impl CoreUICallBackMock {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl CoreUICallbackI for CoreUICallBackMock {
-    fn sent_token_transfer(&self, result: TokenTransferResult) {
-        log::info!("Sent token transfer: {:?}", result)
-    }
-
-    fn token_transfer_result(&self, result: TokenTransferResult) {
-        log::info!("Token transfer result: {:?}", result)
-    }
-
-    fn dapp_allotment_transfer_result(&self, result: DappAllotmentTransferResult) {
-        log::info!("Dapp allotment transfer result: {:?}", result)
-    }
-
-    fn signed_message_for_dapp(&self, result: DappSignatureResult) {
-        log::info!("Dapp signature result: {:?}", result)
-    }
-
-    fn approved_dapp_transaction(&self, result: DappTransactionApproved) {
-        log::info!("Sent transactions for dapp result: {:?}", result)
-    }
-
-    fn dapp_transaction_result(&self, result: DappTransactionResult) {
-        log::info!("Dapp transaction result: {:?}", result)
-    }
-}
-
-#[derive(Debug)]
-pub struct InPageRequestContextMock {
-    pub page_url: String,
-    pub callbacks: Box<CoreInPageCallbackMock>,
-}
-
-impl InPageRequestContextMock {
-    pub fn new(page_url: &str) -> Self {
-        Self {
-            page_url: page_url.into(),
-            callbacks: Box::new(CoreInPageCallbackMock::new()),
-        }
-    }
-}
-
-impl InPageRequestContextI for InPageRequestContextMock {
-    fn page_url(&self) -> String {
-        self.page_url.clone()
-    }
-
-    fn callbacks(&self) -> Box<dyn CoreInPageCallbackI> {
-        self.callbacks.clone()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct CoreInPageCallbackMock {}
-
-impl CoreInPageCallbackMock {
-    // We don't want to create the mock by accident with `Default::default`.
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl CoreInPageCallbackI for CoreInPageCallbackMock {
-    fn request_dapp_approval(&self, _: DappApprovalParams) {
-        // Don't slow down tests noticeably, but simulate blocking.
-        std::thread::sleep(std::time::Duration::from_millis(1));
-    }
-
-    fn respond(&self, response_hex: String) {
-        let response = hex::decode(response_hex).expect("valid hex");
-        let response = String::from_utf8_lossy(&response);
-        log::info!("CoreInPageCallbackMock.response: '{:?}'", response);
-    }
-
-    fn notify(&self, message_hex: String) {
-        let event = hex::decode(message_hex).expect("valid hex");
-        let event = String::from_utf8_lossy(&event);
-        log::info!("CoreInPageCallbackMock.notify: '{:?}'", event);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct CoreBackupStorageMock {}
-
-impl CoreBackupStorageMock {
-    // We don't want to create the mock by accident with `Default::default`.
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl CoreBackupStorageI for CoreBackupStorageMock {
-    fn can_backup(&self) -> bool {
-        false
-    }
-
-    fn is_uploaded(&self, _: String) -> bool {
-        false
-    }
-
-    fn list_backup_file_names(&self) -> Vec<String> {
-        Default::default()
-    }
-
-    fn copy_to_storage(&self, _: String, _: String) -> bool {
-        false
-    }
-
-    fn copy_from_storage(&self, _: String, _: String) -> bool {
-        false
-    }
-
-    fn delete_backup(&self, _: String) -> bool {
-        false
-    }
 }

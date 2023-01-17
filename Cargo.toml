@@ -4,4 +4,5 @@ members = [
     "core",
     "tools/dev-server",
     "tools/embedded-uniff-bindgen",
+    "tools/tools-lib",
 ]

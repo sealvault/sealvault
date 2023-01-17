@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 sealvault_core = { path = "../../core" }
+sealvault_tools_lib = { path = "../tools-lib" }
 axum = { version = "0.6.2", features = ["tower-log"] }
 env_logger = "0.10.0"
 ethers = { git = "https://github.com/agostbiro/ethers-rs", rev = "90abdd5", features = ["legacy", "eip712"] }

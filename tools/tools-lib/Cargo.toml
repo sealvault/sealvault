@@ -1,0 +1,9 @@
+[package]
+name = "sealvault_tools_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sealvault_core = { path = "../../core" }
+log = { version = "0.4.17", features = ["serde"] }
+hex = "0.4.3"
