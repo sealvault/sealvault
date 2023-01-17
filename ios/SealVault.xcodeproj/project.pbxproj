@@ -21,6 +21,8 @@
 		6811E25928E2430B0044F9FE /* BrowserUITest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6811E25828E2430B0044F9FE /* BrowserUITest.swift */; };
 		68145F4D2950D96F005FA1C1 /* GlobalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68145F4C2950D96F005FA1C1 /* GlobalSettings.swift */; };
 		68145F4F295219A4005FA1C1 /* AsyncButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68145F4E295219A4005FA1C1 /* AsyncButton.swift */; };
+		681713712977296400D95AA4 /* RandomColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681713702977296400D95AA4 /* RandomColor.swift */; };
+		6817137329772C4900D95AA4 /* BannerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6817137229772C4900D95AA4 /* BannerModel.swift */; };
 		68194EE32955DD4F00D2D813 /* CustomSecureField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68194EE22955DD4F00D2D813 /* CustomSecureField.swift */; };
 		6853B4D6290591B400397279 /* html in Resources */ = {isa = PBXBuildFile; fileRef = 6853B4D5290591B400397279 /* html */; };
 		685E445028B3B5E200BDFD5D /* SealVaultCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */; };
@@ -53,7 +55,6 @@
 		68CCACFA28F85BC70043692D /* Banner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACF928F85BC70043692D /* Banner.swift */; };
 		68CCACFE28FC2A740043692D /* CoreUICallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFD28FC2A740043692D /* CoreUICallback.swift */; };
 		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
-		68D159A6296F09C400B0E717 /* (null) in Sources */ = {isa = PBXBuildFile; };
 		68D159A8296F0A9C00B0E717 /* ProfileName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A7296F0A9C00B0E717 /* ProfileName.swift */; };
 		68D159AA296F0C4500B0E717 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A9296F0C4500B0E717 /* BrowserWindow.swift */; };
 		68EBBC272907C92200C367F4 /* sortAddressesBy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC262907C92200C367F4 /* sortAddressesBy.swift */; };
@@ -93,6 +94,8 @@
 		6811E25C28E2444C0044F9FE /* NativeUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = NativeUI.xctestplan; sourceTree = "<group>"; };
 		68145F4C2950D96F005FA1C1 /* GlobalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettings.swift; sourceTree = "<group>"; };
 		68145F4E295219A4005FA1C1 /* AsyncButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncButton.swift; sourceTree = "<group>"; };
+		681713702977296400D95AA4 /* RandomColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomColor.swift; sourceTree = "<group>"; };
+		6817137229772C4900D95AA4 /* BannerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerModel.swift; sourceTree = "<group>"; };
 		68194EE22955DD4F00D2D813 /* CustomSecureField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomSecureField.swift; sourceTree = "<group>"; };
 		6853B4D5290591B400397279 /* html */ = {isa = PBXFileReference; lastKnownFileType = folder; path = html; sourceTree = "<group>"; };
 		685E444E28B3B5E200BDFD5D /* SealVaultCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SealVaultCore.swift; path = Generated/SealVaultCore.swift; sourceTree = "<group>"; };
@@ -186,6 +189,7 @@
 				68BA3D10295B4F8100AB3CE8 /* onInactive.swift */,
 				68EBBC262907C92200C367F4 /* sortAddressesBy.swift */,
 				68BA3D12295B531D00AB3CE8 /* authenticate.swift */,
+				681713702977296400D95AA4 /* RandomColor.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
@@ -194,6 +198,7 @@
 			isa = PBXGroup;
 			children = (
 				688C29EA284102FC00474900 /* Address.swift */,
+				6817137229772C4900D95AA4 /* BannerModel.swift */,
 				68D159A9296F0C4500B0E717 /* BrowserWindow.swift */,
 				68CCACFF28FC42670043692D /* CallbackModel.swift */,
 				68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */,
@@ -437,6 +442,7 @@
 				688C29BC283FF32300474900 /* ProfileView.swift in Sources */,
 				68CBB5A8296A0E2800E84ADA /* CoreBackupStorage.swift in Sources */,
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
+				681713712977296400D95AA4 /* RandomColor.swift in Sources */,
 				68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */,
 				68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */,
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
@@ -454,6 +460,7 @@
 				5850CBD0176884BC3B64B08C /* IconView.swift in Sources */,
 				68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */,
 				5850C0FC7D0474EEB3ADFC21 /* TokenView.swift in Sources */,
+				6817137329772C4900D95AA4 /* BannerModel.swift in Sources */,
 				5850C9CBC2E527BE683353DE /* WalletRow.swift in Sources */,
 				5850C5E7A11D7CBB7D50D89B /* AddressMenu.swift in Sources */,
 				68EBBC272907C92200C367F4 /* sortAddressesBy.swift in Sources */,

@@ -28,5 +28,7 @@ extension Config {
     // Create an additional profile on startup for UI testing
     static let createProfileArg = "-createProfile"
     static let cliProfileName = "CLI Profile"
+    // Keep triggering banner messages
+    static let triggerBanners = "-triggerBanners"
 }
 #endif

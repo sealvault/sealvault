@@ -12,11 +12,10 @@ struct TokenRow: View {
             Label {
                 Text(token.symbol).font(.headline)
 
+            } icon: {
+                IconView(image: token.image, iconSize: 24)
+                    .accessibility(label: Text(token.symbol))
             }
-        icon: {
-            IconView(image: token.image, iconSize: 24)
-                .accessibility(label: Text(token.symbol))
-        }
 
             Spacer()
 

@@ -17,13 +17,15 @@ struct TokenView: View {
             } label: {
                 NativeTokenRow(address: address)
             }
+            .accessibilityLabel(address.nativeToken.symbol)
             ForEach(address.fungibleTokenList) { token in
                 NavigationLink {
                     TransferForm(state: TransferState(profile: profile, token: token, fromAddress: address))
                         .navigationBarTitleDisplayMode(.inline)
                 } label: {
                     TokenRow(token: token)
-                }
+                }.accessibilityLabel(token.symbol)
+
             }
         } header: {
             HStack(spacing: 5) {

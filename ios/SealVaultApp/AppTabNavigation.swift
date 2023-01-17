@@ -20,6 +20,8 @@ struct AppTabNavigationInner: View {
     }
 
     @EnvironmentObject private var model: GlobalModel
+    @EnvironmentObject private var bannerModel: BannerModel
+
     @ObservedObject var callbackModel: CallbackModel
     @State var selection: Tab = .profiles
     @State var activeProfileId: String?
@@ -80,11 +82,11 @@ struct AppTabNavigationInner: View {
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
                 let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
-                model.bannerData = BannerData(title: title, detail: detail, type: .error)
+                bannerModel.bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Sent \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
                 let details = "On \(res.chainDisplayName)"
-                model.bannerData = BannerData(title: title, detail: details, type: .success)
+                bannerModel.bannerData = BannerData(title: title, detail: details, type: .success)
             }
         }
         .onChange(of: callbackModel.tokenTransferConfirmed) { val in
@@ -94,11 +96,11 @@ struct AppTabNavigationInner: View {
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
                 let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
-                model.bannerData = BannerData(title: title, detail: detail, type: .error)
+                bannerModel.bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.displayTo())"
                 let details = "On \(res.chainDisplayName)"
-                model.bannerData = BannerData(title: title, detail: details, type: .success)
+                bannerModel.bannerData = BannerData(title: title, detail: details, type: .success)
             }
         }
         .onChange(of: callbackModel.dappAllotmentResult) { val in
@@ -108,11 +110,11 @@ struct AppTabNavigationInner: View {
             if let errorMessage = res.errorMessage {
                 let title = "Failed to transfer \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
                 let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
-                model.bannerData = BannerData(title: title, detail: detail, type: .error)
+                bannerModel.bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 let title = "Confirmed \(res.amount) \(res.tokenSymbol) to \(res.dappIdentifier) address"
                 let details = "On \(res.chainDisplayName)"
-                model.bannerData = BannerData(title: title, detail: details, type: .success)
+                bannerModel.bannerData = BannerData(title: title, detail: details, type: .success)
             }
         }
         .onChange(of: callbackModel.dappSignatureResult) { val in
@@ -121,7 +123,7 @@ struct AppTabNavigationInner: View {
             }
             let title = "Approved signature for \(res.dappIdentifier)"
             let detail = "Automatic approval is safe because it has its own address."
-            model.bannerData = BannerData(title: title, detail: detail, type: .success)
+            bannerModel.bannerData = BannerData(title: title, detail: detail, type: .success)
         }
         .onChange(of: callbackModel.dappTransactionApproved) { val in
             guard let res = val else {
@@ -129,7 +131,7 @@ struct AppTabNavigationInner: View {
             }
             let title = "Approved transaction for \(res.dappIdentifier)"
             let detail = "Automatic approval is safe because it has its own address."
-            model.bannerData = BannerData(title: title, detail: detail, type: .success)
+            bannerModel.bannerData = BannerData(title: title, detail: detail, type: .success)
         }
         .onChange(of: callbackModel.dappTransactionResult) { val in
             guard let res = val else {
@@ -138,18 +140,18 @@ struct AppTabNavigationInner: View {
             if let errorMessage = res.errorMessage {
                 let title = "Transaction failed for \(res.dappIdentifier)"
                 let detail = "Error on \(res.chainDisplayName): \(errorMessage)"
-                model.bannerData = BannerData(title: title, detail: detail, type: .error)
+                bannerModel.bannerData = BannerData(title: title, detail: detail, type: .error)
             } else {
                 // TODO add blockchain explorer url once it's tappable.
                 let title = "Confirmed transaction for \(res.dappIdentifier)"
                 let detail = ""
-                model.bannerData = BannerData(title: title, detail: detail, type: .success)
+                bannerModel.bannerData = BannerData(title: title, detail: detail, type: .success)
             }
         }
-        .banner(data: $model.bannerData)
+        .banner(data: $bannerModel.bannerData)
         .edgesIgnoringSafeArea(.bottom)
         .onChange(of: selection) { _ in
-            model.bannerData = nil
+            bannerModel.bannerData = nil
         }
         .onChange(of: activeProfileId) { [activeProfileId] _ in
             // Active profile id is nil when the app starts and the model is loading from the DB. We don't want to reset

@@ -7,32 +7,6 @@
 
 import SwiftUI
 
-struct BannerData: Equatable {
-    var title: String
-    var detail: String
-    var type: BannerType
-}
-
-enum BannerType {
-    case info
-    case warning
-    case success
-    case error
-
-    var tintColor: Color {
-        switch self {
-        case .info:
-            return Color.secondary
-        case .success:
-            return Color.green
-        case .warning:
-            return Color.yellow
-        case .error:
-            return Color.red
-        }
-    }
-}
-
 struct BannerModifier: ViewModifier {
 
     @Binding var data: BannerData?

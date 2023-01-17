@@ -22,11 +22,13 @@ struct SealVaultApp: SwiftUI.App {
 struct AppInner: View {
     @Environment(\.scenePhase) var scenePhase
 
-    @ObservedObject private var model = GlobalModel.buildOnStartup()
+    @StateObject private var model = GlobalModel.buildOnStartup()
+    @StateObject private var bannerModel = BannerModel()
 
     var body: some View {
         AppTabNavigation()
             .environmentObject(model)
+            .environmentObject(bannerModel)
             .task {
                 await model.refreshProfiles()
 
@@ -34,9 +36,13 @@ struct AppInner: View {
                 if CommandLine.arguments.contains(Config.createProfileArg) {
                     if !model.profileList.contains(where: { $0.name == Config.cliProfileName}) {
                         if let picName = await model.randomBundledProfilePicture() {
-                            await model.createProfile(name: Config.cliProfileName, bundledProfilePic: picName)
+                            _ = await model.createProfile(name: Config.cliProfileName, bundledProfilePic: picName)
                         }
                     }
+                }
+
+                if CommandLine.arguments.contains(Config.triggerBanners) {
+                    bannerModel.triggerBanners()
                 }
                 #endif
             }

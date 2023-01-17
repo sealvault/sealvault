@@ -14,7 +14,6 @@ class GlobalModel: ObservableObject {
     @Published var leftBrowserURL: URL?
     @Published var rightBrowserURL: URL?
     @Published var topDapps: [Dapp]
-    @Published var bannerData: BannerData?
     // True by default to avoid showing warning while data is loading
     @Published var backupEnabled: Bool = true
 
@@ -147,7 +146,7 @@ extension GlobalModel {
         }
     }
 
-    func setActiveProfileId(profileId: String) async {
+    func setActiveProfileId(profileId: String) async -> BannerData? {
         let errorMessage: String? = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.setActiveProfileId(profileId: profileId)
@@ -161,18 +160,21 @@ extension GlobalModel {
             }
         }
         if let message = errorMessage {
-            self.bannerData = BannerData(
+            return BannerData(
                 title: "Error changing active profile",
                 detail: message,
                 type: .error
             )
+        } else {
+            await self.refreshProfiles()
+            return nil
         }
-        await self.refreshProfiles()
     }
 
-    func launchInBrowser(_ browser: BrowserWindow, profile: Profile, url: URL) async {
+    func launchInBrowser(_ browser: BrowserWindow, profile: Profile, url: URL) async -> BannerData? {
+        var res: BannerData?
         if activeProfileId != profile.id {
-            await setActiveProfileId(profileId: profile.id)
+            res = await setActiveProfileId(profileId: profile.id)
         }
         switch browser {
         case .left:
@@ -180,9 +182,10 @@ extension GlobalModel {
         case .right:
             rightBrowserURL = url
         }
+        return res
     }
 
-    func enableBackup() async -> Bool {
+    func enableBackup() async -> BannerData? {
         let success = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.enableBackup()
@@ -194,17 +197,17 @@ extension GlobalModel {
         }
         if success {
             self.backupEnabled = await self.fetchBackupEnabled()
+            return nil
         } else {
-            self.bannerData = BannerData(
+            return BannerData(
                 title: "Error enabling backup",
                 detail: "Make sure iCloud is enabled and try to restart the app.",
                 type: .error
             )
         }
-        return success
     }
 
-    func disableBackup() async {
+    func disableBackup() async -> BannerData? {
         let success = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.disableBackup()
@@ -216,8 +219,9 @@ extension GlobalModel {
         }
         if success {
             self.backupEnabled = await self.fetchBackupEnabled()
+            return nil
         } else {
-            self.bannerData = BannerData(
+            return BannerData(
                 title: "Error disabling backup", detail: "", type: .error
             )
         }
@@ -317,7 +321,7 @@ extension GlobalModel {
         }
     }
 
-    func createProfile(name: String, bundledProfilePic: String) async {
+    func createProfile(name: String, bundledProfilePic: String) async -> BannerData? {
         let errorMessage: String? = await dispatchBackground(.userInteractive) {
             do {
                 try self.core.createProfile(name: name, bundledPictureName: bundledProfilePic)
@@ -333,14 +337,15 @@ extension GlobalModel {
             }
         }
         if let message = errorMessage {
-            self.bannerData = BannerData(
+            return BannerData(
                 title: "Error creating profile",
                 detail: message,
                 type: .error
             )
+        } else {
+            await self.refreshProfiles()
+            return nil
         }
-
-        await self.refreshProfiles()
     }
 
     func addEthChain(chainId: UInt64, addressId: String) async {
@@ -390,10 +395,11 @@ extension GlobalModel {
 // MARK: - Development
 
 #if DEBUG
-// swiftlint:disable force_try
 import SwiftUI
+
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
+// swiftlint:disable force_try
 class PreviewAppCore: AppCoreProtocol {
     private var backupEnabledToggle: Bool = true
 

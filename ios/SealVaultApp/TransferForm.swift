@@ -333,7 +333,7 @@ struct TransferButton: View {
     let cornerRadius: CGFloat = 8
 
     @ObservedObject var state: TransferState
-    @EnvironmentObject var model: GlobalModel
+    @EnvironmentObject private var bannerModel: BannerModel
 
     func makeTransfer() async -> Bool {
         await dispatchBackground(.userInteractive) {
@@ -356,12 +356,16 @@ struct TransferButton: View {
                 return true
             } catch CoreError.User(let message) {
                 DispatchQueue.main.async {
-                    model.bannerData = BannerData(title: "Error transferring token", detail: message, type: .error)
+                    bannerModel.bannerData = BannerData(
+                        title: "Error transferring token",
+                        detail: message,
+                        type: .error
+                    )
                 }
                 return false
             } catch CoreError.Retriable(let message) {
                 DispatchQueue.main.async {
-                    model.bannerData = BannerData(
+                    bannerModel.bannerData = BannerData(
                         title: "Error transferring token", detail: Config.retriableErrorMessage, type: .error
                     )
                 }
@@ -369,7 +373,7 @@ struct TransferButton: View {
                 return false
             } catch let error {
                 DispatchQueue.main.async {
-                    model.bannerData = BannerData(
+                    bannerModel.bannerData = BannerData(
                         title: "Error transferring token", detail: Config.fatalErrorMessage, type: .error
                     )
                 }

@@ -43,6 +43,27 @@ final class NativeUITest: XCTestCase {
         setActiveProfile(app, profileName: "Default")
     }
 
+    // Regression test for https://github.com/sealvault/sealvault/issues/100
+    func testSelectInAppTransferReceipient() throws {
+        let app = XCUIApplication()
+        // Make sure banners popping up doesn't interer with recepient selection
+        app.launchArguments = ["-triggerBanners"]
+        app.launch()
+
+        setActiveProfile(app, profileName: "Default")
+        tapButton(app, "Default profile")
+        tapButton(app, "Default Profile Wallet, Polygon PoS")
+        tapButton(app, "MATIC")
+        tapButton(app, "Select Dapp or Profile Wallet")
+        let dapp = "xmtp.chat"
+        app.pickerWheels.element.adjust(toPickerWheelValue: dapp)
+        // Make sure new banner is triggered inbetween
+        sleep(2)
+        tapButton(app, "Approve In-App Selection")
+
+        XCTAssert(app.buttons[dapp].waitForExistence(timeout: buttonTimeoutSeconds))
+    }
+
 //    func testProfileSearch() throws {
 //        // UI tests must launch the application that they test.
 //        let app = XCUIApplication()

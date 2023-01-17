@@ -13,6 +13,7 @@ struct BackupSettings: View {
     @State var isDeveloper: Bool = false
     @State var presentConfirmation: Bool = false
     @State var wasOnboarding: Bool = false
+    @State var bannerData: BannerData?
 
     var body: some View {
         VStack {
@@ -47,8 +48,7 @@ struct BackupSettings: View {
                     }
                 }
             } else {
-                BackupSettingsOnboarding()
-
+                BackupSettingsOnboarding(bannerData: $bannerData)
             }
         }
         .onChange(of: backupEnabledToggle) { newValue in
@@ -75,7 +75,7 @@ struct BackupSettings: View {
                 backupEnabledToggle = true
             })
         }
-        .banner(data: $model.bannerData)
+        .banner(data: $bannerData)
         .navigationTitle("iCloud Storage Backup")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -84,6 +84,7 @@ struct BackupSettings: View {
 struct BackupSettingsOnboarding: View {
     @Environment(\.colorScheme) private var colorScheme
 
+    @Binding var bannerData: BannerData?
     @State var step: Int = 0
     @State var showPopUp: Bool = false
 
@@ -96,7 +97,7 @@ struct BackupSettingsOnboarding: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            BackupSettingsOnboardingInner(step: $step, showPopUp: $showPopUp)
+            BackupSettingsOnboardingInner(bannerData: $bannerData, step: $step, showPopUp: $showPopUp)
             ProgressView(value: progress)
 
             if showPopUp {
@@ -141,6 +142,7 @@ screenshot below:
 struct BackupSettingsOnboardingInner: View {
     @EnvironmentObject private var model: GlobalModel
 
+    @Binding var bannerData: BannerData?
     @Binding var step: Int
     static let maxStep = 5.0
 
@@ -264,9 +266,11 @@ Make sure to write down the backup password on paper or save it in a password ma
 
                     if !step5 {
                         AsyncButton(action: {
-                            let success = await model.enableBackup()
-                            if success {
+                            let errorBanner = await model.enableBackup()
+                            if errorBanner == nil {
                                 setStep(5)
+                            } else {
+                                bannerData = errorBanner
                             }
                         }, label: {
                             Text("Generate Backup Password")
