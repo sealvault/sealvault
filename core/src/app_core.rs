@@ -75,6 +75,10 @@ impl AppCore {
         Self::new_with_overrides(Arc::new(resources))
     }
 
+    pub fn resources(&self) -> Arc<dyn CoreResourcesI> {
+        self.resources.clone()
+    }
+
     fn connection_pool(&self) -> &ConnectionPool {
         self.resources.connection_pool()
     }

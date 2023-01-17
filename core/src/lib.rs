@@ -46,7 +46,9 @@ pub use crate::{
     },
     dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
     error::Error,
-    in_page_provider::{CoreInPageCallbackI, DappApprovalParams, InPageRequestContextI},
+    in_page_provider::{
+        CoreInPageCallbackI, DappApprovalParams, InPageProvider, InPageRequestContextI,
+    },
     protocols::TokenType,
     ui_callback::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,

@@ -1,0 +1,28 @@
+[package]
+name = "sealvault_core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+sealvault_core = { path = "../../core" }
+sealvault_tools_lib = { path = "../tools-lib" }
+arbitrary = "1.2.2"
+lazy_static = "1.4.0"
+libfuzzer-sys = "0.4"
+tokio = "1.24.1"
+
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_in_page_request"
+path = "fuzz_targets/fuzz_in_page_request.rs"
+test = false
+doc = false

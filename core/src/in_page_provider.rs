@@ -33,14 +33,14 @@ use crate::{
 
 #[derive(Debug)]
 #[readonly::make]
-pub(super) struct InPageProvider {
+pub struct InPageProvider {
     resources: Arc<dyn CoreResourcesI>,
     request_context: Box<dyn InPageRequestContextI>,
     url: Url,
 }
 
 impl InPageProvider {
-    pub(super) fn new(
+    pub fn new(
         resources: Arc<dyn CoreResourcesI>,
         request_context: Box<dyn InPageRequestContextI>,
     ) -> Result<Self, Error> {
@@ -94,7 +94,7 @@ impl InPageProvider {
         rt::spawn(self.handle_user_rejected_dapp(dapp_approval))
     }
 
-    async fn in_page_request_async(self, raw_request: String) -> Result<(), Error> {
+    pub async fn in_page_request_async(self, raw_request: String) -> Result<(), Error> {
         match self.raw_json_rpc_request(raw_request).await? {
             None => {
                 // We're waiting for a dapp approval callback from the UI, so no response.

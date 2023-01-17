@@ -72,7 +72,7 @@ the SwiftUI framework.
 ### [Tools](./tools)
 
 Contains development server for integration testing in-page providers and other 
-development tools written in Rust.
+development tools written in Rust such as a fuzzer.
 
 ### [Website](./website)
 
