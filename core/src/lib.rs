@@ -38,6 +38,7 @@ pub use crate::{
         AppCore, CoreArgs, EthChangeDappChainArgs, EthTransferFungibleTokenArgs,
         EthTransferNativeTokenArgs,
     },
+    async_runtime::{block_on, handle},
     backup::{
         find_latest_backup as core_find_latest_backup,
         restore_backup as core_restore_backup, BackupError as CoreBackupError,
