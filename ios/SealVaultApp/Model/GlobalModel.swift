@@ -397,9 +397,9 @@ extension GlobalModel {
 #if DEBUG
 import SwiftUI
 
+// swiftlint:disable force_try
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
-// swiftlint:disable force_try
 class PreviewAppCore: AppCoreProtocol {
     private var backupEnabledToggle: Bool = true
 
