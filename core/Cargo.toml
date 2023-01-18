@@ -29,9 +29,7 @@ k256 = { version = "0.11.6", features = ["digest", "ecdsa", "keccak256", "pkcs8"
 # This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)
 # with the feature flag. We need at least 0.24, bc that bundles SQLite 3.38.0 which
 # ships with JSON support compiled in.
-# The latest version 0.25.2 doesn't compile in Xcode Cloud (but compiles locally for iOS target), which is why we
-# specify 0.25.1 specifically.
-libsqlite3-sys = { version = "= 0.25.1", features = ["bundled"] }
+libsqlite3-sys = { version = ">=0.24, <0.26.0", features = ["bundled"] }
 rand = "0.8.5"
 readonly = "0.2.3"
 rust-embed = "6.4.2"
