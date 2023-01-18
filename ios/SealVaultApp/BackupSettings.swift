@@ -269,6 +269,14 @@ Make sure to write down the backup password on paper or save it in a password ma
                             let errorBanner = await model.enableBackup()
                             if errorBanner == nil {
                                 setStep(5)
+                                bannerData = BannerData(
+                                    title: "Successfully enabled backups",
+                                    detail: """
+Make sure to write down the backup password on paper or save it in a password manager.
+""",
+                                    type: .success,
+                                    durationSeconds: 10.0
+                                )
                             } else {
                                 bannerData = errorBanner
                             }

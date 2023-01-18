@@ -12,6 +12,7 @@ struct BannerData: Equatable {
     var title: String
     var detail: String
     var type: BannerType
+    var durationSeconds: Double = Config.defaultBannerDurationSeconds
 }
 
 enum BannerType {

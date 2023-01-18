@@ -4,6 +4,10 @@
 
 ### iOS Beta v0.6.2
 
+#### Improvements
+
+- Add success notification on enabling backups
+
 #### Fixes
 
 - Fix notification resetting selection.

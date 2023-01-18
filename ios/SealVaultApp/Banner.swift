@@ -13,13 +13,21 @@ struct BannerModifier: ViewModifier {
 
     @State var task: DispatchWorkItem?
 
+    var delay: Double {
+        if let data = data {
+            return data.durationSeconds
+        } else {
+            return Config.defaultBannerDurationSeconds
+        }
+    }
+
     func hideDelayed() {
         self.task = DispatchWorkItem {
             withAnimation {
                 self.data = nil
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: self.task!)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: self.task!)
     }
 
     func body(content: Content) -> some View {

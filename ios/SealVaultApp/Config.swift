@@ -21,6 +21,7 @@ struct Config {
     static let maxProfiles = 10
     static let fatalErrorMessage = "An unexpected error occurred. Please restart the application!"
     static let retriableErrorMessage = "Something went wrong. Please try again!"
+    static let defaultBannerDurationSeconds = 6.0
 }
 
 #if DEBUG
