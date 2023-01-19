@@ -128,4 +128,3 @@ reset all iOS simulators on your machine.)
 - Rebuild Rust XCFramework for iOS and regenerate Swift bindings from `ios`
   directory: `fastlane pre_build`
 - Clean Xcode build from `ios` directory: `fastlane clean`.
-
