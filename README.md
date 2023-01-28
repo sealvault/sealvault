@@ -101,7 +101,7 @@ running `fastlane pre_build` in the `ios` directory.
 - The [Homebrew](https://brew.sh/) macOS package manager, then run `brew bundle`
   from the repo root to install the dependencies specified in the
   [`Brewfile`.](./Brewfile)
-- Run `rustup init` which was installed from the [`Brewfile`](./Brewfile) 
+- Run `rustup-init` which was installed from the [`Brewfile`](./Brewfile) 
   toolchain and follow the instructions to set up your Rust toolchain.
 - The [Diesel](https://diesel.rs/) ORM CLI that we use to manage Sqlite (it's
   very important to use the bundled Sqlite version as outdated Sqlite make cause
