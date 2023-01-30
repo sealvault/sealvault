@@ -75,7 +75,7 @@ impl<'a> Signer<'a> {
         Ok(EcdsaEthereumSignature::new(&sig, self.chain_id()))
     }
 
-    /// Perform an ECDSA signature on an Etherum transaction using the Secp256k1 curve with
+    /// Perform an ECDSA signature on an Ethereum transaction using the Secp256k1 curve with
     /// RFC6979 deterministic `k` value.
     fn sign_tx(&self, tx: &TypedTransaction) -> Result<EcdsaEthereumSignature, Error> {
         self.verify_tx_params(tx)?;
