@@ -6,7 +6,7 @@ authors:
 
 links:
 - dev-docs/principles.md
-- dev-docs/design/one-dapp-per-key.md
+- dev-docs/design/dapp-keys.md
 ---
 
 # Why Web3 Is Inevitable, How It Can Go Wrong, and What to Do About It
@@ -209,7 +209,7 @@ Seed phrases have three major disadvantages:
    capabilities of most internet users.
 2. One seed-phrase based wallet can only be used on one device at a time, ie.
    different devices need different seed phrases and thus different keys.[^70]
-4. [Automated key-level isolation](../../dev-docs/design/one-dapp-per-key.md) of
+4. [Automated key-level isolation](../../dev-docs/design/dapp-keys.md) of
    dapps doesn't work with seed phrase based key derivation.
 
 Due to constraints around key creation and data backup, wallets rely on
@@ -223,7 +223,7 @@ we need to move beyond the wallet paradigm for everyday key and transaction
 management.  This is why we're building [SealVault,](https://sealvault.org) a
 new type of key manager for your dapps with automated transaction approval and
 phishing protection through [key-level dapp
-isolation.](../../one-dapp-per-key.md)
+isolation.](../../dapp-keys.md)
 
 ## SealVault Goals
 

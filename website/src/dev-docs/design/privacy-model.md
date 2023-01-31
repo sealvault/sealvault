@@ -17,11 +17,9 @@ addresses.  A profile can contain addresses from multiple chains, because
 cross-chain bridging may correlate addresses from different chains.
 
 Users can only send tokens between addresses in the same profile within
-SealVault.  While the [1DK](./one-dapp-per-key.md) model prevents producing
-transactions with an address for multiple dapps, users may produce off-chain
-signatures for multiple dapps in the same profile.  In the future, users will be
-able to prove claims between profiles with zero-knowledge proofs without
-correlating addresses between different profiles.
+SealVault.   In the future, users will be able to prove claims between profiles
+with zero-knowledge proofs without correlating addresses between different
+profiles.
 
 Users may correlate addresses in different profiles outside of
 SealVault.  We can't prevent this, but we warn users against it. We also can't

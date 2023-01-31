@@ -1,9 +1,8 @@
-# One-Dapp-per-Key<sup>&reg;</sup>
+# Dapp Keys
 
-When you add a dapp to your profile, a new key is generated just for this dapp.
-Wallet addresses are never connected to dapps.  This isolation
+When you add a dapp to your profile, a new key can be generated just for this
+dapp. This isolation
 
-- prevents **phishing** &#127907;
 - mitigates damage from compromised dapps &#129399;
 - enables **automated transaction approval** &#129395;
 
@@ -11,8 +10,8 @@ Wallet addresses are never connected to dapps.  This isolation
 ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
 </figure>
 
-You can read more about how the One-Dapp-per-Key method works under the hood in
-the [technical documentation.](./dev-docs/design/one-dapp-per-key.md)
+You can read more about how the dapp keys work under the hood in
+the [technical documentation.](./dev-docs/design/dapp-keys.md)
 
 ## Dapp Address
 

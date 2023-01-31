@@ -313,7 +313,7 @@ We mitigate timing attacks by
    without user interaction when the application is in the background.
 6. Scoping secrets used in cryptographic operations that can be initiated by
    third-party code without user interaction to specific applications through
-   the [1DK](./one-dapp-per-key.md) model.
+   [dapp keys](./dapp-keys.md).
 
 ---
 
@@ -476,17 +476,10 @@ transaction. A novel social engineering threat for Web3 users is that crooks may
 fake transactions to establish trust with a victim or a trade may be faked to
 prompt copy trades.
 
-We mitigate social engineering attacks with the following measures:
 
-1. The [1DK](./one-dapp-per-key.md) model prevents social engineering attacks
-   that rely solely on prompting user interaction with a fraudulent dapp.  If an
-   attacker manages to convince the user to transfer significant funds into the
-   fraudulent dapp, the [1DK](./one-dapp-per-key.md) model offers no protection
-   for those funds.
-1. In the future, we'll warn the user if they are about to send a transaction to
-   an address that they haven't transacted with before.
-1. In the future, we'll warn the user if the blockchain data we display hasn't
-   been verified locally.
+!!! warning "WIP"
+
+    This section is still work in progress.
 
 #### Phishing
 
@@ -500,8 +493,18 @@ fraudulent dapp can ask a user to perform a signature in order to qualify for an
 airdrop but instead of a signature it requests a transaction approval to
 transfer funds to the attacker's address which the user may or may not notice.
 
-We prevent such phishing attacks with the novel
-[One-Dapp-per-Key](./one-dapp-per-key.md) (1DK) model.
+We believe that the current trend in Web3 clients to make transaction parameters
+more legible or reactively catalogue malicious dapps to prevent fraud is
+misguided.  Since social attacks rely on a sense of urgency, reactive
+methods leave users vulnerable and the burden of understanding the
+idiosyncrasies of various blockchains cannot be placed on users.  A [better
+approach](./security-model.md#deception-mitigation) is to prevent actions that
+can be dangerous to users and disincentivize attackers.
+
+!!! warning "WIP"
+
+    This section is still work in progress.
+
 
 ---
 ### Compromised Dapp
@@ -550,7 +553,7 @@ flowchart BT
 SealVault offers the following mitigations against supply chain attacks on
 dapps:
 
-1. The [1DK](./one-dapp-per-key.md) model limits the damage a compromised dapp
+1. [Dapp keys](./dapp-keys.md) limit the damage a compromised dapp
    can do to the assets belonging to that dapp.
 1. In the future we will warn the user if a smart contract has changed for a
    previously used dapp.
@@ -559,9 +562,9 @@ dapps:
 
 #### Clickjacking
 
-The [1DK](./one-dapp-per-key.md) model defends against
-[clickjacking](https://owasp.org/www-community/attacks/Clickjacking) attacks as
-detailed [there.](./one-dapp-per-key.md#embedded-contexts)
+!!! warning "WIP"
+
+    This section is still work in progress.
 
 #### Man-In-The-Middle
 

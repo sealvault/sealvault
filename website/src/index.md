@@ -17,13 +17,13 @@ title: Web3 Key Manager App
 
 <div class="grid cards" markdown>
 
--   __One-Dapp-per-Key__
+-   __Dapp Keys__
     <figure markdown>
     ![iOS app profile view](./assets/images/screenshots/profile-view.png){ loading=lazy }
     <figcaption>
-    Each dapp gets a separate key.
-    This protects you from phishing and mitigates compromised dapps.
-    [More](./one-dapp-per-key.md)
+    You can create keys for each dapp that you add.
+    This mitigates damage from compromised dapps and enables automatic transaction approval.
+    [More](./dapp-keys.md)
     </figcaption>
     </figure>
 
@@ -40,7 +40,7 @@ title: Web3 Key Manager App
     ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>
     You decide which dapp to add, after that transactions are approved
-    automatically. [More](./one-dapp-per-key.md)
+    automatically. [More](./dapp-keys.md)
     </figcaption>
     </figure>
 
@@ -49,7 +49,7 @@ title: Web3 Key Manager App
     ![iOS app token transfer view](./assets/images/screenshots/transfer-view.png){ loading=lazy }
     <figcaption>
     You can also transfer a pre-configured amount automatically when you add a new
-    dapp. [More](./one-dapp-per-key.md)
+    dapp. [More](./dapp-keys.md)
     </figcaption>
     </figure>
 
@@ -58,7 +58,7 @@ title: Web3 Key Manager App
     ![iOS app profile view](./assets/images/screenshots/top-dapps.png){ loading=lazy }
     <figcaption>
     Best-in-class dapp browser with helpful notifications about dapp transactions.
-    [More](./one-dapp-per-key.md)
+    [More](./dapp-keys.md)
     </figcaption>
     </figure>
 

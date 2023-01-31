@@ -51,7 +51,7 @@ extra_javascript:
 nav:
   - App:
     - index.md
-    - One-Dapp-per-Key: one-dapp-per-key.md
+    - Dapp Keys: dapp-keys.md
     - Privacy: privacy.md
     - Backup: backup.md
   - Blog: blog/index.md
@@ -64,10 +64,13 @@ nav:
           - Data: dev-docs/design/data.md
           - Cloud Backup: dev-docs/design/backup.md
           - Sync: dev-docs/design/sync.md
+          - In-Page Provider:
+            - dev-docs/design/in-page-provider.md
+            - Dapp Keys: dev-docs/design/dapp-keys.md
+            - Cross-Connect: dev-docs/design/cross-connect.md
           - Security Model:
             - dev-docs/design/security-model.md
             - Attack Tree: dev-docs/design/attack-tree.md
-            - One-Dapp-per-Key: dev-docs/design/one-dapp-per-key.md
             - Data-Flow Diagrams: dev-docs/design/data-flow.md
           - Privacy Model: dev-docs/design/privacy-model.md
       - Rust Code Guidelines: dev-docs/rust.md
