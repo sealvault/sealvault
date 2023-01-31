@@ -1,3 +1,7 @@
+---
+title: In-Page Provider
+---
+
 ## Overview
 
 The in-page provider exposes protocol-specific functionality through the web
