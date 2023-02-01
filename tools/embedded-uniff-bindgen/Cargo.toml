@@ -6,6 +6,5 @@ edition = "2021"
 license = "MPL-2.0"
 
 [dependencies]
-anyhow = "1"
 # Important to match exactly uniffi dep version in `core`
-uniffi_bindgen = "0.22.0"
+uniffi = {version = "0.23.0", features = ["cli"] }
