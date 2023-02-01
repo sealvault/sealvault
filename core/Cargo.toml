@@ -10,21 +10,20 @@ name = "uniffi_sealvault_core"
 
 [dependencies]
 aead = { version = "0.5.1", features = ["alloc"] }
-async-trait = "0.1.61"
+async-trait = "0.1.64"
 base64 = "0.21.0"
 chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 chrono = "0.4.23"
 der = "0.6.1"
-diesel = { version = "2.0.2", features = ["sqlite", "r2d2"] }
+diesel = { version = "2.0.3", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "2.0.0", features = ["sqlite"] }
 # `serde` feauture implicitly depends on `pem` in 0.12.1
 ecdsa = {version = "0.14.8", features = ["digest", "sign"]}
 # Fork pending release of https://github.com/gakonst/ethers-rs/pull/2051
 ethers = { git = "https://github.com/agostbiro/ethers-rs", rev = "90abdd5", features = ["legacy", "eip712", "abigen"] }
-futures = "0.3.25"
+futures = "0.3.26"
 # Git version needed for unreleased https://github.com/paritytech/jsonrpsee/pull/845
 jsonrpsee = { version = "0.16.2", features = ["server", "http-client", "macros"] }
-# Ethers Core has this
 k256 = { version = "0.11.6", features = ["digest", "ecdsa", "keccak256", "pkcs8", "pem"] }
 # This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)
 # with the feature flag. We need at least 0.24, bc that bundles SQLite 3.38.0 which
@@ -38,11 +37,11 @@ serde_json = { version = "1.0.91", features = ["alloc"] }
 strum = { version = "0.24.1", features = ["derive", "strum_macros"] }
 strum_macros = "0.24.3"
 thiserror = "1.0.38"
-tokio = "1.24.1"
-typed-builder = "0.11.0"
+tokio = "1.25.0"
+typed-builder = "0.12.0"
 uniffi = "0.22.0"
 uniffi_macros = "0.22.0"
-uuid = { version = "1.2.2", features = ["v4"] }
+uuid = { version = "1.3.0", features = ["v4"] }
 sha3 = "0.10.6"
 hex = "0.4.3"
 serde = { version = "1.0.152", features = ["serde_derive", "derive", "alloc"] }
@@ -53,8 +52,8 @@ olpc-cjson = "0.1.2"
 url = { version = "2.3.1", features = ["serde"] }
 lazy_static = "1.4.0"
 publicsuffix = "2.2.3"
-cacache = "10.0.1"
-reqwest = { version = "0.11.13" }
+cacache = "11.0.0"
+reqwest = { version = "0.11.14" }
 reqwest-middleware = "0.2.0"
 http-cache-reqwest = "0.5.2"
 blake3 = "1.3.3"
@@ -69,12 +68,12 @@ anyhow = "1.0.68"
 http = "0.2.8"
 itertools = "0.10.5"
 email_address = "0.2.4"
-rust_decimal = { version = "1.27.0", features = ["maths"] }
+rust_decimal = { version = "1.28.0", features = ["maths"] }
 data-encoding = "2.3.3"
 tempfile = "3.3.0"
 dyn-clone = "1.0.10"
 argon2 = { version = "0.4.1", features = ["std", "zeroize"] }
-zip = "0.6.3"
+zip = "0.6.4"
 derive_more = "0.99.17"
 
 [build-dependencies]
