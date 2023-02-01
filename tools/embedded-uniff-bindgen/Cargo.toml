@@ -7,4 +7,4 @@ license = "MPL-2.0"
 
 [dependencies]
 # Important to match exactly uniffi dep version in `core`
-uniffi = {version = "0.23.0", features = ["cli"] }
+uniffi = { version = "0.23.0", features = ["cli"] }
