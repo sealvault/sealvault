@@ -28,6 +28,20 @@ The data signed by on-chain signatures follows a [standard
 format,](https://docs.ethers.org/v5/api/providers/types/#providers-TransactionRequest)
 and it can be used to simulate the on-chain changes caused by a signature.
 
+### Spender Approvals
+
+Both the fungible ([EIP-20](https://eips.ethereum.org/EIPS/eip-20#approve)) and
+non-fungible token standards
+([EIP-721](https://eips.ethereum.org/EIPS/eip-721#specification),
+[EIP-1155](https://eips.ethereum.org/EIPS/eip-1155#approval)) support approving
+a spender other than the owner for tokens with a transaction. This mechanism is
+typically used to implement a clearing mechanism for exchanges.
+
+Once a spender approval is granted to a third party, the user's token can be
+transferred by that third party without further involvement from the user.
+For this reason, the application must keep track of approvals given by the user
+through the in-page provider and let the user revoke them later.
+
 ### Off-Chain Signatures
 
 An off-chain signature is a valid signature that validator nodes refuse to
@@ -96,7 +110,7 @@ signatures with a key not specifically created for the dapp ([cross-connected
 key](./cross-connect.md)).
 
 With [dapp keys,](./dapp-keys.md) we can completely automate the in-page
-provider for the user, but in order to support [data
+provider for the user, but in order to support all aspects of [data
 portability](#data-portability), we have to let users connect dapp keys to other
 dapps.  As mentioned, this is fundamentally unsafe, and the Ethereum ecosystem
 is slowly moving away from this model with signature based delegation,[^10] but
@@ -104,6 +118,57 @@ many dapps still rely on it.[^15] We support
 [cross-connecting](./cross-connect.md) wallets and dapp keys and reduce the
 security decisions user have to make when a key is cross-connected to token
 transfer decisions.
+
+### New Dapp Flow
+
+When a new [dapp](dapp-keys.md#what-is-a-dapp) requests to connect for the first
+time, the in-page provider asks the user through a dialog if they want to add
+this new dapp, creates a new [dapp key](./dapp-keys.md) for the dapp and
+connects the new dapp key. Defaulting to creating a new [dapp
+key](./dapp-keys.md) and connecting that by default protects the user from
+phishing that relies on misidentifying the dapp that the user interacts with.
+
+```mermaid
+flowchart TB
+    new_dapp([New dapp requests connect]) -->  add_dapp{{User wants to add new dapp?}}
+    add_dapp -- Yes --> create_key[Create new dapp key]
+    add_dapp -- No --> reject([Reject connect request])
+    create_key --> connect([Connect new dapp key])
+    
+    %% CSS-based class defs don't work
+    classDef green stroke:green;
+    classDef red stroke:red;
+    classDef yellow stroke:#e9c46a;
+    class connect green
+    class new_dapp yellow
+    class reject red
+
+```
+
+### Added Dapp
+
+When a [dapp](dapp-keys.md#what-is-a-dapp) that was added before by the user
+requests to connect, if [dapp key](./dapp-keys.md) was last connected, then auto
+connect it, else request from user which to connect. The default in the
+selection is the last connected address.
+
+```mermaid
+flowchart TB
+    added_dapp([Added dapp requests connect]) -->  last_connected{{Last connected dapp key?}}
+    last_connected -- Yes --> connect_dapp_key([Connect dapp key automatically])
+    last_connected -- No --> select_address[\User selects address/]
+    select_address -- Yes --> connect_selected([Connect selected])
+    select_address -- No --> reject([Reject connect request])
+    
+    %% CSS-based class defs don't work
+    classDef green stroke:green;
+    classDef red stroke:red;
+    classDef yellow stroke:#e9c46a;
+    class connect_dapp_key,connect_selected green
+    class added_dapp yellow
+    class reject red
+
+```
 
 
 [^10]:
