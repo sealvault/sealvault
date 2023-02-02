@@ -1,4 +1,4 @@
-# Dapp Keys
+## Overview
 
 Dapp keys are a novel isolation mechanism for Web3 clients.  As the name
 suggests, with dapp keys **one key is only allowed to approve transactions for
@@ -55,6 +55,13 @@ transactions when the user directly visits `app.aave.com` or `app.uniswap.org`.
 Preventing the use of keys associated with embedded contexts when visiting them
 directly ensures that removing an embedded dapp from a site removes its access
 to other dapps on that site.
+
+## Automatic Signature Approval
+
+When the in-page provider connects a dapp with its own dapp key, the in-page
+provider can automatically approve signature requests, since the dapp only has
+access to assets the user explicitly trusted it with by transferring them to the
+dapp key address.
 
 ## Changing Dapp for Address
 
