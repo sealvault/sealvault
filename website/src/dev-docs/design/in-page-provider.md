@@ -13,8 +13,8 @@ We'll discuss in-page providers in the context of the Ethereum ecosystem
 
 ## Signatures
 
-Dapps can generate on- and off-chain signatures with the user's keys through the
-in-page provider.
+Dapps can request to generate on- and off-chain signatures with the user's keys
+through the in-page provider.
 
 ### On-Chain Signatures
 
@@ -38,31 +38,29 @@ a spender other than the owner for tokens with a transaction. This mechanism is
 typically used to implement a clearing mechanism for exchanges.
 
 Once a spender approval is granted to a third party, the user's token can be
-transferred by that third party without further involvement from the user.
-For this reason, the application must keep track of approvals given by the user
-through the in-page provider and let the user revoke them later.
+transferred by that third party without further involvement from the user. The
+application must keep track of approvals given by the user through the in-page
+provider and let the user revoke them later.
 
 ### Off-Chain Signatures
 
 An off-chain signature is a valid signature that validator nodes refuse to
-accept for a transaction. Off-chain signatures are used for off-chain
-authorization purposes (e.g. sign-in with Ethereum) or for gasless transactions.
+accept for a transaction.
 
-There are two types of gasless transactions: meta-transactions and the
-approve-then-sign pattern. 
-
-There are no standards for the payload that the user signs for either type. The
-payload cannot be used to simulate the on-chain changes caused by a signature.
+Off-chain signatures are used for off-chain authorization purposes (e.g. sign-in
+with Ethereum) or for gasless transactions. There are two types of gasless
+transactions: meta-transactions and the approve-then-sign pattern. There are no
+standards for the payload that the user signs for either type. The payload
+cannot be used to simulate the on-chain changes caused by a signature.
 
 #### Meta-Transactions
 
 Meta-transactions are governed by the
-[EIP-2771](https://eips.ethereum.org/EIPS/eip-2771) standard. 
-
-Meta-transactions require opt-in by the token implementor to trust an other
-smart contract to verify that the transaction originates from the token owner
-(as opposed to checking `msg.sender` normally). [OpenGSN](https://opengsn.org/)
-is a popular relayer.
+[EIP-2771](https://eips.ethereum.org/EIPS/eip-2771) standard. Meta-transactions
+require opt-in by the token implementor to trust an other smart contract to
+verify that the transaction originates from the token owner (as opposed to
+checking `msg.sender` normally). [OpenGSN](https://opengsn.org/) is a popular
+relayer.
 
 There is no requirement in [EIP-2771](https://eips.ethereum.org/EIPS/eip-2771)
 that meta-transaction relayers verify the user's ownership of a token through
@@ -76,7 +74,7 @@ signature from the user to transfer the token without needing an additional
 on-chain transaction. A popular example is OpenSea's
 [Seaport](https://docs.opensea.io/v2.0/reference/seaport-overview) framework.
 
-We should note that there is no requirement for the spender to request an
+We should note that there is no standard that requires the spender to request an
 off-chain signature from the token owner before they'd spend the token.
 
 ## Data Portability
@@ -95,9 +93,9 @@ apps access to the key material.
 
 While the key material is safe in this setting, the security of the user's
 assets relies on the user's ability to detect malicious signature requests. This
-is fundamentally unsafe, since social engineering attacks can place even the
-most technically sophisticated user under enough pressure to make a mistake, and
-it is impossible to use safely for non-technical users.
+is fundamentally unsafe, since it is impossible for non-technical users to
+detect malicious signature requests and social engineering attacks can put even
+the most technically sophisticated user under enough pressure to make a mistake.
 
 ## Dapp Keys And Cross-Connect
 
@@ -116,15 +114,15 @@ dapps.  As mentioned, this is fundamentally unsafe, and the Ethereum ecosystem
 is slowly moving away from this model with signature based delegation,[^10] but
 many dapps still rely on it.[^15] We support
 [cross-connecting](./cross-connect.md) wallets and dapp keys and reduce the
-security decisions user have to make when a key is cross-connected to token
-transfer decisions.
+security decisions user have to make when a key is cross-connected to payment
+approval decisions.
 
 ### New Dapp Flow
 
 When a new [dapp](dapp-keys.md#what-is-a-dapp) requests to connect for the first
 time, the in-page provider asks the user through a dialog if they want to add
 this new dapp, creates a new [dapp key](./dapp-keys.md) for the dapp and
-connects the new dapp key. Defaulting to creating a new [dapp
+connects the new dapp key automatically. Defaulting to creating a new [dapp
 key](./dapp-keys.md) and connecting that by default protects the user from
 phishing that relies on misidentifying the dapp that the user interacts with.
 
@@ -172,7 +170,11 @@ flowchart TB
 
 
 [^10]:
-Eg. [Farcaster](https://www.youtube.com/watch?v=ZzySey1azWM), [Delegatable](https://delegatable.org/), [MUD](https://github.com/latticexyz/mud/issues/327).
+Eg. [Delegate Cash](https://delegate.cash/),
+[Farcaster](https://www.youtube.com/watch?v=ZzySey1azWM),
+[Delegatable](https://delegatable.org/),
+[MUD](https://github.com/latticexyz/mud/issues/327).
 
 [^15]:
-Eg. [Sunflower Land](https://sunflower-land.com/), [Phi](https://philand.xyz/), [Lens](https://www.lens.xyz/) ecosystem.
+Eg. [Sunflower Land](https://sunflower-land.com/), [Phi](https://philand.xyz/),
+[Lens](https://www.lens.xyz/) ecosystem.
