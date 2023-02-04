@@ -443,13 +443,22 @@ In an approval spoofing attack, the user authorizes a transaction with different
 parameters than they intended to, or the user performs an action which leads to
 authorizing a transaction without being aware of authorizing a transaction.
 
+The protected assets are a user's native, fungible tokens and non-fungible
+tokens.
+
 ### Phishing and Social Engineering
 
 ```mermaid
 flowchart BT
-  compromised_dapp[Compromised Dapp]
-  --> approval_spoofing
+  phishing[Phishing]
+  --> approval_spoofing[Approval Spoofing]
 
+  single_message[Single Message]
+  --> phishing[/Phishing\]
+
+  fraudulent_dapp[Fraudulent Dapp]
+  --> phishing
+  
   social_engineering[Social Engineering]
   --> approval_spoofing
 
@@ -459,27 +468,10 @@ flowchart BT
   fake_data[Fake Blockchain Data]
   --> social_engineering
 
-  phishing[Phishing]
-  --> approval_spoofing[Approval Spoofing]
+  compromised_dapp[Compromised Dapp]
+  --> approval_spoofing
 
-  single_message[Single Message]
-  --> phishing[/Phishing\]
-
-  fraudulent_dapp[Fraudulent Dapp]
-  --> phishing
 ```
-
-#### Social Engineering
-
-A social engineering attack relies on a crook tricking the user to execute a
-transaction. A novel social engineering threat for Web3 users is that crooks may
-fake transactions to establish trust with a victim or a trade may be faked to
-prompt copy trades.
-
-
-!!! warning "WIP"
-
-    This section is still work in progress.
 
 #### Phishing
 
@@ -489,22 +481,34 @@ opposed to a conversation in other social engineering attacks).
 
 Phishing attacks for approval spoofing rely on prompting a user to interact with
 a fraudulent dapp crafted to produce fraudulent transactions.  For example a
-fraudulent dapp can ask a user to perform a signature in order to qualify for an
-airdrop but instead of a signature it requests a transaction approval to
-transfer funds to the attacker's address which the user may or may not notice.
+fraudulent dapp can ask a user to perform an off-chain signature in order to
+qualify for an airdrop, but instead it requests a
+[signature](./in-page-provider.md#signatures) that lets the attacker transfer
+the user's tokens.
 
-We believe that the current trend in Web3 clients to make transaction parameters
-more legible or reactively catalogue malicious dapps to prevent fraud is
-misguided.  Since social attacks rely on a sense of urgency, reactive
-methods leave users vulnerable and the burden of understanding the
-idiosyncrasies of various blockchains cannot be placed on users.  A [better
-approach](./security-model.md#deception-mitigation) is to prevent actions that
-can be dangerous to users and disincentivize attackers.
+SealVault offers two mitigations for phishing:
+
+1. When a user [connects a new dapp](./in-page-provider.md#new-dapp-flow) for
+   the first time, the in-page provider asks the user through a dialog if they
+   want to add this new dapp, creates a new dapp key for the dapp and connects
+   the new dapp key. Defaulting to creating a new dapp key and connecting that
+   by default protects the user from phishing attacks that rely on
+   misidentifying the dapp that the user interacts with.
+2. When a user [cross-connects](./cross-connect.md) a key to a dapp, we reduce
+   approval decisions to payment, listing a token, or sign in. If we cannot
+   guarantee the outcome, we refuse the request and prompt the user to continue
+   with the [dapp key.](./dapp-keys.md)
+
+#### Social Engineering
+
+A social engineering attack relies on a crook tricking the user to execute a
+transaction. A novel social engineering threat for Web3 users is that crooks may
+fake transactions to establish trust with a victim or a trade may be faked to
+prompt copy trades.
 
 !!! warning "WIP"
 
     This section is still work in progress.
-
 
 ---
 ### Compromised Dapp
@@ -549,16 +553,9 @@ flowchart BT
 
 #### Supply Chain Attack
 
-
-SealVault offers the following mitigations against supply chain attacks on
-dapps:
-
-1. [Dapp keys](./dapp-keys.md) limit the damage a compromised dapp
-   can do to the assets belonging to that dapp.
-1. In the future we will warn the user if a smart contract has changed for a
-   previously used dapp.
-1. In the future we will warn the user about suspicious transactions based on
-   their previous usage of the dapp.
+SealVault mitigates supply chain attacks on dapps with [dapp
+keys](./dapp-keys.md) that limit the damage a compromised dapp can do to the
+assets belonging to that dapp.
 
 #### Clickjacking
 
