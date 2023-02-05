@@ -48,7 +48,7 @@ block on them with the `async_runtime` module that wraps a lazy-initialized
 global Tokio runtime.
 2. Since we have an async runtime anyway for our dependencies, if there is a
 function that we want to call multiple times concurrently during one FFI call
-(eg. to fetch multiple images), then we write that function as async, spawn
+(e.g. to fetch multiple images), then we write that function as async, spawn
 instances of it on the async runtime and then block on the joined futures.
 3. While initially the in-page provider was implemented with the blocking 
 approach, we discovered that it's surprisingly difficult to get a fixed-sized

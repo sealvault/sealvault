@@ -110,8 +110,8 @@ defend against OS level privilege-escalation vulnerabilities.
 #### Security Misconfiguration
 
 A bug in the app's source code may be exploited by malware on the user's device
-to steal secret keys (eg. by exploiting incorrect keychain item permissions). We
-defend against security misconfigurations by requiring code reviews for all
+to steal secret keys (e.g. by exploiting incorrect keychain item permissions).
+We defend against security misconfigurations by requiring code reviews for all
 changes. Open source code serves as an additional defense-in-depth measure
 against security misconfigurations.
 
@@ -239,7 +239,7 @@ in the user interface. There are several ways this can happen:
 
 In a hardware side-channel attack, an attacker that can take hold of a device to
 perform measurements during the execution of the application to recover secret
-keys or they can use a hardware vulnerability (eg.
+keys or they can use a hardware vulnerability (e.g.
 [Meltdown](https://meltdownattack.com/)) to recover secret keys from the
 application with their malware running on the device.
 

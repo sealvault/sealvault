@@ -113,7 +113,7 @@ and decentralized databases.
 
 !!! info "How is composable data produced in Web3?"
 
-    First, a programmer takes a look at a public data schema (eg. a smart contract
+    First, a programmer takes a look at a public data schema (e.g. a smart contract
     that implements the [ERC-721 interface](https://eips.ethereum.org/EIPS/eip-721))
     and decides to build on top of it. Then, a user, who has already interacted with
     what the programmer built on, decides that they like what the programmer built

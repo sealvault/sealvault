@@ -114,8 +114,8 @@ dapps.  As mentioned, this is fundamentally unsafe, and the Ethereum ecosystem
 is slowly moving away from this model with signature based delegation,[^10] but
 many dapps still rely on it.[^15] We support
 [cross-connecting](./cross-connect.md) wallets and dapp keys and reduce the
-security decisions user have to make when a key is cross-connected to payment
-approval decisions.
+security decisions user have to make when a key is cross-connected to sign-in,
+payment approval or token listing decisions.
 
 ### New Dapp Flow
 
@@ -170,11 +170,11 @@ flowchart TB
 
 
 [^10]:
-Eg. [Delegate Cash](https://delegate.cash/),
+E.g. [Delegate Cash](https://delegate.cash/),
 [Farcaster](https://www.youtube.com/watch?v=ZzySey1azWM),
 [Delegatable](https://delegatable.org/),
 [MUD](https://github.com/latticexyz/mud/issues/327).
 
 [^15]:
-Eg. [Sunflower Land](https://sunflower-land.com/), [Phi](https://philand.xyz/),
+E.g. [Sunflower Land](https://sunflower-land.com/), [Phi](https://philand.xyz/),
 [Lens](https://www.lens.xyz/) ecosystem.
