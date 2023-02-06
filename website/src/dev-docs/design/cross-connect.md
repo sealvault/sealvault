@@ -6,12 +6,9 @@ title: Cross-Connect
 
 When the provider generates [signatures](./in-page-provider.md#signatures) with
 a key not specifically created for the dapp, it is cross-connected.
-Cross-connecting keys is required to support the following [data
-portability](./in-page-provider.md#data-portability) patterns for web apps:
-
-1. Proving ownership of an address.[^0]
-2. Minting an NFT based on an allow list or holding an asset.[^1]
-3. Listing a game item for sale on an exchange.[^2]
+Cross-connecting keys is required to support certain [data
+portability](./in-page-provider.md#data-portability) [use cases](#use-cases) for
+web apps.
 
 Cross-connecting keys without restrictions is [fundamentally
 insecure,](./in-page-provider.md#data-portability) as it relies on users
@@ -38,6 +35,17 @@ blocked, users are guided to switch to the [dapp key](./dapp-keys.md) to
 continue. The dapp key is an isolation mechanism that
 [guarantees](./dapp-keys.md#automatic-signature-approval) that a malicious dapp
 cannot exploit assets that the user explicitly trusted it with.
+
+## Use Cases
+
+The following [data portability](./in-page-provider.md#data-portability)
+patterns for web apps need cross connect:
+
+| UX                                    | Technical            | Example                                                                                                                                                                                                                             |
+|---------------------------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Sign In](#sign-in)                   | Off-chain signature  | - Prove ownership of an address (eg. [SIWE](https://eips.ethereum.org/EIPS/eip-4361) or accept ToS). <br/> - Prove ownership of assets (e.g. [nf.td](https://nf.td/) and [Phi Land](https://philand.xyz/)).                         |
+| [Payment Approval](#payment-approval) | Token transfer event | - Mint an NFT based on an allow list or holding an asset (e.g.: [Sunflower Land](https://sunflower-land.com/) + [Bumpkins](https://bumpkins.io/), [Lens](https://www.lens.xyz/) ecosystem.).<br/>- Supplying collateral for a loan. |
+| [Pledge Approval](#pledge-approval)   | Token approval event | - Listing a game item for sale on an exchange while playing the game (e.g.: [Sunflower Land](https://sunflower-land.com/).                                                                                                                                                             |
 
 ## Sign In
 
@@ -195,20 +203,6 @@ standardization in the ecosystem to reduce the implementation burden on us.
 !!! warning "WIP"
 
     This section is still work in progress.
-
-[^0]:
-    E.g. [nf.td](https://nf.td/) and [Phi Land](https://philand.xyz/) for proof of
-    assets; [OpenSea](https://opensea.io) and [Sunflower
-    Land](https://sunflower-land.com/) to accept terms of service; and [Sign-In with
-    Ethereum](https://eips.ethereum.org/EIPS/eip-4361) for authentication.
-
-[^1]:
-    E.g.: [Sunflower Land](https://sunflower-land.com/) +
-    [Bumpkins](https://bumpkins.io/), [Lens](https://www.lens.xyz/) ecosystem.
-
-[^2]:
-    E.g.: [Sunflower Land](https://sunflower-land.com/) +
-    [OpenSea](https://opensea.io).
 
 [^10]:
     A faulty or malicious blockchain API can send wrong values. This an attack
