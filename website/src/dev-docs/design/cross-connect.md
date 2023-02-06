@@ -32,7 +32,7 @@ While most [in-page provider](./in-page-provider.md) implementations let users
 cross-connect keys without restrictions, our approach to security is to
 [eliminate attack vectors](./security-model.md#deception-mitigation) where we
 can.  Therefore, in cross-connect mode, we reduce the decision the user has to
-make to sign in, payment approval and token listing decisions and reject
+make to sign in, payment approval and token pledge decisions and reject
 signature requests where we cannot guarantee this. If a signature request is
 blocked, users are guided to switch to the [dapp key](./dapp-keys.md) to
 continue. The dapp key is an isolation mechanism that
@@ -72,7 +72,7 @@ Apple Pay prompt on iOS.
 </figcaption>
 </figure>
 
-## Listing Approval
+## Pledge Approval
 
 [Spender approval](./in-page-provider.md#spender-approvals) is a novel concept
 introduced by Ethereum. Its purpose is to let decentralized exchanges settle
@@ -85,21 +85,20 @@ There are two challenges we need to solve in order to provide a secure and
 smooth experience for spender approvals:
 
 1. Since spender approval is a novel concept, we need to make sure that the
-   prompt that we display matches the user's intention of listing a token while
-   making sure at the same time the user understands the consequences of giving
-   a spender approval.
+   prompt that we display matches the user's intention while making sure at the
+   same time the user understands the consequences of giving a spender approval.
 2. We need to keep track of approvals and let users find and revoke them in a
    way that matches their mental model.
 
-### Listing Approval Dialog
+### Pledge Approval Dialog
 
 In order to solve first challenge, we use a two phase approval dialog:
 
 ```mermaid
 flowchart TB
-    spender_approval([Spender approval request from dapp]) -->  list_token{{List token on exchange?}}
-    list_token -- Yes --> allow_spend{{Allow spend until listing is cancelled?}}
-    list_token -- No --> reject([Reject spender approval request])
+    spender_approval([Spender approval request from dapp]) -->  pledge_token{{Pledge token?}}
+    pledge_token -- Yes --> allow_spend{{Allow spend until pledge is cancelled?}}
+    pledge_token -- No --> reject([Reject spender approval request])
     allow_spend -- Yes --> sign([Sign spender approval request])
     allow_spend -- No --> reject([Reject spender approval request])
     
@@ -112,7 +111,7 @@ flowchart TB
     class reject red
 ```
 
-### Revoke Listing
+### Revoke Pledge
 
 !!! warning "WIP"
 
@@ -125,7 +124,7 @@ the following categories:
 
 1. [Sign in](#sign-in) request
 2. [Payment](#payment-approval) request
-3. [Token listing](#listing-approval) request
+3. [Token pledge](#pledge-approval) request
 4. Unknown
 
 We cannot interpret all signature requests as one of the first three categories,
@@ -135,7 +134,7 @@ request and direct the user use the [dapp key](./dapp-keys.md) to continue.
 Identifying sign in requests is challenging, because there is no standard format
 to prove ownership of an address.
 
-Identifying payment and token listing requests is challenging, because, while we
+Identifying payment and token pledge requests is challenging, because, while we
 can simulate the outcome of [on-chain
 signatures](./in-page-provider.md#on-chain-signatures) to learn the outcome,
 [off-chain signatures](./in-page-provider.md#off-chain-signatures) can lead to
@@ -148,14 +147,14 @@ to interpret the signed data programmatically.
 
     This section is still work in progress.
 
-### Handling Payment and Token Listing Requests
+### Handling Payment and Token Pledge Requests
 
 #### Data Needed
 
 We need to extract the following data from the
 [on-](./in-page-provider.md#on-chain-signatures) and
 [off-chain](./in-page-provider.md#off-chain-signatures) signature requests for
-the payment and listing approval dialogs:
+the payment and pledge approval dialogs:
 
 - Native token spent on network fees
 - Native token transferred
@@ -185,7 +184,7 @@ from [on-chain signature](./in-page-provider.md#on-chain-signatures) requests.
 There is no universal solution to extract the [data we need](#data-needed) from
 [off-chain signature](./in-page-provider.md#off-chain-signatures) requests.
 
-Off-chain signature requests that are payment or listing approval[^20] requests
+Off-chain signature requests that are payment or pledge approval[^20] requests
 typically follow the [EIP-712](https://eips.ethereum.org/EIPS/eip-712) standard,
 but the standard only defines the format of the signed data, not its semantics.
 Therefore, in order to extract the [data needed,](#data-needed), we have to

@@ -495,7 +495,7 @@ SealVault offers two mitigations for phishing:
    by default protects the user from phishing attacks that rely on
    misidentifying the dapp that the user interacts with.
 2. When a user [cross-connects](./cross-connect.md) a key to a dapp, we reduce
-   approval decisions to payment, listing a token, or sign in. If we cannot
+   approval decisions to payment, pledge a token, or sign in. If we cannot
    guarantee the outcome, we refuse the request and prompt the user to continue
    with the [dapp key.](./dapp-keys.md)
 
