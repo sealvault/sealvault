@@ -44,8 +44,8 @@ patterns for web apps need cross connect:
 | Approval Type                         | Signature Type   | Use Case                                                                                                                                                                                                                          |
 |---------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [Sign In](#sign-in)                   | Off-chain        | - Prove ownership of an address (e.g. [SIWE](https://eips.ethereum.org/EIPS/eip-4361) or accept ToS). <br/> - Prove ownership of assets (e.g. [nf.td](https://nf.td/) and [Phi Land](https://philand.xyz/)).                      |
-| [Payment Approval](#payment-approval) | On- or off-chain | - Mint an NFT based on an allow list or holding an asset (e.g.: [Sunflower Land](https://sunflower-land.com/) + [Bumpkins](https://bumpkins.io/), [Lens](https://www.lens.xyz/) ecosystem).<br/>- Supply collateral for a loan.   |
-| [Pledge Approval](#pledge-approval)   | On- or off-chain | - List a game item for sale on an exchange while playing the game (e.g.: [Sunflower Land](https://sunflower-land.com/)).                                                                                                          |
+| [Payment Approval](#payment-approval) | On- or off-chain | - Mint an NFT based on an allow list or holding an asset (e.g. [Sunflower Land](https://sunflower-land.com/) + [Bumpkins](https://bumpkins.io/), [Lens](https://www.lens.xyz/) ecosystem).<br/>- Supply collateral for a loan.   |
+| [Pledge Approval](#pledge-approval)   | On- or off-chain | - List a game item for sale on an exchange while playing the game (e.g. [Sunflower Land](https://sunflower-land.com/)).                                                                                                          |
 
 ## Sign In
 
