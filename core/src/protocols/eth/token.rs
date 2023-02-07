@@ -194,6 +194,16 @@ impl FungibleTokenBalance {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct NFTBalance {
+    pub chain_id: ChainId,
+    pub contract_address: Address,
+    pub symbol: String,
+    pub collection_name: String,
+    pub name: String,
+    pub image_url: Option<url::Url>,
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Mul;
