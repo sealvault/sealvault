@@ -44,12 +44,15 @@ pub use crate::{
         restore_backup as core_restore_backup, BackupError as CoreBackupError,
         BackupRestoreData, BackupStorageI as CoreBackupStorageI,
     },
-    dto::{CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreProfile, CoreToken},
+    dto::{
+        CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreFungibleToken, CoreProfile,
+        CoreTokens,
+    },
     error::Error,
     in_page_provider::{
         CoreInPageCallbackI, DappApprovalParams, InPageProvider, InPageRequestContextI,
     },
-    protocols::TokenType,
+    protocols::FungibleTokenType,
     ui_callback::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
         DappTransactionApproved, DappTransactionResult, TokenTransferResult,

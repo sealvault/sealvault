@@ -14,15 +14,16 @@ use jsonrpsee::{
     core::{async_trait, RpcResult},
     http_client::HttpClient,
     proc_macros::rpc,
-    types::error::ErrorCode,
 };
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
+use strum_macros::{EnumIter, EnumString};
 use url::Url;
 
 use crate::{
     protocols::{
         eth::{token::FungibleTokenBalance, ChainId},
-        TokenType,
+        FungibleTokenType,
     },
     Error,
 };
@@ -55,14 +56,14 @@ trait AnkrRpcApi {
     ) -> RpcResult<AnkrNFTBalances>;
 }
 
-// The purpose of this trait is to let us mock the Ankr backend for tests
+/// The purpose of this trait is to let us mock the Ankr backend for tests.
+/// It's async to make it easy to fetch multiple addresses concurrently.
 #[async_trait]
 pub trait AnkrRpcI<'a> {
     fn client(&'a self) -> &'a HttpClient;
 
     async fn paged_call<R, T, F, Fut, G>(
         &'a self,
-        chain_id: ChainId,
         address: &str,
         mut callback: F,
         mut extract: G,
@@ -70,16 +71,17 @@ pub trait AnkrRpcI<'a> {
     where
         R: Deserialize<'static> + Send,
         T: Deserialize<'static> + Send,
-        F: FnMut(Option<String>, AnkrBlockchain, String) -> Fut + Send,
+        F: FnMut(Option<String>, Vec<AnkrBlockchain>, String) -> Fut + Send,
         Fut: Future<Output = RpcResult<R>> + Send,
         G: FnMut(R) -> (Option<String>, Vec<T>) + Send,
     {
         let mut page_token: Option<String> = None;
         let mut results: Vec<T> = Default::default();
-        let ankr_chain_id: AnkrBlockchain = chain_id.try_into()?;
         loop {
+            // Fetch all supported blockchains
+            let blockchains: Vec<AnkrBlockchain> = AnkrBlockchain::iter().collect();
             let result: R =
-                callback(page_token, ankr_chain_id.clone(), address.to_string()).await?;
+                callback(page_token, blockchains, address.to_string()).await?;
             let (next_page_token, batch) = extract(result);
 
             results.extend(batch);
@@ -92,21 +94,17 @@ pub trait AnkrRpcI<'a> {
         Ok(results)
     }
 
-    /// Fetch account balances for an address on a chain from an Ankr advanced API.
-    /// It's async to make it easy to fetch multiple addresses concurrently.
+    /// Fetch account balances for an address on all supported chains from an Ankr advanced API.
     async fn get_account_balances(
         &'a self,
-        chain_id: ChainId,
         address: &str,
     ) -> Result<Vec<FungibleTokenBalance>, Error> {
         let results: Vec<AnkrFungibleTokenBalance> = self
             .paged_call(
-                chain_id,
                 address,
                 |page_token: Option<String>,
-                 ankr_chain_id: AnkrBlockchain,
+                 blockchains: Vec<AnkrBlockchain>,
                  address: String| {
-                    let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
                     self.client().get_account_balance(
                         blockchains,
                         PAGE_SIZE,
@@ -128,19 +126,17 @@ pub trait AnkrRpcI<'a> {
         Ok(to_fungible_token_balances(results))
     }
 
+    /// Fetch NFTs for an address on all supported chains from an Ankr advanced API.
     async fn get_nfts_by_owner(
         &'a self,
-        chain_id: ChainId,
         address: &str,
     ) -> Result<Vec<NFTBalance>, Error> {
         let results: Vec<AnkrNFTBalance> = self
             .paged_call(
-                chain_id,
                 address,
                 |page_token: Option<String>,
-                 ankr_chain_id: AnkrBlockchain,
+                 blockchains: Vec<AnkrBlockchain>,
                  address: String| {
-                    let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
                     self.client().get_nfts_by_owner(
                         address,
                         blockchains,
@@ -237,15 +233,13 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
         } = value;
         let contract_address = contract_address.ok_or_else(|| Error::Retriable {
             error: format!(
-                "Missing contract address for ERC20 token '{}' on {} chain",
-                token_symbol, blockchain
+                "Missing contract address for ERC20 token '{token_symbol}' on {blockchain} chain"
             ),
         })?;
         let amount =
             U256::from_dec_str(&balance_raw_integer).map_err(|_| Error::Retriable {
                 error: format!(
-                    "Invalid raw integer balance '{}' for token {} on chain {}",
-                    balance_raw_integer, token_symbol, blockchain
+                    "Invalid raw integer balance '{balance_raw_integer}' for token {token_symbol} on chain {blockchain}",
                 ),
             })?;
         let logo = Url::parse(&thumbnail).ok();
@@ -282,9 +276,8 @@ impl From<AnkrNFTBalance> for NFTBalance {
             image_url,
             ..
         } = value;
-        let chain_id: ChainId = blockchain.into();
         NFTBalance {
-            chain_id,
+            chain_id: blockchain.into(),
             contract_address,
             symbol,
             collection_name,
@@ -295,26 +288,24 @@ impl From<AnkrNFTBalance> for NFTBalance {
 }
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, strum_macros::EnumString, strum_macros::Display,
+    Clone, Debug, Serialize, Deserialize, EnumString, EnumIter, strum_macros::Display,
 )]
-#[strum(serialize_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum AnkrBlockchain {
     Eth,
+    EthGoerli,
     Polygon,
+    PolygonMumbai,
 }
 
-impl TryFrom<ChainId> for AnkrBlockchain {
-    type Error = Error;
-
-    fn try_from(chain_id: ChainId) -> Result<Self, Self::Error> {
+impl From<ChainId> for AnkrBlockchain {
+    fn from(chain_id: ChainId) -> Self {
         match chain_id {
-            ChainId::EthMainnet => Ok(AnkrBlockchain::Eth),
-            ChainId::PolygonMainnet => Ok(AnkrBlockchain::Polygon),
-            _ => Err(Error::JsonRpc {
-                code: ErrorCode::InvalidParams,
-                message: format!("Chain {chain_id} is not supported for Ankr API"),
-            }),
+            ChainId::EthMainnet => AnkrBlockchain::Eth,
+            ChainId::EthGoerli => AnkrBlockchain::EthGoerli,
+            ChainId::PolygonMainnet => AnkrBlockchain::Polygon,
+            ChainId::PolygonMumbai => AnkrBlockchain::PolygonMumbai,
         }
     }
 }
@@ -323,7 +314,9 @@ impl From<AnkrBlockchain> for ChainId {
     fn from(value: AnkrBlockchain) -> Self {
         match value {
             AnkrBlockchain::Eth => ChainId::EthMainnet,
+            AnkrBlockchain::EthGoerli => ChainId::EthGoerli,
             AnkrBlockchain::Polygon => ChainId::PolygonMainnet,
+            AnkrBlockchain::PolygonMumbai => ChainId::PolygonMumbai,
         }
     }
 }
@@ -350,7 +343,7 @@ pub struct AnkrFungibleTokenBalance {
     balance_raw_integer: String,
     balance_usd: String,
     token_price: String,
-    // Not URL, because it can empty string.
+    // Not URL, because it can be empty string.
     thumbnail: String,
 }
 
@@ -377,13 +370,7 @@ pub struct AnkrNFTBalance {
 }
 
 #[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    strum_macros::EnumString,
-    strum_macros::Display,
+    Debug, Eq, PartialEq, Serialize, Deserialize, EnumString, strum_macros::Display,
 )]
 #[strum(serialize_all = "UPPERCASE")]
 #[serde(rename_all = "UPPERCASE")]
@@ -392,11 +379,11 @@ pub enum AnkrTokenType {
     Erc20,
 }
 
-impl From<AnkrTokenType> for TokenType {
+impl From<AnkrTokenType> for FungibleTokenType {
     fn from(value: AnkrTokenType) -> Self {
         match value {
-            AnkrTokenType::Native => TokenType::Native,
-            AnkrTokenType::Erc20 => TokenType::Fungible,
+            AnkrTokenType::Native => FungibleTokenType::Native,
+            AnkrTokenType::Erc20 => FungibleTokenType::Custom,
         }
     }
 }
@@ -671,10 +658,9 @@ mod tests {
     #[test]
     fn fungible_token_balances() {
         let ankr = AnkrRpc::new().unwrap();
-        let balances = rt::block_on(ankr.get_account_balances(
-            ChainId::PolygonMainnet,
-            "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-        ))
+        let balances = rt::block_on(
+            ankr.get_account_balances("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
+        )
         .unwrap();
         assert_eq!(balances.len(), 2);
     }
@@ -682,10 +668,9 @@ mod tests {
     #[test]
     fn nft_token_balances() {
         let ankr = AnkrRpc::new().unwrap();
-        let balances = rt::block_on(ankr.get_nfts_by_owner(
-            ChainId::PolygonMainnet,
-            "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-        ))
+        let balances = rt::block_on(
+            ankr.get_nfts_by_owner("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
+        )
         .unwrap();
         assert_eq!(balances.len(), 3);
     }

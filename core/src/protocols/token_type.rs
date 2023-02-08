@@ -3,7 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TokenType {
+pub enum FungibleTokenType {
     Native,
-    Fungible,
+    Custom,
 }

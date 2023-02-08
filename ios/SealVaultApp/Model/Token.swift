@@ -20,14 +20,14 @@ class Token: Identifiable, ObservableObject {
         self.nativeToken = nativeToken
     }
 
-    static func fromCore(_ token: CoreToken) -> Self {
+    static func fromCore(_ token: CoreFungibleToken) -> Self {
 
         return self.init(
             id: token.id,
             symbol: token.symbol,
             icon: Self.convertIcon(token.icon),
             amount: token.amount,
-            nativeToken: token.tokenType == TokenType.native
+            nativeToken: token.tokenType == FungibleTokenType.native
         )
     }
 
@@ -39,7 +39,7 @@ class Token: Identifiable, ObservableObject {
         return tokenIcon ?? UIImage(systemName: "banknote")!
     }
 
-    func updateFromCore(_ token: CoreToken) {
+    func updateFromCore(_ token: CoreFungibleToken) {
         assert(self.id == token.id, "token id mismatch in update from core")
         assert(self.symbol == token.symbol, "symbol mismatch in update from core")
         self.icon = Self.convertIcon(token.icon)
@@ -51,7 +51,7 @@ class Token: Identifiable, ObservableObject {
         switch token.tokenType {
         case .native:
             assert(self.nativeToken, "native token mismatch in update from core")
-        case .fungible:
+        case .custom:
             assert(!self.nativeToken, "fungible token mismatch in update from core")
         }
 

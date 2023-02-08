@@ -9,5 +9,5 @@ mod token_type;
 
 pub use crate::protocols::{
     blockchain_protocol::BlockchainProtocol, checksum_address::ChecksumAddress,
-    token_type::TokenType,
+    token_type::FungibleTokenType,
 };

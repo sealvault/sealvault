@@ -73,7 +73,7 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
-    func updateNativeToken(_ coreToken: CoreToken?) {
+    func updateNativeToken(_ coreToken: CoreFungibleToken?) {
         if let token = coreToken {
             if token.id == self.nativeToken.id {
                 self.nativeToken.updateFromCore(token)
@@ -83,7 +83,7 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
-    func updateFungibleTokens(_ coreTokens: [CoreToken]) {
+    func updateFungibleTokens(_ coreTokens: [CoreFungibleToken]) {
         let newIds = Set(coreTokens.map {$0.id})
         let oldIds = Set(self.fungibleTokens.keys)
         let toRemoveIds = oldIds.subtracting(newIds)
@@ -99,23 +99,12 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
-    private func fetchhNativeToken() async -> CoreToken? {
+    private func fetchTokens() async -> CoreTokens? {
         return await dispatchBackground(.userInteractive) {
             do {
-                return try self.core.nativeTokenForAddress(addressId: self.id)
+                return try self.core.tokensForAddressId(addressId: self.id)
             } catch {
-                print("Failed to fetch native token for address id \(self.id)")
-                return nil
-            }
-        }
-    }
-
-    private func fetchFungibleTokens() async -> [CoreToken]? {
-        return await dispatchBackground(.userInteractive) {
-            do {
-                return try self.core.fungibleTokensForAddress(addressId: self.id)
-            } catch {
-                print("Failed to fetch fungible tokens for address id \(self.id)")
+                print("Failed to fetch tokens for address id \(self.id)")
                 return nil
             }
         }
@@ -125,13 +114,9 @@ class Address: Identifiable, ObservableObject {
     func refreshTokens() async {
         self.loading = true
         defer { self.loading = false }
-        async let native = self.fetchhNativeToken()
-        async let fungibles = self.fetchFungibleTokens()
-        // Execute concurrently
-        let (nativeToken, fungibleTokens) = await (native, fungibles)
-        self.updateNativeToken(nativeToken)
-        if let fungibleTokens = fungibleTokens {
-            self.updateFungibleTokens(fungibleTokens)
+        if let tokens = await self.fetchTokens() {
+            self.updateNativeToken(tokens.nativeToken)
+            self.updateFungibleTokens(tokens.fungibleTokens)
         }
     }
 }

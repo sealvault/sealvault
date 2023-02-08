@@ -216,19 +216,11 @@ impl AppCore {
         Ok(picture)
     }
 
-    pub fn native_token_for_address(
+    pub fn tokens_for_address_id(
         &self,
         address_id: String,
-    ) -> Result<dto::CoreToken, CoreError> {
-        let res = self.assembler().native_token_for_address(&address_id)?;
-        Ok(res)
-    }
-
-    pub fn fungible_tokens_for_address(
-        &self,
-        address_id: String,
-    ) -> Result<Vec<dto::CoreToken>, CoreError> {
-        let res = self.assembler().fungible_tokens_for_address(&address_id)?;
+    ) -> Result<dto::CoreTokens, CoreError> {
+        let res = self.assembler().tokens_for_address_id(address_id)?;
         Ok(res)
     }
 
@@ -1464,13 +1456,14 @@ pub mod tests {
     }
 
     #[test]
-    fn native_token_for_address() -> Result<()> {
+    fn tokens_for_address_id() -> Result<()> {
         let tmp = TmpCore::new()?;
         let profile = tmp.first_profile();
         let address_id = profile.wallets.first().map(|a| &a.id).unwrap();
 
-        let token = tmp.core.native_token_for_address(address_id.clone())?;
-        assert_eq!(token.amount, Some("0".into()));
+        let tokens = tmp.core.tokens_for_address_id(address_id.clone())?;
+        assert!(tokens.native_token.amount.is_some());
+        assert!(!tokens.fungible_tokens.is_empty());
 
         Ok(())
     }

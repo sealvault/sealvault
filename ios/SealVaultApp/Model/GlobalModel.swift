@@ -401,6 +401,14 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+    func tokensForAddressId(addressId: String) throws -> CoreTokens {
+        CoreTokens(
+            addressId: addressId,
+            nativeToken: try! self.nativeTokenForAddress(addressId: addressId),
+            fungibleTokens: try! self.fungibleTokensForAddress(addressId: addressId)
+        )
+    }
+
     private var backupEnabledToggle: Bool = true
 
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
@@ -435,14 +443,18 @@ class PreviewAppCore: AppCoreProtocol {
         )
     }
 
-    static func toCoreToken(_ token: Token) -> CoreToken {
+    static func toCoreToken(_ token: Token) -> CoreFungibleToken {
         let icon = [UInt8](token.icon.pngData()!)
-        return CoreToken(
-            id: token.id, symbol: token.symbol, amount: token.amount, tokenType: TokenType.native, icon: icon
+        return CoreFungibleToken(
+            id: token.id,
+            symbol: token.symbol,
+            amount: token.amount,
+            tokenType: FungibleTokenType.native,
+            icon: icon
         )
     }
 
-    func fungibleTokensForAddress(addressId: String) throws -> [CoreToken] {
+    private func fungibleTokensForAddress(addressId: String) throws -> [CoreFungibleToken] {
         let tokens = DispatchQueue.main.sync {
             if addressId.contains("ETH") {
                 // Force update with new ids
@@ -457,7 +469,7 @@ class PreviewAppCore: AppCoreProtocol {
         }
     }
 
-    func nativeTokenForAddress(addressId: String) throws -> CoreToken {
+    private func nativeTokenForAddress(addressId: String) throws -> CoreFungibleToken {
         let token = DispatchQueue.main.sync {
             if addressId.contains("ETH") {
                 // Force update with new ids

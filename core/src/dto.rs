@@ -16,7 +16,7 @@ use crate::{
     async_runtime as rt,
     favicon::fetch_favicons,
     http_client::HttpClient,
-    protocols::{eth, eth::ankr, TokenType},
+    protocols::{eth, eth::ankr, FungibleTokenType},
     resources::CoreResourcesI,
     Error,
 };
@@ -54,16 +54,23 @@ pub struct CoreAddress {
     pub chain_display_name: String,
     pub is_test_net: bool,
     pub chain_icon: Vec<u8>,
-    pub native_token: CoreToken,
+    pub native_token: CoreFungibleToken,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
-pub struct CoreToken {
+pub struct CoreFungibleToken {
     pub id: String,
     pub symbol: String,
     pub amount: Option<String>,
-    pub token_type: TokenType,
+    pub token_type: FungibleTokenType,
     pub icon: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct CoreTokens {
+    pub address_id: String,
+    pub native_token: CoreFungibleToken,
+    pub fungible_tokens: Vec<CoreFungibleToken>,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -282,23 +289,31 @@ impl Assembler {
         })
     }
 
-    pub fn native_token_for_address(&self, address_id: &str) -> Result<CoreToken, Error> {
-        let (chain_id, address) = self.fetch_token_address(address_id)?;
-        self.assemble_native_token(&address.address, chain_id)
+    /// Fetch all the tokens for an address id.
+    pub fn tokens_for_address_id(&self, address_id: String) -> Result<CoreTokens, Error> {
+        let (chain_id, address) = self.fetch_token_address(&address_id)?;
+        let native_token = self.assemble_native_token(&address.address, chain_id)?;
+        let fungible_tokens =
+            self.assemble_fungible_tokens(&address.address, Some(chain_id))?;
+        Ok(CoreTokens {
+            address_id,
+            native_token,
+            fungible_tokens,
+        })
     }
 
     fn native_token_without_balance(
         &self,
         address: &str,
         chain_id: eth::ChainId,
-    ) -> Result<CoreToken, Error> {
+    ) -> Result<CoreFungibleToken, Error> {
         let native_token_id = format!("eth-{}-{}", chain_id, address);
         let icon = Some(chain_id.native_token().icon()?);
-        let native_token = CoreToken::builder()
+        let native_token = CoreFungibleToken::builder()
             .id(native_token_id)
             .symbol(chain_id.native_token().to_string())
             .amount(None)
-            .token_type(TokenType::Native)
+            .token_type(FungibleTokenType::Native)
             .icon(icon)
             .build();
         Ok(native_token)
@@ -308,7 +323,7 @@ impl Assembler {
         &self,
         address: &str,
         chain_id: eth::ChainId,
-    ) -> Result<CoreToken, Error> {
+    ) -> Result<CoreFungibleToken, Error> {
         let mut native_token = self.native_token_without_balance(address, chain_id)?;
         let provider = self.rpc_manager().eth_api_provider(chain_id);
         let balance = provider.native_token_balance(address)?;
@@ -316,38 +331,34 @@ impl Assembler {
         Ok(native_token)
     }
 
-    pub fn fungible_tokens_for_address(
-        &self,
-        address_id: &str,
-    ) -> Result<Vec<CoreToken>, Error> {
-        let (chain_id, address) = self.fetch_token_address(address_id)?;
-        self.assemble_fungible_tokens(&address.address, chain_id)
-    }
-
     fn assemble_fungible_tokens(
         &self,
         address: &str,
-        chain_id: eth::ChainId,
-    ) -> Result<Vec<CoreToken>, Error> {
+        chain_id: Option<eth::ChainId>,
+    ) -> Result<Vec<CoreFungibleToken>, Error> {
         use ankr::AnkrRpcI;
         let ankr_api = ankr::AnkrRpc::new()?;
-        let tokens_res = rt::block_on(ankr_api.get_account_balances(chain_id, address));
-        let tokens: Vec<eth::FungibleTokenBalance> = match tokens_res {
+        let tokens_res = rt::block_on(ankr_api.get_account_balances(address));
+        let mut tokens: Vec<eth::FungibleTokenBalance> = match tokens_res {
             Ok(tokens) => Ok(tokens),
             Err(Error::Retriable { error }) => {
                 log::error!(
-                    "Retriable error fetching fungible token balances for address '{}': {}", address, error
+                    "Retriable error fetching fungible token balances for address '{address}': {error}"
                 );
                 Ok(Default::default())
             }
             Err(Error::JsonRpc { code, message }) => {
                 log::error!(
-                    "JSON-RPC error fetching fungible token balances for address '{}': {} {}", address, code, message
+                    "JSON-RPC error fetching fungible token balances for address '{address}': {code} {message}"
                 );
                 Ok(Default::default())
             }
             error => error,
         }?;
+
+        if let Some(chain_id) = chain_id {
+            tokens.retain(|t| t.chain_id == chain_id);
+        }
 
         let (tokens_with_logo, tokens_no_logo): (Vec<_>, Vec<_>) =
             tokens.into_iter().partition(|token| token.logo.is_some());
@@ -360,7 +371,7 @@ impl Assembler {
             .into_iter()
             .chain(iter::repeat(None).take(tokens_no_logo.len()));
 
-        let result: Result<Vec<CoreToken>, Error> = tokens_with_logo
+        let result: Result<Vec<CoreFungibleToken>, Error> = tokens_with_logo
             .into_iter()
             .chain(tokens_no_logo)
             .zip(icons_for_all)
@@ -368,13 +379,13 @@ impl Assembler {
                 let amount = token.display_amount();
                 let contract_address = token.display_contract_address();
                 let eth::FungibleTokenBalance { symbol, .. } = token;
-                Ok(CoreToken::builder()
+                Ok(CoreFungibleToken::builder()
                     // The id being the contract address is relied on in the core
                     // `eth_transfer_fungible_token` interface.
                     .id(contract_address)
                     .symbol(symbol)
                     .amount(Some(amount))
-                    .token_type(TokenType::Fungible)
+                    .token_type(FungibleTokenType::Custom)
                     .icon(icon)
                     .build())
             })

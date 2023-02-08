@@ -43,10 +43,7 @@ interface AppCore {
     void set_active_profile_id(string profile_id);
 
     [Throws=CoreError]
-    CoreToken native_token_for_address(string address_id);
-
-    [Throws=CoreError]
-    sequence<CoreToken> fungible_tokens_for_address(string address_id);
+    CoreTokens tokens_for_address_id(string address_id);
 
     [Throws=CoreError]
     string get_in_page_script(string rpc_provider_name, string request_handler_name);
@@ -125,20 +122,26 @@ dictionary CoreAddress {
     string chain_display_name;
     boolean is_test_net;
     sequence<u8> chain_icon;
-    CoreToken native_token;
+    CoreFungibleToken native_token;
 };
 
-enum TokenType {
+enum FungibleTokenType {
     "Native",
-    "Fungible"
+    "Custom"
 };
 
-dictionary CoreToken {
+dictionary CoreFungibleToken {
     string id;
     string symbol;
     string? amount;
-    TokenType token_type;
+    FungibleTokenType token_type;
     sequence<u8>? icon;
+};
+
+dictionary CoreTokens {
+    string address_id;
+    CoreFungibleToken native_token;
+    sequence<CoreFungibleToken> fungible_tokens;
 };
 
 dictionary CoreArgs {
