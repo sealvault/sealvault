@@ -346,6 +346,12 @@ flowchart BT
   --> backup_disclosure
   
   apple_id_compromise
+  --> icloud_keychain_access[/iCloud Keychain Access\]
+  
+  device_passcode_compromise[Device Passcode Compromise]
+  --> icloud_keychain_access
+  
+  icloud_keychain_access
   --> kdfs_disclosure
 
   icloud_keychain_compromise[iCloud Keychain Compromise]
