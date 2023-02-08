@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::future::Future;
+
 use ethers::types::{Address, U256};
 #[cfg(not(test))]
 use jsonrpsee::core::client::CertificateStore;
@@ -39,17 +41,17 @@ trait AnkrRpcApi {
         &self,
         blockchain: Vec<AnkrBlockchain>,
         pageSize: usize,
-        pageToken: Option<&str>,
-        walletAddress: &str,
+        pageToken: Option<String>,
+        walletAddress: String,
     ) -> RpcResult<AnkrFungibleTokenBalances>;
 
     #[method(name = "getNFTsByOwner", param_kind = map)]
     async fn get_nfts_by_owner(
         &self,
-        walletAddress: &str,
+        walletAddress: String,
         blockchain: Vec<AnkrBlockchain>,
         pageSize: usize,
-        pageToken: Option<&str>,
+        pageToken: Option<String>,
     ) -> RpcResult<AnkrNFTBalances>;
 }
 
@@ -58,6 +60,38 @@ trait AnkrRpcApi {
 pub trait AnkrRpcI<'a> {
     fn client(&'a self) -> &'a HttpClient;
 
+    async fn paged_call<R, T, F, Fut, G>(
+        &'a self,
+        chain_id: ChainId,
+        address: &str,
+        mut callback: F,
+        mut extract: G,
+    ) -> Result<Vec<T>, Error>
+    where
+        R: Deserialize<'static> + Send,
+        T: Deserialize<'static> + Send,
+        F: FnMut(Option<String>, AnkrBlockchain, String) -> Fut + Send,
+        Fut: Future<Output = RpcResult<R>> + Send,
+        G: FnMut(R) -> (Option<String>, Vec<T>) + Send,
+    {
+        let mut page_token: Option<String> = None;
+        let mut results: Vec<T> = Default::default();
+        let ankr_chain_id: AnkrBlockchain = chain_id.try_into()?;
+        loop {
+            let result: R =
+                callback(page_token, ankr_chain_id.clone(), address.to_string()).await?;
+            let (next_page_token, batch) = extract(result);
+
+            results.extend(batch);
+
+            page_token = self.normalize_next_page_token(next_page_token);
+            if page_token.is_none() {
+                break;
+            }
+        }
+        Ok(results)
+    }
+
     /// Fetch account balances for an address on a chain from an Ankr advanced API.
     /// It's async to make it easy to fetch multiple addresses concurrently.
     async fn get_account_balances(
@@ -65,36 +99,33 @@ pub trait AnkrRpcI<'a> {
         chain_id: ChainId,
         address: &str,
     ) -> Result<Vec<FungibleTokenBalance>, Error> {
-        let mut page_token: Option<String> = None;
-        let mut token_balances: Vec<AnkrFungibleTokenBalance> = Default::default();
+        let results: Vec<AnkrFungibleTokenBalance> = self
+            .paged_call(
+                chain_id,
+                address,
+                |page_token: Option<String>,
+                 ankr_chain_id: AnkrBlockchain,
+                 address: String| {
+                    let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
+                    self.client().get_account_balance(
+                        blockchains,
+                        PAGE_SIZE,
+                        page_token,
+                        address,
+                    )
+                },
+                |result: AnkrFungibleTokenBalances| {
+                    let AnkrFungibleTokenBalances {
+                        next_page_token,
+                        assets,
+                        ..
+                    } = result;
+                    (next_page_token, assets)
+                },
+            )
+            .await?;
 
-        let ankr_chain_id: AnkrBlockchain = chain_id.try_into()?;
-        let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
-
-        loop {
-            let result: AnkrFungibleTokenBalances = self
-                .client()
-                .get_account_balance(
-                    blockchains.clone(),
-                    PAGE_SIZE,
-                    page_token.as_deref(),
-                    address,
-                )
-                .await?;
-
-            let AnkrFungibleTokenBalances {
-                next_page_token,
-                assets,
-                ..
-            } = result;
-            token_balances.extend(assets);
-
-            page_token = self.normalize_next_page_token(next_page_token);
-            if page_token.is_none() {
-                break;
-            }
-        }
-        Ok(to_fungible_token_balances(token_balances))
+        Ok(to_fungible_token_balances(results))
     }
 
     async fn get_nfts_by_owner(
@@ -102,36 +133,33 @@ pub trait AnkrRpcI<'a> {
         chain_id: ChainId,
         address: &str,
     ) -> Result<Vec<NFTBalance>, Error> {
-        let mut page_token: Option<String> = None;
-        let mut token_balances: Vec<AnkrNFTBalance> = Default::default();
+        let results: Vec<AnkrNFTBalance> = self
+            .paged_call(
+                chain_id,
+                address,
+                |page_token: Option<String>,
+                 ankr_chain_id: AnkrBlockchain,
+                 address: String| {
+                    let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
+                    self.client().get_nfts_by_owner(
+                        address,
+                        blockchains,
+                        PAGE_SIZE,
+                        page_token,
+                    )
+                },
+                |result: AnkrNFTBalances| {
+                    let AnkrNFTBalances {
+                        next_page_token,
+                        assets,
+                        ..
+                    } = result;
+                    (next_page_token, assets)
+                },
+            )
+            .await?;
 
-        let ankr_chain_id: AnkrBlockchain = chain_id.try_into()?;
-        let blockchains: Vec<AnkrBlockchain> = vec![ankr_chain_id];
-
-        loop {
-            let result: AnkrNFTBalances = self
-                .client()
-                .get_nfts_by_owner(
-                    address,
-                    blockchains.clone(),
-                    PAGE_SIZE,
-                    page_token.as_deref(),
-                )
-                .await?;
-
-            let AnkrNFTBalances {
-                next_page_token,
-                assets,
-                ..
-            } = result;
-            token_balances.extend(assets);
-
-            page_token = self.normalize_next_page_token(next_page_token);
-            if page_token.is_none() {
-                break;
-            }
-        }
-        Ok(to_nft_balances(token_balances))
+        Ok(to_nft_balances(results))
     }
 
     fn normalize_next_page_token(&self, token: Option<String>) -> Option<String> {
@@ -444,8 +472,8 @@ mod tests {
             &self,
             _blockchain: Vec<AnkrBlockchain>,
             _pageSize: usize,
-            pageToken: Option<&str>,
-            _walletAddress: &str,
+            pageToken: Option<String>,
+            _walletAddress: String,
         ) -> RpcResult<AnkrFungibleTokenBalances> {
             // Simulate paging once
             let page_token = if pageToken.is_none() {
@@ -513,10 +541,10 @@ mod tests {
 
         async fn get_nfts_by_owner(
             &self,
-            walletAddress: &str,
+            walletAddress: String,
             _blockchain: Vec<AnkrBlockchain>,
             _pageSize: usize,
-            pageToken: Option<&str>,
+            pageToken: Option<String>,
         ) -> RpcResult<AnkrNFTBalances> {
             // Simulate paging once
             let next_page_token = if pageToken.is_none() {
