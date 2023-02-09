@@ -82,7 +82,7 @@ title: Web3 Key Manager App
 -   __Cross Platform__
     - Currently: iOS
     - Next: MacOS + E2EE sync
-    - Planned: Androind, Window, Linux
+    - Planned: Android, Window, Linux
 
 -   __Open Source for Real__
     - [GitHub Repo](https://github.com/sealvault/sealvault)
