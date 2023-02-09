@@ -2,8 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::future::Future;
+use std::{collections::HashMap, future::Future};
 
+use derive_more::{AsRef, Display, Into};
 use ethers::types::{Address, U256};
 #[cfg(not(test))]
 use jsonrpsee::core::client::CertificateStore;
@@ -22,7 +23,10 @@ use url::Url;
 
 use crate::{
     protocols::{
-        eth::{token::FungibleTokenBalance, ChainId},
+        eth::{
+            token::FungibleTokenBalance, ChainId, NFTBalance, NativeTokenAmount,
+            TokenBalances,
+        },
         FungibleTokenType,
     },
     Error,
@@ -98,7 +102,7 @@ pub trait AnkrRpcI<'a> {
     async fn get_account_balances(
         &'a self,
         address: &str,
-    ) -> Result<Vec<FungibleTokenBalance>, Error> {
+    ) -> Result<Vec<TokenBalances>, Error> {
         let results: Vec<AnkrFungibleTokenBalance> = self
             .paged_call(
                 address,
@@ -123,7 +127,7 @@ pub trait AnkrRpcI<'a> {
             )
             .await?;
 
-        Ok(to_fungible_token_balances(results))
+        to_token_balances(results)
     }
 
     /// Fetch NFTs for an address on all supported chains from an Ankr advanced API.
@@ -188,25 +192,77 @@ impl<'a> AnkrRpcI<'a> for AnkrRpc {
     }
 }
 
-fn to_fungible_token_balances(
+fn to_token_balances(
     ankr_balances: Vec<AnkrFungibleTokenBalance>,
-) -> Vec<FungibleTokenBalance> {
-    ankr_balances
-        .into_iter()
-        .filter_map(|b| match b.token_type {
-            AnkrTokenType::Native => None,
-            AnkrTokenType::Erc20 => {
-                let token: Result<FungibleTokenBalance, Error> = b.try_into();
-                match token {
-                    Err(err) => {
-                        log::error!("{:?}", err);
-                        None
-                    }
-                    Ok(token) => Some(token),
-                }
+) -> Result<Vec<TokenBalances>, Error> {
+    let mut native_tokens: Vec<NativeTokenAmount> = Default::default();
+    let mut fungible_tokens: Vec<FungibleTokenBalance> = Default::default();
+
+    for balance in ankr_balances.into_iter() {
+        match balance.token_type {
+            AnkrTokenType::Native => {
+                let native_token: NativeTokenAmount = balance.try_into()?;
+                native_tokens.push(native_token);
             }
+            AnkrTokenType::Erc20 => {
+                let fungible_token: FungibleTokenBalance = balance.try_into()?;
+                fungible_tokens.push(fungible_token);
+            }
+        }
+    }
+
+    let mut fungible_tokens_by_chain: HashMap<ChainId, Vec<FungibleTokenBalance>> =
+        Default::default();
+    for fungible_token in fungible_tokens.into_iter() {
+        let tokens = fungible_tokens_by_chain
+            .entry(fungible_token.chain_id)
+            .or_default();
+        tokens.push(fungible_token);
+    }
+
+    let mut results: Vec<TokenBalances> = Vec::with_capacity(native_tokens.len());
+    for native_token in native_tokens {
+        let fungible_tokens = fungible_tokens_by_chain
+            .remove(&native_token.chain_id)
+            .unwrap_or_default();
+        results.push(TokenBalances {
+            native_token,
+            fungible_tokens,
         })
-        .collect()
+    }
+
+    Ok(results)
+}
+
+impl TryFrom<AnkrFungibleTokenBalance> for NativeTokenAmount {
+    type Error = Error;
+
+    fn try_from(value: AnkrFungibleTokenBalance) -> Result<Self, Self::Error> {
+        if value.token_type != AnkrTokenType::Native {
+            // Logic error in the app
+            return Err(Error::Fatal {
+                error: format!(
+                    "Invalid token type for Ankr native token: {}",
+                    value.token_type
+                ),
+            });
+        }
+        let chain_id: ChainId = value.blockchain.into();
+
+        if value.token_decimals != chain_id.native_token().decimals() {
+            // Logic error in Ankr API
+            return Err(Error::Retriable {
+                error: format!(
+                    "Invalid decimals for native token from Ankr API: {chain_id}",
+                ),
+            });
+        }
+
+        Ok(NativeTokenAmount::new(
+            chain_id,
+            value.balance_raw_integer.into(),
+        ))
+    }
 }
 
 impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
@@ -214,7 +270,8 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
 
     fn try_from(value: AnkrFungibleTokenBalance) -> Result<Self, Error> {
         if value.token_type != AnkrTokenType::Erc20 {
-            return Err(Error::Retriable {
+            // Logic error
+            return Err(Error::Fatal {
                 error: format!(
                     "Invalid token type for fungible token: {}",
                     value.token_type
@@ -236,17 +293,11 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
                 "Missing contract address for ERC20 token '{token_symbol}' on {blockchain} chain"
             ),
         })?;
-        let amount =
-            U256::from_dec_str(&balance_raw_integer).map_err(|_| Error::Retriable {
-                error: format!(
-                    "Invalid raw integer balance '{balance_raw_integer}' for token {token_symbol} on chain {blockchain}",
-                ),
-            })?;
         let logo = Url::parse(&thumbnail).ok();
         Ok(Self {
             chain_id: blockchain.into(),
             contract_address,
-            amount,
+            amount: balance_raw_integer.into(),
             decimals: token_decimals,
             symbol: token_symbol,
             name: token_name,
@@ -321,6 +372,42 @@ impl From<AnkrBlockchain> for ChainId {
     }
 }
 
+#[derive(
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    Display,
+    AsRef,
+    Serialize,
+    Deserialize,
+)]
+#[serde(try_from = "String")]
+#[serde(into = "String")]
+#[repr(transparent)]
+pub struct AnkrBalanceRawInteger(U256);
+
+impl TryFrom<String> for AnkrBalanceRawInteger {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let amount = U256::from_dec_str(&value).map_err(|_| Error::Retriable {
+            error: format!("Invalid raw integer balance from Ankr API: '{value}'"),
+        })?;
+        Ok(Self(amount))
+    }
+}
+
+impl From<AnkrBalanceRawInteger> for String {
+    fn from(value: AnkrBalanceRawInteger) -> Self {
+        value.to_string()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnkrFungibleTokenBalances {
@@ -339,8 +426,7 @@ pub struct AnkrFungibleTokenBalance {
     token_type: AnkrTokenType,
     contract_address: Option<Address>,
     holder_address: Address,
-    balance: String,
-    balance_raw_integer: String,
+    balance_raw_integer: AnkrBalanceRawInteger,
     balance_usd: String,
     token_price: String,
     // Not URL, because it can be empty string.
@@ -391,13 +477,11 @@ impl From<AnkrTokenType> for FungibleTokenType {
 #[cfg(test)]
 pub use tests::AnkrRpc;
 
-use crate::protocols::eth::NFTBalance;
-
 #[cfg(test)]
 mod tests {
     use std::{net::SocketAddr, time::Instant};
 
-    use anyhow::anyhow;
+    use anyhow::{anyhow, Result};
     use jsonrpsee::{
         core::{async_trait, RpcResult},
         http_client::{HttpClient, HttpClientBuilder},
@@ -656,22 +740,33 @@ mod tests {
     }
 
     #[test]
-    fn fungible_token_balances() {
+    fn fungible_token_balances() -> Result<()> {
         let ankr = AnkrRpc::new().unwrap();
-        let balances = rt::block_on(
+        let mut balances = rt::block_on(
             ankr.get_account_balances("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
-        )
-        .unwrap();
-        assert_eq!(balances.len(), 2);
+        )?;
+        assert_eq!(balances.len(), 1);
+        let balance = balances.pop().unwrap();
+        assert_eq!(balance.fungible_tokens.len(), 2);
+        Ok(())
     }
 
     #[test]
-    fn nft_token_balances() {
+    fn nft_token_balances() -> Result<()> {
         let ankr = AnkrRpc::new().unwrap();
         let balances = rt::block_on(
             ankr.get_nfts_by_owner("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
         )
         .unwrap();
         assert_eq!(balances.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn ankr_balance_raw_integer() -> Result<()> {
+        let s = r#""941696667609996629""#;
+        let balance: AnkrBalanceRawInteger = serde_json::from_str(s)?;
+        assert_eq!(serde_json::to_string(&balance)?, s);
+        Ok(())
     }
 }

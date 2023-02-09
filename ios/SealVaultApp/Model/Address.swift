@@ -104,7 +104,7 @@ class Address: Identifiable, ObservableObject {
             do {
                 return try self.core.tokensForAddressId(addressId: self.id)
             } catch {
-                print("Failed to fetch tokens for address id \(self.id)")
+                print("Failed to fetch tokens with error \(error)")
                 return nil
             }
         }

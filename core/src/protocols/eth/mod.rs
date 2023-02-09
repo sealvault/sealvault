@@ -32,4 +32,5 @@ pub use signer::Signer;
 pub use signing_key::{public_key_to_checksum_address, SigningKey};
 pub use token::{
     FungibleTokenAmount, FungibleTokenBalance, NFTBalance, NativeTokenAmount,
+    TokenBalances,
 };

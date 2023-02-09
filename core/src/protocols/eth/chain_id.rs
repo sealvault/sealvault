@@ -28,6 +28,7 @@ use crate::{
     Debug,
     PartialEq,
     Eq,
+    Hash,
     EnumIter,
     EnumString,
     FromPrimitive,

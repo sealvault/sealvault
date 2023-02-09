@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -323,18 +324,38 @@ impl Address {
         Ok(address)
     }
 
-    /// Fetch the address id by the checksum address if it exists.
-    pub fn fetch_id_by_checksum_address(
-        conn: &mut SqliteConnection,
+    /// Fetch the address id by the checksum address on a given chain if it exists.
+    pub fn fetch_id_by_checksum_address_on_chain(
+        conn: &mut DeferredTxConnection,
         checksum_address: &str,
+        chain_id: eth::ChainId,
     ) -> Result<Option<String>, Error> {
         use addresses::dsl as a;
 
-        let address_id = addresses::table
-            .filter(a::address.eq(checksum_address))
-            .select(a::deterministic_id)
-            .first(conn)
-            .optional()?;
+        let chain_db_id = m::Chain::fetch_or_create_eth_chain_id(conn, chain_id)?;
+
+        let mut results: Vec<(String, String)> = addresses::table
+            .filter(
+                a::address
+                    .eq(checksum_address)
+                    .and(a::chain_id.eq(chain_db_id)),
+            )
+            .select((a::deterministic_id, a::asymmetric_key_id))
+            .load(conn.as_mut())?;
+
+        // Sanity check to make sure we don't have multiple keys with the same checksum address.
+        // There is no unique index on (address, chain_id) due to deterministic id constraints.
+        let unique_keys = results
+            .iter()
+            .map(|(_, key_id)| key_id)
+            .collect::<HashSet<_>>();
+        if unique_keys.len() > 1 {
+            return Err(Error::Fatal {
+                error: "Multiple keys with the same checksum address".to_string(),
+            });
+        }
+
+        let address_id = results.pop().map(|(address_id, _)| address_id);
 
         Ok(address_id)
     }

@@ -151,23 +151,22 @@ fn parse_amount(amount: &str, decimals: u8) -> Result<U256, Error> {
             .replace(',', ".")
             .parse()
             .map_err(|_| Error::Retriable {
-                error: format!("Invalid decimal string: '{}'", amount),
+                error: format!("Invalid decimal string: '{amount}'"),
             })?;
 
     let multiplier: Decimal =
         Decimal::TEN
             .checked_powu(decimals.into())
             .ok_or_else(|| Error::Fatal {
-                error: format!("Too many decimals: {}", decimals),
+                error: format!("Too many decimals: {decimals}"),
             })?;
-    let val = num
-        .checked_mul(multiplier)
-        .ok_or_else(|| Error::Retriable {
-            error: format!(
-                "Parsing amount {} with decimals {} overflowed",
-                amount, decimals
-            ),
-        })?;
+    let val =
+        num.checked_mul(multiplier)
+            .ok_or_else(|| Error::Retriable {
+                error: format!(
+                    "Parsing amount {amount} with decimals {decimals} overflowed",
+                ),
+            })?;
     U256::from_dec_str(&val.round().to_string()).map_err(|_| Error::Retriable {
         error: format!("Cannot parse {} as U256", val),
     })
@@ -202,6 +201,12 @@ pub struct NFTBalance {
     pub collection_name: String,
     pub name: String,
     pub image_url: Option<url::Url>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TokenBalances {
+    pub native_token: NativeTokenAmount,
+    pub fungible_tokens: Vec<FungibleTokenBalance>,
 }
 
 #[cfg(test)]

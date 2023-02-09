@@ -259,7 +259,7 @@ impl Assembler {
 
         // We send the native token without balance first to return result ASAP.
         // UI then fetches balance async.
-        let native_token = self.native_token_without_balance(&address, chain_id)?;
+        let native_token = self.make_native_token(&address, chain_id, None)?;
 
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String =
@@ -278,7 +278,7 @@ impl Assembler {
         Ok(result)
     }
 
-    fn fetch_token_address(
+    fn fetch_address_for_address_id(
         &self,
         address_id: &str,
     ) -> Result<(eth::ChainId, m::Address), Error> {
@@ -291,28 +291,35 @@ impl Assembler {
 
     /// Fetch all the tokens for an address id.
     pub fn tokens_for_address_id(&self, address_id: String) -> Result<CoreTokens, Error> {
-        let (chain_id, address) = self.fetch_token_address(&address_id)?;
-        let native_token = self.assemble_native_token(&address.address, chain_id)?;
-        let fungible_tokens =
-            self.assemble_fungible_tokens(&address.address, Some(chain_id))?;
-        Ok(CoreTokens {
-            address_id,
-            native_token,
-            fungible_tokens,
-        })
+        let (chain_id, address) = self.fetch_address_for_address_id(&address_id)?;
+        let mut token_balances =
+            self.assemble_tokens(&address.address, &address_id, Some(chain_id))?;
+        if token_balances.len() == 1 {
+            let result = token_balances.pop().expect("checked that length is 1");
+            Ok(result)
+        } else {
+            // Fall back to just fetching native token
+            let native_token = self.assemble_native_token(&address.address, chain_id)?;
+            Ok(CoreTokens::builder()
+                .address_id(address_id)
+                .native_token(native_token)
+                .fungible_tokens(Default::default())
+                .build())
+        }
     }
 
-    fn native_token_without_balance(
+    fn make_native_token(
         &self,
         address: &str,
         chain_id: eth::ChainId,
+        amount: Option<String>,
     ) -> Result<CoreFungibleToken, Error> {
         let native_token_id = format!("eth-{chain_id}-{address}");
         let icon = Some(chain_id.native_token().icon()?);
         let native_token = CoreFungibleToken::builder()
             .id(native_token_id)
             .symbol(chain_id.native_token().to_string())
-            .amount(None)
+            .amount(amount)
             .token_type(FungibleTokenType::Native)
             .icon(icon)
             .build();
@@ -324,42 +331,17 @@ impl Assembler {
         address: &str,
         chain_id: eth::ChainId,
     ) -> Result<CoreFungibleToken, Error> {
-        let mut native_token = self.native_token_without_balance(address, chain_id)?;
         let provider = self.rpc_manager().eth_api_provider(chain_id);
         let balance = provider.native_token_balance(address)?;
-        native_token.amount = Some(balance.display_amount());
+        let native_token =
+            self.make_native_token(address, chain_id, Some(balance.display_amount()))?;
         Ok(native_token)
     }
 
     fn assemble_fungible_tokens(
         &self,
-        address: &str,
-        chain_id: Option<eth::ChainId>,
+        tokens: Vec<eth::FungibleTokenBalance>,
     ) -> Result<Vec<CoreFungibleToken>, Error> {
-        use ankr::AnkrRpcI;
-        let ankr_api = ankr::AnkrRpc::new()?;
-        let tokens_res = rt::block_on(ankr_api.get_account_balances(address));
-        let mut tokens: Vec<eth::FungibleTokenBalance> = match tokens_res {
-            Ok(tokens) => Ok(tokens),
-            Err(Error::Retriable { error }) => {
-                log::error!(
-                    "Retriable error fetching fungible token balances for address '{address}': {error}"
-                );
-                Ok(Default::default())
-            }
-            Err(Error::JsonRpc { code, message }) => {
-                log::error!(
-                    "JSON-RPC error fetching fungible token balances for address '{address}': {code} {message}"
-                );
-                Ok(Default::default())
-            }
-            error => error,
-        }?;
-
-        if let Some(chain_id) = chain_id {
-            tokens.retain(|t| t.chain_id == chain_id);
-        }
-
         let (tokens_with_logo, tokens_no_logo): (Vec<_>, Vec<_>) =
             tokens.into_iter().partition(|token| token.logo.is_some());
 
@@ -391,6 +373,42 @@ impl Assembler {
             })
             .collect();
         result
+    }
+
+    fn assemble_tokens(
+        &self,
+        address: &str,
+        address_id: &str,
+        chain_id: Option<eth::ChainId>,
+    ) -> Result<Vec<CoreTokens>, Error> {
+        use ankr::AnkrRpcI;
+        let ankr_api = ankr::AnkrRpc::new()?;
+        let mut tokens = rt::block_on(ankr_api.get_account_balances(address))?;
+
+        if let Some(chain_id) = chain_id {
+            tokens.retain(|token_balances| {
+                token_balances.native_token.chain_id == chain_id
+            });
+        }
+
+        let results: Vec<CoreTokens> = tokens
+            .into_iter()
+            .map(|token_balances| {
+                let native_token = self.make_native_token(
+                    address,
+                    token_balances.native_token.chain_id,
+                    Some(token_balances.native_token.display_amount()),
+                )?;
+                let fungible_tokens =
+                    self.assemble_fungible_tokens(token_balances.fungible_tokens)?;
+                Ok(CoreTokens::builder()
+                    .address_id(address_id.to_string())
+                    .native_token(native_token)
+                    .fungible_tokens(fungible_tokens)
+                    .build())
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+        Ok(results)
     }
 
     /// List supported Ethereum chains

@@ -552,9 +552,10 @@ fn build_partial_token_transfer_result(
             .deferred_transaction(move |mut tx_conn| {
                 let chain_id =
                     m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
-                let maybe_to_id = m::Address::fetch_id_by_checksum_address(
-                    tx_conn.as_mut(),
+                let maybe_to_id = m::Address::fetch_id_by_checksum_address_on_chain(
+                    &mut tx_conn,
                     &to_checksum_address,
+                    chain_id,
                 )?;
                 let to_display_name = if let Some(to_id) = maybe_to_id {
                     if m::Address::is_profile_wallet(tx_conn.as_mut(), &to_id)? {
