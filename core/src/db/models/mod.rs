@@ -23,8 +23,8 @@ pub use account::{Account, AccountEntity, AccountParams};
 #[allow(deprecated)]
 pub use account_picture::{AccountPicture, AccountPictureEntity};
 pub use address::{
-    Address, AddressEntity, CreateEthAddressParams, ListAddressesForDappParams,
-    NewAddress,
+    Address, AddressEntity, AddressId, CreateEthAddressParams,
+    ListAddressesForDappParams, NewAddress,
 };
 pub use asymmetric_key::{AsymmetricKey, NewAsymmetricKey};
 pub use chain::{Chain, EthChain};

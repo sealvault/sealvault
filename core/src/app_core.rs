@@ -220,6 +220,7 @@ impl AppCore {
         &self,
         address_id: String,
     ) -> Result<dto::CoreTokens, CoreError> {
+        let address_id: m::AddressId = address_id.try_into()?;
         let res = self.assembler().tokens_for_address_id(address_id)?;
         Ok(res)
     }
@@ -274,9 +275,10 @@ impl AppCore {
         &self,
         args: EthTransferNativeTokenArgs,
     ) -> Result<(), CoreError> {
+        let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let signing_key = fetch_eth_signing_key_for_transfer(
             &*self.resources,
-            &args.from_address_id,
+            &from_address_id,
             &args.to_checksum_address,
         )?;
 
@@ -312,9 +314,10 @@ impl AppCore {
     ) -> Result<(), CoreError> {
         // TODO we use contract address as token id for now, but it should be chain specific
         let contract_address = &args.token_id;
+        let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let signing_key = fetch_eth_signing_key_for_transfer(
             &*self.resources,
-            &args.from_address_id,
+            &from_address_id,
             &args.to_checksum_address,
         )?;
 
@@ -351,6 +354,7 @@ impl AppCore {
         address_id: String,
     ) -> Result<(), CoreError> {
         let chain_id: eth::ChainId = chain_id.try_into()?;
+        let address_id: m::AddressId = address_id.try_into()?;
         let _ = self
             .connection_pool()
             .deferred_transaction(move |mut tx_conn| {
@@ -475,7 +479,7 @@ impl From<EthTransferFungibleTokenArgs> for EthTokenTransferCallbackArgs {
 
 fn fetch_eth_signing_key_for_transfer(
     resources: &dyn CoreResourcesI,
-    from_address_id: &str,
+    from_address_id: &m::AddressId,
     to_checksum_address: &str,
 ) -> Result<eth::SigningKey, Error> {
     let signing_key = resources.connection_pool().deferred_transaction(
@@ -1292,7 +1296,7 @@ pub mod tests {
         Ok(())
     }
 
-    fn setup_profiles(core: &AppCore) -> Result<(String, String)> {
+    fn setup_profiles(core: &AppCore) -> Result<(m::AddressId, String)> {
         let keychain = core.resources.keychain();
 
         core.create_profile("profile-two".into(), "seal-1".into())?;
@@ -1338,7 +1342,7 @@ pub mod tests {
 
         let (from_id, to_address) = setup_profiles(&tmp.core)?;
         let args = EthTransferNativeTokenArgs::builder()
-            .from_address_id(from_id)
+            .from_address_id(from_id.into())
             .to_checksum_address(to_address)
             .amount_decimal("1".into())
             .build();
@@ -1361,7 +1365,7 @@ pub mod tests {
         let contract_address: String =
             "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".into();
         let args = EthTransferFungibleTokenArgs::builder()
-            .from_address_id(from_id)
+            .from_address_id(from_id.into())
             .to_checksum_address(to_address)
             .amount_decimal("1.".into())
             .token_id(contract_address)

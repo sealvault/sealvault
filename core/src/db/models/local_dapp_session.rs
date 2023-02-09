@@ -8,6 +8,7 @@ use typed_builder::TypedBuilder;
 use crate::{
     db::{
         models as m,
+        models::AddressId,
         schema::{addresses, asymmetric_keys, chains, local_dapp_sessions, profiles},
         DeferredTxConnection, JsonValue,
     },
@@ -24,7 +25,7 @@ pub struct LocalDappSession {
 
     pub profile_id: String,
 
-    pub address_id: String,
+    pub address_id: AddressId,
     pub address: String,
 
     pub dapp_id: String,
@@ -39,7 +40,7 @@ pub struct LocalDappSession {
 #[readonly::make]
 struct LocalDappSessionEntity {
     uuid: String,
-    address_id: String,
+    address_id: AddressId,
     dapp_id: String,
     last_used_at: String,
     created_at: String,
@@ -255,7 +256,7 @@ impl LocalDappSession {
     fn update_session_address(
         self,
         tx_conn: &mut DeferredTxConnection,
-        new_address_id: &str,
+        new_address_id: &AddressId,
     ) -> Result<Self, Error> {
         use local_dapp_sessions::dsl as lds;
 

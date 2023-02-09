@@ -212,7 +212,8 @@ impl Assembler {
             .build();
         let dapp_session =
             m::LocalDappSession::fetch_eth_session(tx_conn, &dapp_session_params)?;
-        let selected_address_id = dapp_session.map(|s| s.address_id);
+        let selected_address_id: Option<String> =
+            dapp_session.map(|s| s.address_id.into());
 
         let m::Dapp {
             deterministic_id,
@@ -265,7 +266,7 @@ impl Assembler {
         let explorer_link: String =
             eth::explorer::address_url(chain_id, &address)?.into();
         let result = CoreAddress::builder()
-            .id(deterministic_id)
+            .id(deterministic_id.into())
             .is_wallet(is_wallet)
             .checksum_address(address)
             .blockchain_explorer_link(explorer_link)
@@ -280,7 +281,7 @@ impl Assembler {
 
     fn fetch_address_for_address_id(
         &self,
-        address_id: &str,
+        address_id: &m::AddressId,
     ) -> Result<(eth::ChainId, m::Address), Error> {
         self.connection_pool().deferred_transaction(|mut tx_conn| {
             let address = m::Address::fetch(tx_conn.as_mut(), address_id)?;
@@ -290,7 +291,10 @@ impl Assembler {
     }
 
     /// Fetch all the tokens for an address id.
-    pub fn tokens_for_address_id(&self, address_id: String) -> Result<CoreTokens, Error> {
+    pub fn tokens_for_address_id(
+        &self,
+        address_id: m::AddressId,
+    ) -> Result<CoreTokens, Error> {
         let (chain_id, address) = self.fetch_address_for_address_id(&address_id)?;
         let mut token_balances =
             self.assemble_tokens(&address.address, &address_id, Some(chain_id))?;
@@ -301,7 +305,7 @@ impl Assembler {
             // Fall back to just fetching native token
             let native_token = self.assemble_native_token(&address.address, chain_id)?;
             Ok(CoreTokens::builder()
-                .address_id(address_id)
+                .address_id(address_id.into())
                 .native_token(native_token)
                 .fungible_tokens(Default::default())
                 .build())
@@ -378,7 +382,7 @@ impl Assembler {
     fn assemble_tokens(
         &self,
         address: &str,
-        address_id: &str,
+        address_id: &m::AddressId,
         chain_id: Option<eth::ChainId>,
     ) -> Result<Vec<CoreTokens>, Error> {
         use ankr::AnkrRpcI;

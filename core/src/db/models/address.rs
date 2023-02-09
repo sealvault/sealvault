@@ -1,16 +1,25 @@
-use std::collections::HashSet;
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-use std::str::FromStr;
 
-use diesel::{expression::AsExpression, prelude::*, sql_types::Bool, SqliteConnection};
+use std::{collections::HashSet, str::FromStr};
+
+use derive_more::{AsRef, Display, Into};
+use diesel::{
+    deserialize::FromSql,
+    expression::AsExpression,
+    prelude::*,
+    serialize::ToSql,
+    sql_types::{Bool, Text},
+    sqlite::Sqlite,
+    SqliteConnection,
+};
 use generic_array::{typenum::U2, GenericArray};
 use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeterministicId, EntityName, DETERMINISTIC_ID_REGEX},
         models as m,
         models::{DataEncryptionKey, NewAsymmetricKey},
         schema::{
@@ -28,7 +37,7 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 #[diesel(table_name = addresses)]
 pub struct Address {
-    pub deterministic_id: String,
+    pub deterministic_id: AddressId,
     pub asymmetric_key_id: String,
     pub chain_id: String,
     pub address: String,
@@ -110,9 +119,9 @@ impl Address {
     /// Returns the address DB id of the address on the chain.
     pub fn add_eth_chain(
         tx_conn: &mut DeferredTxConnection,
-        address_id: &str,
+        address_id: &AddressId,
         chain_id: eth::ChainId,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         let chain_entity_id = m::Chain::fetch_or_create_eth_chain_id(tx_conn, chain_id)?;
         let asymmetric_key_id = Self::fetch_key_id(tx_conn.as_mut(), address_id)?;
         let address_entity = AddressEntity::builder()
@@ -130,7 +139,7 @@ impl Address {
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
         params: &CreateEthAddressParams,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
         let (dek_id, sk_dek) = DataEncryptionKey::fetch_dek(
             tx_conn.as_mut(),
@@ -168,7 +177,7 @@ impl Address {
     pub fn fetch_or_create_for_eth_chain(
         tx_conn: &mut DeferredTxConnection,
         address_entity: &AddressEntity,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         match Self::exists(tx_conn.as_mut(), address_entity)? {
             Some(deterministic_id) => Ok(deterministic_id),
             None => {
@@ -186,26 +195,28 @@ impl Address {
         }
     }
 
-    /// Fetch or create an address for an Ethereum chain for an existing key and re
     fn exists(
         conn: &mut SqliteConnection,
         address_entity: &AddressEntity,
-    ) -> Result<Option<String>, Error> {
+    ) -> Result<Option<AddressId>, Error> {
         use addresses::dsl as a;
 
-        let deterministic_id = address_entity.deterministic_id()?;
+        let address_id = address_entity.address_id()?;
 
         let exists: Option<bool> = addresses::table
-            .filter(a::deterministic_id.eq(&*deterministic_id))
+            .filter(a::deterministic_id.eq(&address_id))
             .select(AsExpression::<Bool>::as_expression(true))
             .first(conn)
             .optional()?;
 
-        Ok(exists.map(|_| deterministic_id))
+        Ok(exists.map(|_| address_id))
     }
 
     /// Fetch the the address entity by id.
-    pub fn fetch(conn: &mut SqliteConnection, address_id: &str) -> Result<Self, Error> {
+    pub fn fetch(
+        conn: &mut SqliteConnection,
+        address_id: &AddressId,
+    ) -> Result<Self, Error> {
         use addresses::dsl as a;
 
         let address: Self = addresses::table
@@ -218,7 +229,7 @@ impl Address {
 
     pub fn fetch_profile_id(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -236,7 +247,7 @@ impl Address {
 
     pub fn fetch_profile_name(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -256,7 +267,7 @@ impl Address {
 
     pub fn is_profile_wallet(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<bool, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -275,7 +286,7 @@ impl Address {
     /// If this is a dapp key, return its human identifier.
     pub fn dapp_identifier(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<Option<String>, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -297,7 +308,7 @@ impl Address {
     /// Fet the asymmetric key's DB id for an address.
     pub fn fetch_key_id(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
 
@@ -312,7 +323,7 @@ impl Address {
     /// Fetch the blockchain address.
     pub fn fetch_address(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<String, Error> {
         use addresses::dsl as a;
 
@@ -329,12 +340,12 @@ impl Address {
         conn: &mut DeferredTxConnection,
         checksum_address: &str,
         chain_id: eth::ChainId,
-    ) -> Result<Option<String>, Error> {
+    ) -> Result<Option<AddressId>, Error> {
         use addresses::dsl as a;
 
         let chain_db_id = m::Chain::fetch_or_create_eth_chain_id(conn, chain_id)?;
 
-        let mut results: Vec<(String, String)> = addresses::table
+        let mut results: Vec<(AddressId, String)> = addresses::table
             .filter(
                 a::address
                     .eq(checksum_address)
@@ -366,7 +377,7 @@ impl Address {
         tx_conn: &mut DeferredTxConnection,
         profile_id: &str,
         eth_chain_id: eth::ChainId,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
 
@@ -411,7 +422,7 @@ impl Address {
     pub fn fetch_eth_signing_key(
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<eth::SigningKey, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -483,7 +494,7 @@ impl<'a> NewAddress<'a> {
         &self,
         tx_conn: &mut DeferredTxConnection,
         eth_chain_id: eth::ChainId,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         let chain_entity_id =
             m::Chain::fetch_or_create_eth_chain_id(tx_conn, eth_chain_id)?;
         self.insert_eth_for_chain_entity(tx_conn, &chain_entity_id)
@@ -493,14 +504,14 @@ impl<'a> NewAddress<'a> {
         &self,
         tx_conn: &mut DeferredTxConnection,
         chain_entity_id: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<AddressId, Error> {
         use addresses::dsl as a;
 
         let entity = AddressEntity {
             asymmetric_key_id: self.asymmetric_key_id,
             chain_entity_id,
         };
-        let deterministic_id = entity.deterministic_id()?;
+        let deterministic_id = entity.address_id()?;
         let created_at = rfc3339_timestamp();
 
         diesel::insert_into(addresses::table)
@@ -521,6 +532,13 @@ impl<'a> NewAddress<'a> {
 pub struct AddressEntity<'a> {
     pub asymmetric_key_id: &'a str,
     pub chain_entity_id: &'a str,
+}
+
+impl AddressEntity<'_> {
+    // TODO move this to DeterministicId trait
+    fn address_id(&self) -> Result<AddressId, Error> {
+        self.deterministic_id()?.try_into()
+    }
 }
 
 impl<'a> DeterministicId<'a, &'a str, U2> for AddressEntity<'a> {
@@ -550,6 +568,60 @@ pub struct CreateEthAddressParams<'a> {
     pub dapp_id: Option<&'a str>,
     #[builder(default = false)]
     pub is_profile_wallet: bool,
+}
+
+#[derive(
+    Debug,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    derive_more::FromStr,
+    Into,
+    AsRef,
+    AsExpression,
+    FromSqlRow,
+)]
+#[diesel(sql_type = diesel::sql_types::Text)]
+#[repr(transparent)]
+pub struct AddressId(String);
+
+impl TryFrom<String> for AddressId {
+    type Error = Error;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        if DETERMINISTIC_ID_REGEX.is_match(&s) {
+            Ok(Self(s))
+        } else {
+            Err(Error::Fatal {
+                error: format!("Invalid address id: {s}"),
+            })
+        }
+    }
+}
+
+impl FromSql<Text, Sqlite> for AddressId {
+    fn from_sql(
+        bytes: diesel::backend::RawValue<Sqlite>,
+    ) -> diesel::deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        let address_id: AddressId = s.parse()?;
+        Ok(address_id)
+    }
+}
+
+impl ToSql<Text, Sqlite> for AddressId {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<Sqlite>,
+    ) -> diesel::serialize::Result {
+        let s = self.to_string();
+        out.set_value(s);
+        Ok(diesel::serialize::IsNull::No)
+    }
 }
 
 #[cfg(test)]

@@ -4,6 +4,7 @@
 
 use generic_array::{ArrayLength, GenericArray};
 use lazy_static::lazy_static;
+use regex::Regex;
 use strum_macros::{EnumIter, EnumString};
 
 use crate::Error;
@@ -19,6 +20,9 @@ lazy_static! {
             .expect("static hex is valid")
             .try_into()
             .expect("hex is expected length");
+
+    pub static ref DETERMINISTIC_ID_REGEX: Regex =
+        Regex::new(r"^[ABCDEFGHIJKLMNOPQRSTUVWXYZ234567]{52}$").expect("static is ok");
 }
 
 /// Deterministic ids make it easier to maintain referential integrity when syncing.
@@ -146,6 +150,14 @@ mod tests {
         let id = unique_columns.deterministic_id()?;
         // 256-bit tag is 32 bytes and 32 bytes is 52 base32 characters without padding
         assert_eq!(id.len(), 52);
+        Ok(())
+    }
+
+    #[test]
+    fn regex_matches() -> Result<()> {
+        let unique_columns = UniqueValuesMock::new(["foo", "bar"].into());
+        let id = unique_columns.deterministic_id()?;
+        assert!(DETERMINISTIC_ID_REGEX.is_match(&id));
         Ok(())
     }
 
