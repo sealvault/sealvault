@@ -307,7 +307,7 @@ impl Assembler {
         address: &str,
         chain_id: eth::ChainId,
     ) -> Result<CoreFungibleToken, Error> {
-        let native_token_id = format!("eth-{}-{}", chain_id, address);
+        let native_token_id = format!("eth-{chain_id}-{address}");
         let icon = Some(chain_id.native_token().icon()?);
         let native_token = CoreFungibleToken::builder()
             .id(native_token_id)
