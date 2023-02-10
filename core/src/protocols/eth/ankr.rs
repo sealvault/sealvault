@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashMap, future::Future};
+use std::collections::HashMap;
 
 use derive_more::{AsRef, Display, Into};
 use ethers::types::{Address, U256};
@@ -12,7 +12,12 @@ use jsonrpsee::core::client::CertificateStore;
 #[cfg(not(test))]
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::{
-    core::{async_trait, RpcResult},
+    core::{
+        async_trait,
+        client::ClientT,
+        params::{BatchRequestBuilder, ObjectParams},
+        RpcResult,
+    },
     http_client::HttpClient,
     proc_macros::rpc,
 };
@@ -44,10 +49,10 @@ trait AnkrRpcApi {
     #[method(name = "getAccountBalance", param_kind = map)]
     async fn get_account_balance(
         &self,
+        walletAddress: String,
         blockchain: Vec<AnkrBlockchain>,
         pageSize: usize,
         pageToken: Option<String>,
-        walletAddress: String,
     ) -> RpcResult<AnkrFungibleTokenBalances>;
 
     #[method(name = "getNFTsByOwner", param_kind = map)]
@@ -66,104 +71,98 @@ trait AnkrRpcApi {
 pub trait AnkrRpcI<'a> {
     fn client(&'a self) -> &'a HttpClient;
 
-    async fn paged_call<R, T, F, Fut, G>(
+    /// Fetch native, fungible and non-fungible token balances for an address on all supported
+    /// chains from Ankr Advanced API.
+    async fn get_token_balances(
         &'a self,
         address: &str,
-        mut callback: F,
-        mut extract: G,
-    ) -> Result<Vec<T>, Error>
-    where
-        R: Deserialize<'static> + Send,
-        T: Deserialize<'static> + Send,
-        F: FnMut(Option<String>, Vec<AnkrBlockchain>, String) -> Fut + Send,
-        Fut: Future<Output = RpcResult<R>> + Send,
-        G: FnMut(R) -> (Option<String>, Vec<T>) + Send,
-    {
-        let mut page_token: Option<String> = None;
-        let mut results: Vec<T> = Default::default();
+    ) -> Result<Vec<TokenBalances>, AnkrRpcError> {
+        let mut fungible_page_token: Option<String> = None;
+        let mut nft_page_token: Option<String> = None;
+        let mut fungible_balances: Vec<AnkrFungibleTokenBalance> = Default::default();
+        let mut nft_balances: Vec<AnkrNFTBalance> = Default::default();
+        let mut first_call = true;
+
         loop {
-            // Fetch all supported blockchains
-            let blockchains: Vec<AnkrBlockchain> = AnkrBlockchain::iter().collect();
-            let result: R =
-                callback(page_token, blockchains, address.to_string()).await?;
-            let (next_page_token, batch) = extract(result);
+            let mut request = BatchRequestBuilder::new();
 
-            results.extend(batch);
+            if first_call || fungible_page_token.is_some() {
+                let fungible_args = object_params(address, fungible_page_token)?;
+                request.insert("ankr_getAccountBalance", fungible_args)?;
+            }
+            if first_call || nft_page_token.is_some() {
+                let nft_args = object_params(address, nft_page_token)?;
+                request.insert("ankr_getNFTsByOwner", nft_args)?;
+            }
 
-            page_token = self.normalize_next_page_token(next_page_token);
-            if page_token.is_none() {
+            if request.iter().count() == 0 {
                 break;
             }
+
+            let results = self
+                .client()
+                .batch_request::<AnkrApiResult>(request)
+                .await?;
+            first_call = false;
+
+            fungible_page_token = None;
+            nft_page_token = None;
+            for result in results.into_iter() {
+                match result {
+                    Ok(api_result) => match api_result {
+                        AnkrApiResult::GetAccountBalance(balances) => {
+                            let AnkrFungibleTokenBalances {
+                                next_page_token,
+                                assets,
+                                ..
+                            } = balances;
+                            fungible_page_token =
+                                normalize_next_page_token(next_page_token);
+                            fungible_balances.extend(assets.into_iter());
+                        }
+                        AnkrApiResult::GetNFTsByOwner(balances) => {
+                            let AnkrNFTBalances {
+                                next_page_token,
+                                assets,
+                                ..
+                            } = balances;
+                            nft_page_token = normalize_next_page_token(next_page_token);
+                            nft_balances.extend(assets.into_iter());
+                        }
+                    },
+                    Err(err) => {
+                        // Log error and continue
+                        log::error!("Ankr API error code: {}", err.code());
+                    }
+                }
+            }
         }
-        Ok(results)
+
+        to_token_balances(fungible_balances, nft_balances)
     }
+}
 
-    /// Fetch account balances for an address on all supported chains from an Ankr advanced API.
-    async fn get_account_balances(
-        &'a self,
-        address: &str,
-    ) -> Result<Vec<TokenBalances>, Error> {
-        let results: Vec<AnkrFungibleTokenBalance> = self
-            .paged_call(
-                address,
-                |page_token: Option<String>,
-                 blockchains: Vec<AnkrBlockchain>,
-                 address: String| {
-                    self.client().get_account_balance(
-                        blockchains,
-                        PAGE_SIZE,
-                        page_token,
-                        address,
-                    )
-                },
-                |result: AnkrFungibleTokenBalances| {
-                    let AnkrFungibleTokenBalances {
-                        next_page_token,
-                        assets,
-                        ..
-                    } = result;
-                    (next_page_token, assets)
-                },
-            )
-            .await?;
+#[derive(Debug, thiserror::Error)]
+pub enum AnkrRpcError {
+    #[error(transparent)]
+    App(#[from] Error),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    Jsonrpsee(#[from] jsonrpsee::core::Error),
+}
 
-        to_token_balances(results)
-    }
-
-    /// Fetch NFTs for an address on all supported chains from an Ankr advanced API.
-    async fn get_nfts_by_owner(
-        &'a self,
-        address: &str,
-    ) -> Result<Vec<NFTBalance>, Error> {
-        let results: Vec<AnkrNFTBalance> = self
-            .paged_call(
-                address,
-                |page_token: Option<String>,
-                 blockchains: Vec<AnkrBlockchain>,
-                 address: String| {
-                    self.client().get_nfts_by_owner(
-                        address,
-                        blockchains,
-                        PAGE_SIZE,
-                        page_token,
-                    )
-                },
-                |result: AnkrNFTBalances| {
-                    let AnkrNFTBalances {
-                        next_page_token,
-                        assets,
-                        ..
-                    } = result;
-                    (next_page_token, assets)
-                },
-            )
-            .await?;
-
-        Ok(to_nft_balances(results))
-    }
-
-    fn normalize_next_page_token(&self, token: Option<String>) -> Option<String> {
-        token.and_then(|t| if t.is_empty() { None } else { Some(t) })
+impl From<AnkrRpcError> for Error {
+    fn from(error: AnkrRpcError) -> Self {
+        match error {
+            AnkrRpcError::App(source) => source,
+            // Retriable in-case it only affects certain requests.
+            // May contain private data, so don't log serde error.
+            AnkrRpcError::Serde(_) => Error::Retriable {
+                error: "Incorrect Ankr API type mappings.".into(),
+            },
+            AnkrRpcError::Jsonrpsee(source) => source.into(),
+        }
     }
 }
 
@@ -192,46 +191,63 @@ impl<'a> AnkrRpcI<'a> for AnkrRpc {
     }
 }
 
-fn to_token_balances(
-    ankr_balances: Vec<AnkrFungibleTokenBalance>,
-) -> Result<Vec<TokenBalances>, Error> {
-    let mut native_tokens: Vec<NativeTokenAmount> = Default::default();
-    let mut fungible_tokens: Vec<FungibleTokenBalance> = Default::default();
+fn object_params(
+    address: &str,
+    next_page_token: Option<String>,
+) -> Result<ObjectParams, AnkrRpcError> {
+    let mut params = ObjectParams::new();
+    params
+        .insert::<Vec<AnkrBlockchain>>("blockchain", AnkrBlockchain::iter().collect())?;
+    params.insert("walletAddress", address.to_string())?;
+    params.insert("pageSize", PAGE_SIZE)?;
+    params.insert("pageToken", next_page_token)?;
+    Ok(params)
+}
 
-    for balance in ankr_balances.into_iter() {
+fn normalize_next_page_token(token: Option<String>) -> Option<String> {
+    token.and_then(|t| if t.is_empty() { None } else { Some(t) })
+}
+
+fn to_token_balances(
+    fungible_token_balances: Vec<AnkrFungibleTokenBalance>,
+    nft_balances: Vec<AnkrNFTBalance>,
+) -> Result<Vec<TokenBalances>, AnkrRpcError> {
+    let mut balances_by_chain: HashMap<ChainId, TokenBalances> = Default::default();
+
+    for balance in fungible_token_balances.into_iter() {
         match balance.token_type {
             AnkrTokenType::Native => {
-                let native_token: NativeTokenAmount = balance.try_into()?;
-                native_tokens.push(native_token);
+                let balance: NativeTokenAmount = balance.try_into()?;
+                let balances =
+                    balances_by_chain
+                        .entry(balance.chain_id)
+                        .or_insert_with(|| {
+                            TokenBalances::default_for_chain(balance.chain_id)
+                        });
+                balances.native_token = balance;
             }
             AnkrTokenType::Erc20 => {
-                let fungible_token: FungibleTokenBalance = balance.try_into()?;
-                fungible_tokens.push(fungible_token);
+                let balance: FungibleTokenBalance = balance.try_into()?;
+                let balances =
+                    balances_by_chain
+                        .entry(balance.chain_id)
+                        .or_insert_with(|| {
+                            TokenBalances::default_for_chain(balance.chain_id)
+                        });
+                balances.fungible_tokens.push(balance);
             }
         }
     }
 
-    let mut fungible_tokens_by_chain: HashMap<ChainId, Vec<FungibleTokenBalance>> =
-        Default::default();
-    for fungible_token in fungible_tokens.into_iter() {
-        let tokens = fungible_tokens_by_chain
-            .entry(fungible_token.chain_id)
-            .or_default();
-        tokens.push(fungible_token);
+    for balance in nft_balances.into_iter() {
+        let balance: NFTBalance = balance.into();
+        let balances = balances_by_chain
+            .entry(balance.chain_id)
+            .or_insert_with(|| TokenBalances::default_for_chain(balance.chain_id));
+        balances.nfts.push(balance);
     }
 
-    let mut results: Vec<TokenBalances> = Vec::with_capacity(native_tokens.len());
-    for native_token in native_tokens {
-        let fungible_tokens = fungible_tokens_by_chain
-            .remove(&native_token.chain_id)
-            .unwrap_or_default();
-        results.push(TokenBalances {
-            native_token,
-            fungible_tokens,
-        })
-    }
-
-    Ok(results)
+    Ok(balances_by_chain.into_values().collect())
 }
 
 impl TryFrom<AnkrFungibleTokenBalance> for NativeTokenAmount {
@@ -306,16 +322,6 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
     }
 }
 
-fn to_nft_balances(ankr_balances: Vec<AnkrNFTBalance>) -> Vec<NFTBalance> {
-    ankr_balances
-        .into_iter()
-        .map(|ankr_token| {
-            let nft: NFTBalance = ankr_token.into();
-            nft
-        })
-        .collect()
-}
-
 impl From<AnkrNFTBalance> for NFTBalance {
     fn from(value: AnkrNFTBalance) -> Self {
         let AnkrNFTBalance {
@@ -372,6 +378,38 @@ impl From<AnkrBlockchain> for ChainId {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum AnkrApiResult {
+    GetAccountBalance(AnkrFungibleTokenBalances),
+    GetNFTsByOwner(AnkrNFTBalances),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnkrFungibleTokenBalances {
+    total_balance_usd: String,
+    assets: Vec<AnkrFungibleTokenBalance>,
+    next_page_token: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnkrFungibleTokenBalance {
+    blockchain: AnkrBlockchain,
+    token_name: String,
+    token_symbol: String,
+    token_decimals: u8,
+    token_type: AnkrTokenType,
+    contract_address: Option<Address>,
+    holder_address: Address,
+    balance_raw_integer: AnkrBalanceRawInteger,
+    balance_usd: String,
+    token_price: String,
+    // Not URL, because it can be empty string.
+    thumbnail: String,
+}
+
 #[derive(
     Debug,
     Clone,
@@ -406,31 +444,6 @@ impl From<AnkrBalanceRawInteger> for String {
     fn from(value: AnkrBalanceRawInteger) -> Self {
         value.to_string()
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AnkrFungibleTokenBalances {
-    total_balance_usd: String,
-    assets: Vec<AnkrFungibleTokenBalance>,
-    next_page_token: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AnkrFungibleTokenBalance {
-    blockchain: AnkrBlockchain,
-    token_name: String,
-    token_symbol: String,
-    token_decimals: u8,
-    token_type: AnkrTokenType,
-    contract_address: Option<Address>,
-    holder_address: Address,
-    balance_raw_integer: AnkrBalanceRawInteger,
-    balance_usd: String,
-    token_price: String,
-    // Not URL, because it can be empty string.
-    thumbnail: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -541,67 +554,108 @@ mod tests {
     impl AnkrRpcApiServer for AnkrRpcApiServerImpl {
         async fn get_account_balance(
             &self,
+            _walletAddress: String,
             _blockchain: Vec<AnkrBlockchain>,
             _pageSize: usize,
             pageToken: Option<String>,
-            _walletAddress: String,
         ) -> RpcResult<AnkrFungibleTokenBalances> {
-            // Simulate paging once
-            let page_token = if pageToken.is_none() {
-                Some("page-token".to_string())
-            } else {
-                None
-            };
-
             let balances = if pageToken.is_none() {
-                json!([
-                  {
+                json!([{
+                    "blockchain": "polygon_mumbai",
+                    "tokenName": "Mumbai Polygon",
+                    "tokenSymbol": "MATIC",
+                    "tokenDecimals": 18,
+                    "tokenType": "NATIVE",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "0.377722525838175",
+                    "balanceRawInteger": "377722525838175000",
+                    "balanceUsd": "758122.816954017524929879",
+                    "tokenPrice": "2007089.239043198448371186",
+                    "thumbnail": "https://www.ankr.com/rpc/static/media/polygon.859b6d49.svg"
+                },
+                {
+                    "blockchain": "eth_goerli",
+                    "tokenName": "Goerli Ethereum",
+                    "tokenSymbol": "GTH",
+                    "tokenDecimals": 18,
+                    "tokenType": "NATIVE",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "1.34878804811250167",
+                    "balanceRawInteger": "1348788048112501670",
+                    "balanceUsd": "36879.68160811588817217",
+                    "tokenPrice": "27342.829482901656163563",
+                    "thumbnail": "https://www.ankr.com/rpc/static/media/eth.3ee8ddd4.svg"
+                },
+                {
+                    "blockchain": "eth",
+                    "tokenName": "Matic Token",
+                    "tokenSymbol": "MATIC",
+                    "tokenDecimals": 18,
+                    "tokenType": "ERC20",
+                    "contractAddress": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "6.2051369",
+                    "balanceRawInteger": "6205136900000000000",
+                    "balanceUsd": "7.972012197965147476",
+                    "tokenPrice": "1.284743967206452363",
+                    "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0/logo.png"
+                },])
+            } else if pageToken == Some("first-page-token".to_string()) {
+                json!([{
+                    "blockchain": "polygon",
+                    "tokenName": "Polygon",
+                    "tokenSymbol": "MATIC",
+                    "tokenDecimals": 18,
+                    "tokenType": "NATIVE",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "3.101612806260749202",
+                    "balanceRawInteger": "3101612806260749202",
+                    "balanceUsd": "3.965641407725317588",
+                    "tokenPrice": "1.278573972779737886",
+                    "thumbnail": "https://www.ankr.com/rpc/static/media/polygon.859b6d49.svg"
+                },
+                {
                     "blockchain": "polygon",
                     "tokenName": "USD Coin (PoS)",
                     "tokenSymbol": "USDC",
                     "tokenDecimals": 6,
                     "tokenType": "ERC20",
                     "contractAddress": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                    "balance": "0.119157",
-                    "balanceRawInteger": "119157",
-                    "balanceUsd": "0.119157",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "2.783265",
+                    "balanceRawInteger": "2783265",
+                    "balanceUsd": "2.783265",
                     "tokenPrice": "1",
                     "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174/logo.png"
-                  },
-                  {
-                    "blockchain": "polygon",
-                    "tokenName": "Polygon",
-                    "tokenSymbol": "MATIC",
-                    "tokenDecimals": 18,
-                    "tokenType": "NATIVE",
-                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                    "balance": "0.941696667609996629",
-                    "balanceRawInteger": "941696667609996629",
-                    "balanceUsd": "0",
-                    "tokenPrice": "0",
-                    "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
-                  },
-                ])
+                },])
             } else {
                 json!([{
                     "blockchain": "polygon",
-                    "tokenName": "Space Protocol",
-                    "tokenSymbol": "SPL",
+                    "tokenName": "(PoS) Dai Stablecoin",
+                    "tokenSymbol": "DAI",
                     "tokenDecimals": 18,
                     "tokenType": "ERC20",
-                    "contractAddress": "0xfec6832ab7bea7d3db02472b64cb59cfc6f2c107",
-                    "holderAddress": "0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19",
-                    "balance": "500",
-                    "balanceRawInteger": "500000000000000000000",
-                    "balanceUsd": "0",
-                    "tokenPrice": "0",
-                    "thumbnail": ""
-                }])
+                    "contractAddress": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
+                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "balance": "0.776958671817900955",
+                    "balanceRawInteger": "776958671817900955",
+                    "balanceUsd": "0.779110201097638487",
+                    "tokenPrice": "1.00276916824250569",
+                    "thumbnail": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063/logo.png"
+                },])
             };
 
             let balances: Vec<AnkrFungibleTokenBalance> =
                 serde_json::from_value(balances).expect("correct type mapping");
+
+            // Simulate paging
+            let page_token = if pageToken.is_none() {
+                Some("first-page-token".to_string())
+            } else if pageToken == Some("first-page-token".to_string()) {
+                Some("second-page-token".to_string())
+            } else {
+                None
+            };
 
             Ok(AnkrFungibleTokenBalances {
                 total_balance_usd: "1".into(),
@@ -617,49 +671,52 @@ mod tests {
             _pageSize: usize,
             pageToken: Option<String>,
         ) -> RpcResult<AnkrNFTBalances> {
-            // Simulate paging once
-            let next_page_token = if pageToken.is_none() {
-                Some("page-token".to_string())
-            } else {
-                Some("".to_string())
-            };
-
             let balances = if pageToken.is_none() {
-                json!([
-                    {
-                        "blockchain": "polygon",
-                        "name": "SealVault Punk Logo 25/100",
-                        "tokenId": "25",
-                        "tokenUrl": "data:application/json;base64,eyJuYW1lIjogIlNlYWxWYXVsdCBQdW5rIExvZ28gMjUvMTAwIiwgImRlc2NyaXB0aW9uIjogIlRoaXMgTkZUIGNvbW1lbW9yYXRlcyBTZWFsVmF1bHQncyBicmllZiBPRyBwdW5rIHBoYXNlLiBcblxuSW5zcGlyZWQgYnkgQW5keSBXYXJob2wgYW5kIEjDvHNrZXIgRMO8J3MgTmV3IERheSBSaXNpbmcuIiwgImltYWdlIjogImlwZnM6Ly9RbVg1WGJlV2g0cVEzZmlzNjVlV0RBcUdxd3h5R0FqTUNnQlRNOW54Qm50YkRVP2lkPTI1IiwgInByb3BlcnRpZXMiOiB7Im51bWJlciI6IDI1LCAibmFtZSI6ICJTZWFsVmF1bHQgUHVuayBMb2dvIn19",
-                        "imageUrl": "https://ipfs.io/ipfs/QmX5XbeWh4qQ3fis65eWDAqGqwxyGAjMCgBTM9nxBntbDU?id=25",
-                        "collectionName": "SealVault Punk Logo",
-                        "symbol": "SHOWTIME",
-                        "contractType": "ERC721",
-                        "contractAddress": "0x00e5c88011233605ff5e307a0a2b0d3fc9f9f753"
-                    },
-                    {
-                        "blockchain": "polygon",
-                        "name": "fortune 2/100",
-                        "tokenId": "2",
-                        "tokenUrl": "data:application/json;base64,eyJuYW1lIjogImZvcnR1bmUgMi8xMDAiLCAiZGVzY3JpcHRpb24iOiAiY29va2llIiwgImltYWdlIjogImlwZnM6Ly9RbVZaQ0tueGVrbVBwcVlqYzI4ZmJkNlQxTDQybll1VFRBbzRiaE4xZGhrTnBpP2lkPTIiLCAicHJvcGVydGllcyI6IHsibnVtYmVyIjogMiwgIm5hbWUiOiAiZm9ydHVuZSJ9fQ==",
-                        "imageUrl": "https://ipfs.io/ipfs/QmVZCKnxekmPpqYjc28fbd6T1L42nYuTTAo4bhN1dhkNpi?id=2",
-                        "collectionName": "fortune",
-                        "symbol": "SHOWTIME",
-                        "contractType": "ERC721",
-                        "contractAddress": "0xcfeed690bcdbbe4772a15868ad78f75fff64634f"
-                    },
-                ])
+                json!([{
+                    "blockchain": "eth_goerli",
+                    "name": "Sortcoder NFT 1",
+                    "tokenId": "59461660688439608482954753860713749074159004710098681657394853388666171031553",
+                    "tokenUrl": "https://testnets-api.opensea.io/api/v1/metadata/0xf4910c763ed4e47a585e2d34baa9a4b611ae448c/59461660688439608482954753860713749074159004710098681657394853388666171031553",
+                    "imageUrl": "https://i.seadn.io/gcs/files/eb624f1670216642020b2967b1e04b21.png?w=500&auto=format",
+                    "collectionName": "OpenSea Collections",
+                    "symbol": "OPENSTORE",
+                    "contractType": "ERC1155",
+                    "contractAddress": "0xf4910c763ed4e47a585e2d34baa9a4b611ae448c",
+                    "quantity": "1"
+                },])
             } else {
                 json!([{
                     "blockchain": "polygon",
-                    "name": "Michael mollusk 291/1000",
-                    "tokenId": "291",
-                    "tokenUrl": "data:application/json;base64,eyJuYW1lIjogIk1pY2hhZWwgbW9sbHVzayAyOTEvMTAwMCIsICJkZXNjcmlwdGlvbiI6ICJNaWRqb3VybmV5IiwgImltYWdlIjogImlwZnM6Ly9RbVR1bkxNSFhBMW1DMXJKTGhuRW5aWVVHQ1hhYmlha0ZpTkN4N3dOUEpmN0pjP2lkPTI5MSIsICJwcm9wZXJ0aWVzIjogeyJudW1iZXIiOiAyOTEsICJuYW1lIjogIk1pY2hhZWwgbW9sbHVzayJ9fQ==",
-                    "imageUrl": "https://ipfs.io/ipfs/QmTunLMHXA1mC1rJLhnEnZYUGCXabiakFiNCx7wNPJf7Jc?id=291",
-                    "collectionName": "Michael mollusk",
-                    "symbol": "SHOWTIME",
+                    "name": "The Lab #271/333",
+                    "tokenId": "271",
+                    "tokenUrl": "data:application/json;base64,eyJuYW1lIjoiVGhlIExhYiAjMjcxLzMzMyIsImRlc2NyaXB0aW9uIjoiVGhlIExhYiAtIEFJIEFydCBieSB4MSBEZXNpZ25zLlxcblNlZSBtb3JlIGF0IHgxZGVzaWducy5hcnQiLCJleHRlcm5hbF91cmwiOiJodHRwczovL3Nob3d0aW1lLnh5ei9uZnQvcG9seWdvbi8weDA5ZTMwYTUxNEQ4QjJFMGEwMmEwZGYyOEYzZEZjRTQ3MEI1OEZlYjUvMCIsImltYWdlIjoiaXBmczovL1FtV045NWFRZmhtYzVQdFJ2SjltQmlqUlhTaGVmZ00zaWJKUll6alVvYnI0c3IiLCJwcm9wZXJ0aWVzIjp7IkNyZWF0b3IiOiJ4MW92ZXIifX0=",
+                    "imageUrl": "https://ipfs.io/ipfs/QmWN95aQfhmc5PtRvJ9mBijRXShefgM3ibJRYzjUobr4sr",
+                    "collectionName": "The Lab",
+                    "symbol": "✦ SHOWTIME",
                     "contractType": "ERC721",
-                    "contractAddress": "0x14690bb52c6da470f906b6be0db1b6c82d202874"
+                    "contractAddress": "0x09e30a514d8b2e0a02a0df28f3dfce470b58feb5"
+                },
+                {
+                    "blockchain": "polygon",
+                    "name": "BoredApePizzaClub",
+                    "tokenId": "1",
+                    "tokenUrl": "https://ipfs.io/ipfs/bafkreieyff2z32vjkcd56z5jppxss6geufkv32tqijfwtqkzpksyspssum",
+                    "imageUrl": "https://ipfs.io/ipfs/bafybeialit2d242tryby463rmlasyoatb3qtsaaz22qk73ja2gphi36eri",
+                    "collectionName": "Infinity Pizza Promo",
+                    "symbol": "PIZZA",
+                    "contractType": "ERC1155",
+                    "contractAddress": "0x88c830a80d189e24cf2972221e577cd080d7c428",
+                    "quantity": "1",
+                    "traits": [
+                        {
+                            "trait_type": "Kategory",
+                            "value": "Promo"
+                        },
+                        {
+                            "trait_type": "Twitter",
+                            "value": "@BoredPizzas"
+                        }
+                    ]
                 }])
             };
 
@@ -670,6 +727,14 @@ mod tests {
                 use jsonrpsee::types::error::CallError;
                 CallError::InvalidParams(anyhow!("Invalid address: '{walletAddress}'"))
             })?;
+
+            // Simulate paging once
+            let next_page_token = if pageToken.is_none() {
+                Some("page-token".to_string())
+            } else {
+                Some("".to_string())
+            };
+
             Ok(AnkrNFTBalances {
                 owner,
                 assets,
@@ -740,25 +805,34 @@ mod tests {
     }
 
     #[test]
-    fn fungible_token_balances() -> Result<()> {
-        let ankr = AnkrRpc::new().unwrap();
-        let mut balances = rt::block_on(
-            ankr.get_account_balances("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
+    fn get_token_balances() -> Result<()> {
+        let ankr = AnkrRpc::new()?;
+        let results = rt::block_on(
+            ankr.get_token_balances("0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE"),
         )?;
-        assert_eq!(balances.len(), 1);
-        let balance = balances.pop().unwrap();
-        assert_eq!(balance.fungible_tokens.len(), 2);
-        Ok(())
-    }
 
-    #[test]
-    fn nft_token_balances() -> Result<()> {
-        let ankr = AnkrRpc::new().unwrap();
-        let balances = rt::block_on(
-            ankr.get_nfts_by_owner("0x12d7dacca565ee7581f6bbf1eb8f5ccbb456ef19"),
-        )
-        .unwrap();
-        assert_eq!(balances.len(), 3);
+        assert_eq!(results.len(), 4);
+
+        for balances in results.into_iter() {
+            match balances.native_token.chain_id {
+                ChainId::EthMainnet => {
+                    assert_eq!(balances.native_token.amount, U256::zero());
+                    assert_eq!(balances.fungible_tokens.len(), 1);
+                }
+                ChainId::EthGoerli => {
+                    assert_ne!(balances.native_token.amount, U256::zero());
+                    assert_eq!(balances.nfts.len(), 1);
+                }
+                ChainId::PolygonMainnet => {
+                    assert_ne!(balances.native_token.amount, U256::zero());
+                    assert_eq!(balances.fungible_tokens.len(), 2);
+                    assert_eq!(balances.nfts.len(), 2);
+                }
+                ChainId::PolygonMumbai => {
+                    assert_ne!(balances.native_token.amount, U256::zero());
+                }
+            }
+        }
         Ok(())
     }
 

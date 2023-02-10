@@ -7,10 +7,7 @@ use std::{collections::HashSet, fmt::Debug, str::FromStr, sync::Arc};
 use ethers::types::H256;
 use jsonrpsee::{
     core::server::helpers::MethodResponse,
-    types::{
-        error::{CallError, ErrorCode},
-        ErrorObject, Params, Request,
-    },
+    types::{error::ErrorCode, ErrorObject, Params, Request},
 };
 use lazy_static::lazy_static;
 use num_traits::ToPrimitive;
@@ -1078,33 +1075,6 @@ impl From<InPageErrorCode> for ErrorObject<'static> {
     fn from(code: InPageErrorCode) -> Self {
         let code: ErrorCode = code.into();
         code.into()
-    }
-}
-
-impl From<InPageErrorCode> for Error {
-    fn from(code: InPageErrorCode) -> Self {
-        let code: ErrorCode = code.into();
-        Error::JsonRpc {
-            code,
-            message: code.to_string(),
-        }
-    }
-}
-
-impl From<CallError> for Error {
-    fn from(error: CallError) -> Self {
-        let error: ErrorObject = error.into();
-        error.into()
-    }
-}
-
-impl From<ErrorObject<'static>> for Error {
-    fn from(error: ErrorObject) -> Self {
-        let message = error.message();
-        Error::JsonRpc {
-            code: error.code().into(),
-            message: message.into(),
-        }
     }
 }
 

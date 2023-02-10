@@ -3,11 +3,14 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use diesel::r2d2;
-use jsonrpsee::types::error::ErrorCode as JsonrpseeErrorCode;
+use jsonrpsee::types::{
+    error::{CallError, ErrorCode as JsonrpseeErrorCode, ErrorCode},
+    ErrorObject,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::CoreError;
+use crate::{in_page_provider::InPageErrorCode, CoreError};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum Error {
@@ -173,6 +176,33 @@ impl From<jsonrpsee::core::Error> for Error {
     fn from(err: jsonrpsee::core::Error) -> Self {
         let error: jsonrpsee::types::ErrorObjectOwned = err.into();
         error.into()
+    }
+}
+
+impl From<InPageErrorCode> for Error {
+    fn from(code: InPageErrorCode) -> Self {
+        let code: ErrorCode = code.into();
+        Error::JsonRpc {
+            code,
+            message: code.to_string(),
+        }
+    }
+}
+
+impl From<CallError> for Error {
+    fn from(error: CallError) -> Self {
+        let error: ErrorObject = error.into();
+        error.into()
+    }
+}
+
+impl From<ErrorObject<'static>> for Error {
+    fn from(error: ErrorObject) -> Self {
+        let message = error.message();
+        Error::JsonRpc {
+            code: error.code().into(),
+            message: message.into(),
+        }
     }
 }
 

@@ -64,6 +64,10 @@ impl NativeTokenAmount {
         Ok(Self { chain_id, amount })
     }
 
+    pub fn zero_balance(chain_id: ChainId) -> Self {
+        Self::new(chain_id, U256::zero())
+    }
+
     /// Native token amount denominated in the highest denomination of the chain
     /// in decimal. Eg. "1" is Ether on Ethereum and "0.000000001" is 1 Gwei on Ethereum.
     pub fn display_amount(&self) -> String {
@@ -207,6 +211,17 @@ pub struct NFTBalance {
 pub struct TokenBalances {
     pub native_token: NativeTokenAmount,
     pub fungible_tokens: Vec<FungibleTokenBalance>,
+    pub nfts: Vec<NFTBalance>,
+}
+
+impl TokenBalances {
+    pub fn default_for_chain(chain_id: ChainId) -> Self {
+        TokenBalances {
+            native_token: NativeTokenAmount::zero_balance(chain_id),
+            fungible_tokens: Vec::new(),
+            nfts: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]

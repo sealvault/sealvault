@@ -387,7 +387,7 @@ impl Assembler {
     ) -> Result<Vec<CoreTokens>, Error> {
         use ankr::AnkrRpcI;
         let ankr_api = ankr::AnkrRpc::new()?;
-        let mut tokens = rt::block_on(ankr_api.get_account_balances(address))?;
+        let mut tokens = rt::block_on(ankr_api.get_token_balances(address))?;
 
         if let Some(chain_id) = chain_id {
             tokens.retain(|token_balances| {
