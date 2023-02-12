@@ -398,7 +398,7 @@ impl Assembler {
                     token_id,
                     ..
                 } = token;
-                let id = format!("{}-{}-{}", chain_id, contract_address, token_id);
+                let id = format!("{chain_id}-{contract_address}-{token_id}");
                 CoreNFT::builder().id(id).display_name(name).build()
             })
             .collect()
