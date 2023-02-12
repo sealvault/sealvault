@@ -154,8 +154,6 @@ pub(crate) mod tmp_backup_storage {
             match fs::remove_file(file_path.as_path()) {
                 Ok(_) => true,
                 Err(err) => {
-                    dbg!(&err);
-                    dbg!(&backup_file_name);
                     log::error!("Error '{err}' deleting file: '{backup_file_name:?}'");
                     false
                 }
