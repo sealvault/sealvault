@@ -331,6 +331,7 @@ impl From<AnkrNFTBalance> for NFTBalance {
             name,
             symbol,
             contract_address,
+            token_id,
             image_url,
             ..
         } = value;
@@ -340,6 +341,7 @@ impl From<AnkrNFTBalance> for NFTBalance {
             symbol,
             collection_name,
             name,
+            token_id,
             image_url,
         }
     }

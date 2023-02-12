@@ -138,10 +138,16 @@ dictionary CoreFungibleToken {
     sequence<u8>? icon;
 };
 
+dictionary CoreNFT {
+    string id;
+    string display_name;
+};
+
 dictionary CoreTokens {
     string address_id;
     CoreFungibleToken native_token;
     sequence<CoreFungibleToken> fungible_tokens;
+    sequence<CoreNFT> nfts;
 };
 
 dictionary CoreArgs {

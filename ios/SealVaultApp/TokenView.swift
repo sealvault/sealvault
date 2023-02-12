@@ -25,7 +25,6 @@ struct TokenView: View {
                 } label: {
                     TokenRow(token: token)
                 }.accessibilityLabel(token.symbol)
-
             }
         } header: {
             HStack(spacing: 5) {
@@ -39,5 +38,16 @@ struct TokenView: View {
             .scaledToFit()
         }
         .headerProminence(.increased)
+
+        if !address.nftList.isEmpty {
+            Section {
+                ForEach(address.nftList) { nft in
+                    NFTRow(nft: nft)
+                }
+            } header: {
+                Text("NFTs")
+            }
+            .headerProminence(.standard)
+        }
     }
 }

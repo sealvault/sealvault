@@ -4,6 +4,18 @@
 
 import SwiftUI
 
+// Hack to only call refresh tokens once per address
+struct NativeTokenRow: View {
+    @ObservedObject var address: Address
+
+    var body: some View {
+        TokenRow(token: address.nativeToken)
+            .task {
+                await address.refreshTokens()
+            }
+    }
+}
+
 struct TokenRow: View {
     @ObservedObject var token: Token
 
@@ -11,7 +23,6 @@ struct TokenRow: View {
         HStack {
             Label {
                 Text(token.symbol).font(.headline)
-
             } icon: {
                 IconView(image: token.image, iconSize: 24)
                     .accessibility(label: Text(token.symbol))
@@ -24,14 +35,18 @@ struct TokenRow: View {
     }
 }
 
-// Hack to only call refresh tokens once per address
-struct NativeTokenRow: View {
-    @ObservedObject var address: Address
+struct NFTRow: View {
+    @ObservedObject var nft: NFT
 
     var body: some View {
-        TokenRow(token: address.nativeToken)
-            .task {
-                await address.refreshTokens()
+        HStack {
+            Label {
+                Text(nft.displayName).font(.headline)
+            } icon: {
+                Image(systemName: "photo.artframe")
             }
+
+            Spacer()
+        }
     }
 }

@@ -67,10 +67,17 @@ pub struct CoreFungibleToken {
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
+pub struct CoreNFT {
+    pub id: String,
+    pub display_name: String,
+}
+
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct CoreTokens {
     pub address_id: String,
     pub native_token: CoreFungibleToken,
     pub fungible_tokens: Vec<CoreFungibleToken>,
+    pub nfts: Vec<CoreNFT>,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -308,6 +315,7 @@ impl Assembler {
                 .address_id(address_id.into())
                 .native_token(native_token)
                 .fungible_tokens(Default::default())
+                .nfts(Default::default())
                 .build())
         }
     }
@@ -379,6 +387,23 @@ impl Assembler {
         result
     }
 
+    fn assemble_nfts(&self, tokens: Vec<eth::NFTBalance>) -> Vec<CoreNFT> {
+        tokens
+            .into_iter()
+            .map(|token| {
+                let eth::NFTBalance {
+                    chain_id,
+                    contract_address,
+                    name,
+                    token_id,
+                    ..
+                } = token;
+                let id = format!("{}-{}-{}", chain_id, contract_address, token_id);
+                CoreNFT::builder().id(id).display_name(name).build()
+            })
+            .collect()
+    }
+
     fn assemble_tokens(
         &self,
         address: &str,
@@ -398,17 +423,24 @@ impl Assembler {
         let results: Vec<CoreTokens> = tokens
             .into_iter()
             .map(|token_balances| {
+                let eth::TokenBalances {
+                    native_token,
+                    fungible_tokens,
+                    nfts,
+                    ..
+                } = token_balances;
                 let native_token = self.make_native_token(
                     address,
-                    token_balances.native_token.chain_id,
-                    Some(token_balances.native_token.display_amount()),
+                    native_token.chain_id,
+                    Some(native_token.display_amount()),
                 )?;
-                let fungible_tokens =
-                    self.assemble_fungible_tokens(token_balances.fungible_tokens)?;
+                let fungible_tokens = self.assemble_fungible_tokens(fungible_tokens)?;
+                let nfts = self.assemble_nfts(nfts);
                 Ok(CoreTokens::builder()
                     .address_id(address_id.to_string())
                     .native_token(native_token)
                     .fungible_tokens(fungible_tokens)
+                    .nfts(nfts)
                     .build())
             })
             .collect::<Result<Vec<_>, Error>>()?;

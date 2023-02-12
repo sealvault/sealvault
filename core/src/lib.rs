@@ -45,8 +45,8 @@ pub use crate::{
         BackupRestoreData, BackupStorageI as CoreBackupStorageI,
     },
     dto::{
-        CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreFungibleToken, CoreProfile,
-        CoreTokens,
+        CoreAddress, CoreDapp, CoreError, CoreEthChain, CoreFungibleToken, CoreNFT,
+        CoreProfile, CoreTokens,
     },
     error::Error,
     in_page_provider::{

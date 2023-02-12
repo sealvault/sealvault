@@ -204,6 +204,7 @@ pub struct NFTBalance {
     pub symbol: String,
     pub collection_name: String,
     pub name: String,
+    pub token_id: String,
     pub image_url: Option<url::Url>,
 }
 

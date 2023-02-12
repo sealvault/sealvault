@@ -18,11 +18,16 @@ class Address: Identifiable, ObservableObject {
 
     @Published var nativeToken: Token
     @Published var fungibleTokens: [String: Token]
+    @Published var nfts: [String: NFT]
     @Published var selectedForDapp: Bool = false
     @Published var loading: Bool = false
 
     var fungibleTokenList: [Token] {
         self.fungibleTokens.values.sorted(by: {$0.symbol < $1.symbol})
+    }
+
+    var nftList: [NFT] {
+        self.nfts.values.sorted(by: {$0.displayName < $1.displayName})
     }
 
     required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
@@ -38,6 +43,7 @@ class Address: Identifiable, ObservableObject {
         self.chainIcon = chainIcon
         self.nativeToken = nativeToken
         self.fungibleTokens = Dictionary()
+        self.nfts = Dictionary()
         self.selectedForDapp = selectedForDapp
     }
 
@@ -99,6 +105,14 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    func updateNFTs(_ coreNFTs: [CoreNft]) {
+        self.nfts = Dictionary()
+        for coreNFT in coreNFTs {
+            let nft = NFT.fromCore(coreNFT)
+            self.nfts[nft.id] = nft
+        }
+    }
+
     private func fetchTokens() async -> CoreTokens? {
         return await dispatchBackground(.userInteractive) {
             do {
@@ -117,6 +131,7 @@ class Address: Identifiable, ObservableObject {
         if let tokens = await self.fetchTokens() {
             self.updateNativeToken(tokens.nativeToken)
             self.updateFungibleTokens(tokens.fungibleTokens)
+            self.updateNFTs(tokens.nfts)
         }
     }
 }

@@ -405,7 +405,8 @@ class PreviewAppCore: AppCoreProtocol {
         CoreTokens(
             addressId: addressId,
             nativeToken: try! self.nativeTokenForAddress(addressId: addressId),
-            fungibleTokens: try! self.fungibleTokensForAddress(addressId: addressId)
+            fungibleTokens: try! self.fungibleTokensForAddress(addressId: addressId),
+            nfts: [Self.toCoreNFT(NFT.example())]
         )
     }
 
@@ -452,6 +453,10 @@ class PreviewAppCore: AppCoreProtocol {
             tokenType: FungibleTokenType.native,
             icon: icon
         )
+    }
+
+    static func toCoreNFT(_ nft: NFT) -> CoreNft {
+        return CoreNft(id: nft.id, displayName: nft.displayName)
     }
 
     private func fungibleTokensForAddress(addressId: String) throws -> [CoreFungibleToken] {
