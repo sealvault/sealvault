@@ -8,7 +8,6 @@ import SwiftUI
 class Addresses: ObservableObject {
     @Published var dapp: Dapp?
     @Published var profile: Profile?
-    @Published var selectedAddressId: String?
 
     var firstAddress: Address? {
         self.addresses.first
