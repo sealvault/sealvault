@@ -40,7 +40,8 @@ use crate::{
 // Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
 #[cfg(not(test))]
 const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";
-const PAGE_SIZE: usize = 100;
+// NFT API doesn't support more than 50
+const PAGE_SIZE: usize = 50;
 
 // The rpc macro adds the methods in this trait to the Jsonrpsee http client in this file.
 // Server derive for tests.
