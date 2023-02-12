@@ -76,8 +76,6 @@ mod tests {
     fn lists_profile_pics() -> Result<()> {
         let profile_pics = list_profile_pics();
 
-        dbg!(profile_pics.clone());
-
         assert_eq!(profile_pics.len(), 10);
         assert!(profile_pics.contains(&"seal-0".to_string()));
         assert!(profile_pics.contains(&"seal-9".to_string()));
