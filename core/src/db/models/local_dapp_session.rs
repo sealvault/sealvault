@@ -26,7 +26,7 @@ pub struct LocalDappSession {
     pub profile_id: String,
 
     pub address_id: AddressId,
-    pub address: String,
+    pub address: eth::ChecksumAddress,
 
     pub dapp_id: String,
     pub dapp_human_identifier: String,
@@ -96,7 +96,10 @@ impl LocalDappSessionEntity {
         m::Address::fetch_profile_id(conn, &self.address_id)
     }
 
-    pub fn fetch_address(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn fetch_address(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> Result<eth::ChecksumAddress, Error> {
         m::Address::fetch_address(conn, &self.address_id)
     }
 

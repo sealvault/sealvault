@@ -76,7 +76,7 @@ pub trait AnkrRpcI<'a> {
     /// chains from Ankr Advanced API.
     async fn get_token_balances(
         &'a self,
-        address: &str,
+        address: ChecksumAddress,
     ) -> Result<Vec<TokenBalances>, AnkrRpcError> {
         let mut fungible_page_token: Option<String> = None;
         let mut nft_page_token: Option<String> = None;
@@ -88,11 +88,11 @@ pub trait AnkrRpcI<'a> {
             let mut request = BatchRequestBuilder::new();
 
             if first_call || fungible_page_token.is_some() {
-                let fungible_args = object_params(address, fungible_page_token)?;
+                let fungible_args = object_params(&address, fungible_page_token)?;
                 request.insert("ankr_getAccountBalance", fungible_args)?;
             }
             if first_call || nft_page_token.is_some() {
-                let nft_args = object_params(address, nft_page_token)?;
+                let nft_args = object_params(&address, nft_page_token)?;
                 request.insert("ankr_getNFTsByOwner", nft_args)?;
             }
 
@@ -193,7 +193,7 @@ impl<'a> AnkrRpcI<'a> for AnkrRpc {
 }
 
 fn object_params(
-    address: &str,
+    address: &ChecksumAddress,
     next_page_token: Option<String>,
 ) -> Result<ObjectParams, AnkrRpcError> {
     let mut params = ObjectParams::new();
@@ -492,6 +492,8 @@ impl From<AnkrTokenType> for FungibleTokenType {
 
 #[cfg(test)]
 pub use tests::AnkrRpc;
+
+use crate::protocols::eth::ChecksumAddress;
 
 #[cfg(test)]
 mod tests {
@@ -810,9 +812,10 @@ mod tests {
     #[test]
     fn get_token_balances() -> Result<()> {
         let ankr = AnkrRpc::new()?;
-        let results = rt::block_on(
-            ankr.get_token_balances("0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE"),
-        )?;
+        let results =
+            rt::block_on(ankr.get_token_balances(
+                "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE".parse()?,
+            ))?;
 
         assert_eq!(results.len(), 4);
 

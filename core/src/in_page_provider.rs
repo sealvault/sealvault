@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashSet, fmt::Debug, str::FromStr, sync::Arc};
+use std::{collections::HashSet, fmt::Debug, sync::Arc};
 
 use ethers::types::H256;
 use jsonrpsee::{
@@ -222,7 +222,7 @@ impl InPageProvider {
     async fn notify_connect(
         &self,
         chain_id: eth::ChainId,
-        selected_address: &str,
+        selected_address: eth::ChecksumAddress,
     ) -> Result<(), Error> {
         let network_version = chain_id.network_version();
         let event = SealVaultConnect {
@@ -319,7 +319,7 @@ impl InPageProvider {
             })
             .await?;
 
-        self.notify_connect(session.chain_id, &session.address)
+        self.notify_connect(session.chain_id, session.address)
             .await?;
 
         let m::LocalDappSession { address, .. } = session;
@@ -498,7 +498,7 @@ impl InPageProvider {
             let tx_hash = provider
                 .transfer_native_token_async(
                     &wallet_signing_key,
-                    &session.address,
+                    session.address,
                     &chain_settings.default_dapp_allotment,
                 )
                 .await?;
@@ -709,11 +709,8 @@ impl InPageProvider {
         let mut params = params.sequence();
         let message: String = params.next()?;
         let message = decode_0x_hex_prefix(&message)?;
-        let request_address: ethers::core::types::Address =
-            ethers::core::types::Address::from_str(&session.address)
-                .expect("address from database is valid");
         let address_arg: ethers::core::types::Address = params.next()?;
-        if address_arg != request_address {
+        if &address_arg != session.address.as_ref() {
             return Err(Error::JsonRpc {
                 code: InPageErrorCode::InvalidParams.into(),
                 message: "Invalid address".into(),
@@ -929,7 +926,7 @@ struct ProviderMessage {
 struct SealVaultConnect<'a> {
     chain_id: ethers::core::types::U64,
     network_version: &'a str,
-    selected_address: &'a str,
+    selected_address: eth::ChecksumAddress,
 }
 
 #[derive(Debug, strum_macros::Display, EnumIter, EnumString, Serialize, Deserialize)]
@@ -1223,7 +1220,7 @@ mod tests {
     #[test]
     fn responds_on_allowed() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain());
+        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain())?;
 
         let _ = authorize_dapp(&core)?;
         core.wait_for_ui_callbacks(1);
@@ -1357,7 +1354,7 @@ mod tests {
     #[test]
     fn send_transactions_callback() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain());
+        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain())?;
 
         let dapp_address = authorize_dapp(&core)?;
         let dapp_address: Address = dapp_address.parse().expect("checksum address");

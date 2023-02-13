@@ -8,7 +8,7 @@ use std::{
 };
 
 use ethers::{
-    core::types::{Address, BlockNumber, TransactionRequest, H256},
+    core::types::{BlockNumber, TransactionRequest, H256},
     providers::{Http, Middleware, PendingTransaction, Provider},
     types::BlockId,
 };
@@ -18,9 +18,8 @@ use url::Url;
 use crate::{
     async_runtime as rt,
     protocols::eth::{
-        checksum_address::parse_checksum_address, contracts::ERC20Contract,
-        signer::SignerMiddleware, token::FungibleToken, ChainId, FungibleTokenAmount,
-        NativeTokenAmount, SigningKey,
+        contracts::ERC20Contract, signer::SignerMiddleware, token::FungibleToken,
+        ChainId, ChecksumAddress, FungibleTokenAmount, NativeTokenAmount, SigningKey,
     },
     Error,
 };
@@ -107,7 +106,7 @@ impl RpcProvider {
     pub fn transfer_native_token(
         &self,
         signing_key: &SigningKey,
-        to_checksum_address: &str,
+        to_checksum_address: ChecksumAddress,
         amount: &NativeTokenAmount,
     ) -> Result<H256, Error> {
         rt::block_on(self.transfer_native_token_async(
@@ -120,19 +119,17 @@ impl RpcProvider {
     pub async fn transfer_native_token_async(
         &self,
         signing_key: &SigningKey,
-        to_checksum_address: &str,
+        to_address: ChecksumAddress,
         amount: &NativeTokenAmount,
     ) -> Result<H256, Error> {
         self.verify_chain_ids(signing_key, amount.chain_id)?;
 
-        let to_address = parse_checksum_address(to_checksum_address)?;
-
         // TODO use EIP-1559 once we can get reliable `max_priority_fee_per_gas` estimates on all
         // chains.
         let tx = TransactionRequest::new()
-            .to(to_address)
+            .to(to_address.to_address())
             .value(amount.amount)
-            .from(signing_key.address);
+            .from(signing_key.address.to_address());
 
         let tx_hash = self.send_transaction_async(signing_key, tx).await?;
 
@@ -142,15 +139,15 @@ impl RpcProvider {
     pub fn transfer_fungible_token(
         &self,
         signing_key: &SigningKey,
-        to_checksum_address: &str,
+        to_address: ChecksumAddress,
         amount_decimal: &str,
-        contract_checksum_address: &str,
+        contract_address: ChecksumAddress,
     ) -> Result<H256, Error> {
         let future = self.transfer_fungible_token_async(
             signing_key,
-            to_checksum_address,
+            to_address,
             amount_decimal,
-            contract_checksum_address,
+            contract_address,
         );
         rt::block_on(future)
     }
@@ -158,13 +155,10 @@ impl RpcProvider {
     pub async fn transfer_fungible_token_async(
         &self,
         signing_key: &SigningKey,
-        to_checksum_address: &str,
+        to_address: ChecksumAddress,
         amount_decimal: &str,
-        contract_checksum_address: &str,
+        contract_address: ChecksumAddress,
     ) -> Result<H256, Error> {
-        let contract_address = parse_contract_address(contract_checksum_address)?;
-        let to_address: Address = parse_checksum_address(to_checksum_address)?;
-
         let signer = Arc::new(SignerMiddleware::new(&self.provider, signing_key));
         let contract = ERC20Contract::new(contract_address, signer);
 
@@ -178,7 +172,8 @@ impl RpcProvider {
         let fungible_token_amount =
             FungibleTokenAmount::new_from_decimal(fungible_token, amount_decimal)?;
 
-        let contract_call = contract.transfer(to_address, fungible_token_amount.amount);
+        let contract_call =
+            contract.transfer(to_address.to_address(), fungible_token_amount.amount);
         let pending_tx = contract_call.send().await.map_err(|err| Error::Retriable {
             error: err.to_string(),
         })?;
@@ -187,17 +182,15 @@ impl RpcProvider {
 
     pub fn fungible_token_symbol(
         &self,
-        contract_checksum_address: &str,
+        contract_address: ChecksumAddress,
     ) -> Result<String, Error> {
-        rt::block_on(self.fungible_token_symbol_async(contract_checksum_address))
+        rt::block_on(self.fungible_token_symbol_async(contract_address))
     }
 
     pub async fn fungible_token_symbol_async(
         &self,
-        contract_checksum_address: &str,
+        contract_address: ChecksumAddress,
     ) -> Result<String, Error> {
-        let contract_address = parse_contract_address(contract_checksum_address)?;
-
         let provider = Arc::new(self.provider.clone());
         let contract = ERC20Contract::new(contract_address, provider);
 
@@ -212,20 +205,20 @@ impl RpcProvider {
     /// Fetch the native token balance for an address.
     pub fn native_token_balance(
         &self,
-        address: &str,
+        address: ChecksumAddress,
     ) -> Result<NativeTokenAmount, Error> {
         rt::block_on(self.native_token_balance_async(address))
     }
 
     pub async fn native_token_balance_async(
         &self,
-        address: &str,
+        address: ChecksumAddress,
     ) -> Result<NativeTokenAmount, Error> {
-        let address = address.parse::<Address>().map_err(|err| Error::Retriable {
-            error: err.to_string(),
-        })?;
         let block_id: Option<BlockId> = Some(BlockNumber::Latest.into());
-        let balance = self.provider.get_balance(address, block_id).await?;
+        let balance = self
+            .provider
+            .get_balance(address.to_address(), block_id)
+            .await?;
         let amount = NativeTokenAmount::new(self.chain_id, balance);
         Ok(amount)
     }
@@ -277,14 +270,6 @@ impl RpcManagerI for RpcManager {
         let http_endpoint = chain_id.http_rpc_endpoint();
         RpcProvider::new(chain_id, http_endpoint)
     }
-}
-
-fn parse_contract_address(checksum_address: &str) -> Result<Address, Error> {
-    parse_checksum_address(checksum_address).map_err(|err| match err {
-        // Contract address isn't provided by the user
-        Error::User { explanation } => Error::Retriable { error: explanation },
-        _ => err,
-    })
 }
 
 fn display_tx_hash(tx_hash: H256) -> String {
@@ -372,17 +357,15 @@ pub mod anvil {
         pub fn send_native_token(
             &self,
             chain_id: ChainId,
-            to_checksum_address: &str,
+            to_address: ChecksumAddress,
             amount_eth: u64,
         ) {
             let provider = self.eth_api_provider(chain_id);
             let accounts =
                 rt::block_on(provider.provider.get_accounts()).expect("get_accounts ok");
             let value = U256::exp10(18) * amount_eth;
-            let address: Address =
-                to_checksum_address.parse().expect("valid checksum address");
             let tx = TransactionRequest::new()
-                .to(address)
+                .to(to_address.to_address())
                 .value(value)
                 .from(accounts[0]);
             let pending_tx = rt::block_on(provider.provider.send_transaction(tx, None))
@@ -424,17 +407,13 @@ mod tests {
 
     use anyhow::Result;
     use ethers::{
-        core::types::U256, providers::PendingTransaction, signers::Signer,
-        utils::to_checksum,
+        core::types::U256, providers::PendingTransaction, signers::Signer, types::Address,
     };
 
     use super::*;
-    use crate::protocols::{
-        eth::{
-            contracts::test_util::TestContractDeployer, signing_key::checksum_address,
-            AnvilRpcManager, EthereumAsymmetricKey,
-        },
-        ChecksumAddress,
+    use crate::protocols::eth::{
+        contracts::test_util::TestContractDeployer, AnvilRpcManager,
+        EthereumAsymmetricKey,
     };
 
     #[test]
@@ -457,8 +436,7 @@ mod tests {
         let provider = rpc_manager.eth_api_provider(chain_id);
         let accounts = rt::block_on(provider.provider.get_accounts())?;
 
-        let address = checksum_address(&accounts[0]);
-        let balance = provider.native_token_balance(&*address)?;
+        let balance = provider.native_token_balance(accounts[0].into())?;
         assert_eq!(balance.chain_id, chain_id);
         assert_eq!(balance.display_amount(), "10000");
 
@@ -475,26 +453,32 @@ mod tests {
         let sender_signing = SigningKey::new(sender_key, ChainId::EthMainnet)?;
 
         // Send some coin to the address with which we want to test the transfer.
-        rpc_manager.send_native_token(chain_id, &sender_signing.checksum_address(), 2);
+        rpc_manager.send_native_token(chain_id, sender_signing.address, 2);
         let sender_address = sender_signing.address;
-        rt::block_on(rpc_provider.provider.get_balance(sender_address, None))?;
+        rt::block_on(
+            rpc_provider
+                .provider
+                .get_balance(sender_address.to_address(), None),
+        )?;
 
-        let receiver_address = Address::random();
-        let receiver_checksum = to_checksum(&receiver_address, None);
+        let receiver_address: ChecksumAddress = Address::random().into();
 
         let amount_wei = U256::exp10(18);
         let amount = NativeTokenAmount::new(sender_signing.chain_id, amount_wei);
 
         let tx_hash = rpc_provider.transfer_native_token(
             &sender_signing,
-            &receiver_checksum,
+            receiver_address,
             &amount,
         )?;
 
         rt::block_on(PendingTransaction::new(tx_hash, &rpc_provider.provider))?;
 
-        let balance_receiver =
-            rt::block_on(rpc_provider.provider.get_balance(receiver_address, None))?;
+        let balance_receiver = rt::block_on(
+            rpc_provider
+                .provider
+                .get_balance(receiver_address.to_address(), None),
+        )?;
         assert_eq!(balance_receiver, amount_wei);
 
         Ok(())
@@ -515,13 +499,13 @@ mod tests {
         // Send native token to address that is using our key & tx management for tx fee
         contract_deployer.anvil_rpc.send_native_token(
             chain_id,
-            &sender_signing.checksum_address(),
+            sender_signing.address,
             1,
         );
 
         // Send fungible token to our address
         let amount = U256::exp10(18);
-        let call = contract.transfer(sender_signing.address, amount);
+        let call = contract.transfer(sender_signing.address.to_address(), amount);
         // If we don't specify gas here, the tx fails with this weird reason:
         // Error: (code: -32003, message: Out of gas: required gas exceeds allowance: 300000000, data: None)
         // Seems like an Anvil specific issue.
@@ -531,24 +515,23 @@ mod tests {
 
         // Save the balance of the address that we send the tokens back to prior to transfer with
         // our address.
-        let deployer_address = contract_deployer.deployer_wallet().address();
-        let call = contract.balance_of(deployer_address);
+        let deployer_address: ChecksumAddress =
+            contract_deployer.deployer_wallet().address().into();
+        let call = contract.balance_of(deployer_address.to_address());
         let prev_balance = rt::block_on(call.call())?;
 
         // Send back fungible token transfer from our address
-        let to_checksum_adress = to_checksum(&deployer_address, None);
-        let contract_checksum_address = to_checksum(&contract_address, None);
         let tx_hash = contract_deployer.rpc_provider.transfer_fungible_token(
             &sender_signing,
-            &to_checksum_adress,
+            deployer_address,
             "1",
-            &contract_checksum_address,
+            contract_address,
         )?;
         let pending_tx = PendingTransaction::new(tx_hash, &provider);
         let _receipt = rt::block_on(pending_tx)?;
 
         // Check that after sending back the tokens the balance is as expected.
-        let call = contract.balance_of(deployer_address);
+        let call = contract.balance_of(deployer_address.to_address());
         let post_balance = rt::block_on(call.call())?;
         assert_eq!(amount.add(prev_balance), post_balance);
 
@@ -561,10 +544,9 @@ mod tests {
         let chain_id = ChainId::EthMainnet;
         let contract_deployer = TestContractDeployer::init(chain_id);
         let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
-        let contract_address = to_checksum(&contract_address, None);
 
         let rpc_provider = contract_deployer.anvil_rpc.eth_api_provider(chain_id);
-        let symbol = rpc_provider.fungible_token_symbol(&contract_address)?;
+        let symbol = rpc_provider.fungible_token_symbol(contract_address)?;
         assert_eq!(symbol, "FTT");
 
         Ok(())

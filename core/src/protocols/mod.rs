@@ -3,11 +3,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 mod blockchain_protocol;
-mod checksum_address;
 pub mod eth;
 mod token_type;
 
 pub use crate::protocols::{
-    blockchain_protocol::BlockchainProtocol, checksum_address::ChecksumAddress,
-    token_type::FungibleTokenType,
+    blockchain_protocol::BlockchainProtocol, token_type::FungibleTokenType,
 };

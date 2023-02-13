@@ -4,10 +4,13 @@
 
 use url::Url;
 
-use crate::{protocols::eth::ChainId, Error};
+use crate::{
+    protocols::eth::{ChainId, ChecksumAddress},
+    Error,
+};
 
 /// Get the blockchain explorer url for an address.
-pub fn address_url(chain_id: ChainId, address: &str) -> Result<Url, Error> {
+pub fn address_url(chain_id: ChainId, address: ChecksumAddress) -> Result<Url, Error> {
     chain_id
         .explorer_url()
         .join(&format!("address/{}", address))
@@ -37,11 +40,11 @@ mod tests {
 
     #[test]
     fn correct_ethereum_explorer_address_url() -> Result<()> {
-        let address = "0xd8f3059ba60f8253977fe6731c3e54abff368c48";
-        let url = address_url(ChainId::EthMainnet, address)?;
+        let address = "0xd8f3059Ba60f8253977Fe6731C3e54aBFF368c48";
+        let url = address_url(ChainId::EthMainnet, address.parse()?)?;
         assert_eq!(
             url.as_str(),
-            "https://etherscan.io/address/0xd8f3059ba60f8253977fe6731c3e54abff368c48"
+            "https://etherscan.io/address/0xd8f3059Ba60f8253977Fe6731C3e54aBFF368c48"
         );
         Ok(())
     }

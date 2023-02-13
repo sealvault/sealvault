@@ -32,7 +32,7 @@ impl<'a> Signer<'a> {
 
     /// The signing key's address.
     fn address(&self) -> Address {
-        self.signing_key.address
+        self.signing_key.address.to_address()
     }
 
     /// The addresses chain id.
@@ -333,7 +333,6 @@ mod tests {
     use lazy_static::lazy_static;
 
     use super::*;
-    use crate::protocols::ChecksumAddress;
 
     struct PersonalSignTest {
         address: &'static str,
@@ -433,7 +432,7 @@ mod tests {
         let chain_id = ChainId::default_dapp_chain();
         for case in PERSONAL_SIGN_VECTORS.iter() {
             let signing_key = SigningKey::new(case.key(), chain_id)?;
-            assert_eq!(signing_key.checksum_address(), case.address);
+            assert_eq!(signing_key.address.to_string(), case.address);
 
             let signer = Signer::new(&signing_key);
 

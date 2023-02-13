@@ -23,13 +23,13 @@ mod token;
 pub type EthereumAsymmetricKey = AsymmetricKey<Secp256k1>;
 pub use chain_id::ChainId;
 pub use chain_settings::ChainSettings;
-pub use checksum_address::validate_checksum_address;
+pub use checksum_address::ChecksumAddress;
 pub use protocol_data::ProtocolData;
 #[cfg(test)]
 pub use rpc_provider::anvil::AnvilRpcManager;
 pub use rpc_provider::{RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
-pub use signing_key::{public_key_to_checksum_address, SigningKey};
+pub use signing_key::SigningKey;
 pub use token::{
     FungibleTokenAmount, FungibleTokenBalance, NFTBalance, NativeTokenAmount,
     TokenBalances,

@@ -40,7 +40,7 @@ pub struct Address {
     pub deterministic_id: AddressId,
     pub asymmetric_key_id: String,
     pub chain_id: String,
-    pub address: String,
+    pub address: eth::ChecksumAddress,
     pub created_at: String,
     pub updated_at: Option<String>,
 }
@@ -162,11 +162,10 @@ impl Address {
             .build()
             .insert(tx_conn)?;
 
-        let checksum_address =
-            eth::public_key_to_checksum_address(&signing_key.public_key)?;
+        let checksum_address = eth::ChecksumAddress::new(&signing_key.public_key)?;
         let address_id = NewAddress::builder()
             .asymmetric_key_id(key_id.as_str())
-            .address(&*checksum_address)
+            .address(&checksum_address)
             .build()
             .insert_eth(tx_conn, params.chain_id)?;
 
@@ -185,10 +184,10 @@ impl Address {
                     tx_conn.as_mut(),
                     address_entity.asymmetric_key_id,
                 )?;
-                let checksum_address = eth::public_key_to_checksum_address(&public_key)?;
+                let checksum_address = eth::ChecksumAddress::new(&public_key)?;
                 NewAddress::builder()
                     .asymmetric_key_id(address_entity.asymmetric_key_id)
-                    .address(&*checksum_address)
+                    .address(&checksum_address)
                     .build()
                     .insert_eth_for_chain_entity(tx_conn, address_entity.chain_entity_id)
             }
@@ -324,7 +323,7 @@ impl Address {
     pub fn fetch_address(
         conn: &mut SqliteConnection,
         address_id: &AddressId,
-    ) -> Result<String, Error> {
+    ) -> Result<eth::ChecksumAddress, Error> {
         use addresses::dsl as a;
 
         let address = addresses::table
@@ -398,14 +397,10 @@ impl Address {
 
     pub fn fetch_profile_id_for_eth_address(
         connection: &mut SqliteConnection,
-        checksum_address: &str,
+        checksum_address: eth::ChecksumAddress,
     ) -> Result<Option<String>, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
-
-        use crate::protocols::eth::validate_checksum_address;
-
-        validate_checksum_address(checksum_address)?;
 
         let profile_id = addresses::table
             .inner_join(
@@ -481,11 +476,11 @@ impl Address {
 #[derive(TypedBuilder, Insertable)]
 #[diesel(table_name = addresses)]
 #[readonly::make]
-pub struct NewAddress<'a> {
+struct NewAddress<'a> {
     #[builder(setter(into))]
     pub asymmetric_key_id: &'a str,
     #[builder(setter(into))]
-    pub address: &'a str,
+    pub address: &'a eth::ChecksumAddress,
 }
 
 impl<'a> NewAddress<'a> {
@@ -579,7 +574,6 @@ pub struct CreateEthAddressParams<'a> {
     PartialOrd,
     Ord,
     Hash,
-    derive_more::FromStr,
     Into,
     AsRef,
     AsExpression,
@@ -603,6 +597,15 @@ impl TryFrom<String> for AddressId {
     }
 }
 
+impl FromStr for AddressId {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
+    }
+}
+
+// TODO derive macro
 impl FromSql<Text, Sqlite> for AddressId {
     fn from_sql(
         bytes: diesel::backend::RawValue<Sqlite>,

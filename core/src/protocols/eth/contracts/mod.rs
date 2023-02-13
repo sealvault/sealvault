@@ -22,7 +22,6 @@ pub mod test_util {
     use anyhow::Result;
     use ethers::{
         contract::ContractFactory,
-        core::types::Address,
         middleware::SignerMiddleware,
         providers::{Http, Provider},
         signers::{LocalWallet, Signer},
@@ -31,7 +30,9 @@ pub mod test_util {
 
     use crate::{
         async_runtime as rt,
-        protocols::eth::{AnvilRpcManager, ChainId, RpcManagerI, RpcProvider},
+        protocols::eth::{
+            AnvilRpcManager, ChainId, ChecksumAddress, RpcManagerI, RpcProvider,
+        },
     };
 
     pub struct TestContractDeployer {
@@ -64,7 +65,9 @@ pub mod test_util {
         /// Deploy FungibleTokenTest ERC20 contract on local Anvil node.
         /// Returns the contract address.
         /// Based on https://github.com/gakonst/ethers-rs/blob/69f24e03efca769ed2acc96b95029b3f07fd5493/examples/contract_human_readable.rs
-        pub async fn deploy_fungible_token_test_contract_async(&self) -> Result<Address> {
+        pub async fn deploy_fungible_token_test_contract_async(
+            &self,
+        ) -> Result<ChecksumAddress> {
             // Compile FungibleTokenTest contract
             let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("src/protocols/eth/contracts/fungible_token_test");
@@ -96,10 +99,10 @@ pub mod test_util {
                 ContractFactory::new(abi.unwrap(), bytecode.unwrap(), client.clone());
             let contract = factory.deploy(())?.send().await?;
 
-            Ok(contract.address())
+            Ok(contract.address().into())
         }
 
-        pub fn deploy_fungible_token_test_contract(&self) -> Result<Address> {
+        pub fn deploy_fungible_token_test_contract(&self) -> Result<ChecksumAddress> {
             rt::block_on(self.deploy_fungible_token_test_contract_async())
         }
     }

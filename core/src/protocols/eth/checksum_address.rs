@@ -2,64 +2,210 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
+
+use derive_more::{AsRef, From, Into};
+use diesel::{
+    deserialize::FromSql, expression::AsExpression, serialize::ToSql, sql_types::Text,
+    sqlite::Sqlite,
+};
 use ethers::core::{types::Address, utils::to_checksum};
+use k256::PublicKey;
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 
-use crate::Error;
+use crate::{CoreError, Error};
 
-pub fn validate_checksum_address(check_sum_address: &str) -> Result<(), Error> {
-    parse_checksum_address(check_sum_address)?;
-    Ok(())
+// https://en.bitcoin.it/wiki/BIP_0137
+const UNCOMPRESSED_PUBLIC_KEY_PREFIX: u8 = 0x04;
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    From,
+    AsRef,
+    AsExpression,
+    FromSqlRow,
+    Serialize,
+    Deserialize,
+)]
+#[serde(try_from = "String")]
+#[serde(into = "String")]
+#[diesel(sql_type = diesel::sql_types::Text)]
+#[repr(transparent)]
+pub struct ChecksumAddress(Address);
+
+impl ChecksumAddress {
+    pub fn new(public_key: &PublicKey) -> Result<Self, Error> {
+        use k256::elliptic_curve::sec1::ToEncodedPoint;
+        use sha3::digest::FixedOutput;
+
+        let pk = public_key.to_encoded_point(/* compress = */ false);
+        let pk = pk.as_bytes();
+        if pk[0] != UNCOMPRESSED_PUBLIC_KEY_PREFIX {
+            return Err(Error::Fatal {
+                error: "Expected uncompressed public key.".into(),
+            });
+        }
+        let digest = Keccak256::new_with_prefix(&pk[1..]);
+        let hash = digest.finalize_fixed();
+
+        Ok(Self(Address::from_slice(&hash[12..])))
+    }
+
+    pub fn to_address(self) -> Address {
+        self.0
+    }
 }
 
-pub fn parse_checksum_address(check_sum_address: &str) -> Result<Address, Error> {
-    let addr: Address = check_sum_address.parse().map_err(|_| Error::User {
-        explanation: "This doesn't look like an Ethereum checksum address.".into(),
-    })?;
+impl TryFrom<String> for ChecksumAddress {
+    type Error = ChecksumAddressError;
 
-    if to_checksum(&addr, None) != check_sum_address {
-        Err(Error::User {
-            explanation: "A checksum address is required here.".into(),
-        })
-    } else {
-        Ok(addr)
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl FromStr for ChecksumAddress {
+    type Err = ChecksumAddressError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let address: Address = value
+            .parse()
+            .map_err(|_| ChecksumAddressError::NotAnAddress)?;
+        let checksum = Self(address);
+
+        if checksum.to_string() != value {
+            Err(ChecksumAddressError::InvalidChecksum)
+        } else {
+            Ok(checksum)
+        }
+    }
+}
+
+impl From<ChecksumAddress> for String {
+    fn from(value: ChecksumAddress) -> Self {
+        value.to_string()
+    }
+}
+
+impl Display for ChecksumAddress {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // EIP-1191 is not backward compatible with EIP-155 and it is not supported widely enough so
+        // adding chain id to checksum is likely to cause more trouble than help.
+        write!(f, "{}", to_checksum(&self.0, None))
+    }
+}
+
+impl FromSql<Text, Sqlite> for ChecksumAddress {
+    fn from_sql(
+        bytes: diesel::backend::RawValue<Sqlite>,
+    ) -> diesel::deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        let address_id: Self = s.parse()?;
+        Ok(address_id)
+    }
+}
+
+impl ToSql<Text, Sqlite> for ChecksumAddress {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<Sqlite>,
+    ) -> diesel::serialize::Result {
+        let s = self.to_string();
+        out.set_value(s);
+        Ok(diesel::serialize::IsNull::No)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ChecksumAddressError {
+    #[error("The provided value is not an Ethereum address.")]
+    NotAnAddress,
+    #[error("Invalid checksum for address.")]
+    InvalidChecksum,
+}
+
+impl From<ChecksumAddressError> for CoreError {
+    fn from(value: ChecksumAddressError) -> Self {
+        match value {
+            ChecksumAddressError::NotAnAddress => CoreError::User {
+                explanation: "This doesn't look like an Ethereum checksum address."
+                    .into(),
+            },
+            ChecksumAddressError::InvalidChecksum => CoreError::User {
+                explanation: "A checksum address is required here.".into(),
+            },
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use k256::SecretKey;
 
     use super::*;
 
     #[test]
     fn checksum_address_is_ok() -> Result<()> {
-        let addr = "0x8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077a";
-        validate_checksum_address(addr)?;
+        let s = "0x8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077a";
+        let address: ChecksumAddress = s.parse()?;
+        assert_eq!(address.to_string(), s);
         Ok(())
     }
 
     #[test]
     fn invalid_checksum_is_not_ok() -> Result<()> {
         // Last char is changed from valid.
-        let addr = "0x8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077b";
-        let result = validate_checksum_address(addr);
-        assert!(matches!(result, Err(Error::User { explanation: _ })));
+        let result: Result<ChecksumAddress, ChecksumAddressError> =
+            "0x8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077b".parse();
+        assert!(matches!(result, Err(_)));
         Ok(())
     }
 
     #[test]
     fn no_prefix_is_not_ok() -> Result<()> {
-        let addr = "8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077a";
-        let result = validate_checksum_address(addr);
-        assert!(matches!(result, Err(Error::User { explanation: _ })));
+        let result: Result<ChecksumAddress, ChecksumAddressError> =
+            "8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077a".parse();
+        dbg!(&result);
+        assert!(matches!(result, Err(_)));
         Ok(())
     }
 
     #[test]
     fn lowercase_is_not_ok_for_checksum() -> Result<()> {
-        let addr = "0x8b6b4c4baea2fe3615adb7fb9ae2af2b67b0077a";
-        let result = validate_checksum_address(addr);
-        assert!(matches!(result, Err(Error::User { explanation: _ })));
+        let result: Result<ChecksumAddress, ChecksumAddressError> =
+            "0x8b6b4c4baea2fe3615adb7fb9ae2af2b67b0077a".parse();
+        assert!(matches!(result, Err(_)));
+        Ok(())
+    }
+
+    // Test vector from https://github.com/ethereumbook/ethereumbook/blob/develop/04keys-addresses.asciidoc
+    #[test]
+    fn correct_pk_address_conversion() -> Result<()> {
+        const SK: &str =
+            "f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315";
+        const ADDRESS: &str = "001d3f1ef827552ae1114027bd3ecf1f086ba0f9";
+
+        let sk = SecretKey::from_be_bytes(&hex::decode(SK)?)?;
+        let pk = sk.public_key();
+
+        let expected_address = Address::from_slice(&hex::decode(ADDRESS)?);
+        let address = ChecksumAddress::new(&pk)?;
+
+        assert_eq!(address.as_ref(), &expected_address);
+
         Ok(())
     }
 }

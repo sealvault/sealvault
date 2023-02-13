@@ -267,15 +267,14 @@ impl Assembler {
 
         // We send the native token without balance first to return result ASAP.
         // UI then fetches balance async.
-        let native_token = self.make_native_token(&address, chain_id, None)?;
+        let native_token = self.make_native_token(address, chain_id, None)?;
 
         let chain_icon = chain_id.native_token().icon()?;
-        let explorer_link: String =
-            eth::explorer::address_url(chain_id, &address)?.into();
+        let explorer_link: String = eth::explorer::address_url(chain_id, address)?.into();
         let result = CoreAddress::builder()
             .id(deterministic_id.into())
             .is_wallet(is_wallet)
-            .checksum_address(address)
+            .checksum_address(address.to_string())
             .blockchain_explorer_link(explorer_link)
             .chain_display_name(chain_id.display_name())
             .is_test_net(chain_id.is_test_net())
@@ -304,13 +303,13 @@ impl Assembler {
     ) -> Result<CoreTokens, Error> {
         let (chain_id, address) = self.fetch_address_for_address_id(&address_id)?;
         let mut token_balances =
-            self.assemble_tokens(&address.address, &address_id, Some(chain_id))?;
+            self.assemble_tokens(address.address, &address_id, Some(chain_id))?;
         if token_balances.len() == 1 {
             let result = token_balances.pop().expect("checked that length is 1");
             Ok(result)
         } else {
             // Fall back to just fetching native token
-            let native_token = self.assemble_native_token(&address.address, chain_id)?;
+            let native_token = self.assemble_native_token(address.address, chain_id)?;
             Ok(CoreTokens::builder()
                 .address_id(address_id.into())
                 .native_token(native_token)
@@ -322,7 +321,7 @@ impl Assembler {
 
     fn make_native_token(
         &self,
-        address: &str,
+        address: eth::ChecksumAddress,
         chain_id: eth::ChainId,
         amount: Option<String>,
     ) -> Result<CoreFungibleToken, Error> {
@@ -340,7 +339,7 @@ impl Assembler {
 
     fn assemble_native_token(
         &self,
-        address: &str,
+        address: eth::ChecksumAddress,
         chain_id: eth::ChainId,
     ) -> Result<CoreFungibleToken, Error> {
         let provider = self.rpc_manager().eth_api_provider(chain_id);
@@ -406,7 +405,7 @@ impl Assembler {
 
     fn assemble_tokens(
         &self,
-        address: &str,
+        address: eth::ChecksumAddress,
         address_id: &m::AddressId,
         chain_id: Option<eth::ChainId>,
     ) -> Result<Vec<CoreTokens>, Error> {

@@ -9,7 +9,12 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::{assets::load_binary, config, protocols::eth::ChainId, Error};
+use crate::{
+    assets::load_binary,
+    config,
+    protocols::eth::{ChainId, ChecksumAddress},
+    Error,
+};
 
 #[derive(Debug, PartialEq, EnumIter, EnumString, Display, Serialize, Deserialize)]
 #[strum(serialize_all = "UPPERCASE")]
@@ -79,12 +84,16 @@ impl NativeTokenAmount {
 #[readonly::make]
 pub struct FungibleToken {
     pub chain_id: ChainId,
-    pub contract_address: Address,
+    pub contract_address: ChecksumAddress,
     pub decimals: u8,
 }
 
 impl FungibleToken {
-    pub fn new(chain_id: ChainId, contract_address: Address, decimals: u8) -> Self {
+    pub fn new(
+        chain_id: ChainId,
+        contract_address: ChecksumAddress,
+        decimals: u8,
+    ) -> Self {
         Self {
             chain_id,
             contract_address,
