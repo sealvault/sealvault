@@ -43,7 +43,13 @@ interface AppCore {
     void set_active_profile_id(string profile_id);
 
     [Throws=CoreError]
+    CoreAddress fetch_address(string address_id);
+
+    [Throws=CoreError]
     CoreTokens tokens_for_address_id(string address_id);
+
+    [Throws=CoreError]
+    sequence<CoreTokens> tokens_for_eth_address(string checksum_address);
 
     [Throws=CoreError]
     string get_in_page_script(string rpc_provider_name, string request_handler_name);

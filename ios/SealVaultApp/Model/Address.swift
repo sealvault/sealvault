@@ -19,7 +19,6 @@ class Address: Identifiable, ObservableObject {
     @Published var nativeToken: Token
     @Published var fungibleTokens: [String: Token]
     @Published var nfts: [String: NFT]
-    @Published var selectedForDapp: Bool = false
     @Published var loading: Bool = false
 
     var fungibleTokenList: [Token] {
@@ -31,8 +30,7 @@ class Address: Identifiable, ObservableObject {
     }
 
     required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
-                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token,
-                  selectedForDapp: Bool = false) {
+                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
@@ -44,25 +42,41 @@ class Address: Identifiable, ObservableObject {
         self.nativeToken = nativeToken
         self.fungibleTokens = Dictionary()
         self.nfts = Dictionary()
-        self.selectedForDapp = selectedForDapp
     }
 
-    static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress, selectedForDapp: Bool = false) -> Self {
+    static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress) -> Self {
         let chainIcon = Self.convertIcon(address.chainIcon)
         let url = URL(string: address.blockchainExplorerLink)
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
             core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
             isTestNet: address.isTestNet, blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName,
-            chainIcon: chainIcon, nativeToken: nativeToken, selectedForDapp: selectedForDapp
+            chainIcon: chainIcon, nativeToken: nativeToken
         )
+    }
+
+    static func fetch(_ core: AppCoreProtocol, addressId: String) async -> Self? {
+        let coreAddress: CoreAddress? = await dispatchBackground(.userInteractive) {
+            do {
+                return try core.fetchAddress(addressId: addressId)
+            } catch {
+                print("Failed to fetch address with error \(error)")
+                return nil
+            }
+        }
+        if let coreAddress = coreAddress {
+            return Self.fromCore(core, coreAddress)
+        } else {
+            return nil
+        }
     }
 
     static func convertIcon(_ icon: [UInt8]) -> UIImage {
         return UIImage(data: Data(icon)) ?? UIImage(systemName: "diamond")!
     }
 
-    func updateFromCore(_ address: CoreAddress, selectedForDapp: Bool = false) {
+    @MainActor
+    func updateFromCore(_ address: CoreAddress) {
         withAnimation {
             assert(self.id == address.id, "id mismatch when updating address from core")
             assert(
@@ -75,10 +89,10 @@ class Address: Identifiable, ObservableObject {
             self.chainIcon = Self.convertIcon(address.chainIcon)
             self.updateNativeToken(address.nativeToken)
             self.nativeToken.updateFromCore(address.nativeToken)
-            self.selectedForDapp = selectedForDapp
         }
     }
 
+    @MainActor
     func updateNativeToken(_ coreToken: CoreFungibleToken?) {
         if let token = coreToken {
             if token.id == self.nativeToken.id {
@@ -89,6 +103,7 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    @MainActor
     func updateFungibleTokens(_ coreTokens: [CoreFungibleToken]) {
         let newIds = Set(coreTokens.map {$0.id})
         let oldIds = Set(self.fungibleTokens.keys)
@@ -105,12 +120,20 @@ class Address: Identifiable, ObservableObject {
         }
     }
 
+    @MainActor
     func updateNFTs(_ coreNFTs: [CoreNft]) {
         self.nfts = Dictionary()
         for coreNFT in coreNFTs {
             let nft = NFT.fromCore(coreNFT)
             self.nfts[nft.id] = nft
         }
+    }
+
+    @MainActor
+    func updateTokens(_ tokens: CoreTokens) {
+        self.updateNativeToken(tokens.nativeToken)
+        self.updateFungibleTokens(tokens.fungibleTokens)
+        self.updateNFTs(tokens.nfts)
     }
 
     private func fetchTokens() async -> CoreTokens? {
@@ -129,9 +152,7 @@ class Address: Identifiable, ObservableObject {
         self.loading = true
         defer { self.loading = false }
         if let tokens = await self.fetchTokens() {
-            self.updateNativeToken(tokens.nativeToken)
-            self.updateFungibleTokens(tokens.fungibleTokens)
-            self.updateNFTs(tokens.nfts)
+            self.updateTokens(tokens)
         }
     }
 }

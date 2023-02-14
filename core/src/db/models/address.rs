@@ -334,40 +334,82 @@ impl Address {
         Ok(address)
     }
 
-    /// Fetch the address id by the checksum address on a given chain if it exists.
-    pub fn fetch_id_by_checksum_address_on_chain(
-        conn: &mut DeferredTxConnection,
-        checksum_address: &str,
-        chain_id: eth::ChainId,
-    ) -> Result<Option<AddressId>, Error> {
+    pub fn fetch_eth_chains_for_address(
+        conn: &mut SqliteConnection,
+        address: eth::ChecksumAddress,
+    ) -> Result<Vec<eth::ChainId>, Error> {
+        use addresses::dsl as a;
+        use chains::dsl as c;
+
+        let protocol_data: Vec<JsonValue> = addresses::table
+            .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
+            .filter(a::address.eq(address))
+            .select(c::protocol_data)
+            .load(conn)?;
+
+        let mut results: Vec<eth::ChainId> = Default::default();
+        for pd in protocol_data.into_iter() {
+            let chain_data: eth::ProtocolData = pd.convert_into()?;
+            results.push(chain_data.chain_id);
+        }
+
+        Ok(results)
+    }
+
+    /// Fetch all address ids for an Ethereum checksum addresses.
+    fn fetch_by_eth_address(
+        conn: &mut SqliteConnection,
+        address: eth::ChecksumAddress,
+    ) -> Result<Vec<AddressId>, Error> {
         use addresses::dsl as a;
 
-        let chain_db_id = m::Chain::fetch_or_create_eth_chain_id(conn, chain_id)?;
-
-        let mut results: Vec<(AddressId, String)> = addresses::table
-            .filter(
-                a::address
-                    .eq(checksum_address)
-                    .and(a::chain_id.eq(chain_db_id)),
-            )
+        let (address_ids, key_ids): (Vec<AddressId>, Vec<String>) = addresses::table
+            .filter(a::address.eq(address))
             .select((a::deterministic_id, a::asymmetric_key_id))
-            .load(conn.as_mut())?;
+            .load(conn)?
+            .into_iter()
+            .unzip();
 
         // Sanity check to make sure we don't have multiple keys with the same checksum address.
         // There is no unique index on (address, chain_id) due to deterministic id constraints.
-        let unique_keys = results
-            .iter()
-            .map(|(_, key_id)| key_id)
-            .collect::<HashSet<_>>();
+        let unique_keys = key_ids.iter().collect::<HashSet<_>>();
         if unique_keys.len() > 1 {
             return Err(Error::Fatal {
                 error: "Multiple keys with the same checksum address".to_string(),
             });
         }
 
-        let address_id = results.pop().map(|(address_id, _)| address_id);
+        Ok(address_ids)
+    }
 
-        Ok(address_id)
+    /// Fetch all chain ids for a checksum address.
+    pub fn fetch_chains_for_address(
+        conn: &mut DeferredTxConnection,
+        address: eth::ChecksumAddress,
+    ) -> Result<Vec<eth::ChainId>, Error> {
+        let addresses = Self::fetch_by_eth_address(conn.as_mut(), address)?;
+        addresses
+            .iter()
+            .map(|address_id| Self::fetch_eth_chain_id(conn.as_mut(), address_id))
+            .collect()
+    }
+
+    /// Fetch the address id by the checksum address on a given chain if the checksum address is in
+    /// the DB.
+    pub fn fetch_or_create_id_by_address_on_chain(
+        tx_conn: &mut DeferredTxConnection,
+        address: eth::ChecksumAddress,
+        chain_id: eth::ChainId,
+    ) -> Result<Option<AddressId>, Error> {
+        let address_ids = Self::fetch_by_eth_address(tx_conn.as_mut(), address)?;
+        address_ids
+            .into_iter()
+            .next()
+            .map(|same_address_id| {
+                // No-op if the chain exists, just returns the address id.
+                Self::add_eth_chain(tx_conn, &same_address_id, chain_id)
+            })
+            .transpose()
     }
 
     /// Fetch the wallet address id for an Ethereum chain in an profile.
@@ -456,7 +498,7 @@ impl Address {
 
     pub fn fetch_eth_chain_id(
         conn: &mut SqliteConnection,
-        address_id: &str,
+        address_id: &AddressId,
     ) -> Result<eth::ChainId, Error> {
         use addresses::dsl as a;
         use chains::dsl as c;

@@ -58,6 +58,7 @@
 		68CCAD0028FC42670043692D /* CallbackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CCACFF28FC42670043692D /* CallbackModel.swift */; };
 		68D159A8296F0A9C00B0E717 /* ProfileName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A7296F0A9C00B0E717 /* ProfileName.swift */; };
 		68D159AA296F0C4500B0E717 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D159A9296F0C4500B0E717 /* BrowserWindow.swift */; };
+		68DD0F0B299C1A16005B0AD1 /* MultichainAddress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68DD0F0A299C1A16005B0AD1 /* MultichainAddress.swift */; };
 		68EBBC272907C92200C367F4 /* sortAddressesBy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC262907C92200C367F4 /* sortAddressesBy.swift */; };
 		68EBBC29290E9B4D00C367F4 /* displayChecksumAddress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */; };
 		68EBBC2B290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68EBBC2A290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift */; };
@@ -133,6 +134,7 @@
 		68CCACFF28FC42670043692D /* CallbackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallbackModel.swift; sourceTree = "<group>"; };
 		68D159A7296F0A9C00B0E717 /* ProfileName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileName.swift; sourceTree = "<group>"; };
 		68D159A9296F0C4500B0E717 /* BrowserWindow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
+		68DD0F0A299C1A16005B0AD1 /* MultichainAddress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultichainAddress.swift; sourceTree = "<group>"; };
 		68E9F88229223CFA007316B6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		68EBBC262907C92200C367F4 /* sortAddressesBy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sortAddressesBy.swift; sourceTree = "<group>"; };
 		68EBBC28290E9B4D00C367F4 /* displayChecksumAddress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = displayChecksumAddress.swift; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 				68B6C40028426C120025BCEA /* Dapp.swift */,
 				688C29B3283FD78000474900 /* GlobalModel.swift */,
 				68CBB5A9296A13E300E84ADA /* LocalFiles.swift */,
+				68DD0F0A299C1A16005B0AD1 /* MultichainAddress.swift */,
 				6843F8B4299940E4002E922B /* NFT.swift */,
 				688C29E82840F69100474900 /* Profile.swift */,
 				688AD66829547066001EC192 /* RecoveryModel.swift */,
@@ -440,6 +443,7 @@
 				68EBBC2B290E9BAC00C367F4 /* TokenTransferSent+displayTo.swift in Sources */,
 				688AD66729534BAC001EC192 /* DialogButtons.swift in Sources */,
 				688C29B4283FD78000474900 /* GlobalModel.swift in Sources */,
+				68DD0F0B299C1A16005B0AD1 /* MultichainAddress.swift in Sources */,
 				688AD66B2955C85A001EC192 /* RecoveryView.swift in Sources */,
 				68EE265128DB4A710058CE25 /* DappApproval.swift in Sources */,
 				68745A822826E11500E7B915 /* WebViewRepresentable.swift in Sources */,

@@ -78,17 +78,14 @@ struct TransferForm: View {
 
             }
             .padding()
-            .task {
-                async let profiles: () = self.model.refreshProfiles()
-                async let tokens: () = self.state.fromAddress.refreshTokens()
-                // Refresh concurrently
-                _ = await (profiles, tokens)
-            }
         }
         .navigationTitle(Text("Transfer"))
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
         .refreshable {
-            await state.fromAddress.refreshTokens()
+            async let profiles: () = self.model.refreshProfiles()
+            async let tokens: () = self.state.fromAddress.refreshTokens()
+            // Refresh concurrently
+            _ = await (profiles, tokens)
         }
         .sheet(isPresented: $state.showInAppSelection) {
             if let defaultPickerSelection = state.defaultPickerSelection {
@@ -212,13 +209,13 @@ struct InAppPicker: View {
             Spacer()
 
             Picker("Select Dapp or Profile Wallet", selection: $pickerSelection) {
-                ForEach(state.profile.walletList) { walletAddress in
+                ForEach(state.profile.wallets.addressList) { walletAddress in
                     if state.canTransferTo(walletAddress) {
                         Text("\(state.profile.displayName) Profile Wallet").tag(walletAddress)
                     }
                 }
                 ForEach(state.profile.dappList) { dapp in
-                    ForEach(dapp.addressList) { dappAddress in
+                    ForEach(dapp.addresses.addressList) { dappAddress in
                         if state.canTransferTo(dappAddress) {
                             Text("\(dapp.humanIdentifier)")
                                 .tag(dappAddress)
@@ -395,9 +392,6 @@ struct TransferButton: View {
                 // Reset amount so that user doesn't submit twice by accident
                 state.amount = ""
                 state.processing = false
-                if success {
-                    await state.fromAddress.refreshTokens()
-                }
             }
         }, label: {
             if state.processing {
@@ -425,11 +419,11 @@ struct TransferView_Previews: PreviewProvider {
     static var previews: some View {
         let model = GlobalModel.buildForPreview()
         let profile = model.activeProfile!
-        let walletAddress = profile.walletList[0]
+        let walletAddress = profile.wallets.firstAddress!
         let walletToken = Token.matic(walletAddress.checksumAddress)
         let dapp = profile.dappList[0]
-        let dappAddress = dapp.addressList[0]
-        let dappToken = Token.dai(dapp.addressList.first!.checksumAddress)
+        let dappAddress = dapp.addresses.firstAddress!
+        let dappToken = Token.dai(dapp.addresses.checksumAddress!)
         let errorState = TransferState(profile: profile, token: walletToken, fromAddress: walletAddress)
         let sucessState = TransferState(profile: profile, token: walletToken, fromAddress: walletAddress)
         return Group {

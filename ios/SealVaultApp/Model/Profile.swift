@@ -10,20 +10,16 @@ class Profile: Identifiable, ObservableObject {
     let id: String
     @Published var name: String
     @Published var picture: UIImage
-    @Published var wallets: [String: Address]
+    @Published var wallets: MultichainAddress
     @Published var dapps: [String: Dapp]
-
-    var walletList: [Address] {
-        self.wallets.values.sorted(by: sortAddressesBy(_:_:))
-    }
 
     var dappList: [Dapp] {
         self.dapps.values.sorted(by: { $0.displayName < $1.displayName })
     }
 
     var allAddresses: [Address] {
-        let dappAddressList: [Address] = self.dappList.flatMap {$0.addressList}
-        return self.walletList + dappAddressList
+        let dappAddressList: [Address] = self.dappList.flatMap {$0.addresses.addressList}
+        return self.wallets.addressList + dappAddressList
     }
 
     required init(
@@ -33,7 +29,7 @@ class Profile: Identifiable, ObservableObject {
         self.id = id
         self.name = name
         self.picture = picture
-        self.wallets = Dictionary(uniqueKeysWithValues: wallets.map { ($0.id, $0) })
+        self.wallets = MultichainAddress(core, wallets)
         self.dapps = Dictionary(uniqueKeysWithValues: dapps.map { ($0.id, $0) })
     }
 
@@ -48,6 +44,7 @@ class Profile: Identifiable, ObservableObject {
         return UIImage(data: Data(picture)) ?? UIImage(systemName: "person")!
     }
 
+    @MainActor
     func updateFromCore(_ profile: CoreProfile) {
         assert(profile.id == self.id, "profile id mismatch on update")
         self.name = profile.name
@@ -56,23 +53,12 @@ class Profile: Identifiable, ObservableObject {
         self.updateDapps(profile.dapps)
     }
 
+    @MainActor
     private func updateWallets(_ coreAddresses: [CoreAddress]) {
-        let newIds = Set(coreAddresses.map {$0.id})
-        let oldIds = Set(self.wallets.keys)
-        let toRemoveIds = oldIds.subtracting(newIds)
-        for id in toRemoveIds {
-            self.wallets.removeValue(forKey: id)
-        }
-        for coreAddr in coreAddresses {
-            if let address = self.wallets[coreAddr.id] {
-                address.updateFromCore(coreAddr)
-            } else {
-                let address = Address.fromCore(self.core, coreAddr)
-                self.wallets[address.id] = address
-            }
-        }
+        self.wallets.updateAddresses(coreAddresses)
     }
 
+    @MainActor
     private func updateDapps(_ coreDapps: [CoreDapp]) {
         let newIds = Set(coreDapps.map {$0.id})
         let oldIds = Set(self.dapps.keys)
@@ -90,8 +76,13 @@ class Profile: Identifiable, ObservableObject {
         }
     }
 
+    func isAddressSelectedForAdapp(addressId: String) -> Bool {
+        dappList.first(where: {$0.selectedAddressId == addressId}) != nil
+    }
+
     func dappForAddress(address: Address) -> Dapp? {
-        if let dapp = dappList.first(where: { $0.addresses[address.id] != nil }) {
+        let maybeDapp = dappList.first(where: { $0.addresses.addresses[address.id] != nil })
+        if let dapp = maybeDapp {
             return dapp
         } else {
             return nil
@@ -143,7 +134,7 @@ extension Profile {
     }
 
     var walletChains: String {
-        return displayList(walletList.map { $0.chainDisplayName })
+        return displayList(self.wallets.addressList.map { $0.chainDisplayName })
     }
 
     private func displayList(_ items: [String], maxItems: Int = 3) -> String {

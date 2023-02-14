@@ -401,6 +401,14 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+    func fetchAddress(addressId: String) throws -> CoreAddress {
+        Self.toCoreAddress(Address.polygonDapp())
+    }
+
+    func tokensForEthAddress(checksumAddress: String) throws -> [CoreTokens] {
+        [try! self.tokensForAddressId(addressId: checksumAddress)]
+    }
+
     func tokensForAddressId(addressId: String) throws -> CoreTokens {
         CoreTokens(
             addressId: addressId,
@@ -414,7 +422,7 @@ class PreviewAppCore: AppCoreProtocol {
 
     static func toCoreProfile(_ profile: Profile) -> CoreProfile {
         let picture = [UInt8](profile.picture.pngData()!)
-        let wallets = profile.walletList.map(Self.toCoreAddress)
+        let wallets = profile.wallets.addressList.map(Self.toCoreAddress)
         let dapps = profile.dappList.map(Self.toCoreDapp)
         return CoreProfile(
             id: profile.id, name: profile.name, picture: picture, wallets: wallets, dapps: dapps,
@@ -425,7 +433,7 @@ class PreviewAppCore: AppCoreProtocol {
     static func toCoreDapp(_ dapp: Dapp) -> CoreDapp {
         let icon = [UInt8](dapp.favicon.pngData()!)
         let url = dapp.url?.absoluteString ?? "https://ens.domains"
-        let addresses = dapp.addressList.map(Self.toCoreAddress)
+        let addresses = dapp.addresses.addressList.map(Self.toCoreAddress)
 
         return CoreDapp(
             id: dapp.id, profileId: dapp.profileId, humanIdentifier: dapp.humanIdentifier, url: url,

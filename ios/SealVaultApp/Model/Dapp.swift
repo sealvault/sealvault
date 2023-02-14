@@ -14,24 +14,12 @@ class Dapp: Identifiable, ObservableObject {
     /// Human readable identifier that is either the origin or the registrable domain
     @Published var humanIdentifier: String
     @Published var url: URL?
-    @Published var addresses: [String: Address]
+    @Published var addresses: MultichainAddress
     @Published var selectedAddressId: String?
     @Published var lastUsed: String?
 
     /// Favicon
     @Published var favicon: UIImage
-
-    var addressList: [Address] {
-        self.addresses.values.sorted(by: sortAddressesBy(_:_:))
-    }
-
-    var addressesByChain: [String: [Address]] {
-        var result: [String: [Address]] = Dictionary()
-        for address in addresses.values {
-            result[address.chainDisplayName, default: []].append(address)
-        }
-        return result
-    }
 
     required init(
         _ core: AppCoreProtocol, id: String, profileId: String, humanIdentifier: String, url: URL?,
@@ -42,7 +30,7 @@ class Dapp: Identifiable, ObservableObject {
         self.profileId = profileId
         self.humanIdentifier = humanIdentifier
         self.url = url
-        self.addresses = Dictionary(uniqueKeysWithValues: addresses.map { ($0.id, $0) })
+        self.addresses = MultichainAddress(core, addresses)
         self.selectedAddressId = selectedAddressId
         self.lastUsed = lastUsed
         self.favicon = favicon
@@ -73,32 +61,15 @@ class Dapp: Identifiable, ObservableObject {
         return faviconOrFallback
     }
 
+    @MainActor
     func updateFromCore(_ dapp: CoreDapp) {
         assert(self.id == dapp.id, "id mismatch in dapp update from core")
         self.humanIdentifier = dapp.humanIdentifier
         self.url = URL(string: dapp.url)
         self.selectedAddressId = dapp.selectedAddressId
-        self.updateAddresses(dapp.addresses)
+        self.addresses.updateAddresses(dapp.addresses)
         self.lastUsed = dapp.lastUsed
         self.favicon = Self.faviconWithFallback(dapp.favicon)
-    }
-
-    func updateAddresses(_ coreAddresses: [CoreAddress]) {
-        let newIds = Set(coreAddresses.map {$0.id})
-        let oldIds = Set(self.addresses.keys)
-        let toRemoveIds = oldIds.subtracting(newIds)
-        for id in toRemoveIds {
-            self.addresses.removeValue(forKey: id)
-        }
-        for coreAddr in coreAddresses {
-            let selectedForDapp = coreAddr.id == self.selectedAddressId
-            if let address = self.addresses[coreAddr.id] {
-                address.updateFromCore(coreAddr, selectedForDapp: selectedForDapp)
-            } else {
-                let address = Address.fromCore(self.core, coreAddr, selectedForDapp: selectedForDapp)
-                self.addresses[address.id] = address
-            }
-        }
     }
 }
 

@@ -10,9 +10,6 @@ struct NativeTokenRow: View {
 
     var body: some View {
         TokenRow(token: address.nativeToken)
-            .task {
-                await address.refreshTokens()
-            }
     }
 }
 

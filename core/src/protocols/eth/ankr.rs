@@ -73,7 +73,8 @@ pub trait AnkrRpcI<'a> {
     fn client(&'a self) -> &'a HttpClient;
 
     /// Fetch native, fungible and non-fungible token balances for an address on all supported
-    /// chains from Ankr Advanced API.
+    /// chains from Ankr Advanced API. If there is no balance on a chain, no `TokenBalances` for
+    /// that chain will be returned.
     async fn get_token_balances(
         &'a self,
         address: ChecksumAddress,
@@ -514,6 +515,8 @@ mod tests {
     use super::*;
     use crate::async_runtime as rt;
 
+    const TEST_ADDRESS: &'static str = "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE";
+
     pub struct AnkrRpc {
         client: HttpClient,
         _sever_handle: ServerHandle,
@@ -559,11 +562,18 @@ mod tests {
     impl AnkrRpcApiServer for AnkrRpcApiServerImpl {
         async fn get_account_balance(
             &self,
-            _walletAddress: String,
+            walletAddress: String,
             _blockchain: Vec<AnkrBlockchain>,
             _pageSize: usize,
             pageToken: Option<String>,
         ) -> RpcResult<AnkrFungibleTokenBalances> {
+            if walletAddress != TEST_ADDRESS {
+                return Ok(AnkrFungibleTokenBalances {
+                    total_balance_usd: "0".into(),
+                    assets: Default::default(),
+                    next_page_token: None,
+                });
+            }
             let balances = if pageToken.is_none() {
                 json!([{
                     "blockchain": "polygon_mumbai",
@@ -571,7 +581,7 @@ mod tests {
                     "tokenSymbol": "MATIC",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "0.377722525838175",
                     "balanceRawInteger": "377722525838175000",
                     "balanceUsd": "758122.816954017524929879",
@@ -584,7 +594,7 @@ mod tests {
                     "tokenSymbol": "GTH",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "1.34878804811250167",
                     "balanceRawInteger": "1348788048112501670",
                     "balanceUsd": "36879.68160811588817217",
@@ -598,7 +608,7 @@ mod tests {
                     "tokenDecimals": 18,
                     "tokenType": "ERC20",
                     "contractAddress": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "6.2051369",
                     "balanceRawInteger": "6205136900000000000",
                     "balanceUsd": "7.972012197965147476",
@@ -612,7 +622,7 @@ mod tests {
                     "tokenSymbol": "MATIC",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "3.101612806260749202",
                     "balanceRawInteger": "3101612806260749202",
                     "balanceUsd": "3.965641407725317588",
@@ -626,7 +636,7 @@ mod tests {
                     "tokenDecimals": 6,
                     "tokenType": "ERC20",
                     "contractAddress": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "2.783265",
                     "balanceRawInteger": "2783265",
                     "balanceUsd": "2.783265",
@@ -641,7 +651,7 @@ mod tests {
                     "tokenDecimals": 18,
                     "tokenType": "ERC20",
                     "contractAddress": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
-                    "holderAddress": "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE",
+                    "holderAddress": TEST_ADDRESS,
                     "balance": "0.776958671817900955",
                     "balanceRawInteger": "776958671817900955",
                     "balanceUsd": "0.779110201097638487",
@@ -676,6 +686,19 @@ mod tests {
             _pageSize: usize,
             pageToken: Option<String>,
         ) -> RpcResult<AnkrNFTBalances> {
+            let owner: Address = walletAddress.parse().map_err(|_| {
+                use jsonrpsee::types::error::CallError;
+                CallError::InvalidParams(anyhow!("Invalid address: '{walletAddress}'"))
+            })?;
+
+            if walletAddress != TEST_ADDRESS {
+                return Ok(AnkrNFTBalances {
+                    owner,
+                    assets: Default::default(),
+                    next_page_token: Some("".into()),
+                });
+            }
+
             let balances = if pageToken.is_none() {
                 json!([{
                     "blockchain": "eth_goerli",
@@ -727,11 +750,6 @@ mod tests {
 
             let assets: Vec<AnkrNFTBalance> =
                 serde_json::from_value(balances).expect("correct type mapping");
-
-            let owner: Address = walletAddress.parse().map_err(|_| {
-                use jsonrpsee::types::error::CallError;
-                CallError::InvalidParams(anyhow!("Invalid address: '{walletAddress}'"))
-            })?;
 
             // Simulate paging once
             let next_page_token = if pageToken.is_none() {
@@ -812,10 +830,7 @@ mod tests {
     #[test]
     fn get_token_balances() -> Result<()> {
         let ankr = AnkrRpc::new()?;
-        let results =
-            rt::block_on(ankr.get_token_balances(
-                "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE".parse()?,
-            ))?;
+        let results = rt::block_on(ankr.get_token_balances(TEST_ADDRESS.parse()?))?;
 
         assert_eq!(results.len(), 4);
 

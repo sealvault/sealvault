@@ -2,8 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{iter, sync::Arc};
+use std::{collections::HashSet, iter, ops::Sub, sync::Arc};
 
+use futures::StreamExt;
 use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
@@ -13,7 +14,7 @@ use url::Url;
 /// Data transfer objects passed through FFI to host languages.
 use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
 use crate::{
-    async_runtime as rt,
+    async_runtime as rt, config,
     favicon::fetch_favicons,
     http_client::HttpClient,
     protocols::{eth, eth::ankr, FungibleTokenType},
@@ -172,7 +173,7 @@ impl Assembler {
         let addresses = m::Address::list_profile_wallets(tx_conn.as_mut(), profile_id)?;
         let mut results: Vec<CoreAddress> = Default::default();
         for address in addresses {
-            let address = self.assemble_address(tx_conn, address, true)?;
+            let address = self.assemble_address_inner(tx_conn, address)?;
             results.push(address);
         }
         Ok(results)
@@ -209,7 +210,7 @@ impl Assembler {
 
         let mut core_addresses: Vec<CoreAddress> = Default::default();
         for address in addresses.into_iter() {
-            let address = self.assemble_address(tx_conn, address, false)?;
+            let address = self.assemble_address_inner(tx_conn, address)?;
             core_addresses.push(address)
         }
 
@@ -251,11 +252,21 @@ impl Assembler {
         Ok(chain_id)
     }
 
-    fn assemble_address(
+    pub fn assemble_address(
+        &self,
+        address_id: &m::AddressId,
+    ) -> Result<CoreAddress, Error> {
+        let result = self.connection_pool().deferred_transaction(|mut tx_conn| {
+            let address = m::Address::fetch(tx_conn.as_mut(), address_id)?;
+            self.assemble_address_inner(&mut tx_conn, address)
+        })?;
+        Ok(result)
+    }
+
+    fn assemble_address_inner(
         &self,
         tx_conn: &mut DeferredTxConnection,
         address: m::Address,
-        is_wallet: bool,
     ) -> Result<CoreAddress, Error> {
         let chain_id = self.chain_id_for_address(tx_conn, &address)?;
 
@@ -268,6 +279,9 @@ impl Assembler {
         // We send the native token without balance first to return result ASAP.
         // UI then fetches balance async.
         let native_token = self.make_native_token(address, chain_id, None)?;
+
+        let is_wallet =
+            m::Address::is_profile_wallet(tx_conn.as_mut(), &deterministic_id)?;
 
         let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String = eth::explorer::address_url(chain_id, address)?.into();
@@ -285,38 +299,105 @@ impl Assembler {
         Ok(result)
     }
 
-    fn fetch_address_for_address_id(
-        &self,
-        address_id: &m::AddressId,
-    ) -> Result<(eth::ChainId, m::Address), Error> {
-        self.connection_pool().deferred_transaction(|mut tx_conn| {
-            let address = m::Address::fetch(tx_conn.as_mut(), address_id)?;
-            let chain_id = self.chain_id_for_address(&mut tx_conn, &address)?;
-            Ok((chain_id, address))
-        })
-    }
-
     /// Fetch all the tokens for an address id.
     pub fn tokens_for_address_id(
         &self,
         address_id: m::AddressId,
     ) -> Result<CoreTokens, Error> {
-        let (chain_id, address) = self.fetch_address_for_address_id(&address_id)?;
-        let mut token_balances =
-            self.assemble_tokens(address.address, &address_id, Some(chain_id))?;
-        if token_balances.len() == 1 {
-            let result = token_balances.pop().expect("checked that length is 1");
-            Ok(result)
+        let mut conn = self.connection_pool().connection()?;
+        let address = m::Address::fetch_address(&mut conn, &address_id)?;
+        let mut tokens = self.tokens_for_address(address)?;
+        tokens.retain(|t| t.address_id.as_str() == address_id.as_ref());
+        if tokens.len() == 1 {
+            Ok(tokens
+                .into_iter()
+                .next()
+                .expect("checked that tokens has one element"))
         } else {
-            // Fall back to just fetching native token
-            let native_token = self.assemble_native_token(address.address, chain_id)?;
-            Ok(CoreTokens::builder()
-                .address_id(address_id.into())
-                .native_token(native_token)
-                .fungible_tokens(Default::default())
-                .nfts(Default::default())
-                .build())
+            Err(Error::Retriable {
+                error: "Failed to fetch tokens for address id.".into(),
+            })
         }
+    }
+
+    /// Fetch all the tokens for an address id.
+    pub fn tokens_for_address(
+        &self,
+        address: eth::ChecksumAddress,
+    ) -> Result<Vec<CoreTokens>, Error> {
+        self.assemble_tokens(address).or_else(|error| {
+            log::error!("Error fetching tokens from Ankr API: '{error}'");
+            // Fall back to just fetching native token
+            self.assemble_native_tokens(address)
+        })
+    }
+
+    fn assemble_native_tokens(
+        &self,
+        address: eth::ChecksumAddress,
+    ) -> Result<Vec<CoreTokens>, Error> {
+        let mut conn = self.connection_pool().connection()?;
+        let chain_ids = m::Address::fetch_eth_chains_for_address(&mut conn, address)?;
+        let token_balances = rt::block_on(self.fetch_native_tokens(address, chain_ids))?;
+        let results = self.connection_pool().deferred_transaction(|mut tx_conn| {
+            let results = token_balances
+                .into_iter()
+                .map(|balance| {
+                    let address_id = m::Address::fetch_or_create_id_by_address_on_chain(
+                        &mut tx_conn,
+                        address,
+                        balance.chain_id,
+                    )?
+                    .ok_or_else(|| Error::Fatal {
+                        // Not part of the same transaction to avoid accidentally locking the DB while
+                        // waiting for the request.
+                        error: "Address id must exist since it was just fetched from DB."
+                            .into(),
+                    })?;
+                    let native_token = self.make_native_token(
+                        address,
+                        balance.chain_id,
+                        Some(balance.display_amount()),
+                    )?;
+                    Ok(CoreTokens::builder()
+                        .address_id(address_id.to_string())
+                        .native_token(native_token)
+                        .fungible_tokens(Default::default())
+                        .nfts(Default::default())
+                        .build())
+                })
+                .collect::<Vec<Result<CoreTokens, Error>>>();
+            Ok(results)
+        })?;
+
+        results.into_iter().collect()
+    }
+
+    async fn fetch_native_tokens<I>(
+        &self,
+        address: eth::ChecksumAddress,
+        chain_ids: I,
+    ) -> Result<Vec<eth::NativeTokenAmount>, Error>
+    where
+        I: IntoIterator<Item = eth::ChainId>,
+    {
+        let results: Vec<Result<eth::NativeTokenAmount, Error>> =
+            futures::stream::iter(chain_ids)
+                .map(|chain_id| self.fetch_native_token(address, chain_id))
+                .buffered(config::MAX_ASYNC_CONCURRENT_REQUESTS)
+                .collect()
+                .await;
+        results.into_iter().collect()
+    }
+
+    async fn fetch_native_token(
+        &self,
+        address: eth::ChecksumAddress,
+        chain_id: eth::ChainId,
+    ) -> Result<eth::NativeTokenAmount, Error> {
+        let provider = self.rpc_manager().eth_api_provider(chain_id);
+        let balance = provider.native_token_balance_async(address).await?;
+        Ok(balance)
     }
 
     fn make_native_token(
@@ -334,18 +415,6 @@ impl Assembler {
             .token_type(FungibleTokenType::Native)
             .icon(icon)
             .build();
-        Ok(native_token)
-    }
-
-    fn assemble_native_token(
-        &self,
-        address: eth::ChecksumAddress,
-        chain_id: eth::ChainId,
-    ) -> Result<CoreFungibleToken, Error> {
-        let provider = self.rpc_manager().eth_api_provider(chain_id);
-        let balance = provider.native_token_balance(address)?;
-        let native_token =
-            self.make_native_token(address, chain_id, Some(balance.display_amount()))?;
         Ok(native_token)
     }
 
@@ -406,44 +475,76 @@ impl Assembler {
     fn assemble_tokens(
         &self,
         address: eth::ChecksumAddress,
-        address_id: &m::AddressId,
-        chain_id: Option<eth::ChainId>,
     ) -> Result<Vec<CoreTokens>, Error> {
         use ankr::AnkrRpcI;
         let ankr_api = ankr::AnkrRpc::new()?;
-        let mut tokens = rt::block_on(ankr_api.get_token_balances(address))?;
+        let token_balances = rt::block_on(ankr_api.get_token_balances(address))?;
 
-        if let Some(chain_id) = chain_id {
-            tokens.retain(|token_balances| {
-                token_balances.native_token.chain_id == chain_id
-            });
-        }
+        self.connection_pool().deferred_transaction(|mut tx_conn| {
+            let mut results: Vec<CoreTokens> = Default::default();
+            let mut chains_from_api: HashSet<eth::ChainId> = Default::default();
 
-        let results: Vec<CoreTokens> = tokens
-            .into_iter()
-            .map(|token_balances| {
+            for balances in token_balances.into_iter() {
                 let eth::TokenBalances {
                     native_token,
                     fungible_tokens,
                     nfts,
                     ..
-                } = token_balances;
+                } = balances;
+                let chain_id = native_token.chain_id;
+                chains_from_api.insert(chain_id);
                 let native_token = self.make_native_token(
                     address,
-                    native_token.chain_id,
+                    chain_id,
                     Some(native_token.display_amount()),
                 )?;
                 let fungible_tokens = self.assemble_fungible_tokens(fungible_tokens)?;
                 let nfts = self.assemble_nfts(nfts);
-                Ok(CoreTokens::builder()
-                    .address_id(address_id.to_string())
-                    .native_token(native_token)
-                    .fungible_tokens(fungible_tokens)
-                    .nfts(nfts)
-                    .build())
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-        Ok(results)
+                let address_id = m::Address::fetch_or_create_id_by_address_on_chain(
+                    &mut tx_conn,
+                    address,
+                    chain_id,
+                )?;
+                if let Some(address_id) = address_id {
+                    results.push(
+                        CoreTokens::builder()
+                            .address_id(address_id.to_string())
+                            .native_token(native_token)
+                            .fungible_tokens(fungible_tokens)
+                            .nfts(nfts)
+                            .build(),
+                    )
+                }
+            }
+
+            // If an address doesn't have any tokens, Ankr API won't return a result for it, but we
+            // still want to display a 0 balance for the native token if the address is in the DB.
+            let existing_chains: HashSet<eth::ChainId> =
+                m::Address::fetch_chains_for_address(&mut tx_conn, address)?
+                    .into_iter()
+                    .collect();
+
+            for chain_id in existing_chains.sub(&chains_from_api) {
+                let native_token =
+                    self.make_native_token(address, chain_id, Some("0".into()))?;
+                let address_id = m::Address::fetch_or_create_id_by_address_on_chain(
+                    &mut tx_conn,
+                    address,
+                    chain_id,
+                )?;
+                if let Some(address_id) = address_id {
+                    results.push(
+                        CoreTokens::builder()
+                            .address_id(address_id.to_string())
+                            .native_token(native_token)
+                            .fungible_tokens(Default::default())
+                            .nfts(Default::default())
+                            .build(),
+                    )
+                }
+            }
+            Ok(results)
+        })
     }
 
     /// List supported Ethereum chains

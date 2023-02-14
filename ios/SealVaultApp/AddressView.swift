@@ -4,46 +4,13 @@
 
 import SwiftUI
 
-// Hack to make the list of addresses update when a new address is added to an Profile or dapp
-class Addresses: ObservableObject {
-    @Published var dapp: Dapp?
-    @Published var profile: Profile?
-
-    var firstAddress: Address? {
-        self.addresses.first
-    }
-
-    var addresses: [Address] {
-        if let dapp = self.dapp {
-            return dapp.addressList
-        } else if let profile = self.profile {
-            return profile.walletList
-        } else {
-            return []
-        }
-    }
-
-    var isDapp: Bool {
-        self.dapp != nil
-    }
-
-    init(dapp: Dapp) {
-        self.dapp = dapp
-        self.profile = nil
-    }
-
-    init(profile: Profile) {
-        self.dapp = nil
-        self.profile = profile
-    }
-
-}
-
 struct AddressView: View {
     var title: String
     let core: AppCoreProtocol
     @ObservedObject var profile: Profile
-    @ObservedObject var addresses: Addresses
+    let dapp: Dapp?
+    @ObservedObject var addresses: MultichainAddress
+
     @State var showChainSelection: Bool = false
     @State var showSwitchAddress: Bool = false
     @EnvironmentObject private var model: GlobalModel
@@ -51,23 +18,19 @@ struct AddressView: View {
     var paddingTop: CGFloat = 50
 
     var chainSelectionTitle: String {
-        addresses.isDapp ? "Change Connected Network" : "Add Network"
+        dapp != nil ? "Change Connected Network" : "Add Network"
     }
 
     var body: some View {
         ScrollViewReader { _ in
-                List {
-                    ForEach(Array(addresses.addresses.enumerated()), id: \.offset) { index, address in
-                        TokenView(profile: profile, address: address, paddingTop: index == 0 ? 30 : paddingTop)
-                    }
+            List {
+                ForEach(Array(addresses.addressList.enumerated()), id: \.offset) { index, address in
+                    TokenView(profile: profile, address: address, paddingTop: index == 0 ? 30 : paddingTop)
                 }
-                .refreshable(action: {
-                    for address in addresses.addresses {
-                        // TODO parallelize, but take care of not exceeding rate limits
-                        await address.refreshTokens()
-                    }
-                })
-
+            }
+            .refreshable(action: {
+                await addresses.refreshTokens()
+            })
         }
         .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
@@ -84,16 +47,20 @@ struct AddressView: View {
         }
         .sheet(isPresented: $showChainSelection) {
             ChainSelection(title: chainSelectionTitle) { newChainId in
-                if let dapp = addresses.dapp {
+                if let dapp = dapp {
                     await model.changeDappChain(profileId: dapp.profileId, dappId: dapp.id, newChainId: newChainId)
-                } else if let address = addresses.addresses.first {
+                } else if let address = addresses.firstAddress {
                     await model.addEthChain(chainId: newChainId, addressId: address.id)
                 } else {
                     print("error: no addresses")
                 }
+                await addresses.refreshTokens()
             }
             .presentationDetents([.medium])
             .background(.ultraThinMaterial)
+        }
+        .task {
+            await addresses.refreshTokens()
         }
     }
 }
@@ -105,11 +72,12 @@ struct AddressView_Previews: PreviewProvider {
         let profile = model.activeProfile!
         let dapp = Dapp.oneInch()
         // Simulate loading
-        dapp.addressList[0].nativeToken.amount = nil
-        dapp.addressList[0].selectedForDapp = true
-        let addresses = Addresses(dapp: dapp)
+        if let address = dapp.addresses.firstAddress {
+            address.nativeToken.amount = nil
+            dapp.selectedAddressId = address.id
+        }
 
-        return AddressView(title: "Wallet", core: model.core, profile: profile, addresses: addresses)
+        return AddressView(title: "Wallet", core: model.core, profile: profile, dapp: dapp, addresses: dapp.addresses)
     }
 }
 #endif

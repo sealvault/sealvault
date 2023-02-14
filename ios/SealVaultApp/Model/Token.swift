@@ -39,6 +39,7 @@ class Token: Identifiable, ObservableObject {
         return tokenIcon ?? UIImage(systemName: "banknote")!
     }
 
+    @MainActor
     func updateFromCore(_ token: CoreFungibleToken) {
         assert(self.id == token.id, "token id mismatch in update from core")
         assert(self.symbol == token.symbol, "symbol mismatch in update from core")

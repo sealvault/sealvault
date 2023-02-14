@@ -14,8 +14,8 @@ struct ProfileView: View {
             List {
                 NavigationLink {
                     AddressView(
-                        title: "Wallet", core: model.core, profile: profile,
-                        addresses: Addresses(profile: profile)
+                        title: "Wallet", core: model.core, profile: profile, dapp: nil,
+                        addresses: profile.wallets
                     )
                 } label: {
                     WalletRow(profile: profile)
@@ -25,8 +25,8 @@ struct ProfileView: View {
                     ForEach(profile.dappList) { dapp in
                         NavigationLink {
                             AddressView(
-                                title: dapp.humanIdentifier, core: model.core, profile: profile,
-                                addresses: Addresses(dapp: dapp)
+                                title: dapp.humanIdentifier, core: model.core, profile: profile, dapp: dapp,
+                                addresses: dapp.addresses
                             )
                         } label: {
                             DappRow(dapp: dapp).accessibilityIdentifier(dapp.displayName)
@@ -50,7 +50,9 @@ struct ProfileView: View {
                         }
                     }
                 } header: {
-                    Text("Dapps")
+                    if !profile.dappList.isEmpty {
+                        Text("Dapps")
+                    }
                 }
             }
             .refreshable(action: {

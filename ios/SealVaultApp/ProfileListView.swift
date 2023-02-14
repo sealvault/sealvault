@@ -30,7 +30,7 @@ struct ProfileListView: View {
                                     })
 
                                     Button(action: {
-                                        UIPasteboard.general.string = profile.walletList.first?.checksumAddress
+                                        UIPasteboard.general.string = profile.wallets.checksumAddress
                                     }, label: {
                                         Text("Copy Wallet Address")
                                     })
@@ -48,7 +48,7 @@ struct ProfileListView: View {
                         }
                         .swipeActions(edge: .trailing) {
                             Button {
-                                UIPasteboard.general.string = profile.walletList.first?.checksumAddress
+                                UIPasteboard.general.string = profile.wallets.checksumAddress
                             } label: {
                                 Image(systemName: "doc.on.doc.fill")
                             }

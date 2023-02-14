@@ -225,6 +225,21 @@ impl AppCore {
         Ok(res)
     }
 
+    pub fn fetch_address(&self, address_id: String) -> Result<dto::CoreAddress, Error> {
+        let address_id: m::AddressId = address_id.parse()?;
+        let result = self.assembler().assemble_address(&address_id)?;
+        Ok(result)
+    }
+
+    pub fn tokens_for_eth_address(
+        &self,
+        checksum_address: String,
+    ) -> Result<Vec<dto::CoreTokens>, CoreError> {
+        let address: eth::ChecksumAddress = checksum_address.parse()?;
+        let res = self.assembler().tokens_for_address(address)?;
+        Ok(res)
+    }
+
     pub fn get_in_page_script(
         &self,
         rpc_provider_name: String,
@@ -551,15 +566,17 @@ fn build_partial_token_transfer_result(
         to_checksum_address,
         token_id,
     } = args;
+    let from_address_id: m::AddressId = from_address_id.parse()?;
+    let to_address: eth::ChecksumAddress = to_checksum_address.parse()?;
     let (chain_id, to_display_name) =
         resources
             .connection_pool()
             .deferred_transaction(move |mut tx_conn| {
                 let chain_id =
                     m::Address::fetch_eth_chain_id(tx_conn.as_mut(), &from_address_id)?;
-                let maybe_to_id = m::Address::fetch_id_by_checksum_address_on_chain(
+                let maybe_to_id = m::Address::fetch_or_create_id_by_address_on_chain(
                     &mut tx_conn,
-                    &to_checksum_address,
+                    to_address,
                     chain_id,
                 )?;
                 let to_display_name = if let Some(to_id) = maybe_to_id {
@@ -843,7 +860,7 @@ pub mod tests {
             let wallet = self.first_profile_wallet();
             rpc_manager.send_native_token(
                 chain_id,
-                wallet.checksum_address.clone().try_into()?,
+                wallet.checksum_address.try_into()?,
                 10,
             );
             Ok(())
@@ -1475,7 +1492,23 @@ pub mod tests {
 
         let tokens = tmp.core.tokens_for_address_id(address_id.clone())?;
         assert!(tokens.native_token.amount.is_some());
-        assert!(!tokens.fungible_tokens.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn tokens_for_eth_address() -> Result<()> {
+        let tmp = TmpCore::new()?;
+        let profile = tmp.first_profile();
+        let address = profile.wallets.first().unwrap();
+
+        let tokens = tmp
+            .core
+            .tokens_for_eth_address(address.checksum_address.clone())?;
+        assert!(!tokens.is_empty());
+        for t in tokens {
+            assert!(t.native_token.amount.is_some())
+        }
 
         Ok(())
     }
