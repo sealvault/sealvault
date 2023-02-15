@@ -1,5 +1,19 @@
 # Changelog
 
+## 2023-02-15
+
+### iOS Beta v0.7.0
+
+#### Improvements
+
+- Display NFTs for address
+- Auto-detect new chains ([#105](https://github.com/sealvault/sealvault/issues/105))
+- Under-the-hood improvements for upcoming cross-connect feature
+
+#### Fixes
+
+- Fix missing notification if transfer to profile wallet fails
+
 ## 2023-01-17
 
 ### iOS Beta v0.6.2
