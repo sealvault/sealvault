@@ -46,6 +46,9 @@ impl AppCore {
         backup_storage: Box<dyn BackupStorageI>,
         ui_callbacks: Box<dyn CoreUICallbackI>,
     ) -> Result<Self, CoreError> {
+        // No-op if logger has been already initialized.
+        let _ = env_logger::try_init();
+
         let rpc_manager = Box::new(eth::RpcManager::new());
         let connection_pool = ConnectionPool::new(&args.db_file_path)?;
         let keychain = Keychain::new();
@@ -800,6 +803,8 @@ pub mod tests {
 
     impl TmpCore {
         pub fn new() -> Result<Self, CoreError> {
+            let _ = env_logger::builder().is_test(true).try_init();
+
             Self::with_overrides(false)
         }
 
