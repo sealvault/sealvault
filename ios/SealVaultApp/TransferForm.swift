@@ -374,7 +374,7 @@ struct TransferButton: View {
                         title: "Error transferring token", detail: Config.fatalErrorMessage, type: .error
                     )
                 }
-                print("\(error)")
+                print("Fatal error while transferring token: \(error)")
                 return false
             }
 

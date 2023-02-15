@@ -860,13 +860,14 @@ pub mod tests {
         pub fn fund_first_profile_wallet(
             &self,
             chain_id: eth::ChainId,
+            amount_eth: u64,
         ) -> Result<(), CoreError> {
             let rpc_manager = &self.resources.rpc_manager;
             let wallet = self.first_profile_wallet();
             rpc_manager.send_native_token(
                 chain_id,
                 wallet.checksum_address.try_into()?,
-                10,
+                amount_eth,
             );
             Ok(())
         }
@@ -1439,14 +1440,17 @@ pub mod tests {
         Ok(())
     }
 
-    fn transfer_native_token_args(tmp: &TmpCore) -> EthTransferNativeTokenArgs {
+    fn transfer_native_token_args(
+        tmp: &TmpCore,
+        amount_eth: u64,
+    ) -> EthTransferNativeTokenArgs {
         let wallet_address = tmp.first_profile_wallet();
         let to_address = ethers::types::Address::random();
         let to_checksum_address = ethers::utils::to_checksum(&to_address, None);
         EthTransferNativeTokenArgs::builder()
             .from_address_id(wallet_address.id)
             .to_checksum_address(to_checksum_address)
-            .amount_decimal("1".into())
+            .amount_decimal(amount_eth.to_string())
             .build()
     }
 
@@ -1455,9 +1459,10 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let chain_id = eth::ChainId::default_wallet_chain();
-        tmp.fund_first_profile_wallet(chain_id)?;
+        let amount_eth: u64 = 10;
+        tmp.fund_first_profile_wallet(chain_id, amount_eth)?;
 
-        let args = transfer_native_token_args(&tmp);
+        let args = transfer_native_token_args(&tmp, amount_eth / 2);
         tmp.core.eth_transfer_native_token(args)?;
 
         tmp.wait_for_ui_callbacks(2);
@@ -1472,10 +1477,31 @@ pub mod tests {
     }
 
     #[test]
+    fn eth_transfer_native_token_full_amount() -> Result<()> {
+        let tmp = TmpCore::new()?;
+
+        let chain_id = eth::ChainId::default_wallet_chain();
+        let amount_eth: u64 = 10;
+        tmp.fund_first_profile_wallet(chain_id, amount_eth)?;
+
+        let args = transfer_native_token_args(&tmp, amount_eth);
+        tmp.core.eth_transfer_native_token(args)?;
+
+        tmp.wait_for_ui_callbacks(2);
+        // Should be rejected bc of insufficient gas fees
+        let transfer_results = tmp.token_transfer_results();
+        assert_eq!(transfer_results.len(), 1);
+        assert!(transfer_results[0].error_message.is_some());
+        assert!(transfer_results[0].explorer_url.is_none());
+
+        Ok(())
+    }
+
+    #[test]
     fn eth_transfer_native_token_error_callbacks() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let args = transfer_native_token_args(&tmp);
+        let args = transfer_native_token_args(&tmp, 10);
         tmp.core.eth_transfer_native_token(args)?;
 
         // This only tests if the tx is outright rejected.

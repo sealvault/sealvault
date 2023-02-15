@@ -89,7 +89,7 @@ struct AppTabNavigationInner: View {
                 bannerModel.bannerData = BannerData(title: title, detail: details, type: .success)
             }
         }
-        .onChange(of: callbackModel.tokenTransferConfirmed) { val in
+        .onChange(of: callbackModel.tokenTransferResult) { val in
             guard let res = val else {
                 return
             }
@@ -236,7 +236,7 @@ struct AppTabNavigation_Previews: PreviewProvider {
 
         let callbackTokenTransferConfirmed = CallbackModel()
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
-            callbackTokenTransferConfirmed.tokenTransferConfirmed = TokenTransferResult(
+            callbackTokenTransferConfirmed.tokenTransferResult = TokenTransferResult(
                 amount: "0.1", tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS",
                 toDisplayName: "Default Profile Wallet", explorerUrl: explorerUrl, errorMessage: nil
             )

@@ -257,7 +257,7 @@ impl Address {
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
             .inner_join(profiles::table.on(ak::profile_id.eq(p::deterministic_id)))
-            .filter(p::deterministic_id.eq(address_id))
+            .filter(a::deterministic_id.eq(address_id))
             .select(p::name)
             .first(conn)?;
 

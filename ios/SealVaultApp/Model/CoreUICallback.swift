@@ -19,7 +19,7 @@ class CoreUICallback: CoreUiCallbackI {
 
     func tokenTransferResult(result: TokenTransferResult) {
         DispatchQueue.main.async {
-            self.model.tokenTransferConfirmed = result
+            self.model.tokenTransferResult = result
         }
     }
 
