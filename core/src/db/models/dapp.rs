@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         schema::{asymmetric_keys, dapps, profiles},
         url_value::UrlValue,
         DeferredTxConnection,
@@ -21,7 +21,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct Dapp {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub identifier: String,
     pub url: UrlValue,
     pub created_at: String,
@@ -56,7 +56,7 @@ impl Dapp {
     /// List all dapps that have been added to an profile.
     pub fn list_for_profile(
         conn: &mut SqliteConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<Vec<Self>, Error> {
         use asymmetric_keys::dsl as ak;
         use dapps::dsl as d;
@@ -74,10 +74,10 @@ impl Dapp {
     pub fn list_dapp_ids_desc(
         conn: &mut SqliteConnection,
         limit: u32,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<DeterministicId>, Error> {
         use dapps::dsl as d;
 
-        let dapp_ids: Vec<String> = dapps::table
+        let dapp_ids: Vec<DeterministicId> = dapps::table
             .select(d::deterministic_id)
             .order((d::updated_at.desc(), d::created_at.desc()))
             .limit(limit as i64)
@@ -98,7 +98,7 @@ impl Dapp {
     /// Get the human-readable dapp identifier for a dapp id.
     pub fn fetch_dapp_identifier(
         conn: &mut SqliteConnection,
-        dapp_id: &str,
+        dapp_id: &DeterministicId,
     ) -> Result<String, Error> {
         use dapps::dsl as d;
 
@@ -116,7 +116,7 @@ impl Dapp {
         tx_conn: &mut DeferredTxConnection,
         url: Url,
         public_suffix_list: &PublicSuffixList,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         let dapp_entity = DappEntity::new(url, public_suffix_list)?;
         let dapp_id = dapp_entity.create_if_not_exists(tx_conn.as_mut())?;
         Ok(dapp_id)
@@ -127,8 +127,8 @@ impl Dapp {
         conn: &mut SqliteConnection,
         url: Url,
         public_suffix_list: &PublicSuffixList,
-        profile_id: &str,
-    ) -> Result<Option<String>, Error> {
+        profile_id: &DeterministicId,
+    ) -> Result<Option<DeterministicId>, Error> {
         let dapp_entity = DappEntity::new(url, public_suffix_list)?;
         dapp_entity.fetch_id_for_profile(conn, profile_id)
     }
@@ -158,8 +158,8 @@ impl DappEntity {
     fn fetch_id_for_profile(
         &self,
         conn: &mut SqliteConnection,
-        profile_id: &str,
-    ) -> Result<Option<String>, Error> {
+        profile_id: &DeterministicId,
+    ) -> Result<Option<DeterministicId>, Error> {
         use asymmetric_keys::dsl as ak;
         use dapps::dsl as d;
         use diesel::{expression::AsExpression, sql_types::Bool};
@@ -185,7 +185,10 @@ impl DappEntity {
 
     /// Create a dapp entity and return its deterministic id.
     /// The operation is idempotent.
-    fn create_if_not_exists(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    fn create_if_not_exists(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> Result<DeterministicId, Error> {
         use dapps::dsl as d;
 
         let deterministic_id = self.deterministic_id()?;
@@ -204,7 +207,7 @@ impl DappEntity {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a str, U1> for DappEntity {
+impl<'a> DeriveDeterministicId<'a, &'a str, U1> for DappEntity {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Dapp
     }

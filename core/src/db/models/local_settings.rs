@@ -6,7 +6,7 @@ use diesel::prelude::*;
 
 use crate::{
     backup::BackupVersion,
-    db::{schema::local_settings, DeferredTxConnection},
+    db::{schema::local_settings, DeferredTxConnection, DeterministicId},
     encryption::KdfNonce,
     utils::rfc3339_timestamp,
     Error,
@@ -18,7 +18,7 @@ use crate::{
 #[diesel(table_name = local_settings)]
 pub struct LocalSettings {
     pub id: String,
-    pub profile_id: String,
+    pub profile_id: DeterministicId,
     pub backup_enabled: bool,
     /// Monotonously increasing, but may have gaps.
     pub backup_version: i64,
@@ -32,7 +32,7 @@ const SINGLETON_ID: &str = "local_settings";
 impl LocalSettings {
     pub fn create(
         connection: &mut SqliteConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 
@@ -45,7 +45,7 @@ impl LocalSettings {
 
     pub fn fetch_active_profile_id(
         connection: &mut SqliteConnection,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use local_settings::dsl as ls;
 
         let profile_id = local_settings::table
@@ -57,7 +57,7 @@ impl LocalSettings {
 
     pub fn set_active_profile_id(
         connection: &mut SqliteConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<(), Error> {
         use local_settings::dsl as ls;
 

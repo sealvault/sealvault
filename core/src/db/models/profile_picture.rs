@@ -10,8 +10,9 @@ use generic_array::{typenum::U1, GenericArray};
 use crate::{
     assets::load_profile_pic,
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, EntityName},
         schema::profile_pictures,
+        DeterministicId,
     },
     utils::{blake3_hash, rfc3339_timestamp},
     Error,
@@ -20,7 +21,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable, Insertable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct ProfilePicture {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub image_name: Option<String>,
     pub image_hash: Vec<u8>,
     pub image: Vec<u8>,
@@ -42,7 +43,10 @@ impl ProfilePicture {
         Ok(names.into_iter().flatten().collect())
     }
 
-    pub fn fetch_image(conn: &mut SqliteConnection, id: &str) -> Result<Vec<u8>, Error> {
+    pub fn fetch_image(
+        conn: &mut SqliteConnection,
+        id: &DeterministicId,
+    ) -> Result<Vec<u8>, Error> {
         use profile_pictures::dsl as pp;
 
         let image = profile_pictures::table
@@ -57,7 +61,7 @@ impl ProfilePicture {
     pub fn insert_bundled(
         conn: &mut SqliteConnection,
         image_name: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         let image = load_profile_pic(image_name)?;
         let image_hash = blake3_hash(&image);
         let entity = ProfilePictureEntity {
@@ -68,7 +72,7 @@ impl ProfilePicture {
 
     pub fn delete(
         conn: &mut SqliteConnection,
-        deterministic_id: &str,
+        deterministic_id: &DeterministicId,
     ) -> Result<(), Error> {
         use profile_pictures::dsl as pp;
 
@@ -121,7 +125,7 @@ impl<'a> ProfilePictureEntity<'a> {
         conn: &mut SqliteConnection,
         image: &[u8],
         image_name: Option<&str>,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use profile_pictures::dsl as pp;
 
         let deterministic_id = self.deterministic_id()?;
@@ -140,7 +144,7 @@ impl<'a> ProfilePictureEntity<'a> {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a [u8], U1> for ProfilePictureEntity<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a [u8], U1> for ProfilePictureEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::ProfilePicture
     }

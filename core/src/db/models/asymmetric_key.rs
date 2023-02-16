@@ -9,7 +9,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         models as m,
         schema::asymmetric_keys,
         DeferredTxConnection,
@@ -23,14 +23,14 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct AsymmetricKey {
-    pub deterministic_id: String,
-    pub profile_id: String,
-    pub dek_id: String,
+    pub deterministic_id: DeterministicId,
+    pub profile_id: DeterministicId,
+    pub dek_id: DeterministicId,
     pub elliptic_curve: EllipticCurve,
     pub public_key: Vec<u8>,
     pub encrypted_der: EncryptionOutput,
     pub is_profile_wallet: bool,
-    pub dapp_id: Option<String>,
+    pub dapp_id: Option<DeterministicId>,
     pub created_at: String,
     pub updated_at: Option<String>,
 }
@@ -47,7 +47,7 @@ impl AsymmetricKey {
 
     pub fn fetch_eth_public_key(
         conn: &mut SqliteConnection,
-        deterministic_id: &str,
+        deterministic_id: &DeterministicId,
     ) -> Result<k256::PublicKey, Error> {
         use asymmetric_keys::dsl as ak;
 
@@ -66,7 +66,7 @@ impl AsymmetricKey {
     pub fn fetch_id_for_dapp<'a>(
         conn: &mut SqliteConnection,
         params: &'a impl m::DappSessionParams<'a>,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use asymmetric_keys::dsl as ak;
 
         let deterministic_id = asymmetric_keys::table
@@ -81,7 +81,7 @@ impl AsymmetricKey {
     pub fn set_profile_id(
         &self,
         connection: &mut SqliteConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<(), Error> {
         use asymmetric_keys::dsl as ak;
 
@@ -101,9 +101,9 @@ impl AsymmetricKey {
 #[diesel(table_name = asymmetric_keys)]
 pub struct NewAsymmetricKey<'a> {
     #[builder(setter(into))]
-    pub profile_id: &'a str,
+    pub profile_id: &'a DeterministicId,
     #[builder(setter(into))]
-    pub dek_id: &'a str,
+    pub dek_id: &'a DeterministicId,
     #[builder(setter(into))]
     pub public_key: &'a [u8],
     pub elliptic_curve: EllipticCurve,
@@ -111,12 +111,15 @@ pub struct NewAsymmetricKey<'a> {
     #[builder(default = false)]
     pub is_profile_wallet: bool,
     #[builder(default = None)]
-    pub dapp_id: Option<&'a str>,
+    pub dapp_id: Option<&'a DeterministicId>,
 }
 
 impl<'a> NewAsymmetricKey<'a> {
     /// Create a new asymmetric key and return its deterministic id.
-    pub fn insert(&self, tx_conn: &mut DeferredTxConnection) -> Result<String, Error> {
+    pub fn insert(
+        &self,
+        tx_conn: &mut DeferredTxConnection,
+    ) -> Result<DeterministicId, Error> {
         use asymmetric_keys::dsl as ak;
 
         let deterministic_id = self.deterministic_id()?;
@@ -134,7 +137,7 @@ impl<'a> NewAsymmetricKey<'a> {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a [u8], U1> for NewAsymmetricKey<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a [u8], U1> for NewAsymmetricKey<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::AsymmetricKey
     }

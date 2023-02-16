@@ -19,7 +19,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName, DETERMINISTIC_ID_REGEX},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         models as m,
         models::{DataEncryptionKey, NewAsymmetricKey},
         schema::{
@@ -38,8 +38,8 @@ use crate::{
 #[diesel(table_name = addresses)]
 pub struct Address {
     pub deterministic_id: AddressId,
-    pub asymmetric_key_id: String,
-    pub chain_id: String,
+    pub asymmetric_key_id: DeterministicId,
+    pub chain_id: DeterministicId,
     pub address: eth::ChecksumAddress,
     pub created_at: String,
     pub updated_at: Option<String>,
@@ -75,7 +75,7 @@ impl Address {
     /// Returns the wallet addresses of an profile.
     pub fn list_profile_wallets(
         conn: &mut SqliteConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<Vec<Self>, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
@@ -153,7 +153,7 @@ impl Address {
 
         let key_id = NewAsymmetricKey::builder()
             .profile_id(params.profile_id)
-            .dek_id(dek_id.as_str())
+            .dek_id(&dek_id)
             .elliptic_curve(signing_key.curve)
             .public_key(public_key.as_slice())
             .encrypted_der(&encrypted_signing_key)
@@ -164,7 +164,7 @@ impl Address {
 
         let checksum_address = eth::ChecksumAddress::new(&signing_key.public_key)?;
         let address_id = NewAddress::builder()
-            .asymmetric_key_id(key_id.as_str())
+            .asymmetric_key_id(&key_id)
             .address(&checksum_address)
             .build()
             .insert_eth(tx_conn, params.chain_id)?;
@@ -229,7 +229,7 @@ impl Address {
     pub fn fetch_profile_id(
         conn: &mut SqliteConnection,
         address_id: &AddressId,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
 
@@ -308,7 +308,7 @@ impl Address {
     pub fn fetch_key_id(
         conn: &mut SqliteConnection,
         address_id: &AddressId,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use addresses::dsl as a;
 
         let asymmetric_key_id = addresses::table
@@ -416,7 +416,7 @@ impl Address {
     /// Assumes one wallet address per profile per chain.
     pub fn fetch_eth_wallet_id(
         tx_conn: &mut DeferredTxConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
         eth_chain_id: eth::ChainId,
     ) -> Result<AddressId, Error> {
         use addresses::dsl as a;
@@ -428,7 +428,7 @@ impl Address {
             .inner_join(
                 asymmetric_keys::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
             )
-            .filter(a::chain_id.eq(&*chain_id))
+            .filter(a::chain_id.eq(&chain_id))
             .filter(ak::profile_id.eq(profile_id))
             .filter(ak::is_profile_wallet.eq(true))
             .select(a::deterministic_id)
@@ -440,7 +440,7 @@ impl Address {
     pub fn fetch_profile_id_for_eth_address(
         connection: &mut SqliteConnection,
         checksum_address: eth::ChecksumAddress,
-    ) -> Result<Option<String>, Error> {
+    ) -> Result<Option<DeterministicId>, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
 
@@ -520,7 +520,7 @@ impl Address {
 #[readonly::make]
 struct NewAddress<'a> {
     #[builder(setter(into))]
-    pub asymmetric_key_id: &'a str,
+    pub asymmetric_key_id: &'a DeterministicId,
     #[builder(setter(into))]
     pub address: &'a eth::ChecksumAddress,
 }
@@ -540,7 +540,7 @@ impl<'a> NewAddress<'a> {
     pub fn insert_eth_for_chain_entity(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        chain_entity_id: &str,
+        chain_entity_id: &DeterministicId,
     ) -> Result<AddressId, Error> {
         use addresses::dsl as a;
 
@@ -567,42 +567,46 @@ impl<'a> NewAddress<'a> {
 #[derive(Clone, Debug, TypedBuilder)]
 #[readonly::make]
 pub struct AddressEntity<'a> {
-    pub asymmetric_key_id: &'a str,
-    pub chain_entity_id: &'a str,
+    pub asymmetric_key_id: &'a DeterministicId,
+    pub chain_entity_id: &'a DeterministicId,
 }
 
 impl AddressEntity<'_> {
     // TODO move this to DeterministicId trait
     fn address_id(&self) -> Result<AddressId, Error> {
-        self.deterministic_id()?.try_into()
+        Ok(self.deterministic_id()?.into())
     }
 }
 
-impl<'a> DeterministicId<'a, &'a str, U2> for AddressEntity<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a str, U2> for AddressEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Address
     }
 
     fn unique_columns(&'a self) -> GenericArray<&'a str, U2> {
-        [self.asymmetric_key_id, self.chain_entity_id].into()
+        [
+            self.asymmetric_key_id.as_ref(),
+            self.chain_entity_id.as_ref(),
+        ]
+        .into()
     }
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
 #[readonly::make]
 pub struct ListAddressesForDappParams<'a> {
-    pub profile_id: &'a str,
-    pub dapp_id: &'a str,
+    pub profile_id: &'a DeterministicId,
+    pub dapp_id: &'a DeterministicId,
 }
 
 #[derive(Clone, Debug, TypedBuilder)]
 #[readonly::make]
 pub struct CreateEthAddressParams<'a> {
-    pub profile_id: &'a str,
+    pub profile_id: &'a DeterministicId,
     #[builder(setter(into))]
     pub chain_id: eth::ChainId,
     #[builder(default = None)]
-    pub dapp_id: Option<&'a str>,
+    pub dapp_id: Option<&'a DeterministicId>,
     #[builder(default = false)]
     pub is_profile_wallet: bool,
 }
@@ -625,17 +629,17 @@ pub struct CreateEthAddressParams<'a> {
 #[repr(transparent)]
 pub struct AddressId(String);
 
+impl From<DeterministicId> for AddressId {
+    fn from(value: DeterministicId) -> Self {
+        Self(value.into())
+    }
+}
+
 impl TryFrom<String> for AddressId {
     type Error = Error;
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
-        if DETERMINISTIC_ID_REGEX.is_match(&s) {
-            Ok(Self(s))
-        } else {
-            Err(Error::Fatal {
-                error: format!("Invalid address id: {s}"),
-            })
-        }
+        Ok(DeterministicId::try_from(s)?.into())
     }
 }
 
@@ -680,8 +684,10 @@ mod tests {
     fn profile_id_fk_is_enforced() -> Result<()> {
         let tmp_core = TmpCore::new()?;
 
+        let profile_id: DeterministicId =
+            "B7UREO2PJCCWSSZRBQEUO64A5DS2XRVO6RLOF5XYVAVT7T6KPYNQ".parse()?;
         let params = m::CreateEthAddressParams::builder()
-            .profile_id("invalid-profile-id")
+            .profile_id(&profile_id)
             .chain_id(eth::ChainId::EthMainnet)
             .is_profile_wallet(true)
             .build();

@@ -10,7 +10,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         schema::{data_encryption_keys, local_encrypted_deks},
     },
     encryption::{
@@ -23,7 +23,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct DataEncryptionKey {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub name: String,
     pub created_at: String,
     pub updated_at: Option<String>,
@@ -46,7 +46,7 @@ impl DataEncryptionKey {
         connection: &mut SqliteConnection,
         dek_name: KeyName,
         kek: &KeyEncryptionKey,
-    ) -> Result<(String, EncDek), Error> {
+    ) -> Result<(DeterministicId, EncDek), Error> {
         use data_encryption_keys::dsl as dek;
         use local_encrypted_deks::dsl as led;
 
@@ -60,7 +60,7 @@ impl DataEncryptionKey {
                     .and(led::kek_name.eq(kek.name())),
             )
             .select((dek::deterministic_id, led::encrypted_dek))
-            .first::<(String, EncryptionOutput)>(connection)?;
+            .first::<(DeterministicId, EncryptionOutput)>(connection)?;
 
         let dek = EncDek::from_encrypted(dek_name, &encrypted_dek, kek)?;
         Ok((dek_id, dek))
@@ -76,7 +76,7 @@ pub struct NewDataEncryptionKey<'a> {
 
 impl<'a> NewDataEncryptionKey<'a> {
     /// Create a new data encryption key and return its deterministic id.
-    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<DeterministicId, Error> {
         use data_encryption_keys::dsl as dek;
 
         let deterministic_id = self.deterministic_id()?;
@@ -94,7 +94,7 @@ impl<'a> NewDataEncryptionKey<'a> {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a str, U1> for NewDataEncryptionKey<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a str, U1> for NewDataEncryptionKey<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::DataEncryptionKey
     }

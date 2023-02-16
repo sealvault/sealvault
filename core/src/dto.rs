@@ -12,7 +12,7 @@ use typed_builder::TypedBuilder;
 use url::Url;
 
 /// Data transfer objects passed through FFI to host languages.
-use crate::db::{models as m, ConnectionPool, DeferredTxConnection};
+use crate::db::{models as m, ConnectionPool, DeferredTxConnection, DeterministicId};
 use crate::{
     async_runtime as rt, config,
     favicon::fetch_favicons,
@@ -150,7 +150,7 @@ impl Assembler {
                     m::ProfilePicture::fetch_image(tx_conn.as_mut(), &picture_id)?;
 
                 let profile = CoreProfile::builder()
-                    .id(deterministic_id)
+                    .id(deterministic_id.into())
                     .name(name)
                     .picture(picture)
                     .wallets(wallets)
@@ -168,7 +168,7 @@ impl Assembler {
     fn assemble_wallets(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<Vec<CoreAddress>, Error> {
         let addresses = m::Address::list_profile_wallets(tx_conn.as_mut(), profile_id)?;
         let mut results: Vec<CoreAddress> = Default::default();
@@ -182,7 +182,7 @@ impl Assembler {
     fn assemble_dapps(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
     ) -> Result<Vec<CoreDapp>, Error> {
         let dapps = m::Dapp::list_for_profile(tx_conn.as_mut(), profile_id)?;
         let urls: Vec<Url> = dapps.iter().map(|d| d.url.clone().into()).collect();
@@ -198,7 +198,7 @@ impl Assembler {
     fn assemble_dapp(
         &self,
         tx_conn: &mut DeferredTxConnection,
-        profile_id: &str,
+        profile_id: &DeterministicId,
         dapp: m::Dapp,
         favicon: Option<Vec<u8>>,
     ) -> Result<CoreDapp, Error> {
@@ -230,8 +230,8 @@ impl Assembler {
             ..
         } = dapp;
         let result = CoreDapp::builder()
-            .id(deterministic_id)
-            .profile_id(profile_id.into())
+            .id(deterministic_id.into())
+            .profile_id(profile_id.clone().into())
             .human_identifier(identifier)
             .url((&url).into())
             .addresses(core_addresses)

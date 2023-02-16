@@ -9,7 +9,7 @@ use generic_array::typenum::U32;
 use lazy_static::lazy_static;
 use url::Url;
 
-use crate::db::deterministic_id::DeterministicId;
+use crate::db::{deterministic_id::DeriveDeterministicId, DeterministicId};
 #[allow(deprecated)]
 use crate::{
     config,
@@ -119,7 +119,7 @@ impl MigrationV1 {
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
         psl: &PublicSuffixList,
-        profile_id: &str,
+        profile_id: &DeterministicId,
         dapp_url: Url,
     ) -> Result<(), Error> {
         let chain_id = eth::ChainId::default_dapp_chain();

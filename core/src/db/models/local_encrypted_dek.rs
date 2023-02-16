@@ -6,14 +6,16 @@ use diesel::prelude::*;
 use typed_builder::TypedBuilder;
 
 use crate::{
-    db::schema::local_encrypted_deks, encryption::EncryptionOutput,
-    utils::rfc3339_timestamp, Error,
+    db::{schema::local_encrypted_deks, DeterministicId},
+    encryption::EncryptionOutput,
+    utils::rfc3339_timestamp,
+    Error,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 pub struct LocalEncryptedDek {
     pub id: i32,
-    pub dek_id: String,
+    pub dek_id: DeterministicId,
     pub encrypted_dek: EncryptionOutput,
     pub kek_name: String,
     pub created_at: String,
@@ -23,7 +25,7 @@ pub struct LocalEncryptedDek {
 impl LocalEncryptedDek {
     pub fn fetch_id(
         conn: &mut SqliteConnection,
-        dek_id: &str,
+        dek_id: &DeterministicId,
         kek_name: &str,
     ) -> Result<Option<i32>, Error> {
         use local_encrypted_deks::dsl as led;
@@ -60,7 +62,7 @@ impl LocalEncryptedDek {
 #[derive(TypedBuilder, Insertable)]
 #[diesel(table_name = local_encrypted_deks)]
 pub struct NewLocalEncryptedDek<'a> {
-    dek_id: &'a str,
+    dek_id: &'a DeterministicId,
     encrypted_dek: &'a EncryptionOutput,
     kek_name: &'a str,
 }

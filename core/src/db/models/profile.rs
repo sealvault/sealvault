@@ -12,10 +12,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config,
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, EntityName},
         models as m,
         schema::profiles,
-        DeferredTxConnection,
+        DeferredTxConnection, DeterministicId,
     },
     encryption::Keychain,
     protocols::eth,
@@ -26,10 +26,10 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable, Insertable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct Profile {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub uuid: String,
     pub name: String,
-    pub picture_id: String,
+    pub picture_id: DeterministicId,
     pub created_at: String,
     pub updated_at: Option<String>,
 }
@@ -46,7 +46,7 @@ impl Profile {
         keychain: &Keychain,
         name: &ProfileName,
         bundled_picture_name: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         let picture_id =
             m::ProfilePicture::insert_bundled(tx_conn.as_mut(), bundled_picture_name)?;
         let profile_id = Self::create(tx_conn.as_mut(), name, &picture_id)?;
@@ -66,8 +66,8 @@ impl Profile {
     fn create(
         conn: &mut SqliteConnection,
         name: &ProfileName,
-        picture_id: &str,
-    ) -> Result<String, Error> {
+        picture_id: &DeterministicId,
+    ) -> Result<DeterministicId, Error> {
         use profiles::dsl as p;
 
         let uuid = new_uuid();
@@ -90,7 +90,7 @@ impl Profile {
 
     pub fn delete(
         conn: &mut SqliteConnection,
-        deterministic_id: &str,
+        deterministic_id: &DeterministicId,
     ) -> Result<(), Error> {
         use profiles::dsl as p;
 
@@ -110,7 +110,7 @@ impl Profile {
     pub fn set_picture_id(
         &self,
         conn: &mut SqliteConnection,
-        picture_id: &str,
+        picture_id: &DeterministicId,
     ) -> Result<(), Error> {
         use profiles::dsl as p;
 
@@ -183,7 +183,7 @@ pub struct ProfileEntity<'a> {
     pub uuid: &'a str,
 }
 
-impl<'a> DeterministicId<'a, &'a str, U1> for ProfileEntity<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a str, U1> for ProfileEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Profile
     }

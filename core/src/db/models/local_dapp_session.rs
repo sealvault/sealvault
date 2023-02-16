@@ -10,7 +10,7 @@ use crate::{
         models as m,
         models::AddressId,
         schema::{addresses, asymmetric_keys, chains, local_dapp_sessions, profiles},
-        DeferredTxConnection, JsonValue,
+        DeferredTxConnection, DeterministicId, JsonValue,
     },
     protocols::eth,
     utils::{new_uuid, rfc3339_timestamp},
@@ -23,12 +23,12 @@ use crate::{
 pub struct LocalDappSession {
     pub uuid: String,
 
-    pub profile_id: String,
+    pub profile_id: DeterministicId,
 
     pub address_id: AddressId,
     pub address: eth::ChecksumAddress,
 
-    pub dapp_id: String,
+    pub dapp_id: DeterministicId,
     pub dapp_human_identifier: String,
 
     pub chain_id: eth::ChainId,
@@ -41,7 +41,7 @@ pub struct LocalDappSession {
 struct LocalDappSessionEntity {
     uuid: String,
     address_id: AddressId,
-    dapp_id: String,
+    dapp_id: DeterministicId,
     last_used_at: String,
     created_at: String,
     updated_at: String,
@@ -92,7 +92,10 @@ impl LocalDappSessionEntity {
         Ok(protocol_data.chain_id)
     }
 
-    pub fn fetch_profile_id(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn fetch_profile_id(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> Result<DeterministicId, Error> {
         m::Address::fetch_profile_id(conn, &self.address_id)
     }
 
@@ -116,10 +119,10 @@ impl LocalDappSession {
     pub fn list_dapp_ids_desc(
         conn: &mut SqliteConnection,
         limit: u32,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<DeterministicId>, Error> {
         use local_dapp_sessions::dsl as lds;
 
-        let dapp_ids: Vec<String> = local_dapp_sessions::table
+        let dapp_ids: Vec<DeterministicId> = local_dapp_sessions::table
             .select(lds::dapp_id)
             .order(lds::last_used_at.desc())
             .limit(limit as i64)
@@ -312,8 +315,8 @@ impl LocalDappSession {
 #[derive(Debug, Clone, TypedBuilder)]
 #[readonly::make]
 pub struct NewDappSessionParams<'a> {
-    pub dapp_id: &'a str,
-    pub profile_id: &'a str,
+    pub dapp_id: &'a DeterministicId,
+    pub profile_id: &'a DeterministicId,
     #[builder(default = eth::ChainId::default_dapp_chain())]
     pub chain_id: eth::ChainId,
 }
@@ -321,13 +324,13 @@ pub struct NewDappSessionParams<'a> {
 #[derive(Debug, Clone, TypedBuilder)]
 #[readonly::make]
 pub struct FetchDappSessionParams<'a> {
-    pub dapp_id: &'a str,
-    pub profile_id: &'a str,
+    pub dapp_id: &'a DeterministicId,
+    pub profile_id: &'a DeterministicId,
 }
 
 pub trait DappSessionParams<'a> {
-    fn dapp_id(&'a self) -> &'a str;
-    fn profile_id(&'a self) -> &'a str;
+    fn dapp_id(&'a self) -> &'a DeterministicId;
+    fn profile_id(&'a self) -> &'a DeterministicId;
 }
 
 pub trait DappSessionParamsWithChain<'a>: DappSessionParams<'a> {
@@ -335,11 +338,11 @@ pub trait DappSessionParamsWithChain<'a>: DappSessionParams<'a> {
 }
 
 impl<'a> DappSessionParams<'a> for NewDappSessionParams<'a> {
-    fn dapp_id(&'a self) -> &'a str {
+    fn dapp_id(&'a self) -> &'a DeterministicId {
         self.dapp_id
     }
 
-    fn profile_id(&'a self) -> &'a str {
+    fn profile_id(&'a self) -> &'a DeterministicId {
         self.profile_id
     }
 }
@@ -351,11 +354,11 @@ impl<'a> DappSessionParamsWithChain<'a> for NewDappSessionParams<'a> {
 }
 
 impl<'a> DappSessionParams<'a> for FetchDappSessionParams<'a> {
-    fn dapp_id(&'a self) -> &'a str {
+    fn dapp_id(&'a self) -> &'a DeterministicId {
         self.dapp_id
     }
 
-    fn profile_id(&'a self) -> &'a str {
+    fn profile_id(&'a self) -> &'a DeterministicId {
         self.profile_id
     }
 }

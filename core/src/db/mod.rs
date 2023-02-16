@@ -12,4 +12,5 @@ pub mod schema_migrations;
 mod url_value;
 
 pub use connection_pool::{ConnectionPool, DeferredTxConnection, ExclusiveTxConnection};
+pub use deterministic_id::DeterministicId;
 pub use json_value::JsonValue;

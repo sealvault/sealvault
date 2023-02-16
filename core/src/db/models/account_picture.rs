@@ -10,7 +10,7 @@ use generic_array::{typenum::U1, GenericArray};
 use crate::{
     assets::load_profile_pic,
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         schema::profile_pictures,
     },
     utils::{blake3_hash, rfc3339_timestamp},
@@ -23,7 +23,7 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 #[diesel(table_name = profile_pictures)]
 pub struct AccountPicture {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub image_name: Option<String>,
     pub image_hash: Vec<u8>,
     pub image: Vec<u8>,
@@ -47,7 +47,7 @@ impl AccountPicture {
     pub fn insert_bundled(
         conn: &mut SqliteConnection,
         image_name: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         let image = load_profile_pic(image_name)?;
         let image_hash = blake3_hash(&image);
         let entity = AccountPictureEntity {
@@ -72,7 +72,7 @@ impl<'a> AccountPictureEntity<'a> {
         conn: &mut SqliteConnection,
         image: &[u8],
         image_name: Option<&str>,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use profile_pictures::dsl as ap;
 
         let deterministic_id = self.deterministic_id()?;
@@ -91,7 +91,7 @@ impl<'a> AccountPictureEntity<'a> {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a [u8], U1> for AccountPictureEntity<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a [u8], U1> for AccountPictureEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::AccountPicture
     }

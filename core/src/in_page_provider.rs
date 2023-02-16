@@ -18,7 +18,7 @@ use url::Url;
 
 use crate::{
     assets, async_runtime as rt, config,
-    db::{models as m, ConnectionPool},
+    db::{models as m, ConnectionPool, DeterministicId},
     favicon::fetch_favicon_async,
     http_client::HttpClient,
     protocols::eth,
@@ -412,6 +412,7 @@ impl InPageProvider {
         let url = self.url.clone();
         let resources = self.resources.clone();
         let chain_id: eth::ChainId = dapp_approval.chain_id.try_into()?;
+        let profile_id: DeterministicId = dapp_approval.profile_id.try_into()?;
         let session = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
@@ -421,7 +422,7 @@ impl InPageProvider {
                     resources.public_suffix_list(),
                 )?;
                 let params = m::CreateEthAddressParams::builder()
-                    .profile_id(&dapp_approval.profile_id)
+                    .profile_id(&profile_id)
                     .chain_id(chain_id)
                     .dapp_id(Some(&dapp_id))
                     .build();
@@ -432,7 +433,7 @@ impl InPageProvider {
                 )?;
                 let params = m::NewDappSessionParams::builder()
                     .dapp_id(&dapp_id)
-                    .profile_id(&dapp_approval.profile_id)
+                    .profile_id(&profile_id)
                     .chain_id(chain_id)
                     .build();
                 m::LocalDappSession::create_eth_session(&mut tx_conn, &params)

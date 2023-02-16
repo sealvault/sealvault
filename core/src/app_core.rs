@@ -13,6 +13,7 @@ use crate::{
     backup::{BackupError, BackupStorageI},
     db::{
         data_migrations, models as m, schema_migrations::run_migrations, ConnectionPool,
+        DeterministicId,
     },
     device::{DeviceIdentifier, DeviceName},
     dto,
@@ -168,10 +169,11 @@ impl AppCore {
     pub fn active_profile_id(&self) -> Result<String, CoreError> {
         let mut conn = self.connection_pool().connection()?;
         let res = m::LocalSettings::fetch_active_profile_id(&mut conn)?;
-        Ok(res)
+        Ok(res.into())
     }
 
     pub fn set_active_profile_id(&self, profile_id: String) -> Result<(), CoreError> {
+        let profile_id: DeterministicId = profile_id.parse()?;
         let mut conn = self.connection_pool().connection()?;
         m::LocalSettings::set_active_profile_id(&mut conn, &profile_id)?;
         Ok(())
@@ -389,11 +391,13 @@ impl AppCore {
         args: EthChangeDappChainArgs,
     ) -> Result<(), CoreError> {
         let new_chain_id: eth::ChainId = args.new_chain_id.try_into()?;
+        let profile_id: DeterministicId = args.profile_id.try_into()?;
+        let dapp_id: DeterministicId = args.dapp_id.try_into()?;
         self.connection_pool()
             .deferred_transaction(move |mut tx_conn| {
                 let params = m::NewDappSessionParams::builder()
-                    .profile_id(&args.profile_id)
-                    .dapp_id(&args.dapp_id)
+                    .profile_id(&profile_id)
+                    .dapp_id(&dapp_id)
                     .chain_id(new_chain_id)
                     .build();
                 let session = m::LocalDappSession::create_eth_session_if_not_exists(
@@ -421,7 +425,7 @@ impl AppCore {
             Ok(session_dapp_ids)
         })?;
 
-        Ok(res)
+        Ok(res.into_iter().map(|id| id.to_string()).collect())
     }
 }
 
@@ -1286,11 +1290,11 @@ pub mod tests {
         let last_profile = profiles.last().unwrap();
 
         let active_profile_id = tmp.core.active_profile_id()?;
-        assert_eq!(&active_profile_id, &first_profile.id);
+        assert_eq!(active_profile_id.as_str(), &first_profile.id);
 
         tmp.core.set_active_profile_id(last_profile.id.clone())?;
         let active_profile_id = tmp.core.active_profile_id()?;
-        assert_eq!(&active_profile_id, &last_profile.id);
+        assert_eq!(active_profile_id.as_str(), &last_profile.id);
 
         Ok(())
     }
@@ -1334,12 +1338,12 @@ pub mod tests {
         let profiles = core.list_profiles()?;
         assert_eq!(profiles.len(), 2);
 
-        let profile_id_one = &profiles[0].id;
-        let profile_id_two = &profiles[1].id;
+        let profile_id_one: DeterministicId = profiles[0].id.clone().try_into()?;
+        let profile_id_two: DeterministicId = profiles[1].id.clone().try_into()?;
 
         let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
             let params_one = m::CreateEthAddressParams::builder()
-                .profile_id(profile_id_one)
+                .profile_id(&profile_id_one)
                 .chain_id(eth::ChainId::EthMainnet)
                 .is_profile_wallet(true)
                 .build();
@@ -1349,7 +1353,7 @@ pub mod tests {
                 &params_one,
             )?;
             let params_two = m::CreateEthAddressParams::builder()
-                .profile_id(profile_id_two)
+                .profile_id(&profile_id_two)
                 .chain_id(eth::ChainId::EthMainnet)
                 .is_profile_wallet(true)
                 .build();

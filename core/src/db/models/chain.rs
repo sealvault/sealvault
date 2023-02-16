@@ -7,9 +7,9 @@ use generic_array::{typenum::U2, GenericArray};
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, EntityName},
         schema::chains,
-        DeferredTxConnection, JsonValue,
+        DeferredTxConnection, DeterministicId, JsonValue,
     },
     protocols::{eth, BlockchainProtocol},
     utils::rfc3339_timestamp,
@@ -20,7 +20,7 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 #[diesel(table_name = chains)]
 pub struct Chain {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub protocol: BlockchainProtocol,
     pub protocol_data: JsonValue,
     pub user_settings: JsonValue,
@@ -30,7 +30,7 @@ pub struct Chain {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EthChain {
-    pub db_id: String,
+    pub db_id: DeterministicId,
     pub chain_id: eth::ChainId,
     pub user_settings: eth::ChainSettings,
 }
@@ -81,7 +81,7 @@ impl Chain {
     /// Fetch an Ethereum chain id by the db entity's deterministic id.
     pub fn fetch_eth_chain_id(
         conn: &mut SqliteConnection,
-        deterministic_id: &str,
+        deterministic_id: &DeterministicId,
     ) -> Result<eth::ChainId, Error> {
         use chains::dsl as c;
         let protocol_data: JsonValue = chains::table
@@ -100,7 +100,7 @@ impl Chain {
     pub fn fetch_or_create_eth_chain_id(
         conn: &mut DeferredTxConnection,
         chain_id: eth::ChainId,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         match Self::fetch_eth_chain_deterministic_id(conn.as_mut(), chain_id)? {
             Some(chain_id) => Ok(chain_id),
             None => Self::create_eth_chain(conn.as_mut(), chain_id),
@@ -117,7 +117,7 @@ impl Chain {
         let deterministic_id = chain_entity.deterministic_id()?;
 
         let settings: JsonValue = chains::table
-            .filter(c::deterministic_id.eq(&*deterministic_id))
+            .filter(c::deterministic_id.eq(&deterministic_id))
             .select(c::user_settings)
             .first(conn)?;
         settings.convert_into()
@@ -127,7 +127,7 @@ impl Chain {
     fn fetch_eth_chain_deterministic_id(
         conn: &mut SqliteConnection,
         chain_id: eth::ChainId,
-    ) -> Result<Option<String>, Error> {
+    ) -> Result<Option<DeterministicId>, Error> {
         use chains::dsl as c;
 
         let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
@@ -146,7 +146,7 @@ impl Chain {
     fn create_eth_chain(
         conn: &mut SqliteConnection,
         chain_id: eth::ChainId,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         use chains::dsl as c;
 
         let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
@@ -187,7 +187,7 @@ impl ChainEntity {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a str, U2> for ChainEntity {
+impl<'a> DeriveDeterministicId<'a, &'a str, U2> for ChainEntity {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Chain
     }

@@ -2,6 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::str::FromStr;
+
+use derive_more::{AsRef, Display, Into};
+use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Text, sqlite::Sqlite};
 use generic_array::{ArrayLength, GenericArray};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -21,7 +25,7 @@ lazy_static! {
             .try_into()
             .expect("hex is expected length");
 
-    pub static ref DETERMINISTIC_ID_REGEX: Regex =
+    static ref DETERMINISTIC_ID_REGEX: Regex =
         Regex::new(r"^[ABCDEFGHIJKLMNOPQRSTUVWXYZ234567]{52}$").expect("static is ok");
 }
 
@@ -33,7 +37,7 @@ lazy_static! {
 /// The purpose of this trait is to make it easy to review which entity uses what unique values to
 /// determine its deterministic id.
 /// See the developer docs for more background on deterministic ids.
-pub trait DeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
+pub trait DeriveDeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
     /// The name of the database entity. Used as a prefix in the hash.
     fn entity_name(&'a self) -> EntityName;
 
@@ -50,7 +54,7 @@ pub trait DeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
     fn unique_columns(&'a self) -> GenericArray<T, N>;
 
     /// Compute a deterministic id for a database entity based on their unique columns.
-    fn deterministic_id(&'a self) -> Result<String, Error> {
+    fn deterministic_id(&'a self) -> Result<DeterministicId, Error> {
         let unique_columns = self.unique_columns();
 
         let mut hasher = blake3::Hasher::new();
@@ -75,7 +79,70 @@ pub trait DeterministicId<'a, T: AsRef<[u8]> + 'a, N: ArrayLength<T>> {
         }
         let hash = hasher.finalize();
         let bytes = hash.as_bytes();
-        Ok(data_encoding::BASE32_NOPAD.encode(bytes))
+        data_encoding::BASE32_NOPAD.encode(bytes).parse()
+    }
+}
+
+#[derive(
+    Debug,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    AsRef,
+    AsExpression,
+    FromSqlRow,
+)]
+#[diesel(sql_type = diesel::sql_types::Text)]
+#[as_ref(forward)]
+#[repr(transparent)]
+pub struct DeterministicId(String);
+
+impl TryFrom<String> for DeterministicId {
+    type Error = Error;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        if DETERMINISTIC_ID_REGEX.is_match(&s) {
+            Ok(Self(s))
+        } else {
+            Err(Error::Fatal {
+                error: "Invalid deterministic id".into(),
+            })
+        }
+    }
+}
+
+impl FromStr for DeterministicId {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
+    }
+}
+
+// TODO derive macro
+impl FromSql<Text, Sqlite> for DeterministicId {
+    fn from_sql(
+        bytes: diesel::backend::RawValue<Sqlite>,
+    ) -> diesel::deserialize::Result<Self> {
+        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        let address_id: DeterministicId = s.parse()?;
+        Ok(address_id)
+    }
+}
+
+impl ToSql<Text, Sqlite> for DeterministicId {
+    fn to_sql(
+        &self,
+        out: &mut diesel::serialize::Output<Sqlite>,
+    ) -> diesel::serialize::Result {
+        let s = self.to_string();
+        out.set_value(s);
+        Ok(diesel::serialize::IsNull::No)
     }
 }
 
@@ -132,7 +199,7 @@ mod tests {
         }
     }
 
-    impl<'a, N: ArrayLength<&'a str>> DeterministicId<'a, &'a str, N>
+    impl<'a, N: ArrayLength<&'a str>> DeriveDeterministicId<'a, &'a str, N>
         for UniqueValuesMock<'a, N>
     {
         fn entity_name(&'a self) -> EntityName {
@@ -149,7 +216,7 @@ mod tests {
         let unique_columns = UniqueValuesMock::new(["foo", "bar"].into());
         let id = unique_columns.deterministic_id()?;
         // 256-bit tag is 32 bytes and 32 bytes is 52 base32 characters without padding
-        assert_eq!(id.len(), 52);
+        assert_eq!(id.0.len(), 52);
         Ok(())
     }
 
@@ -157,7 +224,7 @@ mod tests {
     fn regex_matches() -> Result<()> {
         let unique_columns = UniqueValuesMock::new(["foo", "bar"].into());
         let id = unique_columns.deterministic_id()?;
-        assert!(DETERMINISTIC_ID_REGEX.is_match(&id));
+        assert!(DETERMINISTIC_ID_REGEX.is_match(id.as_ref()));
         Ok(())
     }
 
@@ -211,7 +278,7 @@ mod tests {
         let hash = hasher.finalize();
         let hash = hash.as_bytes();
         let hash = data_encoding::BASE64URL_NOPAD.encode(hash);
-        assert_ne!(a.deterministic_id()?, hash);
+        assert_ne!(a.deterministic_id()?.0, hash);
         Ok(())
     }
 
@@ -232,7 +299,7 @@ mod tests {
         }
     }
 
-    impl<'a, N: ArrayLength<&'a [u8; 32]>> DeterministicId<'a, &'a [u8; 32], N>
+    impl<'a, N: ArrayLength<&'a [u8; 32]>> DeriveDeterministicId<'a, &'a [u8; 32], N>
         for UniqueArrayValuesMock<'a, N>
     {
         fn entity_name(&'a self) -> EntityName {

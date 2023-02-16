@@ -10,7 +10,7 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         models as m,
         schema::profiles,
         DeferredTxConnection,
@@ -27,10 +27,10 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 #[diesel(table_name = profiles)]
 pub struct Account {
-    pub deterministic_id: String,
+    pub deterministic_id: DeterministicId,
     pub uuid: String,
     pub name: String,
-    pub picture_id: String,
+    pub picture_id: DeterministicId,
     pub created_at: String,
     pub updated_at: Option<String>,
 }
@@ -46,7 +46,7 @@ impl Account {
         tx_conn: &mut DeferredTxConnection,
         keychain: &Keychain,
         params: &AccountParams,
-    ) -> Result<String, Error> {
+    ) -> Result<DeterministicId, Error> {
         let picture_id = m::AccountPicture::insert_bundled(
             tx_conn.as_mut(),
             params.bundled_picture_name,
@@ -68,8 +68,8 @@ impl Account {
     fn insert(
         conn: &mut SqliteConnection,
         name: &str,
-        picture_id: &str,
-    ) -> Result<String, Error> {
+        picture_id: &DeterministicId,
+    ) -> Result<DeterministicId, Error> {
         use profiles::dsl as a;
 
         let uuid = new_uuid();
@@ -109,7 +109,7 @@ pub struct AccountEntity<'a> {
     pub uuid: &'a str,
 }
 
-impl<'a> DeterministicId<'a, &'a str, U1> for AccountEntity<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a str, U1> for AccountEntity<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::Account
     }

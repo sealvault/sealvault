@@ -10,8 +10,9 @@ use typed_builder::TypedBuilder;
 
 use crate::{
     db::{
-        deterministic_id::{DeterministicId, EntityName},
+        deterministic_id::{DeriveDeterministicId, EntityName},
         schema::data_migrations,
+        DeterministicId,
     },
     utils::rfc3339_timestamp,
     Error,
@@ -54,7 +55,7 @@ pub struct NewDataMigration<'a> {
 
 impl<'a> NewDataMigration<'a> {
     /// Create a new data migration and return its deterministic id.
-    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<String, Error> {
+    pub fn insert(&self, conn: &mut SqliteConnection) -> Result<DeterministicId, Error> {
         use data_migrations::dsl as dm;
 
         let deterministic_id = self.deterministic_id()?;
@@ -72,7 +73,7 @@ impl<'a> NewDataMigration<'a> {
     }
 }
 
-impl<'a> DeterministicId<'a, &'a str, U1> for NewDataMigration<'a> {
+impl<'a> DeriveDeterministicId<'a, &'a str, U1> for NewDataMigration<'a> {
     fn entity_name(&'a self) -> EntityName {
         EntityName::DataMigration
     }
