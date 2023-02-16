@@ -40,6 +40,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    custom_tokens (deterministic_id) {
+        deterministic_id -> Text,
+        address -> Text,
+        chain_id -> Text,
+        #[sql_name = "type"]
+        type_ -> Text,
+        created_at -> Text,
+        updated_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
     dapps (deterministic_id) {
         deterministic_id -> Text,
         identifier -> Text,
@@ -131,6 +143,7 @@ diesel::joinable!(addresses -> chains (chain_id));
 diesel::joinable!(asymmetric_keys -> dapps (dapp_id));
 diesel::joinable!(asymmetric_keys -> data_encryption_keys (dek_id));
 diesel::joinable!(asymmetric_keys -> profiles (profile_id));
+diesel::joinable!(custom_tokens -> chains (chain_id));
 diesel::joinable!(local_dapp_sessions -> addresses (address_id));
 diesel::joinable!(local_dapp_sessions -> dapps (dapp_id));
 diesel::joinable!(local_encrypted_deks -> data_encryption_keys (dek_id));
@@ -141,6 +154,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     addresses,
     asymmetric_keys,
     chains,
+    custom_tokens,
     dapps,
     data_encryption_keys,
     data_migrations,

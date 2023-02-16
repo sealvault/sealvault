@@ -711,7 +711,7 @@ impl InPageProvider {
         let message: String = params.next()?;
         let message = decode_0x_hex_prefix(&message)?;
         let address_arg: ethers::core::types::Address = params.next()?;
-        if &address_arg != session.address.as_ref() {
+        if session.address != address_arg {
             return Err(Error::JsonRpc {
                 code: InPageErrorCode::InvalidParams.into(),
                 message: "Invalid address".into(),

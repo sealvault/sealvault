@@ -7,5 +7,6 @@ pub mod eth;
 mod token_type;
 
 pub use crate::protocols::{
-    blockchain_protocol::BlockchainProtocol, token_type::FungibleTokenType,
+    blockchain_protocol::BlockchainProtocol,
+    token_type::{FungibleTokenType, TokenType},
 };

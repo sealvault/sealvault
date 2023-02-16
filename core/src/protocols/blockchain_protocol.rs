@@ -23,20 +23,17 @@ pub enum BlockchainProtocol {
     Ethereum,
 }
 
-// TODO (abiro) add derive macro for FromSql/ToSql for types that implement
-// std::str::from_str and to_string
-type SqlText = diesel::sql_types::Text;
-
-impl FromSql<SqlText, Sqlite> for BlockchainProtocol {
+// TODO (abiro) add derive macro
+impl FromSql<diesel::sql_types::Text, Sqlite> for BlockchainProtocol {
     fn from_sql(
         bytes: diesel::backend::RawValue<Sqlite>,
     ) -> diesel::deserialize::Result<Self> {
-        let s = <String as FromSql<SqlText, Sqlite>>::from_sql(bytes)?;
+        let s = <String as FromSql<diesel::sql_types::Text, Sqlite>>::from_sql(bytes)?;
         Ok(Self::from_str(&s)?)
     }
 }
 
-impl ToSql<SqlText, Sqlite> for BlockchainProtocol {
+impl ToSql<diesel::sql_types::Text, Sqlite> for BlockchainProtocol {
     fn to_sql(
         &self,
         out: &mut diesel::serialize::Output<Sqlite>,

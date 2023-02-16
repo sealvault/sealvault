@@ -4,6 +4,7 @@
 
 use std::{
     fmt::{Display, Formatter},
+    hash::{Hash, Hasher},
     str::FromStr,
 };
 
@@ -26,11 +27,6 @@ const UNCOMPRESSED_PUBLIC_KEY_PREFIX: u8 = 0x04;
     Debug,
     Clone,
     Copy,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    Hash,
     Into,
     From,
     AsRef,
@@ -42,6 +38,7 @@ const UNCOMPRESSED_PUBLIC_KEY_PREFIX: u8 = 0x04;
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 #[diesel(sql_type = diesel::sql_types::Text)]
+#[as_ref(forward)]
 #[repr(transparent)]
 pub struct ChecksumAddress(Address);
 
@@ -96,6 +93,26 @@ impl FromStr for ChecksumAddress {
 impl From<ChecksumAddress> for String {
     fn from(value: ChecksumAddress) -> Self {
         value.to_string()
+    }
+}
+
+impl PartialEq<Address> for ChecksumAddress {
+    fn eq(&self, other: &Address) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<Self> for ChecksumAddress {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq(&other.0)
+    }
+}
+
+impl Eq for ChecksumAddress {}
+
+impl Hash for ChecksumAddress {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Address::hash(&self.0, state)
     }
 }
 
@@ -204,7 +221,7 @@ mod tests {
         let expected_address = Address::from_slice(&hex::decode(ADDRESS)?);
         let address = ChecksumAddress::new(&pk)?;
 
-        assert_eq!(address.as_ref(), &expected_address);
+        assert_eq!(&address, &expected_address);
 
         Ok(())
     }

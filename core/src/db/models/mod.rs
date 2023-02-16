@@ -9,6 +9,7 @@ mod account_picture;
 mod address;
 mod asymmetric_key;
 mod chain;
+mod custom_token;
 mod dapp;
 mod data_encryption_key;
 mod data_migration;

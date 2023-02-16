@@ -170,6 +170,7 @@ mod entity_name {
         DataMigration,
         Profile,
         ProfilePicture,
+        CustomToken,
         #[cfg(test)]
         Mock,
     }
