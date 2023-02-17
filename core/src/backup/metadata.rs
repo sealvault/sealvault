@@ -46,9 +46,18 @@ lazy_static! {
 #[repr(transparent)]
 pub struct BackupVersion(i64);
 
-impl From<i64> for BackupVersion {
-    fn from(value: i64) -> Self {
-        Self(value)
+impl TryFrom<i64> for BackupVersion {
+    type Error = Error;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        // We are not using u64 because DB can only handle i64.
+        if value < 0 {
+            Err(Error::Fatal {
+                error: "Negative backup version".into(),
+            })
+        } else {
+            Ok(Self(value))
+        }
     }
 }
 
@@ -59,7 +68,7 @@ impl FromStr for BackupVersion {
         let value: i64 = s.parse().map_err(|err| Error::Retriable {
             error: format!("Failed to parse str to backup version with error '{err}'"),
         })?;
-        Ok(value.into())
+        value.try_into()
     }
 }
 

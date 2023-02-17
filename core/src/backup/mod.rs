@@ -229,7 +229,7 @@ mod tests {
         // First backup
         let backup_metadata = backup.create_backup()?;
         let initial_backup_version = backup_metadata.backup_version;
-        let zero_backup_version: BackupVersion = 0.into();
+        let zero_backup_version: BackupVersion = 0.try_into()?;
         assert!(initial_backup_version > zero_backup_version);
 
         let backup_metadata = backup.create_backup()?;
@@ -412,7 +412,7 @@ mod tests {
         let os: OperatingSystem = Default::default();
         let device_id: DeviceIdentifier =
             "475dda83-9447-4626-9cf1-ecc4ddbe5bbd".parse()?;
-        let backup_version: BackupVersion = 16.into();
+        let backup_version: BackupVersion = 16.try_into()?;
         let timestamp = unix_timestamp();
 
         let file_name = get_backup_file_name(

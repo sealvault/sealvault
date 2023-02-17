@@ -90,7 +90,7 @@ impl LocalSettings {
             .select(ls::backup_version)
             .first(connection)?;
 
-        Ok(backup_version.into())
+        backup_version.try_into()
     }
 
     pub fn fetch_backup_enabled(
