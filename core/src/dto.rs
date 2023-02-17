@@ -307,7 +307,8 @@ impl Assembler {
         let mut conn = self.connection_pool().connection()?;
         let address = m::Address::fetch_address(&mut conn, &address_id)?;
         let mut tokens = self.tokens_for_address(address)?;
-        tokens.retain(|t| t.address_id.as_str() == address_id.as_ref());
+        let address_id: &str = address_id.as_ref();
+        tokens.retain(|t| t.address_id == address_id);
         if tokens.len() == 1 {
             Ok(tokens
                 .into_iter()
@@ -439,12 +440,15 @@ impl Assembler {
             .zip(icons_for_all)
             .map(|(token, icon)| {
                 let amount = token.display_amount();
-                let contract_address = token.display_contract_address();
-                let eth::FungibleTokenBalance { symbol, .. } = token;
+                let eth::FungibleTokenBalance {
+                    contract_address,
+                    symbol,
+                    ..
+                } = token;
                 Ok(CoreFungibleToken::builder()
                     // The id being the contract address is relied on in the core
                     // `eth_transfer_fungible_token` interface.
-                    .id(contract_address)
+                    .id(contract_address.to_string())
                     .symbol(symbol)
                     .amount(Some(amount))
                     .token_type(FungibleTokenType::Custom)
@@ -485,13 +489,25 @@ impl Assembler {
             let mut chains_from_api: HashSet<eth::ChainId> = Default::default();
 
             for balances in token_balances.into_iter() {
+                let address_id = m::Address::fetch_or_create_id_by_address_on_chain(
+                    &mut tx_conn,
+                    address,
+                    balances.chain_id,
+                )?
+                .ok_or_else(|| Error::Fatal {
+                    error: "Assumed address is already in the DB".into(),
+                })?;
+
+                // Update DB from remote API
+                m::Token::upsert_tokens(&mut tx_conn, &balances, &address_id)?;
+
                 let eth::TokenBalances {
+                    chain_id,
                     native_token,
                     fungible_tokens,
                     nfts,
                     ..
                 } = balances;
-                let chain_id = native_token.chain_id;
                 chains_from_api.insert(chain_id);
                 let native_token = self.make_native_token(
                     address,
@@ -500,21 +516,15 @@ impl Assembler {
                 )?;
                 let fungible_tokens = self.assemble_fungible_tokens(fungible_tokens)?;
                 let nfts = self.assemble_nfts(nfts);
-                let address_id = m::Address::fetch_or_create_id_by_address_on_chain(
-                    &mut tx_conn,
-                    address,
-                    chain_id,
-                )?;
-                if let Some(address_id) = address_id {
-                    results.push(
-                        CoreTokens::builder()
-                            .address_id(address_id.to_string())
-                            .native_token(native_token)
-                            .fungible_tokens(fungible_tokens)
-                            .nfts(nfts)
-                            .build(),
-                    )
-                }
+
+                results.push(
+                    CoreTokens::builder()
+                        .address_id(address_id.to_string())
+                        .native_token(native_token)
+                        .fungible_tokens(fungible_tokens)
+                        .nfts(nfts)
+                        .build(),
+                )
             }
 
             // If an address doesn't have any tokens, Ankr API won't return a result for it, but we

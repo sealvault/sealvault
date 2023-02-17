@@ -379,7 +379,11 @@ impl AppCore {
         let _ = self
             .connection_pool()
             .deferred_transaction(move |mut tx_conn| {
-                m::Address::add_eth_chain(&mut tx_conn, &address_id, chain_id)
+                m::Address::fetch_or_create_for_eth_chain(
+                    &mut tx_conn,
+                    &address_id,
+                    chain_id,
+                )
             })?;
         Ok(())
     }

@@ -314,7 +314,7 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
         let logo = Url::parse(&thumbnail).ok();
         Ok(Self {
             chain_id: blockchain.into(),
-            contract_address,
+            contract_address: contract_address.into(),
             amount: balance_raw_integer.into(),
             decimals: token_decimals,
             symbol: token_symbol,
@@ -338,7 +338,7 @@ impl From<AnkrNFTBalance> for NFTBalance {
         } = value;
         NFTBalance {
             chain_id: blockchain.into(),
-            contract_address,
+            contract_address: contract_address.into(),
             symbol,
             collection_name,
             name,

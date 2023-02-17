@@ -9,7 +9,6 @@ mod account_picture;
 mod address;
 mod asymmetric_key;
 mod chain;
-mod custom_token;
 mod dapp;
 mod data_encryption_key;
 mod data_migration;
@@ -18,6 +17,7 @@ mod local_encrypted_dek;
 mod local_settings;
 mod profile;
 mod profile_picture;
+mod token;
 
 #[allow(deprecated)]
 pub use account::{Account, AccountEntity, AccountParams};
@@ -38,3 +38,4 @@ pub use local_encrypted_dek::{LocalEncryptedDek, NewLocalEncryptedDek};
 pub use local_settings::LocalSettings;
 pub use profile::{Profile, ProfileEntity, ProfileName};
 pub use profile_picture::{ProfilePicture, ProfilePictureEntity};
+pub use token::Token;

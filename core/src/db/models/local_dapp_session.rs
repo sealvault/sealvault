@@ -164,8 +164,10 @@ impl LocalDappSession {
             .chain_entity_id(&chain_entity_id)
             .build();
 
-        let address_id =
-            m::Address::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+        let address_id = m::Address::fetch_or_create_for_eth_chain_with_entity(
+            tx_conn,
+            &address_entity,
+        )?;
 
         let session_id = new_uuid();
         let created_at = rfc3339_timestamp();
@@ -292,8 +294,10 @@ impl LocalDappSession {
             .asymmetric_key_id(&asymmetric_key_id)
             .chain_entity_id(&chain_entity_id)
             .build();
-        let new_address_id =
-            m::Address::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+        let new_address_id = m::Address::fetch_or_create_for_eth_chain_with_entity(
+            tx_conn,
+            &address_entity,
+        )?;
 
         self.update_session_address(tx_conn, &new_address_id)
     }

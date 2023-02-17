@@ -117,7 +117,7 @@ impl Address {
     /// Add an Ethereum chain for an address.
     /// The operation is idempotent.
     /// Returns the address DB id of the address on the chain.
-    pub fn add_eth_chain(
+    pub fn fetch_or_create_for_eth_chain(
         tx_conn: &mut DeferredTxConnection,
         address_id: &AddressId,
         chain_id: eth::ChainId,
@@ -129,7 +129,7 @@ impl Address {
             .chain_entity_id(&chain_entity_id)
             .build();
         let added_address_id =
-            Self::fetch_or_create_for_eth_chain(tx_conn, &address_entity)?;
+            Self::fetch_or_create_for_eth_chain_with_entity(tx_conn, &address_entity)?;
         Ok(added_address_id)
     }
 
@@ -173,7 +173,7 @@ impl Address {
     }
 
     /// Fetch or create an address id for an Ethereum chain for an existing key.
-    pub fn fetch_or_create_for_eth_chain(
+    pub fn fetch_or_create_for_eth_chain_with_entity(
         tx_conn: &mut DeferredTxConnection,
         address_entity: &AddressEntity,
     ) -> Result<AddressId, Error> {
@@ -407,7 +407,7 @@ impl Address {
             .next()
             .map(|same_address_id| {
                 // No-op if the chain exists, just returns the address id.
-                Self::add_eth_chain(tx_conn, &same_address_id, chain_id)
+                Self::fetch_or_create_for_eth_chain(tx_conn, &same_address_id, chain_id)
             })
             .transpose()
     }
@@ -626,6 +626,7 @@ pub struct CreateEthAddressParams<'a> {
     FromSqlRow,
 )]
 #[diesel(sql_type = diesel::sql_types::Text)]
+#[as_ref(forward)]
 #[repr(transparent)]
 pub struct AddressId(String);
 
@@ -686,7 +687,7 @@ mod tests {
 
         let profile_id: DeterministicId =
             "B7UREO2PJCCWSSZRBQEUO64A5DS2XRVO6RLOF5XYVAVT7T6KPYNQ".parse()?;
-        let params = m::CreateEthAddressParams::builder()
+        let params = CreateEthAddressParams::builder()
             .profile_id(&profile_id)
             .chain_id(eth::ChainId::EthMainnet)
             .is_profile_wallet(true)
