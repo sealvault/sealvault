@@ -61,7 +61,6 @@ the SwiftUI framework.
 Contains various development tools:
 
 - [Development server](./tools/dev-server) for integration testing in-page providers
-- [Alloy](https://alloytools.org/) model definitions
 - [Fuzzer](./tools/fuzz)
 
 ### [Website](./website)
