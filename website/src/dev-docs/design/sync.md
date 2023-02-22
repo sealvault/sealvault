@@ -1,6 +1,8 @@
-# Sync (WIP)
+# Sync
 
-Syncing data between a user's devices is planned for future releases.
+!!! warning "WIP"
+
+    Syncing data between a user's devices is planned for future releases. This section is still work in progress. 
 
 ## Deterministic Ids
 
