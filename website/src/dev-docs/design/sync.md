@@ -2,13 +2,13 @@
 
 Syncing data between a user's devices is planned for future releases.
 
-## Deterministic IDs
+## Deterministic Ids
 
-We use deterministic IDs as primary keys for synced database entities,
-because deterministic IDs make it easier to maintain referential integrity when
+We use deterministic ids as primary keys for synced database entities,
+because deterministic ids make it easier to maintain referential integrity when
 syncing.
 
-The deterministic ID is derived by producing a
+The deterministic id is derived by producing a
 [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash of the namespaced entity
 name and the unique fields of the entity with a 256-bit tag. The deterministic
 id is used as a basis for security-decisions, so it's critical that adversaries
@@ -25,7 +25,7 @@ other hand, picking a shorter tag wouldn't bring any real benefits, as by
 halving the tag size, we could save a few megabytes of storage for power users,
 and it wouldn't speed up DB queries in any meaningful way.
 
-Due to our usage of deterministic IDs, we treat unique columns as immutable,
+Due to our usage of deterministic ids, we treat unique columns as immutable,
 i.e. if a unique column needs to be changed, a new entity is created. DB
 entities that have deterministic ids may only have a single unique constraint on
 the table other than the primary key. This unique constraint may not span
