@@ -86,10 +86,10 @@ keeps only the most recent backup in iCloud storage for each device.
 
 ### Backup Contents
 
-The backup is a ZIP file that consists of a SQLite backup file encrypted on the
-device and metadata about the backup in a JSON file.  The metadata is stored in
-plaintext, but it's authenticated with our chosen [AEAD](./cryptography.md#aead)
-construct.  The metadata consists of:
+The backup is a ZIP file that consists of an uncompressed SQLite backup file
+that is encrypted on the device and metadata about the backup in a JSON file. 
+The metadata is stored in plaintext, but it's authenticated with our chosen
+[AEAD](./cryptography.md#aead) construct.  The metadata consists of:
 
 - backup scheme version,
 - backup version on the device,
@@ -103,6 +103,13 @@ The backup version is a monotonically increasing integer on each device. The
 backup version may have gaps. Since the backup version is incremented every
 time the user exits the app (when a new backup is created), the backup version
 can reveal how much the user uses the app.
+
+!!! question "Why don't we compress the SQLite backup file before encrypting it?"
+
+    The SQLite backup file is not compressed before encrypting it to prevent
+    potential side-channel vulnerabilities through a compression oracle. See
+    [Kelsey, 2002: "Compression and information leakage of plaintext"
+    ](https://www.iacr.org/cryptodb/archive/2002/FSE/3091/3091.pdf) for more.
 
 ### Backup Password
 
