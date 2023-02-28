@@ -45,7 +45,7 @@ devices use 256-bit keys for file encryption with AES-XTS.
 
 #### Secret-Key-Encryption-Keys
 
-We store secret keys fo digital signatures (SKs) in the SQLite database
+We store secret keys for digital signatures (SKs) in the SQLite database
 encrypted with our chosen [AEAD](./cryptography.md#aead) construct. The SK
 data-encryption-key (SK-DEK) is also stored in the database with envelope
 encryption wrapped by the key-encryption-key for SKs (SK-KEK).  The SK-KEK is
