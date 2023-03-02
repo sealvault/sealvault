@@ -62,6 +62,7 @@ Contains various development tools:
 
 - [Development server](./tools/dev-server) for integration testing in-page providers
 - [Fuzzer](./tools/fuzz)
+- [TLA+ models](./tools/tla)
 
 ### [Website](./website)
 
