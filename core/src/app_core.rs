@@ -21,7 +21,7 @@ use crate::{
     error::Error,
     http_client::HttpClient,
     in_page_provider,
-    in_page_provider::{InPageProvider, InPageRequestContextI},
+    in_page_provider::{DappKeyProvider, InPageRequestContextI},
     protocols::eth,
     public_suffix_list::PublicSuffixList,
     resources::{CoreResources, CoreResourcesI},
@@ -263,7 +263,7 @@ impl AppCore {
         raw_request: String,
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
-        let provider = InPageProvider::new(resources, context)?;
+        let provider = DappKeyProvider::new(resources, context)?;
         provider.in_page_request(raw_request);
         Ok(())
     }
@@ -274,7 +274,7 @@ impl AppCore {
         dapp_approval: DappApprovalParams,
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
-        let provider = InPageProvider::new(resources, context)?;
+        let provider = DappKeyProvider::new(resources, context)?;
         provider.user_approved_dapp(dapp_approval);
         Ok(())
     }
@@ -285,7 +285,7 @@ impl AppCore {
         dapp_approval: DappApprovalParams,
     ) -> Result<(), CoreError> {
         let resources = self.resources.clone();
-        let provider = InPageProvider::new(resources, context)?;
+        let provider = DappKeyProvider::new(resources, context)?;
         provider.user_rejected_dapp(dapp_approval);
         Ok(())
     }
@@ -880,25 +880,25 @@ pub mod tests {
             Ok(())
         }
 
-        pub fn in_page_provider(&self) -> InPageProvider {
+        pub fn in_page_provider(&self) -> DappKeyProvider {
             let context = Box::new(InPageRequestContextMock::new(
                 Default::default(),
                 self.in_page_callback_state.clone(),
             ));
 
-            InPageProvider::new(self.resources.clone(), context).expect("url valid")
+            DappKeyProvider::new(self.resources.clone(), context).expect("url valid")
         }
 
         pub fn in_page_provider_with_args(
             &self,
             args: InPageRequestContextMockArgs,
-        ) -> InPageProvider {
+        ) -> DappKeyProvider {
             let context = Box::new(InPageRequestContextMock::new(
                 args,
                 self.in_page_callback_state.clone(),
             ));
 
-            InPageProvider::new(self.resources.clone(), context).expect("url valid")
+            DappKeyProvider::new(self.resources.clone(), context).expect("url valid")
         }
 
         pub fn wait_for_first_in_page_response(&self) {

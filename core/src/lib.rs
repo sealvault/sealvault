@@ -50,7 +50,7 @@ pub use crate::{
     },
     error::Error,
     in_page_provider::{
-        CoreInPageCallbackI, DappApprovalParams, InPageProvider, InPageRequestContextI,
+        CoreInPageCallbackI, DappApprovalParams, DappKeyProvider, InPageRequestContextI,
     },
     protocols::FungibleTokenType,
     ui_callback::{

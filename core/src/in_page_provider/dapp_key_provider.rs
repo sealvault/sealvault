@@ -17,7 +17,7 @@ use typed_builder::TypedBuilder;
 use url::Url;
 
 use crate::{
-    assets, async_runtime as rt, config,
+    async_runtime as rt, config,
     db::{models as m, ConnectionPool, DeterministicId},
     favicon::fetch_favicon_async,
     http_client::HttpClient,
@@ -30,13 +30,13 @@ use crate::{
 
 #[derive(Debug)]
 #[readonly::make]
-pub struct InPageProvider {
+pub struct DappKeyProvider {
     resources: Arc<dyn CoreResourcesI>,
     request_context: Box<dyn InPageRequestContextI>,
     url: Url,
 }
 
-impl InPageProvider {
+impl DappKeyProvider {
     pub fn new(
         resources: Arc<dyn CoreResourcesI>,
         request_context: Box<dyn InPageRequestContextI>,
@@ -68,7 +68,7 @@ impl InPageProvider {
     // TODO add rate limiting
     // TODO refuse in page requests if dapp wasn't served over https or doesn't have a registrable
     // domain unless in dev mode.
-    pub(super) fn in_page_request(
+    pub(crate) fn in_page_request(
         self,
         raw_request: String,
     ) -> tokio::task::JoinHandle<Result<(), Error>> {
@@ -76,7 +76,7 @@ impl InPageProvider {
     }
 
     /// Response to a `CoreInPageCallbackI.request_dapp_approval`
-    pub(super) fn user_approved_dapp(
+    pub(crate) fn user_approved_dapp(
         self,
         dapp_approval: DappApprovalParams,
     ) -> tokio::task::JoinHandle<Result<(), Error>> {
@@ -84,7 +84,7 @@ impl InPageProvider {
     }
 
     /// Respond to a `CoreInPageCallbackI.request_dapp_approval`
-    pub(super) fn user_rejected_dapp(
+    pub(crate) fn user_rejected_dapp(
         self,
         dapp_approval: DappApprovalParams,
     ) -> tokio::task::JoinHandle<Result<(), Error>> {
@@ -1076,33 +1076,6 @@ impl From<InPageErrorCode> for ErrorObject<'static> {
     }
 }
 
-pub fn load_in_page_provider_script(
-    rpc_provider_name: &str,
-    request_handler_name: &str,
-) -> Result<String, Error> {
-    let chain_id = eth::ChainId::default_dapp_chain();
-    let network_version = chain_id.network_version();
-    let hex_chain_id = chain_id.display_hex();
-    let replacements = vec![
-        (config::RPC_PROVIDER_PLACEHOLDER, rpc_provider_name),
-        (config::REQUEST_HANDLER_PLACEHOLDER, request_handler_name),
-        (config::DEFAULT_CHAIN_ID_PLACEHOLDER, &hex_chain_id),
-        (
-            config::DEFAULT_NETWORK_VERSION_PLACEHOLDER,
-            &network_version,
-        ),
-    ];
-
-    let path = format!(
-        "{}/{}",
-        config::JS_PREFIX,
-        config::IN_PAGE_PROVIDER_FILE_NAME
-    );
-    let text = assets::load_asset_with_replacements(&path, replacements.iter())?;
-
-    Ok(text)
-}
-
 // List maintained in https://docs.google.com/spreadsheets/d/1cHW7q_OblpMZpCxds5Es0sEYV6tySyKpHezh4TuXYOs
 lazy_static! {
     static ref PROXIED_RPC_METHODS: HashSet<&'static str> = [
@@ -1163,6 +1136,7 @@ mod tests {
     use super::*;
     use crate::{
         app_core::tests::{InPageRequestContextMockArgs, TmpCore},
+        in_page_provider::load_in_page_provider_script,
         utils::new_uuid,
     };
 
@@ -1172,7 +1146,7 @@ mod tests {
     const ETH_SEND_TRANSACTION: &str = "eth_sendTransaction";
     const PERSONAL_SIGN: &str = "personal_sign";
 
-    impl InPageProvider {
+    impl DappKeyProvider {
         /// `call("method_name", rpc_params!["arg1", "arg2"])`
         fn test_call(self, method: &str, params: ArrayParams) -> Result<()> {
             let id = Id::Str(new_uuid().into());
