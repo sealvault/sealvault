@@ -1059,19 +1059,12 @@ mod tests {
         utils::new_uuid,
     };
 
-    const ETH_SIGN: &str = "eth_sign";
-    const ETH_GASPRICE: &str = "eth_gasPrice";
-    const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
-    const ETH_SEND_TRANSACTION: &str = "eth_sendTransaction";
-    const PERSONAL_SIGN: &str = "personal_sign";
-    const ADD_ETHEREUM_CHAIN: &str = "wallet_addEthereumChain";
-
     impl DappKeyProvider {
         /// `call("method_name", rpc_params!["arg1", "arg2"])`
-        fn test_call(self, method: &str, params: ArrayParams) -> Result<()> {
+        fn test_call(self, request: InPageRequest) -> Result<()> {
             let id = Id::Str(new_uuid().into());
-            let params = params.to_rpc_params().expect("rpc params serialize");
-            let request = RequestSer::owned(id, method.to_string(), params);
+            let InPageRequestParams { method, params } = request.try_into()?;
+            let request = RequestSer::owned(id, method, Some(params));
             let raw_request =
                 serde_json::to_string(&request).expect("request serializes");
             let handle = self.in_page_request(raw_request);
@@ -1082,7 +1075,7 @@ mod tests {
 
     fn authorize_dapp(core: &TmpCore) -> Result<String> {
         let provider = core.in_page_provider();
-        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
+        provider.test_call(InPageRequest::EthAccounts(()))?;
         core.wait_for_first_in_page_response();
         let responses = core.responses();
         let response = responses.first().unwrap();
@@ -1169,7 +1162,7 @@ mod tests {
             .transfer_allotment(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
+        provider.test_call(InPageRequest::EthAccounts(()))?;
         core.wait_for_first_in_page_response();
 
         check_dapp_authorization(&core);
@@ -1204,7 +1197,7 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.test_call(ETH_REQUEST_ACCOUNTS, rpc_params![])?;
+        provider.test_call(InPageRequest::EthAccounts(()))?;
         core.wait_for_first_in_page_response();
 
         assert!(core.dapp_approval().is_some());
@@ -1228,10 +1221,11 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.test_call(
-            PERSONAL_SIGN,
-            rpc_params!["0xabcd1234", "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"],
-        )?;
+        provider.test_call(InPageRequest::PersonalSign(
+            "0xabcd1234".parse()?,
+            "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826".parse()?,
+            None,
+        ))?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_none());
@@ -1252,10 +1246,10 @@ mod tests {
 
         // This request should be refused as it's an unsupported method
         let provider = core.in_page_provider();
-        provider.test_call(
-            ETH_SIGN,
-            rpc_params!["0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826", "0xabcd1234"],
-        )?;
+        provider.test_call(InPageRequest::EthSign(
+            "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826".parse()?,
+            "0xabcd1234".parse()?,
+        ))?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_some());
@@ -1273,11 +1267,12 @@ mod tests {
 
         let address = authorize_dapp(&core)?;
 
-        let message = hex::encode("message");
-        let message = format!("0x{message}");
-
         let provider = core.in_page_provider();
-        provider.test_call(PERSONAL_SIGN, rpc_params![&message, &address])?;
+        provider.test_call(InPageRequest::PersonalSign(
+            "0xabcd".parse()?,
+            address.parse()?,
+            None,
+        ))?;
         // Dapp allotment transfer + personal sign approved
         core.wait_for_ui_callbacks(2);
 
@@ -1303,7 +1298,7 @@ mod tests {
             .from(dapp_address);
 
         let provider = core.in_page_provider();
-        provider.test_call(ETH_SEND_TRANSACTION, rpc_params![&tx])?;
+        provider.test_call(InPageRequest::EthSendTransaction(tx))?;
         // Dapp allotment transfer + tx approved + tx succeeded
         core.wait_for_ui_callbacks(3);
 
@@ -1331,7 +1326,7 @@ mod tests {
             .from(dapp_address);
 
         let provider = core.in_page_provider();
-        provider.test_call(ETH_SEND_TRANSACTION, rpc_params![&tx])?;
+        provider.test_call(InPageRequest::EthSendTransaction(tx))?;
         // Dapp allotment transfer + tx approved + tx error
         core.wait_for_ui_callbacks(3);
 
@@ -1353,7 +1348,7 @@ mod tests {
         let _ = authorize_dapp(&core)?;
 
         let provider = core.in_page_provider();
-        provider.test_call(ETH_GASPRICE, rpc_params![])?;
+        provider.test_call(InPageRequest::EthGasPrice(()))?;
 
         let responses = core.responses();
         assert_eq!(responses.len(), 2);
@@ -1368,12 +1363,11 @@ mod tests {
         let _ = authorize_dapp(&core)?;
 
         let provider = core.in_page_provider();
-        provider.test_call(
-            ADD_ETHEREUM_CHAIN,
-            rpc_params![AddEthereumChainParameter {
+        provider.test_call(InPageRequest::WalletAddEthereumChain(
+            AddEthereumChainParameter {
                 chain_id: "0x1".to_string(),
-            }],
-        )?;
+            },
+        ))?;
 
         let responses = core.responses();
         assert_eq!(responses.len(), 2);
