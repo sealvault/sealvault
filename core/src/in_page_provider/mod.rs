@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 mod dapp_key_provider;
+mod in_page_request;
 
 pub use dapp_key_provider::{
     CoreInPageCallbackI, DappApprovalParams, DappKeyProvider, InPageErrorCode,

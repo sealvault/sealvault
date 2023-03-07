@@ -59,7 +59,7 @@ reqwest-middleware = "0.2.0"
 rust-embed = "6.4.2"
 rust_decimal = { version = "1.28.0", features = ["maths"] }
 serde = { version = "1.0.152", features = ["serde_derive", "derive", "alloc"] }
-serde_json = { version = "1.0.91", features = ["alloc"] }
+serde_json = { version = "1.0.91", features = ["alloc", "raw_value"] }
 sha2 = { version = "0.10.6" }
 sha3 = "0.10.6"
 strum = { version = "0.24.1", features = ["derive", "strum_macros"] }

@@ -114,6 +114,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         try {
           await window.ethereum.request({
             method: "personal_sign",
+            params: ["0xabcd1234", "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"]
           })
         } catch (e) {
           assertEq(e.code, 4100)
@@ -338,12 +339,27 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         try {
           await window.ethereum.request({
             method: "eth_sign",
+            params: ["0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826", "0xabcd1234"]
           })
         } catch (e) {
           assertEq(e.code, 4200)
           ok = true
         }
         assert(ok, "Expected unsupported method to throw.")
+      })
+
+      test("Responds on invalid request", async () => {
+        let ok = false
+        try {
+          await window.ethereum.request({
+            method: "foo_bar",
+            params: []
+          })
+        } catch (e) {
+          assertEq(e.code, -32601)
+          ok = true
+        }
+        assert(ok, "Expected invalid request to throw.")
       })
 
       await executeTests()

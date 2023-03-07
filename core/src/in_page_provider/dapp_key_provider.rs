@@ -2,16 +2,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashSet, fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
-use ethers::types::H256;
+use ethers::types::{Address, Bytes, TransactionRequest, H256};
 use jsonrpsee::{
     core::server::helpers::MethodResponse,
-    types::{error::ErrorCode, ErrorObject, Params, Request},
+    types::{error::ErrorCode, ErrorObject, Request},
 };
-use lazy_static::lazy_static;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use strum_macros::{EnumIter, EnumString};
 use typed_builder::TypedBuilder;
 use url::Url;
@@ -21,6 +21,10 @@ use crate::{
     db::{models as m, ConnectionPool, DeterministicId},
     favicon::fetch_favicon_async,
     http_client::HttpClient,
+    in_page_provider::in_page_request::{
+        AddEthereumChainParameter, InPageRequest, InPageRequestParams,
+        SwitchEthereumChainParameter,
+    },
     protocols::eth,
     public_suffix_list::PublicSuffixList,
     resources::CoreResourcesI,
@@ -105,48 +109,64 @@ impl DappKeyProvider {
         &self,
         raw_request: String,
     ) -> Result<Option<MethodResponse>, Error> {
-        let req = parse_request(&raw_request)?;
-        match self.dispatch(&req).await {
-            Ok(None) => Ok(None),
-            Ok(Some(result)) => Ok(Some(MethodResponse::response(
-                req.id,
-                result,
-                config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
-            ))),
-            Err(Error::JsonRpc { code, message }) => {
-                // We need to select a data type even though data is none, <String>
-                let data: Option<String> = None;
-                let error_object = ErrorObject::owned(code.code(), message, data);
-                Ok(Some(MethodResponse::error(req.id, error_object)))
+        let request = parse_request(&raw_request)?;
+
+        let call = json!({
+            "method": request.method,
+            "params": request.params
+        });
+        let in_page_request: Result<InPageRequest, _> = serde_json::from_value(call);
+
+        match in_page_request {
+            Ok(in_page_request) => {
+                match self.dispatch(in_page_request, &raw_request).await {
+                    Ok(None) => Ok(None),
+                    Ok(Some(result)) => Ok(Some(MethodResponse::response(
+                        request.id,
+                        result,
+                        config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
+                    ))),
+                    Err(Error::JsonRpc { code, message }) => {
+                        // We need to select a data type even though data is none, <String>
+                        let data: Option<String> = None;
+                        let error_object = ErrorObject::owned(code.code(), message, data);
+                        Ok(Some(MethodResponse::error(request.id, error_object)))
+                    }
+                    Err(error) => Err(error),
+                }
             }
-            Err(error) => Err(error),
+            Err(err) => {
+                let message = err.to_string();
+                // TODO there is probably a better way to handle this
+                let code = if message.contains("unknown variant") {
+                    InPageErrorCode::MethodNotFound
+                } else {
+                    InPageErrorCode::InvalidParams
+                };
+                let data: Option<String> = None;
+                let error_object = ErrorObject::owned(code.to_i32(), message, data);
+                Ok(Some(MethodResponse::error(request.id, error_object)))
+            }
         }
     }
 
     /// Resolve JSON-RPC method.
     async fn dispatch<'a>(
         &self,
-        request: &'a Request<'a>,
+        request: InPageRequest,
+        raw_request: &str,
     ) -> Result<Option<serde_json::Value>, Error> {
         let maybe_session = self.fetch_session_for_approved_dapp().await?;
-        match &*request.method {
-            // These methods request the user approval if the user hasn't added the dapp yet
-            // in the profile.
-            "eth_requestAccounts" | "eth_accounts" => match maybe_session {
-                Some(session) => {
-                    let accounts = self.eth_request_accounts(session).await?;
-                    Ok(Some(accounts))
-                }
-                None => {
-                    self.request_add_new_dapp(request).await?;
-                    Ok(None)
-                }
-            },
+        match request {
+            InPageRequest::EthAccounts(..) if maybe_session.is_none() => {
+                self.request_add_new_dapp(raw_request).await?;
+                Ok(None)
+            }
             // MetaMask exposes chain id and net version even if the user didn't authorize the dapp.
-            "eth_chainId" if maybe_session.is_none() => {
+            InPageRequest::EthChainId(..) if maybe_session.is_none() => {
                 Ok(Some(self.eth_chain_id_unauthorized()?))
             }
-            "net_version" if maybe_session.is_none() => {
+            InPageRequest::EthNetworkId(..) if maybe_session.is_none() => {
                 Ok(Some(self.net_version_unauthorized()?))
             }
             _ => match maybe_session {
@@ -165,27 +185,29 @@ impl DappKeyProvider {
     /// Resolve JSON-RPC method if user has approved the dapp in the current profile.
     async fn dispatch_authorized_methods<'a>(
         &self,
-        request: &'a Request<'a>,
+        request: InPageRequest,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         // let params = Params::new(request.params.map(|params| params.get()));
-        match &*request.method {
-            "eth_chainId" => self.eth_chain_id(session),
-            "eth_sendTransaction" => {
-                self.eth_send_transaction(request.params, session).await
+        match request {
+            InPageRequest::EthAccounts(..) => self.eth_request_accounts(session).await,
+            InPageRequest::EthChainId(..) => self.eth_chain_id(session),
+            InPageRequest::EthSendTransaction(tx) => {
+                self.eth_send_transaction(tx, session).await
             }
-            "personal_sign" => self.personal_sign(request.params, session).await,
-            "wallet_addEthereumChain" => {
-                self.wallet_add_ethereum_chain(request.params, session)
+            InPageRequest::PersonalSign(message, address, password) => {
+                self.personal_sign(message, address, password, session)
                     .await
             }
-            "wallet_switchEthereumChain" => {
-                self.wallet_switch_ethereum_chain(request.params, session)
-                    .await
+            InPageRequest::WalletAddEthereumChain(param) => {
+                self.wallet_add_ethereum_chain(param, session).await
             }
-            "web3_clientVersion" => self.web3_client_version(),
-            "web3_sha3" => self.web3_sha3(request.params).await,
-            method => self.proxy_method(method, request.params, session).await,
+            InPageRequest::WalletSwitchEthereumChain(param) => {
+                self.wallet_switch_ethereum_chain(param, session).await
+            }
+            InPageRequest::Web3ClientVersion(..) => self.web3_client_version(),
+            InPageRequest::Web3Sha3(payload) => self.web3_sha3(payload).await,
+            request => self.proxy_method(request, session).await,
         }
     }
 
@@ -260,26 +282,23 @@ impl DappKeyProvider {
         self.notify(network_message).await
     }
 
-    async fn proxy_method<T>(
+    async fn proxy_method(
         &self,
-        method: &str,
-        params: T,
+        request: InPageRequest,
         session: m::LocalDappSession,
-    ) -> Result<serde_json::Value, Error>
-    where
-        T: Debug + Serialize + Send + Sync,
-    {
-        if !PROXIED_RPC_METHODS.contains(method) {
+    ) -> Result<serde_json::Value, Error> {
+        if !request.allow_proxy() {
             // Must return 4200 for unsupported method for Ethereum
             // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md#supported-rpc-methods
             return Err(Error::JsonRpc {
                 code: InPageErrorCode::UnsupportedMethod.into(),
-                message: format!("This method is not supported: '{}'", method),
+                message: format!("This method is not supported: '{}'", request),
             });
         }
 
         let provider = self.rpc_manager().eth_api_provider(session.chain_id);
-        provider.proxy_rpc_request_async(method, params).await
+        let InPageRequestParams { method, params } = request.try_into()?;
+        provider.proxy_rpc_request_async(&method, params).await
     }
 
     fn eth_chain_id(
@@ -327,10 +346,7 @@ impl DappKeyProvider {
         Ok(result)
     }
 
-    async fn request_add_new_dapp<'a>(
-        &self,
-        request: &'a Request<'a>,
-    ) -> Result<(), Error> {
+    async fn request_add_new_dapp<'a>(&self, raw_request: &str) -> Result<(), Error> {
         let resources = self.resources.clone();
         let (profile_id, chain_id, chain_settings) = resources
             .connection_pool()
@@ -350,10 +366,6 @@ impl DappKeyProvider {
         let callbacks = self.request_context.callbacks();
         let favicon = self.fetch_favicon().await?;
         let dapp_identifier = m::Dapp::dapp_identifier(url, self.public_suffix_list())?;
-        let raw_request =
-            serde_json::to_string(request).map_err(|_| Error::Retriable {
-                error: format!("Failed to serialize request id {:?}", request.id),
-            })?;
         let dapp_allotment = chain_settings.default_dapp_allotment;
         let dapp_approval = DappApprovalParams::builder()
             .profile_id(profile_id)
@@ -597,19 +609,11 @@ impl DappKeyProvider {
 
     async fn eth_send_transaction(
         &self,
-        params: Option<&serde_json::value::RawValue>,
+        mut tx: TransactionRequest,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
 
-        let params = Params::new(params.map(|params| params.get()));
-        // TODO use EIP-1559 once we can get reliable max_priority_fee_per_gas estimates on all
-        // chains.
-        let mut tx: ethers::core::types::TransactionRequest =
-            params.one().map_err(|_| {
-                let err: Error = InPageErrorCode::InvalidParams.into();
-                err
-            })?;
         // Remove nonce to fill with latest nonce from remote API in signer to make sure tx nonce is
         // current. MetaMask does this too.
         tx.nonce = None;
@@ -703,23 +707,17 @@ impl DappKeyProvider {
 
     async fn personal_sign(
         &self,
-        params: Option<&serde_json::value::RawValue>,
+        message: Bytes,
+        address: Address,
+        _password: Option<String>, // Password argument is ignored.
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let params = Params::new(params.map(|params| params.get()));
-        let mut params = params.sequence();
-        let message: String = params.next()?;
-        let message = decode_0x_hex_prefix(&message)?;
-        let address_arg: ethers::core::types::Address = params.next()?;
-        if session.address != address_arg {
+        if session.address != address {
             return Err(Error::JsonRpc {
                 code: InPageErrorCode::InvalidParams.into(),
                 message: "Invalid address".into(),
             });
         }
-
-        // Password argument is ignored.
-        let _password: Option<String> = params.optional_next()?;
 
         let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
         let signature = rt::spawn_blocking(move || {
@@ -761,13 +759,11 @@ impl DappKeyProvider {
     /// It changes the current chain to the "added" one to follow MetaMask behaviour.
     async fn wallet_add_ethereum_chain(
         &self,
-        params: Option<&serde_json::value::RawValue>,
+        param: AddEthereumChainParameter,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let params = Params::new(params.map(|params| params.get()));
-        let chain_params: AddEthereumChainParameter = params.sequence().next()?;
         // If we can parse it, it's a supported chain id which means it was "added".
-        let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_params.chain_id)?;
+        let new_chain_id: eth::ChainId = parse_0x_chain_id(&param.chain_id)?;
 
         // We change the chain automatically, because MM requests user approval to change the chain
         // after a new one was added:
@@ -784,15 +780,13 @@ impl DappKeyProvider {
 
     async fn wallet_switch_ethereum_chain(
         &self,
-        params: Option<&serde_json::value::RawValue>,
+        param: SwitchEthereumChainParameter,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let params = Params::new(params.map(|params| params.get()));
-        let chain_id: SwitchEthereumChainParameter = params.sequence().next()?;
         // If we can parse the chain, then it's supported.
         // MetaMask returns error code 4902 if the chain has not been added yet so that the dapp can
         // request adding it. We don't do that, because we don't support adding arbitrary chains.
-        let new_chain_id: eth::ChainId = parse_0x_chain_id(&chain_id.chain_id)?;
+        let new_chain_id: eth::ChainId = parse_0x_chain_id(&param.chain_id)?;
 
         self.change_eth_chain(session, new_chain_id).await?;
 
@@ -821,16 +815,9 @@ impl DappKeyProvider {
         Ok("SealVault".into())
     }
 
-    async fn web3_sha3(
-        &self,
-        params: Option<&serde_json::value::RawValue>,
-    ) -> Result<serde_json::Value, Error> {
-        let params = Params::new(params.map(|params| params.get()));
-        let mut params = params.sequence();
-        let message: String = params.next()?;
+    async fn web3_sha3(&self, payload: Bytes) -> Result<serde_json::Value, Error> {
         rt::spawn_blocking(move || {
-            let message = decode_0x_hex_prefix(&message)?;
-            let hash = ethers::core::utils::keccak256(message);
+            let hash = ethers::core::utils::keccak256(payload);
             let result = format!("0x{}", hex::encode(hash));
             to_value(result)
         })
@@ -946,21 +933,6 @@ enum ProviderEvent {
     SealVaultConnect,
 }
 
-/// Incomplete because we only care about the chain_id param.
-/// From https://docs.metamask.io/guide/rpc-api.html#wallet-addethereumchain
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AddEthereumChainParameter {
-    chain_id: String, // A 0x-prefixed hexadecimal string
-}
-
-/// From https://docs.metamask.io/guide/rpc-api.html#wallet-switchethereumchain
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SwitchEthereumChainParameter {
-    chain_id: String, // A 0x-prefixed hexadecimal string
-}
-
 fn parse_request(raw_request: &str) -> Result<Request, Error> {
     if raw_request.as_bytes().len() > config::MAX_JSONRPC_REQUEST_SIZE_BYTES {
         return Err(invalid_raw_request());
@@ -974,14 +946,6 @@ fn strip_0x_hex_prefix(s: &str) -> Result<&str, Error> {
     s.strip_prefix("0x").ok_or_else(|| Error::JsonRpc {
         code: InPageErrorCode::InvalidParams.into(),
         message: "Message must start with 0x".into(),
-    })
-}
-
-fn decode_0x_hex_prefix(s: &str) -> Result<Vec<u8>, Error> {
-    let s = strip_0x_hex_prefix(s)?;
-    hex::decode(s).map_err(|_| Error::JsonRpc {
-        code: InPageErrorCode::InvalidParams.into(),
-        message: "Invalid hex".into(),
     })
 }
 
@@ -1035,11 +999,11 @@ fn invalid_raw_request() -> Error {
 pub enum InPageErrorCode {
     // Standard JSON-RPC codes
     // https://www.jsonrpc.org/specification
-    ParseError,
-    InvalidRequest,
-    MethodNotFound,
-    InvalidParams,
-    InternalError,
+    ParseError = -32700,
+    InvalidRequest = -32600,
+    MethodNotFound = -32601,
+    InvalidParams = -32602,
+    InternalError = -32603,
 
     // Custom Ethereum Provider codes
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md#provider-errors
@@ -1076,51 +1040,6 @@ impl From<InPageErrorCode> for ErrorObject<'static> {
     }
 }
 
-// List maintained in https://docs.google.com/spreadsheets/d/1cHW7q_OblpMZpCxds5Es0sEYV6tySyKpHezh4TuXYOs
-lazy_static! {
-    static ref PROXIED_RPC_METHODS: HashSet<&'static str> = [
-        "net_listening",
-        "net_peerCount",
-        "net_version",
-        "eth_blockNumber",
-        "eth_call",
-        "eth_chainId",
-        "eth_estimateGas",
-        "eth_gasPrice",
-        "eth_getBalance",
-        "eth_getBlockByHash",
-        "eth_getBlockByNumber",
-        "eth_getBlockTransactionCountByHash",
-        "eth_getBlockTransactionCountByNumber",
-        "eth_getCode",
-        "eth_getFilterChanges",
-        "eth_getFilterLogs",
-        "eth_getRawTransactionByHash",
-        "eth_getRawTransactionByBlockHashAndIndex",
-        "eth_getRawTransactionByBlockNumberAndIndex",
-        "eth_getLogs",
-        "eth_getStorageAt",
-        "eth_getTransactionByBlockHashAndIndex",
-        "eth_getTransactionByBlockNumberAndIndex",
-        "eth_getTransactionByHash",
-        "eth_getTransactionCount",
-        "eth_getTransactionReceipt",
-        "eth_getUncleByBlockHashAndIndex",
-        "eth_getUncleByBlockNumberAndIndex",
-        "eth_getUncleCountByBlockHash",
-        "eth_getUncleCountByBlockNumber",
-        "eth_getProof",
-        "eth_newBlockFilter",
-        "eth_newFilter",
-        "eth_newPendingTransactionFilter",
-        "eth_protocolVersion",
-        "eth_sendRawTransaction",
-        "eth_syncing",
-        "eth_uninstallFilter",
-    ]
-    .into();
-}
-
 // More tests are in integrations tests in the [dev server.](tools/dev-server/static/ethereum.html)
 #[cfg(test)]
 mod tests {
@@ -1140,11 +1059,12 @@ mod tests {
         utils::new_uuid,
     };
 
-    const ETH_COINBASE: &str = "eth_coinbase";
+    const ETH_SIGN: &str = "eth_sign";
     const ETH_GASPRICE: &str = "eth_gasPrice";
     const ETH_REQUEST_ACCOUNTS: &str = "eth_requestAccounts";
     const ETH_SEND_TRANSACTION: &str = "eth_sendTransaction";
     const PERSONAL_SIGN: &str = "personal_sign";
+    const ADD_ETHEREUM_CHAIN: &str = "wallet_addEthereumChain";
 
     impl DappKeyProvider {
         /// `call("method_name", rpc_params!["arg1", "arg2"])`
@@ -1201,6 +1121,43 @@ mod tests {
         core.wait_for_ui_callbacks(1);
         check_dapp_authorization_and_dapp_allotment(&core);
 
+        Ok(())
+    }
+
+    #[test]
+    fn missing_params_field_ok() -> Result<()> {
+        let s = r#"{"jsonrpc":"2.0","id":"abcd","method":"eth_requestAccounts"}"#;
+        let core = TmpCore::new()?;
+        let _ = authorize_dapp(&core)?;
+        let mock_args = InPageRequestContextMockArgs::builder()
+            .user_approves(true)
+            .transfer_allotment(false)
+            .build();
+        let provider = core.in_page_provider_with_args(mock_args);
+        let res = rt::block_on(provider.raw_json_rpc_request(s.into()))?;
+        assert!(res.unwrap().success);
+        Ok(())
+    }
+
+    #[test]
+    fn responds_on_invalid_method() -> Result<()> {
+        let s = r#"{"jsonrpc":"2.0","id":"abcd","method":"fooBar","params": ["foo"]}"#;
+        let core = TmpCore::new()?;
+        let provider = core.in_page_provider();
+        let res = rt::block_on(provider.raw_json_rpc_request(s.into()))?.unwrap();
+        let expected_code = InPageErrorCode::MethodNotFound.to_i32().to_string();
+        assert!(res.result.contains(&expected_code));
+        Ok(())
+    }
+
+    #[test]
+    fn responds_on_invalid_params() -> Result<()> {
+        let s = r#"{"jsonrpc":"2.0","id":"abcd","method":"eth_requestAccounts","params": ["foo"]}"#;
+        let core = TmpCore::new()?;
+        let provider = core.in_page_provider();
+        let res = rt::block_on(provider.raw_json_rpc_request(s.into()))?.unwrap();
+        let expected_code = InPageErrorCode::InvalidParams.to_i32().to_string();
+        assert!(res.result.contains(&expected_code));
         Ok(())
     }
 
@@ -1271,7 +1228,10 @@ mod tests {
             .user_approves(false)
             .build();
         let provider = core.in_page_provider_with_args(mock_args);
-        provider.test_call(PERSONAL_SIGN, rpc_params![])?;
+        provider.test_call(
+            PERSONAL_SIGN,
+            rpc_params!["0xabcd1234", "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"],
+        )?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_none());
@@ -1292,7 +1252,10 @@ mod tests {
 
         // This request should be refused as it's an unsupported method
         let provider = core.in_page_provider();
-        provider.test_call(ETH_COINBASE, rpc_params![""])?;
+        provider.test_call(
+            ETH_SIGN,
+            rpc_params!["0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826", "0xabcd1234"],
+        )?;
 
         let responses = core.responses();
         assert!(core.dapp_approval().is_some());
@@ -1391,6 +1354,26 @@ mod tests {
 
         let provider = core.in_page_provider();
         provider.test_call(ETH_GASPRICE, rpc_params![])?;
+
+        let responses = core.responses();
+        assert_eq!(responses.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn add_ethereum_chain() -> Result<()> {
+        let core = TmpCore::new()?;
+
+        let _ = authorize_dapp(&core)?;
+
+        let provider = core.in_page_provider();
+        provider.test_call(
+            ADD_ETHEREUM_CHAIN,
+            rpc_params![AddEthereumChainParameter {
+                chain_id: "0x1".to_string(),
+            }],
+        )?;
 
         let responses = core.responses();
         assert_eq!(responses.len(), 2);

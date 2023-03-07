@@ -20,6 +20,13 @@ Parts of the `core::protocols::eth` Rust crate are based on
 (c) 2020 Georgios Konstantopoulos` and licensed under the [MIT
 License.](#mit-license)
 
+### [Foundry](https://github.com/foundry-rs/foundry)
+
+Parts of the `core::in_page_provider` Rust crate are based on
+[Foundry](https://github.com/foundry-rs/foundry) which is subject to `Copyright
+(c) 2021 Georgios Konstantopoulos` and licensed under the [MIT
+License.](#mit-license)
+
 ### [Open Zeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
 
 The [Ethereum test contracts](./core/src/protocols/eth/contracts) vendor the
