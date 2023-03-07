@@ -170,6 +170,7 @@ impl From<ChecksumAddressError> for CoreError {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use ethers::core::k256::FieldBytes;
     use k256::SecretKey;
 
     use super::*;
@@ -215,7 +216,9 @@ mod tests {
             "f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315";
         const ADDRESS: &str = "001d3f1ef827552ae1114027bd3ecf1f086ba0f9";
 
-        let sk = SecretKey::from_be_bytes(&hex::decode(SK)?)?;
+        let sk = hex::decode(SK)?;
+        let field_bytes = FieldBytes::from_slice(&sk);
+        let sk = SecretKey::from_bytes(&field_bytes)?;
         let pk = sk.public_key();
 
         let expected_address = Address::from_slice(&hex::decode(ADDRESS)?);

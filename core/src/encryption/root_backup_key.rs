@@ -42,11 +42,11 @@ impl RootBackupKey {
     ) -> Result<Self, Error> {
         let mut builder = ParamsBuilder::new();
         builder
-            .m_cost(MEMORY_COST_KIB)?
-            .t_cost(ITERATIONS)?
-            .p_cost(PARALLELISM)?
-            .output_len(TAG_BYTES)?;
-        let params = builder.params()?;
+            .m_cost(MEMORY_COST_KIB)
+            .t_cost(ITERATIONS)
+            .p_cost(PARALLELISM)
+            .output_len(TAG_BYTES);
+        let params = builder.build()?;
 
         let argon = Argon2::new_with_secret(
             kdf_secret.expose_secret(),

@@ -1049,11 +1049,7 @@ impl From<InPageErrorCode> for ErrorObject<'static> {
 mod tests {
     use anyhow::Result;
     use ethers::types::{Address, TransactionRequest, U256};
-    use jsonrpsee::{
-        core::{params::ArrayParams, traits::ToRpcParams},
-        rpc_params,
-        types::{Id, RequestSer, Response},
-    };
+    use jsonrpsee::types::{Id, RequestSer, Response};
     use strum::IntoEnumIterator;
 
     use super::*;

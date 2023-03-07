@@ -13,11 +13,12 @@ use ethers::{
     },
     providers::{maybe, Http, Middleware, PendingTransaction, Provider},
 };
-use k256::{ecdsa::recoverable::Signature as RecoverableSignature, FieldBytes};
+use k256::{FieldBytes, Secp256k1};
 use sha3::{Digest, Keccak256};
 
 use crate::{
     protocols::eth::{chain_id::ChainId, signing_key::SigningKey, EthereumAsymmetricKey},
+    signatures::RecoverableSignature,
     Error,
 };
 
@@ -267,12 +268,12 @@ struct EcdsaEthereumSignature {
 }
 
 impl EcdsaEthereumSignature {
-    fn new(recoverable_sig: &RecoverableSignature, chain_id: ChainId) -> Self {
-        let v = u8::from(recoverable_sig.recovery_id()) as u64;
+    fn new(recoverable_sig: &RecoverableSignature<Secp256k1>, chain_id: ChainId) -> Self {
+        let v = u8::from(recoverable_sig.recovery_id) as u64;
 
-        let r_bytes: FieldBytes = recoverable_sig.r().into();
+        let r_bytes: FieldBytes = recoverable_sig.signature.r().into();
         let r = U256::from_big_endian(r_bytes.as_slice());
-        let s_bytes: FieldBytes = recoverable_sig.s().into();
+        let s_bytes: FieldBytes = recoverable_sig.signature.s().into();
         let s = U256::from_big_endian(s_bytes.as_slice());
 
         let sig = EthereumSignature { r, s, v };

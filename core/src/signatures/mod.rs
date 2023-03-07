@@ -4,8 +4,10 @@
 
 mod asymmetric_key;
 mod elliptic_curve;
+mod recoverable_signature;
 mod secp256k1_key;
 
 pub use crate::signatures::{
     asymmetric_key::AsymmetricKey, elliptic_curve::EllipticCurve,
+    recoverable_signature::RecoverableSignature,
 };

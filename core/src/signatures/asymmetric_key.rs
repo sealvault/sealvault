@@ -4,15 +4,14 @@
 
 use std::fmt::{Debug, Formatter};
 
-// Must depend on k256 instead of elliptic_curve, because there are dependency resolution conflicts
-// when specificying elliptic_curve as dependency directly.
-use k256::{
-    elliptic_curve::{
-        sec1::{FromEncodedPoint, ModulusSize, ToEncodedPoint, ValidatePublicKey},
-        AffinePoint, Curve, FieldSize, ProjectiveArithmetic, PublicKey, SecretKey,
-    },
-    pkcs8::{AssociatedOid, EncodePublicKey},
+use ecdsa::elliptic_curve::{
+    sec1::{FromEncodedPoint, ModulusSize, ToEncodedPoint, ValidatePublicKey},
+    AffinePoint, Curve, FieldBytesSize, SecretKey,
 };
+use k256::elliptic_curve::{CurveArithmetic, PublicKey};
+// Must depend on k256 instead of elliptic_curve, because there are dependency resolution conflicts
+// when specifying elliptic_curve as dependency directly.
+use k256::pkcs8::{AssociatedOid, EncodePublicKey};
 use rand::thread_rng;
 
 use crate::{
@@ -26,9 +25,9 @@ use crate::{
 #[readonly::make]
 pub struct AsymmetricKey<C>
 where
-    C: Curve + ProjectiveArithmetic + ValidatePublicKey,
+    C: Curve + CurveArithmetic + ValidatePublicKey + AssociatedOid,
+    FieldBytesSize<C>: ModulusSize,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
-    FieldSize<C>: ModulusSize,
 {
     // `SecretKey` zeroizes on drop. We wrap it in a box to avoid leaving copies in memory when
     // `Self` is moved around and drop isn't called. This is not bullet proof unfortunately, because
@@ -40,9 +39,9 @@ where
 
 impl<C> AsymmetricKey<C>
 where
-    C: Curve + ProjectiveArithmetic + ValidatePublicKey + AssociatedOid,
+    C: Curve + CurveArithmetic + AssociatedOid,
+    FieldBytesSize<C>: ModulusSize,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
-    FieldSize<C>: ModulusSize,
 {
     pub(super) fn new(secret_key: Box<SecretKey<C>>) -> Result<Self, Error> {
         let public_key = secret_key.public_key();
@@ -60,7 +59,8 @@ where
         // here, because because the `SecretKey` would be still created on the stack first before
         // moving it in the box.
         // Also, we should be using the fallible RNG interface.
-        let secret_key = Box::new(SecretKey::random(thread_rng()));
+        let mut csprng = thread_rng();
+        let secret_key = Box::new(SecretKey::random(&mut csprng));
         Self::new(secret_key)
     }
 
@@ -91,9 +91,9 @@ where
 
 impl<C> Debug for AsymmetricKey<C>
 where
-    C: Curve + ProjectiveArithmetic + ValidatePublicKey + AssociatedOid,
+    C: Curve + CurveArithmetic + AssociatedOid,
+    FieldBytesSize<C>: ModulusSize,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
-    FieldSize<C>: ModulusSize,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AsymmetricKey")

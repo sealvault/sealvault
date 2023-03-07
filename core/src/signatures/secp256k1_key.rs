@@ -2,16 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use k256::{
-    ecdsa::{
-        recoverable::Signature as RecoverableSignature, signature::DigestSigner,
-        SigningKey,
-    },
-    Secp256k1,
-};
+use k256::{ecdsa::SigningKey, Secp256k1};
 use sha3::Keccak256;
 
-use crate::{signatures::AsymmetricKey, Error};
+use crate::{
+    signatures::{recoverable_signature::RecoverableSignature, AsymmetricKey},
+    Error,
+};
 
 impl AsymmetricKey<Secp256k1> {
     /// Perform an ECDSA signature on a Keccak256 pre-hashed message using the Secp256k1 curve with
@@ -19,10 +16,10 @@ impl AsymmetricKey<Secp256k1> {
     pub fn try_sign_digest(
         &self,
         digest: Keccak256,
-    ) -> Result<RecoverableSignature, Error> {
+    ) -> Result<RecoverableSignature<Secp256k1>, Error> {
         let signing_key: SigningKey = (&*self.secret_key).into();
-        let sig = signing_key.try_sign_digest(digest)?;
-        Ok(sig)
+        let (signature, recovery_id) = signing_key.sign_digest_recoverable(digest)?;
+        Ok(RecoverableSignature::new(signature, recovery_id))
     }
 }
 
@@ -30,8 +27,8 @@ impl AsymmetricKey<Secp256k1> {
 mod tests {
     use anyhow::Result;
     use k256::{
-        ecdsa::{signature::Verifier, VerifyingKey},
-        PublicKey,
+        ecdsa::{signature::DigestVerifier, VerifyingKey},
+        FieldBytes, PublicKey,
     };
     use sha3::{Digest, Keccak256};
 
@@ -43,7 +40,12 @@ mod tests {
 
         fn from_str(src: &str) -> Result<Self, Self::Err> {
             let src = hex::decode(src)?;
-            let sk = Box::new(k256::SecretKey::from_be_bytes(&src)?);
+            let src = FieldBytes::from_exact_iter(src.into_iter()).ok_or_else(|| {
+                Error::Fatal {
+                    error: "Invalid key length".into(),
+                }
+            })?;
+            let sk = Box::new(k256::SecretKey::from_bytes(&src)?);
             Ok(Self::new(sk)?)
         }
     }
@@ -53,13 +55,18 @@ mod tests {
         let key: AsymmetricKey<Secp256k1> = AsymmetricKey::random()?;
         let message = "hello world";
         let digest = Keccak256::new_with_prefix(message);
-        let signature: RecoverableSignature = key.try_sign_digest(digest)?;
+        let sig = key.try_sign_digest(digest)?;
 
         let verifying_key: VerifyingKey = key.public_key.into();
-        verifying_key.verify(message.as_bytes(), &signature)?;
+        let digest = Keccak256::new_with_prefix(message);
+        verifying_key.verify_digest(digest, &sig.signature)?;
 
-        let recovered_key: VerifyingKey =
-            signature.recover_verifying_key(message.as_ref())?;
+        let digest = Keccak256::new_with_prefix(message);
+        let recovered_key =
+            VerifyingKey::recover_from_digest(digest, &sig.signature, sig.recovery_id)?;
+        let digest = Keccak256::new_with_prefix(message);
+        recovered_key.verify_digest(digest, &sig.signature)?;
+
         assert_eq!(verifying_key, recovered_key);
         let recovered_pk: PublicKey = PublicKey::from(recovered_key);
         assert_eq!(recovered_pk, key.public_key);
