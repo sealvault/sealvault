@@ -26,7 +26,6 @@ derive_more = "0.99.17"
 diesel = { version = "2.0.3", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "2.0.0", features = ["sqlite"] }
 dyn-clone = "1.0.11"
-## `serde` feauture implicitly depends on `pem` in 0.12.1
 ecdsa = { version = "0.16.0", features = ["digest", "signing"] }
 email_address = "0.2.4"
 env_logger = "0.10.0"
