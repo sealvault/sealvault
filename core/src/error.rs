@@ -10,7 +10,7 @@ use jsonrpsee::types::{
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{in_page_provider::InPageErrorCode, CoreError};
+use crate::{protocols::eth::in_page_provider::InPageErrorCode, CoreError};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum Error {

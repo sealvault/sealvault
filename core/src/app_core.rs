@@ -20,9 +20,13 @@ use crate::{
     encryption::Keychain,
     error::Error,
     http_client::HttpClient,
-    in_page_provider,
-    in_page_provider::{DappKeyProvider, InPageRequestContextI},
-    protocols::eth,
+    protocols::{
+        eth,
+        eth::{
+            in_page_provider,
+            in_page_provider::{DappKeyProvider, InPageRequestContextI},
+        },
+    },
     public_suffix_list::PublicSuffixList,
     resources::{CoreResources, CoreResourcesI},
     ui_callback::TokenTransferResult,

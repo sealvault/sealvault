@@ -14,6 +14,7 @@ mod chain_settings;
 mod checksum_address;
 mod contracts;
 pub mod explorer;
+pub mod in_page_provider;
 mod protocol_data;
 mod rpc_provider;
 mod signer;

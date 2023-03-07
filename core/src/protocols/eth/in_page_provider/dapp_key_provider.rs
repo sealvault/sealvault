@@ -21,11 +21,14 @@ use crate::{
     db::{models as m, ConnectionPool, DeterministicId},
     favicon::fetch_favicon_async,
     http_client::HttpClient,
-    in_page_provider::in_page_request::{
-        AddEthereumChainParameter, InPageRequest, InPageRequestParams,
-        SwitchEthereumChainParameter,
+    protocols::eth::{
+        explorer,
+        in_page_provider::in_page_request::{
+            AddEthereumChainParameter, InPageRequest, InPageRequestParams,
+            SwitchEthereumChainParameter,
+        },
+        ChainId, ChainSettings, ChecksumAddress, RpcManagerI, Signer, SigningKey,
     },
-    protocols::eth,
     public_suffix_list::PublicSuffixList,
     resources::CoreResourcesI,
     ui_callback::{DappSignatureResult, DappTransactionApproved, DappTransactionResult},
@@ -57,7 +60,7 @@ impl DappKeyProvider {
         self.resources.connection_pool()
     }
 
-    fn rpc_manager(&self) -> &dyn eth::RpcManagerI {
+    fn rpc_manager(&self) -> &dyn RpcManagerI {
         self.resources.rpc_manager()
     }
 
@@ -243,8 +246,8 @@ impl DappKeyProvider {
 
     async fn notify_connect(
         &self,
-        chain_id: eth::ChainId,
-        selected_address: eth::ChecksumAddress,
+        chain_id: ChainId,
+        selected_address: ChecksumAddress,
     ) -> Result<(), Error> {
         let network_version = chain_id.network_version();
         let event = SealVaultConnect {
@@ -262,7 +265,7 @@ impl DappKeyProvider {
         self.notify(message).await
     }
 
-    async fn notify_chain_changed(&self, chain_id: eth::ChainId) -> Result<(), Error> {
+    async fn notify_chain_changed(&self, chain_id: ChainId) -> Result<(), Error> {
         let chain_id_json = chain_id_to_hex_str_json(chain_id)?;
         let chain_message = ProviderMessage {
             event: ProviderEvent::ChainChanged,
@@ -313,7 +316,7 @@ impl DappKeyProvider {
     // Only ok to expose unauthorized if we respond to all requests with the same response,
     // otherwise it's a privacy leak.
     fn eth_chain_id_unauthorized(&self) -> Result<serde_json::Value, Error> {
-        let chain_id = eth::ChainId::default_dapp_chain();
+        let chain_id = ChainId::default_dapp_chain();
         let chain_id: ethers::core::types::U64 = chain_id.into();
         let result = to_value(chain_id)?;
         Ok(result)
@@ -322,7 +325,7 @@ impl DappKeyProvider {
     // Only ok to expose unauthorized if we respond to all requests with the same response,
     // otherwise it's a privacy leak.
     fn net_version_unauthorized(&self) -> Result<serde_json::Value, Error> {
-        let chain_id = eth::ChainId::default_dapp_chain();
+        let chain_id = ChainId::default_dapp_chain();
         let result = to_value(chain_id.network_version())?;
         Ok(result)
     }
@@ -353,7 +356,7 @@ impl DappKeyProvider {
             .deferred_transaction_async(|mut tx_conn| {
                 let profile_id =
                     m::LocalSettings::fetch_active_profile_id(tx_conn.as_mut())?;
-                let chain_id = eth::ChainId::default_dapp_chain();
+                let chain_id = ChainId::default_dapp_chain();
                 let chain_settings = m::Chain::fetch_user_settings_for_eth_chain(
                     tx_conn.as_mut(),
                     chain_id,
@@ -423,7 +426,7 @@ impl DappKeyProvider {
         // Add dapp to profile and create local session
         let url = self.url.clone();
         let resources = self.resources.clone();
-        let chain_id: eth::ChainId = dapp_approval.chain_id.try_into()?;
+        let chain_id: ChainId = dapp_approval.chain_id.try_into()?;
         let profile_id: DeterministicId = dapp_approval.profile_id.try_into()?;
         let session = self
             .connection_pool()
@@ -499,8 +502,8 @@ impl DappKeyProvider {
 
     async fn make_default_dapp_allotment_transfer(
         resources: Arc<dyn CoreResourcesI>,
-        chain_settings: eth::ChainSettings,
-        wallet_signing_key: eth::SigningKey,
+        chain_settings: ChainSettings,
+        wallet_signing_key: SigningKey,
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
         let provider = resources
@@ -520,7 +523,7 @@ impl DappKeyProvider {
         }
         .await;
         rt::spawn_blocking(move || {
-            let eth::ChainSettings {
+            let ChainSettings {
                 default_dapp_allotment: amount,
                 ..
             } = chain_settings;
@@ -677,22 +680,23 @@ impl DappKeyProvider {
             .chain_display_name(chain_id.display_name())
             .build();
 
-        let result = match tx_hash_res {
-            Ok(tx_hash) => {
-                let rpc_provider =
-                    resources.rpc_manager().eth_api_provider(session.chain_id);
-                match rpc_provider.wait_for_confirmation_async(tx_hash).await {
-                    Ok(tx_hash) => eth::explorer::tx_url(session.chain_id, &tx_hash)
-                        .ok()
-                        .map(|url| {
-                            partial_result.explorer_url = Some(url.to_string());
-                            partial_result
-                        }),
-                    Err(err) => dapp_transaction_result_error(partial_result, err),
+        let result =
+            match tx_hash_res {
+                Ok(tx_hash) => {
+                    let rpc_provider =
+                        resources.rpc_manager().eth_api_provider(session.chain_id);
+                    match rpc_provider.wait_for_confirmation_async(tx_hash).await {
+                        Ok(tx_hash) => explorer::tx_url(session.chain_id, &tx_hash)
+                            .ok()
+                            .map(|url| {
+                                partial_result.explorer_url = Some(url.to_string());
+                                partial_result
+                            }),
+                        Err(err) => dapp_transaction_result_error(partial_result, err),
+                    }
                 }
-            }
-            Err(err) => dapp_transaction_result_error(partial_result, err),
-        };
+                Err(err) => dapp_transaction_result_error(partial_result, err),
+            };
 
         if let Some(result) = result {
             let joined = rt::spawn_blocking(move || {
@@ -721,7 +725,7 @@ impl DappKeyProvider {
 
         let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
         let signature = rt::spawn_blocking(move || {
-            let signer = eth::Signer::new(&signing_key);
+            let signer = Signer::new(&signing_key);
             let signature = signer.personal_sign(message)?;
             to_value(signature.to_string())
         })
@@ -763,7 +767,7 @@ impl DappKeyProvider {
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         // If we can parse it, it's a supported chain id which means it was "added".
-        let new_chain_id: eth::ChainId = parse_0x_chain_id(&param.chain_id)?;
+        let new_chain_id: ChainId = parse_0x_chain_id(&param.chain_id)?;
 
         // We change the chain automatically, because MM requests user approval to change the chain
         // after a new one was added:
@@ -786,7 +790,7 @@ impl DappKeyProvider {
         // If we can parse the chain, then it's supported.
         // MetaMask returns error code 4902 if the chain has not been added yet so that the dapp can
         // request adding it. We don't do that, because we don't support adding arbitrary chains.
-        let new_chain_id: eth::ChainId = parse_0x_chain_id(&param.chain_id)?;
+        let new_chain_id: ChainId = parse_0x_chain_id(&param.chain_id)?;
 
         self.change_eth_chain(session, new_chain_id).await?;
 
@@ -798,7 +802,7 @@ impl DappKeyProvider {
     async fn change_eth_chain(
         &self,
         session: m::LocalDappSession,
-        new_chain_id: eth::ChainId,
+        new_chain_id: ChainId,
     ) -> Result<(), Error> {
         self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
@@ -827,7 +831,7 @@ impl DappKeyProvider {
     async fn fetch_eth_signing_key(
         &self,
         session: m::LocalDappSession,
-    ) -> Result<(m::LocalDappSession, eth::SigningKey), Error> {
+    ) -> Result<(m::LocalDappSession, SigningKey), Error> {
         let resources = self.resources.clone();
         let (session, signing_key) = self
             .connection_pool()
@@ -914,7 +918,7 @@ struct ProviderMessage {
 struct SealVaultConnect<'a> {
     chain_id: ethers::core::types::U64,
     network_version: &'a str,
-    selected_address: eth::ChecksumAddress,
+    selected_address: ChecksumAddress,
 }
 
 #[derive(Debug, strum_macros::Display, EnumIter, EnumString, Serialize, Deserialize)]
@@ -949,7 +953,7 @@ fn strip_0x_hex_prefix(s: &str) -> Result<&str, Error> {
     })
 }
 
-fn parse_0x_chain_id(hex_chain_id: &str) -> Result<eth::ChainId, Error> {
+fn parse_0x_chain_id(hex_chain_id: &str) -> Result<ChainId, Error> {
     // U64 should support
     let chain_id = strip_0x_hex_prefix(hex_chain_id)?;
     let chain_id =
@@ -959,14 +963,14 @@ fn parse_0x_chain_id(hex_chain_id: &str) -> Result<eth::ChainId, Error> {
                 message: "Invalid U64".into(),
             }
         })?;
-    let chain_id: eth::ChainId = chain_id.try_into().map_err(|_| Error::JsonRpc {
+    let chain_id: ChainId = chain_id.try_into().map_err(|_| Error::JsonRpc {
         code: InPageErrorCode::InvalidParams.into(),
         message: "Unsupported chain id".into(),
     })?;
     Ok(chain_id)
 }
 
-fn chain_id_to_hex_str_json(chain_id: eth::ChainId) -> Result<serde_json::Value, Error> {
+fn chain_id_to_hex_str_json(chain_id: ChainId) -> Result<serde_json::Value, Error> {
     let chain_id: ethers::core::types::U64 = chain_id.into();
     to_value(chain_id)
 }
@@ -1055,7 +1059,15 @@ mod tests {
     use super::*;
     use crate::{
         app_core::tests::{InPageRequestContextMockArgs, TmpCore},
-        in_page_provider::load_in_page_provider_script,
+        protocols::eth::{
+            in_page_provider::{
+                in_page_request::{
+                    AddEthereumChainParameter, InPageRequest, InPageRequestParams,
+                },
+                load_in_page_provider_script,
+            },
+            ChainId,
+        },
         utils::new_uuid,
     };
 
@@ -1108,7 +1120,7 @@ mod tests {
     #[test]
     fn responds_on_allowed() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain(), 10)?;
+        core.fund_first_profile_wallet(ChainId::default_dapp_chain(), 10)?;
 
         let _ = authorize_dapp(&core)?;
         core.wait_for_ui_callbacks(1);
@@ -1287,7 +1299,7 @@ mod tests {
     #[test]
     fn send_transactions_callback() -> Result<()> {
         let core = TmpCore::new()?;
-        core.fund_first_profile_wallet(eth::ChainId::default_dapp_chain(), 10)?;
+        core.fund_first_profile_wallet(ChainId::default_dapp_chain(), 10)?;
 
         let dapp_address = authorize_dapp(&core)?;
         let dapp_address: Address = dapp_address.parse().expect("checksum address");
@@ -1383,8 +1395,8 @@ mod tests {
         let source =
             load_in_page_provider_script(rpc_provider_name, request_handler_name)?;
 
-        let network_version = eth::ChainId::default_dapp_chain().network_version();
-        let chain_id = eth::ChainId::default_dapp_chain().display_hex();
+        let network_version = ChainId::default_dapp_chain().network_version();
+        let chain_id = ChainId::default_dapp_chain().display_hex();
 
         assert!(source.contains(rpc_provider_name));
         assert!(source.contains(request_handler_name));

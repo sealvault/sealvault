@@ -16,7 +16,6 @@ pub mod assets;
 pub mod async_runtime;
 pub mod config;
 pub mod dto;
-pub mod in_page_provider;
 pub mod protocols;
 
 mod backup;
@@ -49,10 +48,13 @@ pub use crate::{
         CoreProfile, CoreTokens,
     },
     error::Error,
-    in_page_provider::{
-        CoreInPageCallbackI, DappApprovalParams, DappKeyProvider, InPageRequestContextI,
+    protocols::{
+        eth::in_page_provider::{
+            CoreInPageCallbackI, DappApprovalParams, DappKeyProvider,
+            InPageRequestContextI,
+        },
+        FungibleTokenType,
     },
-    protocols::FungibleTokenType,
     ui_callback::{
         CoreUICallbackI, DappAllotmentTransferResult, DappSignatureResult,
         DappTransactionApproved, DappTransactionResult, TokenTransferResult,
