@@ -15,6 +15,7 @@ use ethers::{
         maybe, Http, Middleware, MiddlewareError, PendingTransaction, Provider,
         ProviderError,
     },
+    types::transaction::eip712::{Eip712, TypedData},
 };
 use k256::{FieldBytes, Secp256k1};
 use sha3::{Digest, Keccak256};
@@ -114,6 +115,35 @@ impl<'a> Signer<'a> {
     ) -> Result<OffChainEthereumSignature, Error> {
         let message = Self::personal_sign_message(data);
         Ok(self.hazmat_sign_bytes(message)?.into())
+    }
+
+    /// Perform an [EIP-712](https://eips.ethereum.org/EIPS/eip-712#eth_signtypeddata) signature.
+    pub fn sign_typed_data(
+        &self,
+        typed_data: &TypedData,
+    ) -> Result<OffChainEthereumSignature, Error> {
+        // Payload encoding based on https://github.com/gakonst/ethers-rs/blob/64b7f1ef1ac71fefcacc44d8ff1ddfcb8e6b5417/ethers-core/src/types/transaction/eip712.rs#L555
+        // We are not using `TypedData::encode_eip712`, because it returns the hash of the payload,
+        // but we need the payload itself to pass to the digest function.
+
+        // 2 magic numbers + two hashes
+        // See https://eips.ethereum.org/EIPS/eip-712#eth_signtypeddata
+        let mut payload = Vec::with_capacity(2 + 2 * 32);
+
+        payload.extend(&[0x19, 0x01]);
+
+        let domain_separator = typed_data.domain.separator();
+        payload.extend(&domain_separator);
+
+        // Compatibility with <https://github.com/MetaMask/eth-sig-util>
+        if typed_data.primary_type != "EIP712Domain" {
+            let hash = typed_data.struct_hash().map_err(|_| Error::Retriable {
+                error: "Failed to encode EIP712 payload".to_string(),
+            })?;
+            payload.extend(&hash)
+        }
+
+        Ok(self.hazmat_sign_bytes(&payload)?.into())
     }
 }
 
@@ -378,6 +408,7 @@ mod tests {
         utils::{hex, keccak256},
     };
     use lazy_static::lazy_static;
+    use serde_json::json;
 
     use super::*;
 
@@ -504,6 +535,93 @@ mod tests {
 
             assert!(signature.to_string().starts_with("0x"));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn sign_typed_data() -> Result<()> {
+        // Test vector from https://eips.ethereum.org/assets/eip-712/Example.js
+        let data = json!({
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              }
+            ],
+            "Person": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "wallet",
+                "type": "address"
+              }
+            ],
+            "Mail": [
+              {
+                "name": "from",
+                "type": "Person"
+              },
+              {
+                "name": "to",
+                "type": "Person"
+              },
+              {
+                "name": "contents",
+                "type": "string"
+              }
+            ]
+          },
+          "primaryType": "Mail",
+          "domain": {
+            "name": "Ether Mail",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+          },
+          "message": {
+            "from": {
+              "name": "Cow",
+              "wallet": "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"
+            },
+            "to": {
+              "name": "Bob",
+              "wallet": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
+            },
+            "contents": "Hello, Bob!"
+          }
+        });
+        let data: TypedData = serde_json::from_value(data)?;
+        let expected_signature: EthereumSignature = "0x4355c47d63924e8a72e509b65029052eb6c299d53a04e167c5775fd466751c9d07299936d304c153f6443dfa05f40ff007d72911b6f72307f996231605b915621c".parse()?;
+        let key: EthereumAsymmetricKey =
+            "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4".parse()?;
+
+        let chain_id = ChainId::default_dapp_chain();
+        let signing_key = SigningKey::new(key, chain_id)?;
+        let signer = Signer::new(&signing_key);
+
+        let signature = signer.sign_typed_data(&data)?;
+
+        signature
+            .inner
+            .verify(data.encode_eip712()?, signing_key.address)?;
+
+        assert_eq!(signature.inner, expected_signature);
+
         Ok(())
     }
 }
