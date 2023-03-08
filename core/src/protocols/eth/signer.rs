@@ -261,7 +261,7 @@ impl<'a> fmt::Debug for SignerMiddleware<'a> {
     }
 }
 
-/// An `EthereumSignature` where `v` is 0 or 1.
+/// An `EthereumSignature` where `v` is in [0, 3].
 struct EcdsaEthereumSignature {
     sig: EthereumSignature,
     chain_id: ChainId,
@@ -282,7 +282,7 @@ impl EcdsaEthereumSignature {
     }
 }
 
-/// An `EthereumSignature` where `v` is 27 or 28.
+/// An `EthereumSignature` where `v` is in [27, 30] (assumes uncompressed public key).
 pub struct OffChainEthereumSignature {
     inner: EthereumSignature,
 }
