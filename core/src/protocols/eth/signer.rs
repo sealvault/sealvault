@@ -475,6 +475,14 @@ mod tests {
     }
 
     #[test]
+    fn personal_sign_message() -> Result<()> {
+        let message = Signer::personal_sign_message("Some message");
+        let message = String::from_utf8(message)?;
+        assert!(message.starts_with("\x19Ethereum Signed Message:\n"));
+        Ok(())
+    }
+
+    #[test]
     fn personal_sign() -> Result<()> {
         let chain_id = ChainId::default_dapp_chain();
         for case in PERSONAL_SIGN_VECTORS.iter() {
@@ -484,8 +492,9 @@ mod tests {
             let signer = Signer::new(&signing_key);
 
             let signature = signer.personal_sign(case.message())?;
+
             signature.inner.verify(
-                RecoveryMessage::Data(case.message().to_vec()),
+                keccak256(Signer::personal_sign_message(case.message())),
                 signing_key.address,
             )?;
 
