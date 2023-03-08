@@ -255,7 +255,7 @@ impl<'a> fmt::Debug for Signer<'a> {
 
 impl<'a> fmt::Debug for SignerMiddleware<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ignerMiddleware")
+        f.debug_struct("SignerMiddleware")
             .field("signer", &self.signer)
             .finish()
     }
