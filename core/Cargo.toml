@@ -29,8 +29,7 @@ dyn-clone = "1.0.11"
 ecdsa = { version = "0.16.0", features = ["digest", "signing"] }
 email_address = "0.2.4"
 env_logger = "0.10.0"
-# Fork pending release of https://github.com/gakonst/ethers-rs/pull/2051
-ethers = { git = "https://github.com/agostbiro/ethers-rs", rev = "90abdd5", features = ["legacy", "eip712", "abigen"] }
+ethers = { version = "2.0.0", features = ["legacy", "eip712", "abigen"] }
 futures = "0.3.26"
 generic-array = "0.14.6"
 hex = "0.4.3"
@@ -81,4 +80,4 @@ uniffi = { version = "0.23.0", features = ["build"] }
 
 [dev-dependencies]
 anyhow = { version = "1.0.69", features = ["backtrace"] }
-ethers = { git = "https://github.com/agostbiro/ethers-rs", rev = "90abdd5", features = ["legacy", "eip712", "abigen-offline", "solc-full"] }
+ethers = { version = "2.0.0", features = ["legacy", "eip712", "abigen-offline", "solc-full"] }

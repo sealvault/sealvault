@@ -7,8 +7,6 @@ use jsonrpsee::types::{
     error::{CallError, ErrorCode as JsonrpseeErrorCode, ErrorCode},
     ErrorObject,
 };
-use lazy_static::lazy_static;
-use regex::Regex;
 
 use crate::{protocols::eth::in_page_provider::InPageErrorCode, CoreError};
 
@@ -233,95 +231,34 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
-lazy_static! {
-    static ref ETHERS_JSONRPC_CODE_REGEX: Regex =
-        Regex::new(r"\(code: (?P<code>-?\d+),").expect("static is ok");
-    static ref ETHERS_JSONRPC_MESSAGE_REGEX: Regex =
-        Regex::new(r#"message: "?(?P<message>[\.:'!\?\-\d\w\s\+\*]+)"?,"#)
-            .expect("static is ok");
-}
-
-// This is a hack to get around the Ethers-rs provider returning opaque JSON-RPC client errors
-// and errors needing a static lifetime for downcasting: https://stackoverflow.com/a/48062162
-fn parse_eth_json_rpc_error(error_display: &str) -> Option<(i32, Option<String>)> {
-    let code: i32 = ETHERS_JSONRPC_CODE_REGEX
-        .captures(error_display)?
-        .name("code")?
-        .as_str()
-        .parse()
-        .ok()?;
-    if let Some(captures) = ETHERS_JSONRPC_MESSAGE_REGEX.captures(error_display) {
-        let message = captures.name("message").map(|m| m.as_str().to_string());
-        Some((code, message))
-    } else {
-        Some((code, None))
+impl From<ethers::providers::ProviderError> for Error {
+    fn from(err: ethers::providers::ProviderError) -> Self {
+        (&err).into()
     }
 }
 
-impl From<ethers::providers::ProviderError> for Error {
-    fn from(err: ethers::providers::ProviderError) -> Self {
+impl From<&ethers::providers::ProviderError> for Error {
+    fn from(err: &ethers::providers::ProviderError) -> Self {
         use ethers::providers::ProviderError;
         match err {
-            ProviderError::JsonRpcClientError(error) => {
-                let error_display = error.to_string();
-                if let Some((code, message)) = parse_eth_json_rpc_error(&error_display) {
-                    Self::JsonRpc {
+            ProviderError::JsonRpcClientError(error) => error
+                .as_error_response()
+                .and_then(|e| {
+                    let code = i32::try_from(e.code).ok()?;
+                    Some(Self::JsonRpc {
                         code: code.into(),
-                        message: message.unwrap_or(error_display),
-                    }
-                } else {
-                    Self::Retriable {
-                        error: error_display,
-                    }
-                }
-            }
+                        message: e.message.clone(),
+                    })
+                })
+                .unwrap_or_else(|| Self::Retriable {
+                    error: error.to_string(),
+                }),
             ProviderError::EnsError(message) => Self::User {
-                explanation: message,
+                explanation: message.clone(),
             },
             err => Self::Retriable {
                 error: err.to_string(),
             },
         }
-    }
-}
-
-impl ethers::providers::FromErr<ethers::providers::ProviderError> for Error {
-    fn from(err: ethers::providers::ProviderError) -> Self {
-        err.into()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_jronsrpc_client_error() {
-        let error = "(code: -32000, message: transaction underpriced, data: None)";
-        let res = parse_eth_json_rpc_error(error);
-        assert!(res.is_some());
-        let (code, message) = res.unwrap();
-        assert_eq!(code, -32000);
-        assert_eq!(message, Some("transaction underpriced".into()));
-    }
-
-    #[test]
-    fn parse_jronsrpc_client_error_with_asterisk() {
-        let error = "(code: -32000, message: insufficient funds for gas * price + value, data: None)";
-        let res = parse_eth_json_rpc_error(error);
-        assert!(res.is_some());
-        let (code, message) = res.unwrap();
-        assert_eq!(code, -32000);
-        assert_eq!(
-            message,
-            Some("insufficient funds for gas * price + value".into())
-        );
-    }
-
-    #[test]
-    fn no_panic_on_unexpected_jsonrpc_message() {
-        let display = "something unexpected 123";
-        let code = parse_eth_json_rpc_error(display);
-        assert_eq!(code, None)
     }
 }

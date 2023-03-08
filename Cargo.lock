@@ -359,18 +359,6 @@ dependencies = [
 
 [[package]]
 name = "auto_impl"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7862e21c893d65a1650125d157eaeec691439379a1cee17ee49031b79236ada4"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "auto_impl"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a8c1df849285fbacd587de7818cc7d13be6cd2cbcd47a04fb1801b0e2706e33"
@@ -1672,8 +1660,9 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "839a392641e746a1ff365ef7c901238410b5c6285d240cf2409ffaaa7df9a78a"
 dependencies = [
  "ethers-addressbook",
  "ethers-contract",
@@ -1687,8 +1676,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-addressbook"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e1e010165c08a2a3fa43c0bb8bc9d596f079a021aaa2cc4e8d921df09709c95"
 dependencies = [
  "ethers-core",
  "once_cell",
@@ -1698,8 +1688,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be33fd47a06cc8f97caf614cf7cf91af9dd6dcd767511578895fa884b430c4b8"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -1717,13 +1708,15 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60d9f9ecb4a18c1693de954404b66e0c9df31dac055b411645e38c4efebf3dbc"
 dependencies = [
  "Inflector",
  "cfg-if",
  "dunce",
  "ethers-core",
+ "ethers-etherscan",
  "eyre",
  "getrandom",
  "hex",
@@ -1735,6 +1728,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syn",
+ "tokio",
  "toml",
  "url",
  "walkdir",
@@ -1742,11 +1736,13 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "001b33443a67e273120923df18bab907a0744ad4b5fef681a8b0691f2ee0f3de"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
+ "eyre",
  "hex",
  "proc-macro2",
  "quote",
@@ -1756,8 +1752,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5925cba515ac18eb5c798ddf6069cc33ae00916cb08ae64194364a1b35c100b"
 dependencies = [
  "arrayvec",
  "bytes",
@@ -1767,6 +1764,7 @@ dependencies = [
  "elliptic-curve 0.12.3",
  "ethabi",
  "generic-array 0.14.6",
+ "getrandom",
  "hex",
  "k256 0.11.6",
  "num_enum",
@@ -1780,6 +1778,7 @@ dependencies = [
  "serde_json",
  "strum",
  "syn",
+ "tempfile",
  "thiserror",
  "tiny-keccak",
  "unicode-xid",
@@ -1787,8 +1786,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-derive-eip712"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94522735aca5b774af8c53b4a881027ae597dc0486a458eac52a3ddf1e7f3a9c"
 dependencies = [
  "ethers-core",
  "hex",
@@ -1799,8 +1799,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d769437fafd0b47ea8b95e774e343c5195c77423f0f54b48d11c0d9ed2148ad"
 dependencies = [
  "ethers-core",
  "ethers-solc",
@@ -1816,11 +1817,12 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7dd311b76eab9d15209e4fd16bb419e25543709cbdf33079e8923dfa597517c"
 dependencies = [
  "async-trait",
- "auto_impl 0.5.0",
+ "auto_impl",
  "ethers-contract",
  "ethers-core",
  "ethers-etherscan",
@@ -1841,11 +1843,12 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed7174af93619e81844d3d49887106a3721e5caecdf306e0b824bfb4316db3be"
 dependencies = [
  "async-trait",
- "auto_impl 1.0.1",
+ "auto_impl",
  "base64 0.21.0",
  "enr",
  "ethers-core",
@@ -1876,8 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d45ff294473124fd5bb96be56516ace179eef0eaec5b281f68c953ddea1a8bf"
 dependencies = [
  "async-trait",
  "coins-bip32",
@@ -1889,12 +1893,14 @@ dependencies = [
  "rand",
  "sha2 0.10.6",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
 name = "ethers-solc"
-version = "1.0.2"
-source = "git+https://github.com/agostbiro/ethers-rs?rev=90abdd5#90abdd54bfd6e38f7f627d7d9e2807bedab8ac25"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5500989f6abfc751a660a3090c7d66790300ff59b7744cedb89e23dd1179d83"
 dependencies = [
  "cfg-if",
  "dunce",
@@ -3183,18 +3189,18 @@ dependencies = [
 
 [[package]]
 name = "num_enum"
-version = "0.5.9"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d829733185c1ca374f17e52b762f24f535ec625d2cc1f070e34c8a9068f341b"
+checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
  "num_enum_derive",
 ]
 
 [[package]]
 name = "num_enum_derive"
-version = "0.5.9"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2be1598bf1c313dcdd12092e3f1920f463462525a21b7b4e11b4168353d0123e"
+checksum = "dcbff9bc912032c62bf65ef1d5aea88983b420f4f839db1e9b0c281a25c9c799"
 dependencies = [
  "proc-macro-crate 1.3.0",
  "proc-macro2",
@@ -3253,7 +3259,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "786393f80485445794f6043fd3138854dd109cc6c4bd1a6383db304c9ce9b9ce"
 dependencies = [
  "arrayvec",
- "auto_impl 1.0.1",
+ "auto_impl",
  "bytes",
  "ethereum-types",
  "open-fastrlp-derive",
@@ -3485,34 +3491,32 @@ dependencies = [
 
 [[package]]
 name = "phf"
-version = "0.10.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
+checksum = "928c6535de93548188ef63bb7c4036bd415cd8f36ad25af44b9789b2ee72a48c"
 dependencies = [
  "phf_macros",
- "phf_shared",
- "proc-macro-hack",
+ "phf_shared 0.11.1",
 ]
 
 [[package]]
 name = "phf_generator"
-version = "0.10.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d5285893bb5eb82e6aaf5d59ee909a06a16737a8970984dd7746ba9283498d6"
+checksum = "b1181c94580fa345f50f19d738aaa39c0ed30a600d95cb2d3e23f94266f14fbf"
 dependencies = [
- "phf_shared",
+ "phf_shared 0.11.1",
  "rand",
 ]
 
 [[package]]
 name = "phf_macros"
-version = "0.10.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58fdf3184dd560f160dd73922bea2d5cd6e8f064bf4b13110abd81b03697b4e0"
+checksum = "92aacdc5f16768709a569e913f7451034034178b05bdc8acda226659a3dccc66"
 dependencies = [
  "phf_generator",
- "phf_shared",
- "proc-macro-hack",
+ "phf_shared 0.11.1",
  "proc-macro2",
  "quote",
  "syn",
@@ -3523,6 +3527,15 @@ name = "phf_shared"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6796ad771acdc0123d2a88dc428b5e38ef24456743ddb1744ed628f9815c096"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1fb5f6f826b772a8d4c0394209441e7d37cbbb967ae9c7e0e8134365c9ee676"
 dependencies = [
  "siphasher",
 ]
@@ -3700,12 +3713,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -4702,9 +4709,9 @@ dependencies = [
 
 [[package]]
 name = "solang-parser"
-version = "0.1.18"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac8ac4bfef383f368bd9bb045107a501cd9cd0b64ad1983e1b7e839d6a44ecad"
+checksum = "ff87dae6cdccacdbf3b19e99b271083556e808de0f59c74a01482f64fdbc61fc"
 dependencies = [
  "itertools",
  "lalrpop",
@@ -4770,7 +4777,7 @@ dependencies = [
  "new_debug_unreachable",
  "once_cell",
  "parking_lot 0.12.1",
- "phf_shared",
+ "phf_shared 0.10.0",
  "precomputed-hash",
 ]
 
@@ -4854,9 +4861,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.107"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4064b5b16e03ae50984a5a8ed5d4f8803e6bc1fd170a3cda91a1be4b18e3f5"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",

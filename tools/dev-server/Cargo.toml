@@ -8,7 +8,7 @@ anyhow = "1.0.69"
 axum = { version = "0.6.10", features = ["tower-log"] }
 dotenv = "0.15.0"
 env_logger = "0.10.0"
-ethers = { git = "https://github.com/agostbiro/ethers-rs", rev = "90abdd5", features = ["legacy", "eip712"] }
+ethers = { version = "2.0.0", features = ["legacy", "eip712"] }
 hyper = { version = "0.14.24", features = ["full"] }
 log = { version = "0.4.17", features = ["serde"] }
 sealvault_core = { path = "../../core" }

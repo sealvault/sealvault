@@ -11,7 +11,10 @@ use ethers::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, BlockId, Bytes, Signature as EthereumSignature, U256, U64,
     },
-    providers::{maybe, Http, Middleware, PendingTransaction, Provider},
+    providers::{
+        maybe, Http, Middleware, MiddlewareError, PendingTransaction, Provider,
+        ProviderError,
+    },
 };
 use k256::{FieldBytes, Secp256k1};
 use sha3::{Digest, Keccak256};
@@ -129,7 +132,7 @@ impl<'a> SignerMiddleware<'a> {
 
 #[async_trait]
 impl<'a> Middleware for SignerMiddleware<'a> {
-    type Error = Error;
+    type Error = SignerMiddlewareError<Provider<Http>>;
     type Provider = Http;
     type Inner = Provider<Http>;
 
@@ -258,6 +261,49 @@ impl<'a> fmt::Debug for SignerMiddleware<'a> {
         f.debug_struct("SignerMiddleware")
             .field("signer", &self.signer)
             .finish()
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SignerMiddlewareError<M: Middleware> {
+    /// Thrown when the internal middleware errors
+    #[error(transparent)]
+    Middleware(M::Error),
+    #[error(transparent)]
+    Provider(#[from] ProviderError),
+    #[error(transparent)]
+    App(#[from] Error),
+}
+
+impl<M: Middleware> MiddlewareError for SignerMiddlewareError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
+        SignerMiddlewareError::Middleware(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            SignerMiddlewareError::Middleware(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl<M: Middleware> From<SignerMiddlewareError<M>> for Error {
+    fn from(error: SignerMiddlewareError<M>) -> Self {
+        match error {
+            SignerMiddlewareError::Middleware(middleware_error) => {
+                match middleware_error.as_provider_error() {
+                    Some(provider_error) => provider_error.into(),
+                    None => Error::Retriable {
+                        error: middleware_error.to_string(),
+                    },
+                }
+            }
+            SignerMiddlewareError::Provider(provider_error) => provider_error.into(),
+            SignerMiddlewareError::App(inner) => inner,
+        }
     }
 }
 
