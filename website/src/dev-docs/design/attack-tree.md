@@ -576,8 +576,8 @@ signatures for dapps that were served over HTTP.[^20]
 
 #### Reflected XSS
 
-The application must pass data to the dapp frontend JavaScript which could open
-up a reflected XSS vector for messages from remote APIs.
+The application must pass data to the dapp frontend JavaScript by "evaling" it
+which could open up a reflected XSS vector for messages from remote APIs.
 
 We defend against reflected XSS by converting messages to binary JSON
 represented as hexadecimal string literals before sending them to the dapp
