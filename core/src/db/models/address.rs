@@ -456,11 +456,10 @@ impl Address {
         Ok(profile_id)
     }
 
-    pub fn fetch_eth_signing_key(
+    pub fn fetch_encrypted_secret_key(
         tx_conn: &mut DeferredTxConnection,
-        keychain: &Keychain,
         address_id: &AddressId,
-    ) -> Result<eth::SigningKey, Error> {
+    ) -> Result<eth::EncryptedSigningKey, Error> {
         use addresses::dsl as a;
         use asymmetric_keys::dsl as ak;
         use chains::dsl as c;
@@ -468,32 +467,41 @@ impl Address {
 
         use crate::encryption::EncryptionOutput;
 
-        let (dek_name, encrypted_der, protocol_data) = asymmetric_keys::table
-            .inner_join(
-                addresses::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
-            )
-            .inner_join(
-                data_encryption_keys::table.on(ak::dek_id.eq(dek::deterministic_id)),
-            )
-            .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
-            .filter(a::deterministic_id.eq(address_id))
-            .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
-            .select((dek::name, ak::encrypted_der, c::protocol_data))
-            .first::<(String, EncryptionOutput, JsonValue)>(tx_conn.as_mut())?;
+        let (address, dek_name, encrypted_secret_key, protocol_data) =
+            asymmetric_keys::table
+                .inner_join(
+                    addresses::table.on(ak::deterministic_id.eq(a::asymmetric_key_id)),
+                )
+                .inner_join(
+                    data_encryption_keys::table.on(ak::dek_id.eq(dek::deterministic_id)),
+                )
+                .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
+                .filter(a::deterministic_id.eq(address_id))
+                .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
+                .select((a::address, dek::name, ak::encrypted_der, c::protocol_data))
+                .first::<(eth::ChecksumAddress, String, EncryptionOutput, JsonValue)>(
+                    tx_conn.as_mut(),
+                )?;
 
-        let protocol_data: eth::ProtocolData = protocol_data.convert_into()?;
+        let eth::ProtocolData { chain_id, .. } = protocol_data.convert_into()?;
         let dek_name = KeyName::from_str(&dek_name).map_err(|_| Error::Fatal {
             error: format!("Unknown DEK name: {dek_name}"),
         })?;
 
-        let sk_kek = KeyEncryptionKey::sk_kek(keychain)?;
-        let (_, sk_dek) =
-            DataEncryptionKey::fetch_dek(tx_conn.as_mut(), dek_name, &sk_kek)?;
-        let key =
-            eth::EthereumAsymmetricKey::from_encrypted_der(&encrypted_der, &sk_dek)?;
-        let signing_key = eth::SigningKey::new(key, protocol_data.chain_id)?;
+        let (_, encrypted_dek) = DataEncryptionKey::fetch_encrypted_dek(
+            tx_conn.as_mut(),
+            dek_name,
+            KeyName::SkKeyEncryptionKey.as_ref(),
+        )?;
 
-        Ok(signing_key)
+        let result = eth::EncryptedSigningKey::builder()
+            .address(address)
+            .chain_id(chain_id)
+            .encrypted_secret_key(encrypted_secret_key)
+            .encrypted_dek(encrypted_dek)
+            .dek_name(dek_name)
+            .build();
+        Ok(result)
     }
 
     pub fn fetch_eth_chain_id(

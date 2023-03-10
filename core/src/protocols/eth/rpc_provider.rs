@@ -17,9 +17,11 @@ use url::Url;
 
 use crate::{
     async_runtime as rt,
+    encryption::Keychain,
     protocols::eth::{
         contracts::ERC20Contract, signer::SignerMiddleware, token::FungibleToken,
-        ChainId, ChecksumAddress, FungibleTokenAmount, NativeTokenAmount, SigningKey,
+        ChainId, ChecksumAddress, EncryptedSigningKey, FungibleTokenAmount,
+        NativeTokenAmount,
     },
     Error,
 };
@@ -65,18 +67,20 @@ impl RpcProvider {
     /// Returns the transaction hash.
     pub fn send_transaction(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         tx: TransactionRequest,
     ) -> Result<H256, Error> {
-        rt::block_on(self.send_transaction_async(signing_key, tx))
+        rt::block_on(self.send_transaction_async(keychain, signing_key, tx))
     }
 
     pub async fn send_transaction_async(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         tx: TransactionRequest,
     ) -> Result<H256, Error> {
-        let signer = SignerMiddleware::new(&self.provider, signing_key);
+        let signer = SignerMiddleware::new(&self.provider, keychain, signing_key);
         let pending_tx = signer
             .send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest)))
             .await?;
@@ -85,7 +89,7 @@ impl RpcProvider {
 
     fn verify_chain_ids(
         &self,
-        signing_key: &SigningKey,
+        signing_key: &EncryptedSigningKey,
         token_chain_id: ChainId,
     ) -> Result<(), Error> {
         if signing_key.chain_id != self.chain_id || signing_key.chain_id != token_chain_id
@@ -105,11 +109,13 @@ impl RpcProvider {
     /// Returns the transaction hash that can be used to poll for the result.
     pub fn transfer_native_token(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         to_checksum_address: ChecksumAddress,
         amount: &NativeTokenAmount,
     ) -> Result<H256, Error> {
         rt::block_on(self.transfer_native_token_async(
+            keychain,
             signing_key,
             to_checksum_address,
             amount,
@@ -118,7 +124,8 @@ impl RpcProvider {
 
     pub async fn transfer_native_token_async(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         to_address: ChecksumAddress,
         amount: &NativeTokenAmount,
     ) -> Result<H256, Error> {
@@ -131,19 +138,23 @@ impl RpcProvider {
             .value(amount.amount)
             .from(signing_key.address.to_address());
 
-        let tx_hash = self.send_transaction_async(signing_key, tx).await?;
+        let tx_hash = self
+            .send_transaction_async(keychain, signing_key, tx)
+            .await?;
 
         Ok(tx_hash)
     }
 
     pub fn transfer_fungible_token(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         to_address: ChecksumAddress,
         amount_decimal: &str,
         contract_address: ChecksumAddress,
     ) -> Result<H256, Error> {
         let future = self.transfer_fungible_token_async(
+            keychain,
             signing_key,
             to_address,
             amount_decimal,
@@ -154,12 +165,14 @@ impl RpcProvider {
 
     pub async fn transfer_fungible_token_async(
         &self,
-        signing_key: &SigningKey,
+        keychain: &Keychain,
+        signing_key: &EncryptedSigningKey,
         to_address: ChecksumAddress,
         amount_decimal: &str,
         contract_address: ChecksumAddress,
     ) -> Result<H256, Error> {
-        let signer = Arc::new(SignerMiddleware::new(&self.provider, signing_key));
+        let signer =
+            Arc::new(SignerMiddleware::new(&self.provider, keychain, signing_key));
         let contract = ERC20Contract::new(contract_address, signer);
 
         let contract_call = contract.decimals();
@@ -413,7 +426,6 @@ mod tests {
     use super::*;
     use crate::protocols::eth::{
         contracts::test_util::TestContractDeployer, AnvilRpcManager,
-        EthereumAsymmetricKey,
     };
 
     #[test]
@@ -449,17 +461,11 @@ mod tests {
         let rpc_manager = AnvilRpcManager::new();
         let rpc_provider = rpc_manager.eth_api_provider(chain_id);
 
-        let sender_key = EthereumAsymmetricKey::random()?;
-        let sender_signing = SigningKey::new(sender_key, ChainId::EthMainnet)?;
+        let keychain = Keychain::new();
+        let sender_signing = EncryptedSigningKey::random_test_key(&keychain, chain_id)?;
 
         // Send some coin to the address with which we want to test the transfer.
         rpc_manager.send_native_token(chain_id, sender_signing.address, 2);
-        let sender_address = sender_signing.address;
-        rt::block_on(
-            rpc_provider
-                .provider
-                .get_balance(sender_address.to_address(), None),
-        )?;
 
         let receiver_address: ChecksumAddress = Address::random().into();
 
@@ -467,6 +473,7 @@ mod tests {
         let amount = NativeTokenAmount::new(sender_signing.chain_id, amount_wei);
 
         let tx_hash = rpc_provider.transfer_native_token(
+            &keychain,
             &sender_signing,
             receiver_address,
             &amount,
@@ -493,8 +500,8 @@ mod tests {
         let provider = Arc::new(contract_deployer.provider());
         let contract = ERC20Contract::new(contract_address, provider.clone());
 
-        let sender_key = EthereumAsymmetricKey::random()?;
-        let sender_signing = SigningKey::new(sender_key, ChainId::EthMainnet)?;
+        let keychain = Keychain::new();
+        let sender_signing = EncryptedSigningKey::random_test_key(&keychain, chain_id)?;
 
         // Send native token to address that is using our key & tx management for tx fee
         contract_deployer.anvil_rpc.send_native_token(
@@ -522,6 +529,7 @@ mod tests {
 
         // Send back fungible token transfer from our address
         let tx_hash = contract_deployer.rpc_provider.transfer_fungible_token(
+            &keychain,
             &sender_signing,
             deployer_address,
             "1",

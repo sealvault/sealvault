@@ -13,24 +13,24 @@ mod chain_id;
 mod chain_settings;
 mod checksum_address;
 mod contracts;
+mod encrypted_signing_key;
 pub mod explorer;
 pub mod in_page_provider;
 mod protocol_data;
 mod rpc_provider;
 mod signer;
-mod signing_key;
 mod token;
 
 pub type EthereumAsymmetricKey = AsymmetricKey<Secp256k1>;
 pub use chain_id::ChainId;
 pub use chain_settings::ChainSettings;
 pub use checksum_address::ChecksumAddress;
+pub use encrypted_signing_key::EncryptedSigningKey;
 pub use protocol_data::ProtocolData;
 #[cfg(test)]
 pub use rpc_provider::anvil::AnvilRpcManager;
 pub use rpc_provider::{RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
-pub use signing_key::SigningKey;
 pub use token::{
     FungibleTokenAmount, FungibleTokenBalance, NFTBalance, NativeTokenAmount,
     TokenBalances,

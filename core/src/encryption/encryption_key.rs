@@ -49,19 +49,19 @@ impl DataEncryptionKey {
 
     pub fn from_encrypted(
         name: KeyName,
-        encryption_output: &EncryptionOutput,
+        encrypted_dek: &EncryptionOutput,
         encryption_key: &KeyEncryptionKey,
     ) -> Result<Self, Error> {
         let name_str: &str = name.as_ref();
         let payload = Payload {
-            msg: &encryption_output.cipher_text,
+            msg: &encrypted_dek.cipher_text,
             aad: name_str.as_bytes(),
         };
         // The vector returned by decrypt is allocated with the desired capacity by the underlying
         // library, so leaving copies of key material in memory on vector reallocation that won't be
         // zeroized on drop is not a concern.
         let key_bytes =
-            Zeroizing::new(decrypt(payload, encryption_key, &encryption_output.nonce)?);
+            Zeroizing::new(decrypt(payload, encryption_key, &encrypted_dek.nonce)?);
         let encryption_key = KeyMaterial::from_slice(key_bytes.as_slice())?;
 
         Ok(Self(SymmetricKey::new(name, encryption_key)))

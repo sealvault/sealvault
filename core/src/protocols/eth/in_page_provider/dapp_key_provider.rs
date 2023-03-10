@@ -19,6 +19,7 @@ use url::Url;
 use crate::{
     async_runtime as rt, config,
     db::{models as m, ConnectionPool, DeterministicId},
+    encryption::Keychain,
     favicon::fetch_favicon_async,
     http_client::HttpClient,
     protocols::eth::{
@@ -27,7 +28,8 @@ use crate::{
             AddEthereumChainParameter, InPageRequest, InPageRequestParams,
             SwitchEthereumChainParameter,
         },
-        ChainId, ChainSettings, ChecksumAddress, RpcManagerI, Signer, SigningKey,
+        ChainId, ChainSettings, ChecksumAddress, EncryptedSigningKey, RpcManagerI,
+        Signer,
     },
     public_suffix_list::PublicSuffixList,
     resources::CoreResourcesI,
@@ -70,6 +72,10 @@ impl DappKeyProvider {
 
     fn http_client(&self) -> &HttpClient {
         self.resources.http_client()
+    }
+
+    fn keychain(&self) -> &Keychain {
+        self.resources.keychain()
     }
 
     // TODO add rate limiting
@@ -468,9 +474,8 @@ impl DappKeyProvider {
         &self,
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
-        let resources = self.resources.clone();
         let session_clone = session.clone();
-        let (chain_settings, wallet_signing_key) = self
+        let (chain_settings, encrypted_wallet_signing_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
                 let wallet_address_id = m::Address::fetch_eth_wallet_id(
@@ -482,19 +487,19 @@ impl DappKeyProvider {
                     tx_conn.as_mut(),
                     session.chain_id,
                 )?;
-                let wallet_signing_key = m::Address::fetch_eth_signing_key(
-                    &mut tx_conn,
-                    resources.keychain(),
-                    &wallet_address_id,
-                )?;
-                Ok((chain_settings, wallet_signing_key))
+                let encrypted_wallet_signing_key =
+                    m::Address::fetch_encrypted_secret_key(
+                        &mut tx_conn,
+                        &wallet_address_id,
+                    )?;
+                Ok((chain_settings, encrypted_wallet_signing_key))
             })
             .await?;
         // Call blockchain API in background.
         rt::spawn(Self::make_default_dapp_allotment_transfer(
             self.resources.clone(),
             chain_settings,
-            wallet_signing_key,
+            encrypted_wallet_signing_key,
             session_clone,
         ));
         Ok(())
@@ -503,16 +508,17 @@ impl DappKeyProvider {
     async fn make_default_dapp_allotment_transfer(
         resources: Arc<dyn CoreResourcesI>,
         chain_settings: ChainSettings,
-        wallet_signing_key: SigningKey,
+        wallet_signing_key: EncryptedSigningKey,
         session: m::LocalDappSession,
     ) -> Result<(), Error> {
-        let provider = resources
-            .rpc_manager()
-            .eth_api_provider(wallet_signing_key.chain_id);
         // Call fails if there are insufficient funds.
         let res = async {
+            let provider = resources
+                .rpc_manager()
+                .eth_api_provider(wallet_signing_key.chain_id);
             let tx_hash = provider
                 .transfer_native_token_async(
+                    resources.keychain(),
                     &wallet_signing_key,
                     session.address,
                     &chain_settings.default_dapp_allotment,
@@ -615,7 +621,8 @@ impl DappKeyProvider {
         mut tx: TransactionRequest,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
+        let (session, signing_key) =
+            self.fetch_eth_encrypted_signing_key(session).await?;
 
         // Remove nonce to fill with latest nonce from remote API in signer to make sure tx nonce is
         // current. MetaMask does this too.
@@ -623,7 +630,8 @@ impl DappKeyProvider {
 
         let provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
 
-        let tx_hash_fut = provider.send_transaction_async(&signing_key, tx);
+        let tx_hash_fut =
+            provider.send_transaction_async(self.keychain(), &signing_key, tx);
 
         let resources = self.resources.clone();
         let session = Self::approved_dapp_transaction(resources, session).await;
@@ -723,19 +731,16 @@ impl DappKeyProvider {
             });
         }
 
-        let (session, signing_key) = self.fetch_eth_signing_key(session).await?;
-        let signature = rt::spawn_blocking(move || {
-            let signer = Signer::new(&signing_key);
-            let signature = signer.personal_sign(message)?;
-            to_value(signature.to_string())
-        })
-        .await??;
+        let (session, signing_key) =
+            self.fetch_eth_encrypted_signing_key(session).await?;
+        let signer = Signer::new(self.keychain(), &signing_key);
+        let signature = signer.personal_sign(message)?;
 
         let resources = self.resources.clone();
         // Call in background
         rt::spawn(Self::personal_sign_callback(resources, session));
 
-        Ok(signature)
+        to_value(signature.to_string())
     }
 
     async fn personal_sign_callback(
@@ -828,23 +833,21 @@ impl DappKeyProvider {
         .await?
     }
 
-    async fn fetch_eth_signing_key(
+    async fn fetch_eth_encrypted_signing_key(
         &self,
         session: m::LocalDappSession,
-    ) -> Result<(m::LocalDappSession, SigningKey), Error> {
-        let resources = self.resources.clone();
-        let (session, signing_key) = self
+    ) -> Result<(m::LocalDappSession, EncryptedSigningKey), Error> {
+        let (session, encrypted_secret_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let signing_key = m::Address::fetch_eth_signing_key(
+                let encrypted_secret_key = m::Address::fetch_encrypted_secret_key(
                     &mut tx_conn,
-                    resources.keychain(),
                     &session.address_id,
                 )?;
-                Ok((session, signing_key))
+                Ok((session, encrypted_secret_key))
             })
             .await?;
-        Ok((session, signing_key))
+        Ok((session, encrypted_secret_key))
     }
 
     async fn fetch_favicon(&self) -> Result<Option<Vec<u8>>, Error> {
