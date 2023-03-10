@@ -23,12 +23,13 @@ def main():
     run_ios_ui_tests()
 
 
-def static_analysis():
+def static_analysis(linux=False):
     mpl_header_check()
     run_rustfmt_check()
     run_clippy()
     # Platform specific code only gets linted when compiled for that target.
-    run_clippy("aarch64-apple-ios")
+    if not linux:
+        run_clippy("aarch64-apple-ios")
 
 
 def cleanup():
@@ -109,6 +110,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Run static analysis only",
     )
+    parser.add_argument(
+        "--static-linux",
+        action="store_true",
+        help="Run static analysis only (Linux)",
+        default=False,
+    )
     args = parser.parse_args()
 
     # Finally block is not enough in case another interrupt is received
@@ -116,8 +123,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        if args.static:
-            static_analysis()
+        if args.static or args.static_linux:
+            static_analysis(args.static_linux)
         else:
             main()
     finally:

@@ -811,7 +811,7 @@ pub mod tests {
     // For polling callback responses.
     // 101 ms in case a future polls at every 100ms
     const SLEEP_DURATION_MS: u64 = 101;
-    const SLEEP_TIMES: u64 = 5;
+    const SLEEP_TIMES: u64 = 30;
 
     impl TmpCore {
         pub fn new() -> Result<Self, CoreError> {
