@@ -2,6 +2,7 @@
 
 members = [
     "core",
+    "core_macros",
     "tools/dev-server",
     "tools/embedded-uniff-bindgen",
     "tools/tools-lib",

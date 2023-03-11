@@ -4,16 +4,9 @@
 
 use std::{collections::HashSet, str::FromStr};
 
+use core_macros::sql_text;
 use derive_more::{AsRef, Display, Into};
-use diesel::{
-    deserialize::FromSql,
-    expression::AsExpression,
-    prelude::*,
-    serialize::ToSql,
-    sql_types::{Bool, Text},
-    sqlite::Sqlite,
-    SqliteConnection,
-};
+use diesel::{expression::AsExpression, prelude::*, sql_types::Bool, SqliteConnection};
 use generic_array::{typenum::U2, GenericArray};
 use typed_builder::TypedBuilder;
 
@@ -660,27 +653,7 @@ impl FromStr for AddressId {
     }
 }
 
-// TODO derive macro
-impl FromSql<Text, Sqlite> for AddressId {
-    fn from_sql(
-        bytes: diesel::backend::RawValue<Sqlite>,
-    ) -> diesel::deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        let address_id: AddressId = s.parse()?;
-        Ok(address_id)
-    }
-}
-
-impl ToSql<Text, Sqlite> for AddressId {
-    fn to_sql(
-        &self,
-        out: &mut diesel::serialize::Output<Sqlite>,
-    ) -> diesel::serialize::Result {
-        let s = self.to_string();
-        out.set_value(s);
-        Ok(diesel::serialize::IsNull::No)
-    }
-}
+sql_text!(AddressId);
 
 #[cfg(test)]
 mod tests {

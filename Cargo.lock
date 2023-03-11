@@ -1101,6 +1101,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
+name = "core_macros"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "diesel",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4332,6 +4341,7 @@ dependencies = [
  "chrono",
  "core-foundation",
  "core-foundation-sys",
+ "core_macros",
  "data-encoding",
  "der 0.7.1",
  "derive_more",

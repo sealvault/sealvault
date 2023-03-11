@@ -1,0 +1,11 @@
+[package]
+name = "core_macros"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+diesel = { version = "2.0.3", features = ["sqlite"] }
+
+[dev-dependencies]
+anyhow = { version = "1.0.69", features = ["backtrace"] }
+derive_more = "0.99.17"

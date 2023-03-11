@@ -8,11 +8,9 @@ use std::{
     str::FromStr,
 };
 
+use core_macros::sql_text;
 use derive_more::{AsRef, From, Into};
-use diesel::{
-    deserialize::FromSql, expression::AsExpression, serialize::ToSql, sql_types::Text,
-    sqlite::Sqlite,
-};
+use diesel::expression::AsExpression;
 use ethers::core::{types::Address, utils::to_checksum};
 use k256::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -124,26 +122,7 @@ impl Display for ChecksumAddress {
     }
 }
 
-impl FromSql<Text, Sqlite> for ChecksumAddress {
-    fn from_sql(
-        bytes: diesel::backend::RawValue<Sqlite>,
-    ) -> diesel::deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        let address_id: Self = s.parse()?;
-        Ok(address_id)
-    }
-}
-
-impl ToSql<Text, Sqlite> for ChecksumAddress {
-    fn to_sql(
-        &self,
-        out: &mut diesel::serialize::Output<Sqlite>,
-    ) -> diesel::serialize::Result {
-        let s = self.to_string();
-        out.set_value(s);
-        Ok(diesel::serialize::IsNull::No)
-    }
-}
+sql_text!(ChecksumAddress);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ChecksumAddressError {

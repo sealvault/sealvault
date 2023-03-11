@@ -2,10 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
-use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Text, sqlite::Sqlite};
+use core_macros::sql_text;
 use url::Url;
+
+use crate::Error;
 
 /// Wrapper to let us implement Diesel FromSql and ToSql for url::Url.
 /// Urls stored in the DB are assumed to not to contain secrets, so we derive Debug.
@@ -14,11 +16,13 @@ use url::Url;
     Clone,
     PartialEq,
     Eq,
+    derive_more::Display,
     // Diesel traits
     AsExpression,
     FromSqlRow,
 )]
 #[diesel(sql_type = diesel::sql_types::Text)]
+#[repr(transparent)]
 pub struct UrlValue(Url);
 
 impl From<Url> for UrlValue {
@@ -39,23 +43,12 @@ impl From<&UrlValue> for String {
     }
 }
 
-impl FromSql<Text, Sqlite> for UrlValue {
-    fn from_sql(
-        bytes: diesel::backend::RawValue<Sqlite>,
-    ) -> diesel::deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        let url: Url = s.parse()?;
-        Ok(url.into())
+impl FromStr for UrlValue {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.parse()?))
     }
 }
 
-impl ToSql<Text, Sqlite> for UrlValue {
-    fn to_sql(
-        &self,
-        out: &mut diesel::serialize::Output<Sqlite>,
-    ) -> diesel::serialize::Result {
-        let s = self.0.to_string();
-        out.set_value(s);
-        Ok(diesel::serialize::IsNull::No)
-    }
-}
+sql_text!(UrlValue);

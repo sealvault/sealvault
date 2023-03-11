@@ -96,7 +96,7 @@ def run_rustfmt_check():
 
 
 def run_rust_tests():
-    sp.run(["cargo", "test", "--package", "sealvault_core", "--locked"], check=True)
+    sp.run(["cargo", "test", "--locked"], check=True)
 
 
 def run_ios_ui_tests():

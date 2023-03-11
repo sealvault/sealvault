@@ -4,8 +4,8 @@
 
 use std::str::FromStr;
 
+use core_macros::sql_text;
 use derive_more::{AsRef, Display, Into};
-use diesel::{deserialize::FromSql, serialize::ToSql, sql_types::Text, sqlite::Sqlite};
 use generic_array::{ArrayLength, GenericArray};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -124,27 +124,7 @@ impl FromStr for DeterministicId {
     }
 }
 
-// TODO derive macro
-impl FromSql<Text, Sqlite> for DeterministicId {
-    fn from_sql(
-        bytes: diesel::backend::RawValue<Sqlite>,
-    ) -> diesel::deserialize::Result<Self> {
-        let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
-        let address_id: DeterministicId = s.parse()?;
-        Ok(address_id)
-    }
-}
-
-impl ToSql<Text, Sqlite> for DeterministicId {
-    fn to_sql(
-        &self,
-        out: &mut diesel::serialize::Output<Sqlite>,
-    ) -> diesel::serialize::Result {
-        let s = self.to_string();
-        out.set_value(s);
-        Ok(diesel::serialize::IsNull::No)
-    }
-}
+sql_text!(DeterministicId);
 
 // In a mod to let the #[allow(deprecated)] flag take effect for macro produced code.
 #[allow(deprecated)]
