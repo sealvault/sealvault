@@ -21,7 +21,6 @@ use crate::{
 };
 
 /// Elliptic curve key pair
-#[derive(PartialEq, Eq)]
 #[readonly::make]
 pub struct AsymmetricKey<C>
 where
@@ -119,7 +118,9 @@ mod tests {
         let decrypted: AsymmetricKey<Secp256k1> =
             AsymmetricKey::from_encrypted_der(&encrypted_der, &dek)?;
 
-        assert_eq!(kp, decrypted);
+        assert_eq!(kp.secret_key, decrypted.secret_key);
+        assert_eq!(kp.public_key, decrypted.public_key);
+        assert_eq!(kp.curve, decrypted.curve);
 
         Ok(())
     }
