@@ -302,19 +302,25 @@ impl AppCore {
         let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let to_address: eth::ChecksumAddress =
             args.to_checksum_address.clone().try_into()?;
-        let signing_key = fetch_eth_signing_key_for_transfer(
+        let encrypted_secret_key = fetch_encrypted_secret_key_for_transfer(
             &*self.resources,
             &from_address_id,
             to_address,
         )?;
 
         let amount = eth::NativeTokenAmount::new_from_decimal(
-            signing_key.chain_id,
+            encrypted_secret_key.chain_id,
             &args.amount_decimal,
         )?;
-        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
-        let tx_hash_res =
-            rpc_provider.transfer_native_token(&signing_key, to_address, &amount);
+        let rpc_provider = self
+            .rpc_manager()
+            .eth_api_provider(encrypted_secret_key.chain_id);
+        let tx_hash_res = rpc_provider.transfer_native_token(
+            self.keychain(),
+            &encrypted_secret_key,
+            to_address,
+            &amount,
+        );
 
         let resources = self.resources.clone();
         rt::spawn_blocking(move || {
@@ -340,15 +346,18 @@ impl AppCore {
         let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let to_address: eth::ChecksumAddress =
             args.to_checksum_address.clone().try_into()?;
-        let signing_key = fetch_eth_signing_key_for_transfer(
+        let encrypted_signing_key = fetch_encrypted_secret_key_for_transfer(
             &*self.resources,
             &from_address_id,
             to_address,
         )?;
 
-        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
+        let rpc_provider = self
+            .rpc_manager()
+            .eth_api_provider(encrypted_signing_key.chain_id);
         let tx_hash_res = rpc_provider.transfer_fungible_token(
-            &signing_key,
+            self.keychain(),
+            &encrypted_signing_key,
             to_address,
             &args.amount_decimal,
             contract_address,
@@ -508,12 +517,12 @@ impl From<EthTransferFungibleTokenArgs> for EthTokenTransferCallbackArgs {
     }
 }
 
-fn fetch_eth_signing_key_for_transfer(
+fn fetch_encrypted_secret_key_for_transfer(
     resources: &dyn CoreResourcesI,
     from_address_id: &m::AddressId,
     to_address: eth::ChecksumAddress,
-) -> Result<eth::SigningKey, Error> {
-    let signing_key = resources.connection_pool().deferred_transaction(
+) -> Result<eth::EncryptedSigningKey, Error> {
+    let encrypted_secret_key = resources.connection_pool().deferred_transaction(
         |mut tx_conn| {
             // Returns NotFoundError if the address is not in the db.
             let from_profile_id =
@@ -533,14 +542,10 @@ fn fetch_eth_signing_key_for_transfer(
                 })?;
             }
 
-            m::Address::fetch_eth_signing_key(
-                &mut tx_conn,
-                resources.keychain(),
-                from_address_id,
-            )
+            m::Address::fetch_encrypted_signing_key(&mut tx_conn, from_address_id)
         },
     )?;
-    Ok(signing_key)
+    Ok(encrypted_secret_key)
 }
 
 fn token_transfer_callbacks(
@@ -1370,10 +1375,9 @@ pub mod tests {
                 keychain,
                 &params_two,
             )?;
-            let to_signing_key =
-                m::Address::fetch_eth_signing_key(&mut tx_conn, keychain, &to_id)?;
+            let to_address = m::Address::fetch_address(tx_conn.as_mut(), &to_id)?;
 
-            Ok((from_id, to_signing_key.address))
+            Ok((from_id, to_address))
         })?;
         Ok(res)
     }

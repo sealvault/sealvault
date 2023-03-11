@@ -183,12 +183,10 @@ mod tests {
                     &profile.deterministic_id,
                     eth::ChainId::default_wallet_chain(),
                 )?;
+                let encrypted_secret_key =
+                    m::Address::fetch_encrypted_signing_key(&mut tx_conn, &address_id)?;
                 // Uses SK-KEK to decrypt
-                m::Address::fetch_eth_signing_key(
-                    &mut tx_conn,
-                    self.resources.keychain(),
-                    &address_id,
-                )
+                encrypted_secret_key.decrypt(self.resources.keychain())
             })?;
             Ok(())
         }

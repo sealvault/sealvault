@@ -21,33 +21,37 @@ use k256::{FieldBytes, Secp256k1};
 use sha3::{Digest, Keccak256};
 
 use crate::{
-    protocols::eth::{chain_id::ChainId, signing_key::SigningKey, EthereumAsymmetricKey},
+    encryption::Keychain,
+    protocols::eth::{chain_id::ChainId, encrypted_signing_key::EncryptedSigningKey},
     signatures::RecoverableSignature,
     Error,
 };
 
+#[derive(Debug)]
 pub struct Signer<'a> {
-    signing_key: &'a SigningKey,
+    keychain: &'a Keychain,
+    encrypted_signing_key: &'a EncryptedSigningKey,
 }
 
 impl<'a> Signer<'a> {
-    pub fn new(signing_key: &'a SigningKey) -> Self {
-        Self { signing_key }
+    pub fn new(
+        keychain: &'a Keychain,
+        encrypted_signing_key: &'a EncryptedSigningKey,
+    ) -> Self {
+        Self {
+            keychain,
+            encrypted_signing_key,
+        }
     }
 
     /// The signing key's address.
     fn address(&self) -> Address {
-        self.signing_key.address.to_address()
+        self.encrypted_signing_key.address.to_address()
     }
 
     /// The addresses chain id.
     fn chain_id(&self) -> ChainId {
-        self.signing_key.chain_id
-    }
-
-    /// The signing key.
-    fn key(&self) -> &EthereumAsymmetricKey {
-        &self.signing_key.key
+        self.encrypted_signing_key.chain_id
     }
 
     /// Make sure transaction parameters match our address data.
@@ -75,7 +79,11 @@ impl<'a> Signer<'a> {
     ) -> Result<EcdsaEthereumSignature, Error> {
         let digest = Keccak256::new_with_prefix(data.as_ref());
 
-        let sig = self.key().try_sign_digest(digest)?;
+        // It's important to minimize the time the signing key spends in memory unencrypted.
+        let sig = {
+            let signing_key = self.encrypted_signing_key.decrypt(self.keychain)?;
+            signing_key.try_sign_digest(digest)
+        }?;
 
         Ok(EcdsaEthereumSignature::new(&sig, self.chain_id()))
     }
@@ -148,14 +156,19 @@ impl<'a> Signer<'a> {
 }
 
 /// Signer middleware for ethers-rs using our key management.
+#[derive(Debug)]
 pub(super) struct SignerMiddleware<'a> {
     provider: &'a Provider<Http>,
     signer: Signer<'a>,
 }
 
 impl<'a> SignerMiddleware<'a> {
-    pub fn new(provider: &'a Provider<Http>, signing_key: &'a SigningKey) -> Self {
-        let signer = Signer::new(signing_key);
+    pub fn new(
+        provider: &'a Provider<Http>,
+        keychain: &'a Keychain,
+        encrypted_signing_key: &'a EncryptedSigningKey,
+    ) -> Self {
+        let signer = Signer::new(keychain, encrypted_signing_key);
         Self { provider, signer }
     }
 }
@@ -278,22 +291,6 @@ impl<'a> Middleware for SignerMiddleware<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Signer<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Signer")
-            .field("signing_key", &self.signing_key)
-            .finish()
-    }
-}
-
-impl<'a> fmt::Debug for SignerMiddleware<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SignerMiddleware")
-            .field("signer", &self.signer)
-            .finish()
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum SignerMiddlewareError<M: Middleware> {
     /// Thrown when the internal middleware errors
@@ -404,13 +401,14 @@ mod tests {
 
     use anyhow::Result;
     use ethers::core::{
-        types::{RecoveryMessage, TransactionRequest},
+        types::TransactionRequest,
         utils::{hex, keccak256},
     };
     use lazy_static::lazy_static;
     use serde_json::json;
 
     use super::*;
+    use crate::protocols::eth::EthereumAsymmetricKey;
 
     struct PersonalSignTest {
         address: &'static str,
@@ -484,9 +482,11 @@ mod tests {
 
         assert!(matches!(tx, TypedTransaction::Legacy(_)));
 
-        let key = SK.parse::<EthereumAsymmetricKey>()?;
-        let signing_key = SigningKey::new(key, chain_id)?;
-        let signer = Signer::new(&signing_key);
+        let secret_key = SK.parse::<EthereumAsymmetricKey>()?;
+        let keychain = Keychain::new();
+        let encrypted_signing_key =
+            EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
+        let signer = Signer::new(&keychain, &encrypted_signing_key);
 
         // We're calling implementation specific `hazmat_sign_bytes` here instead of the middleware
         // `sign_transaction`, because our implementation of `sign_transaction` refuses to sign a
@@ -495,7 +495,7 @@ mod tests {
         let sig: EIP155EthereumSignature = signer.hazmat_sign_bytes(&message)?.into();
         let sig: EthereumSignature = sig.into();
         let hash = keccak256(&message);
-        sig.verify(hash, signing_key.address)?;
+        sig.verify(hash, encrypted_signing_key.address)?;
         let sig_bytes = tx.rlp_signed(&sig);
 
         assert_eq!(keccak256(&sig_bytes)[..], hex::decode(SIG_HASH).unwrap());
@@ -516,17 +516,19 @@ mod tests {
     #[test]
     fn personal_sign() -> Result<()> {
         let chain_id = ChainId::default_dapp_chain();
+        let keychain = Keychain::new();
         for case in PERSONAL_SIGN_VECTORS.iter() {
-            let signing_key = SigningKey::new(case.key(), chain_id)?;
-            assert_eq!(signing_key.address.to_string(), case.address);
+            let encrypted_signing_key =
+                EncryptedSigningKey::test_key(&keychain, case.key(), chain_id)?;
+            assert_eq!(encrypted_signing_key.address.to_string(), case.address);
 
-            let signer = Signer::new(&signing_key);
+            let signer = Signer::new(&keychain, &encrypted_signing_key);
 
             let signature = signer.personal_sign(case.message())?;
 
             signature.inner.verify(
                 keccak256(Signer::personal_sign_message(case.message())),
-                signing_key.address,
+                encrypted_signing_key.address,
             )?;
 
             let expected_signature: ethers::core::types::Signature =
@@ -607,18 +609,21 @@ mod tests {
         });
         let data: TypedData = serde_json::from_value(data)?;
         let expected_signature: EthereumSignature = "0x4355c47d63924e8a72e509b65029052eb6c299d53a04e167c5775fd466751c9d07299936d304c153f6443dfa05f40ff007d72911b6f72307f996231605b915621c".parse()?;
-        let key: EthereumAsymmetricKey =
+
+        let keychain = Keychain::new();
+        let secret_key: EthereumAsymmetricKey =
             "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4".parse()?;
 
         let chain_id = ChainId::default_dapp_chain();
-        let signing_key = SigningKey::new(key, chain_id)?;
-        let signer = Signer::new(&signing_key);
+        let encrypted_signing_key =
+            EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
+        let signer = Signer::new(&keychain, &encrypted_signing_key);
 
         let signature = signer.sign_typed_data(&data)?;
 
         signature
             .inner
-            .verify(data.encode_eip712()?, signing_key.address)?;
+            .verify(data.encode_eip712()?, encrypted_signing_key.address)?;
 
         assert_eq!(signature.inner, expected_signature);
 

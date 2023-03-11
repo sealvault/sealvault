@@ -8,7 +8,6 @@ use crate::protocols::eth::chain_id::ChainId;
 
 /// Information about the
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[readonly::make]
 pub struct ProtocolData {
     pub chain_id: ChainId,
 }
