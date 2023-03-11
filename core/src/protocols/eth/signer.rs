@@ -484,8 +484,9 @@ mod tests {
 
         let secret_key = SK.parse::<EthereumAsymmetricKey>()?;
         let keychain = Keychain::new();
-        let signing_key = EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
-        let signer = Signer::new(&keychain, &signing_key);
+        let encrypted_signing_key =
+            EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
+        let signer = Signer::new(&keychain, &encrypted_signing_key);
 
         // We're calling implementation specific `hazmat_sign_bytes` here instead of the middleware
         // `sign_transaction`, because our implementation of `sign_transaction` refuses to sign a
@@ -494,7 +495,7 @@ mod tests {
         let sig: EIP155EthereumSignature = signer.hazmat_sign_bytes(&message)?.into();
         let sig: EthereumSignature = sig.into();
         let hash = keccak256(&message);
-        sig.verify(hash, signing_key.address)?;
+        sig.verify(hash, encrypted_signing_key.address)?;
         let sig_bytes = tx.rlp_signed(&sig);
 
         assert_eq!(keccak256(&sig_bytes)[..], hex::decode(SIG_HASH).unwrap());
@@ -517,17 +518,17 @@ mod tests {
         let chain_id = ChainId::default_dapp_chain();
         let keychain = Keychain::new();
         for case in PERSONAL_SIGN_VECTORS.iter() {
-            let signing_key =
+            let encrypted_signing_key =
                 EncryptedSigningKey::test_key(&keychain, case.key(), chain_id)?;
-            assert_eq!(signing_key.address.to_string(), case.address);
+            assert_eq!(encrypted_signing_key.address.to_string(), case.address);
 
-            let signer = Signer::new(&keychain, &signing_key);
+            let signer = Signer::new(&keychain, &encrypted_signing_key);
 
             let signature = signer.personal_sign(case.message())?;
 
             signature.inner.verify(
                 keccak256(Signer::personal_sign_message(case.message())),
-                signing_key.address,
+                encrypted_signing_key.address,
             )?;
 
             let expected_signature: ethers::core::types::Signature =
@@ -614,14 +615,15 @@ mod tests {
             "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4".parse()?;
 
         let chain_id = ChainId::default_dapp_chain();
-        let signing_key = EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
-        let signer = Signer::new(&keychain, &signing_key);
+        let encrypted_signing_key =
+            EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
+        let signer = Signer::new(&keychain, &encrypted_signing_key);
 
         let signature = signer.sign_typed_data(&data)?;
 
         signature
             .inner
-            .verify(data.encode_eip712()?, signing_key.address)?;
+            .verify(data.encode_eip712()?, encrypted_signing_key.address)?;
 
         assert_eq!(signature.inner, expected_signature);
 

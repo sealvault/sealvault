@@ -456,7 +456,7 @@ impl Address {
         Ok(profile_id)
     }
 
-    pub fn fetch_encrypted_secret_key(
+    pub fn fetch_encrypted_signing_key(
         tx_conn: &mut DeferredTxConnection,
         address_id: &AddressId,
     ) -> Result<eth::EncryptedSigningKey, Error> {

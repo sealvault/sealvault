@@ -488,7 +488,7 @@ impl DappKeyProvider {
                     session.chain_id,
                 )?;
                 let encrypted_wallet_signing_key =
-                    m::Address::fetch_encrypted_secret_key(
+                    m::Address::fetch_encrypted_signing_key(
                         &mut tx_conn,
                         &wallet_address_id,
                     )?;
@@ -621,17 +621,19 @@ impl DappKeyProvider {
         mut tx: TransactionRequest,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let (session, signing_key) =
+        let (session, encrypted_signing_key) =
             self.fetch_eth_encrypted_signing_key(session).await?;
 
         // Remove nonce to fill with latest nonce from remote API in signer to make sure tx nonce is
         // current. MetaMask does this too.
         tx.nonce = None;
 
-        let provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
+        let provider = self
+            .rpc_manager()
+            .eth_api_provider(encrypted_signing_key.chain_id);
 
         let tx_hash_fut =
-            provider.send_transaction_async(self.keychain(), &signing_key, tx);
+            provider.send_transaction_async(self.keychain(), &encrypted_signing_key, tx);
 
         let resources = self.resources.clone();
         let session = Self::approved_dapp_transaction(resources, session).await;
@@ -731,9 +733,9 @@ impl DappKeyProvider {
             });
         }
 
-        let (session, signing_key) =
+        let (session, encrypted_signing_key) =
             self.fetch_eth_encrypted_signing_key(session).await?;
-        let signer = Signer::new(self.keychain(), &signing_key);
+        let signer = Signer::new(self.keychain(), &encrypted_signing_key);
         let signature = signer.personal_sign(message)?;
 
         let resources = self.resources.clone();
@@ -840,7 +842,7 @@ impl DappKeyProvider {
         let (session, encrypted_secret_key) = self
             .connection_pool()
             .deferred_transaction_async(move |mut tx_conn| {
-                let encrypted_secret_key = m::Address::fetch_encrypted_secret_key(
+                let encrypted_secret_key = m::Address::fetch_encrypted_signing_key(
                     &mut tx_conn,
                     &session.address_id,
                 )?;

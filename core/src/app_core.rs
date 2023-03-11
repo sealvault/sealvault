@@ -346,16 +346,18 @@ impl AppCore {
         let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let to_address: eth::ChecksumAddress =
             args.to_checksum_address.clone().try_into()?;
-        let signing_key = fetch_encrypted_secret_key_for_transfer(
+        let encrypted_signing_key = fetch_encrypted_secret_key_for_transfer(
             &*self.resources,
             &from_address_id,
             to_address,
         )?;
 
-        let rpc_provider = self.rpc_manager().eth_api_provider(signing_key.chain_id);
+        let rpc_provider = self
+            .rpc_manager()
+            .eth_api_provider(encrypted_signing_key.chain_id);
         let tx_hash_res = rpc_provider.transfer_fungible_token(
             self.keychain(),
-            &signing_key,
+            &encrypted_signing_key,
             to_address,
             &args.amount_decimal,
             contract_address,
@@ -540,7 +542,7 @@ fn fetch_encrypted_secret_key_for_transfer(
                 })?;
             }
 
-            m::Address::fetch_encrypted_secret_key(&mut tx_conn, from_address_id)
+            m::Address::fetch_encrypted_signing_key(&mut tx_conn, from_address_id)
         },
     )?;
     Ok(encrypted_secret_key)
