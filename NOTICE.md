@@ -2,7 +2,7 @@
 
 ## Copyright Holder
 
-The contents of this repository are subject to `Copyright (c) 2022 SealVault
+The contents of this repository are subject to `Copyright (c) 2023 SealVault
 Inc.`
 
 The contents of the `website` directory are licensed under a [Creative Commons
