@@ -1107,6 +1107,7 @@ dependencies = [
  "anyhow",
  "derive_more",
  "diesel",
+ "libsqlite3-sys",
 ]
 
 [[package]]

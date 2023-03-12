@@ -5,6 +5,10 @@ edition = "2021"
 
 [dependencies]
 diesel = { version = "2.0.3", features = ["sqlite"] }
+# This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)
+# with the feature flag. We need at least 0.24, bc that bundles SQLite 3.38.0 which
+# ships with JSON support compiled in.
+libsqlite3-sys = { version = ">=0.24, <0.26.0", features = ["bundled"] }
 
 [dev-dependencies]
 anyhow = { version = "1.0.69", features = ["backtrace"] }

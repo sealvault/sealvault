@@ -4,7 +4,6 @@
 
 /// Implement `ToSql` using the type's `to_string` method and `FromSql` using the type's `FromStr`
 /// implementation.
-// #[macro_export]
 #[macro_export]
 macro_rules! sql_text {
     ($type_name:ident) => {
@@ -46,12 +45,53 @@ mod tests {
     use anyhow::Result;
     use derive_more::{AsRef, Display, Into};
     use diesel::{
+        deserialize::FromSqlRow,
+        dsl,
+        expression::{AsExpression, TypedExpressionType},
+        query_builder::{AsQuery, QueryId},
+        query_dsl::LoadQuery,
+        select,
         serialize::{Output, ToSql},
-        sql_types::Text,
+        sql_types::{HasSqlType, SingleValue, SqlType, Text},
         sqlite::{Sqlite, SqliteBindValue},
+        Connection, IntoSql, Queryable, RunQueryDsl, SqliteConnection,
     };
 
-    #[derive(Debug, Display, Clone, Eq, PartialEq, Into, AsRef)]
+    pub fn connection() -> SqliteConnection {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        diesel::sql_query("PRAGMA foreign_keys = ON")
+            .execute(&mut conn)
+            .unwrap();
+        conn
+    }
+
+    /// Test that serializing and deserializing to/from SQL results in the same value.
+    /// Based on: https://github.com/diesel-rs/diesel/blob/25afffb6f0d1537a496ffbc1842102aba7936dce/diesel_tests/tests/types_roundtrip.rs#L18-L53
+    pub fn test_type_round_trip<ST, T>(value: T) -> Result<()>
+    where
+        ST: QueryId + SqlType + TypedExpressionType + SingleValue,
+        <SqliteConnection as Connection>::Backend: HasSqlType<ST>,
+        T: AsExpression<ST>
+            + FromSqlRow<ST, <SqliteConnection as Connection>::Backend>
+            + Queryable<ST, <SqliteConnection as Connection>::Backend>
+            + Clone
+            + Eq
+            + ::std::fmt::Debug
+            + 'static,
+        for<'a> dsl::BareSelect<<T as AsExpression<ST>>::Expression>:
+            AsQuery + LoadQuery<'a, SqliteConnection, T>,
+    {
+        let connection = &mut connection();
+        let query = select(value.clone().into_sql::<ST>());
+        let result = query.get_result::<T>(connection)?;
+        assert_eq!(&value, &result);
+        Ok(())
+    }
+
+    #[derive(
+        Debug, Display, Clone, Eq, PartialEq, Into, AsRef, AsExpression, FromSqlRow,
+    )]
+    #[diesel(sql_type = Text)]
     #[repr(transparent)]
     struct TestText(String);
 
@@ -66,19 +106,9 @@ mod tests {
     sql_text!(TestText);
 
     #[test]
-    fn test_string() -> Result<()> {
-        let s = "hello";
-        let text = TestText::from_str(s)?;
-
-        let value: SqliteBindValue = None::<String>.into();
-        let mut metadata = ();
-        let mut output = Output::<Sqlite>::new(value, &mut metadata);
-        let is_null =
-            <TestText as ToSql<Text, Sqlite>>::to_sql(&text, &mut output).unwrap();
-
-        assert_eq!(is_null, diesel::serialize::IsNull::No);
-        // TODO test value pending https://github.com/diesel-rs/diesel/discussions/3538
-
+    fn test_sql_text() -> Result<()> {
+        let text = TestText::from_str("hello")?;
+        test_type_round_trip::<Text, _>(text)?;
         Ok(())
     }
 }
