@@ -132,7 +132,6 @@ pub enum InPageRequest {
     EthSignTypedDataV4(Address, TypedData),
 
     #[serde(rename = "eth_sendTransaction", with = "sequence_len_one")]
-    // EthSendTransaction(Box<TransactionRequest>),
     EthSendTransaction(TransactionRequest),
 
     #[serde(rename = "eth_sendRawTransaction", with = "sequence_len_one")]
