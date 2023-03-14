@@ -46,15 +46,7 @@ For example, the decentralized asset management platform,
 [dHEDGE](https://www.dhedge.org/) embeds other dapps like
 [Aave](https://aave.com/) and [Uniswap](https://uniswap.org/) on
 `app.dhedge.org`.  In the dapp key model, the identifier for both the dHEDGE and
-the embedded Aave and Uniswap dapps would be `dhedge.org`.  This means that the
-key used for `dhedge.org` could be used to approve transactions for the dHEDGE
-dapp accessible on `app.dhedge.org`, and the Aave and the Uniswap dapps
-*embedded* on `app.dhedge.org`, but the same key couldn't be used to approve
-transactions when the user directly visits `app.aave.com` or `app.uniswap.org`.
-
-Preventing the use of keys associated with embedded contexts when visiting them
-directly ensures that removing an embedded dapp from a site removes its access
-to other dapps on that site.
+the embedded Aave and Uniswap dapps would be `dhedge.org`.  
 
 ## Automatic Signature Approval
 
@@ -62,6 +54,11 @@ When the in-page provider connects a dapp with its own dapp key, the in-page
 provider can automatically approve signature requests, since the dapp only has
 access to assets the user explicitly trusted it with by transferring them to the
 dapp key address.
+
+Automatic transaction approval is only enabled for the [top-level
+origin](https://html.spec.whatwg.org/#concept-environment-top-level-origin) and
+for embedded contexts that are [schemefully
+same-site](https://html.spec.whatwg.org/#same-site) for the top level origin.
 
 ## Changing Dapp for Address
 
