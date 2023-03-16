@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt() -> Result<()> {
-        let dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey.into())?;
+        let dek = DataEncryptionKey::random(KeyName::SkDataEncryptionKey)?;
         let kp: AsymmetricKey<Secp256k1> = AsymmetricKey::random()?;
         let encrypted_der = kp.to_encrypted_der(&dek)?;
         let decrypted: AsymmetricKey<Secp256k1> =

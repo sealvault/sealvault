@@ -515,7 +515,7 @@ mod tests {
     use super::*;
     use crate::async_runtime as rt;
 
-    const TEST_ADDRESS: &'static str = "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE";
+    const TEST_ADDRESS: &str = "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE";
 
     pub struct AnkrRpc {
         client: HttpClient,

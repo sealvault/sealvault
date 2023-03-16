@@ -51,9 +51,7 @@ mod tests {
         query_builder::{AsQuery, QueryId},
         query_dsl::LoadQuery,
         select,
-        serialize::{Output, ToSql},
         sql_types::{HasSqlType, SingleValue, SqlType, Text},
-        sqlite::{Sqlite, SqliteBindValue},
         Connection, IntoSql, Queryable, RunQueryDsl, SqliteConnection,
     };
 

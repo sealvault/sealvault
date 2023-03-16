@@ -380,7 +380,7 @@ mod tests {
 
         // Make sure it can handle an unexpected file name in the directory
         let mut file = tmp_file()?;
-        file.write(b"some random data")?;
+        file.write_all(b"some random data")?;
         file.flush()?;
         let backup_storage = backup.backup_storage();
         backup_storage

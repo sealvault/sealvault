@@ -420,10 +420,9 @@ mod tests {
     impl PersonalSignTest {
         fn key(&self) -> EthereumAsymmetricKey {
             let private_key = self.private_key.strip_prefix("0x").expect("0x prefix");
-            let key = private_key
+            private_key
                 .parse::<EthereumAsymmetricKey>()
-                .expect("valid private key");
-            key
+                .expect("valid private key")
         }
 
         fn message(&self) -> Bytes {

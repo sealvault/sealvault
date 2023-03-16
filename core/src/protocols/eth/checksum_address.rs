@@ -197,7 +197,7 @@ mod tests {
 
         let sk = hex::decode(SK)?;
         let field_bytes = FieldBytes::from_slice(&sk);
-        let sk = SecretKey::from_bytes(&field_bytes)?;
+        let sk = SecretKey::from_bytes(field_bytes)?;
         let pk = sk.public_key();
 
         let expected_address = Address::from_slice(&hex::decode(ADDRESS)?);

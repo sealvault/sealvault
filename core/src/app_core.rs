@@ -725,8 +725,7 @@ pub mod tests {
         pub fn new(tmp_dir: TmpCoreDir, disable_backups: bool) -> Result<Self, Error> {
             let rpc_manager = Box::new(eth::AnvilRpcManager::new());
             let ui_callback_state = Arc::new(UICallbackState::new());
-            let ui_callbacks =
-                Box::new(CoreUICallbackMock::new(ui_callback_state.clone()));
+            let ui_callbacks = Box::new(CoreUICallbackMock::new(ui_callback_state));
             let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;
             let keychain = Keychain::new();
 
@@ -1334,9 +1333,7 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let invalid_pic_name = "bar".to_string();
-        let result = tmp
-            .core
-            .create_profile("foo".into(), invalid_pic_name.clone());
+        let result = tmp.core.create_profile("foo".into(), invalid_pic_name);
         assert!(
             matches!(result, Err(CoreError::Fatal {error }) if error.to_lowercase().contains("not found"))
         );
