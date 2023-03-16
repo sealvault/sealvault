@@ -142,7 +142,7 @@ with new stuff have the following problems:
 - [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
 - [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
 - [ ] MacOS app
-- [ ] E2EE Cross-Platform Sync
+- [ ] E2EE cross-platform sync
 - [ ] Support for more chains and decentralized protocols 
 - [ ] Android, Windows and Linux apps
 - [ ] Password storage & WebAuthn/Passkey support
