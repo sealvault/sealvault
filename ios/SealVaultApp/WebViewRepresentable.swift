@@ -28,7 +28,7 @@ public struct WebViewRepresentable: UIViewRepresentable {
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
             if let scriptSource = scriptHandler.getInPageScript() {
                 let userScript = WKUserScript(
-                    source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: false
+                    source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true
                 )
 
                 let contentController = WKUserContentController()
