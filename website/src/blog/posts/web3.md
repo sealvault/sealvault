@@ -243,8 +243,7 @@ After the iOS app, we're going to release an Android version followed by desktop
 apps (Windows, MacOS, Linux) with E2EE cross-platform sync and self-custody
 backups with social recovery methods.
 
-Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz) Please
-reach out [on Telegram](https://t.me/agostbiro) for support and feedback.
+Learn more on the [website.](https://sealvault.org)
 
 <figure markdown>
 [![SealVault Logo](../../assets/images/logo.png){ loading=lazy }](/)

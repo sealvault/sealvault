@@ -10,3 +10,7 @@
 .twitter {
     color: #1DA1F2;
 }
+
+.img-max-height-600 {
+    max-height: 600px;
+}

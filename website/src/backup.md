@@ -1,4 +1,4 @@
-# Self-Custody Backup
+# Self-Custody Cloud Backup
 
 SealVault can **automatically back up your keys and profiles to your iCloud
 Storage** so that you can restore them if you lose your device or get a new one.
@@ -13,7 +13,7 @@ not synced between your devices.
 password.**
 
 <figure markdown>
-![iOS backup settings](./assets/images/screenshots/backup-settings.png){ loading=lazy }
+![iOS backup settings](./assets/images/screenshots/backup-settings.png){ loading=lazy class="img-max-height-600" }
 </figure>
 
 ## Rotate 
@@ -28,13 +28,7 @@ that is required to decrypt your backups. This additional secret protects your
 keys in case your backup password is stolen, but it's not possible to decrypt
 your backups with this secret alone.
 
-## Docs
+## Technical Docs
 
-You can read more about how backups work in the [technical
-documentation.](./dev-docs/design/backup.md)
-
-## Beta
-
-Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz)
-
-Please reach out [on Telegram](https://t.me/agostbiro) for support and feedback.
+- [Data model](./dev-docs/design/data.md)
+- [Backup design](./dev-docs/design/backup.md)
