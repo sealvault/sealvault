@@ -151,5 +151,5 @@ with new stuff have the following problems:
 
 - [Telegram](https://t.me/agostbiro)
 - [GitHub Repo](https://github.com/sealvault/sealvault)
-- [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license
+- [MPL 2.0](https://www.tldrlegal.com/license/mozilla-public-license-2-0-mpl-2) license
 - We &#10084;&#65039; PRs and forks
