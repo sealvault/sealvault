@@ -144,6 +144,8 @@ with new stuff have the following problems:
 - [ ] MacOS app
 - [ ] E2EE cross-platform sync
 - [ ] Support for more chains and decentralized protocols 
+- [ ] Social recovery
+- [ ] Cross-profile zero-knowledge proofs
 - [ ] Android, Windows and Linux apps
 - [ ] Password storage & WebAuthn/Passkey support
 
