@@ -82,7 +82,7 @@ with new stuff have the following problems:
     ![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
     <figcaption>
     Organize your dapps into profiles for isolated identities.
-    [More](./privacy.md)</figcaption>
+    [More](./profiles.md)</figcaption>
     </figure>
     
 -   :material-key-plus: __Dapp Keys__
