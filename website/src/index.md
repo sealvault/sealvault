@@ -15,14 +15,31 @@ with new stuff have the following problems:
 
 <div class="grid cards" markdown>
 
+-  :fontawesome-solid-skull-crossbones: __Getting Hacked__
+
+    ---
+
+    Users are worried about trying out new dapps, because malicious dapps can easily
+    steal their stuff.
+
+    **Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
+
+-  :fontawesome-solid-seedling: __Seed Phrases__
+
+    ---
+
+    Wallets use seed phrases for backup and portability. Seed phrases are both
+    annoying and insecure.
+    
+    **Solution: [Self-Custody Cloud Backup](./backup.md)**
+
 -  :fontawesome-regular-id-badge: __Getting Doxxed__
 
     ---
 
     Users want their gaming identity, dating identity and shitpost accounts to be
     isolated. This is challenging with blockchains where all data is public and
-    addresses are easily linked publicly with on-chain transactions. Wallets
-    don’t offer tools to solve this. 
+    addresses are easily linked publicly with on-chain transactions. 
 
     **Solution: [Profiles](./profiles.md)**
 
@@ -34,33 +51,7 @@ with new stuff have the following problems:
     automated and when it cannot be automated, users should have simple prompts like
     “sign in” or “pay” where they can trust the outcome.
 
-    <br/>**Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
-
--  :fontawesome-solid-skull-crossbones: __Getting Hacked__
-
-    ---
-
-    Users are worried about trying out new dapps, because malicious dapps can easily
-    steal their stuff.
-
     **Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
-
--  :fontawesome-solid-face-tired: __Poor Mobile UX__
-
-    ---
-
-    It's difficult to launch dapps and multitask in mobile wallets.
- 
-    <br/>**Solutions: [Quick Launch](#quick-launch) & [Multitasking](#multitasking)**
-
--  :fontawesome-solid-seedling: __Seed Phrases__
-
-    ---
-
-    Wallets use seed phrases for backup and portability. Seed phrases are both
-    annoying and insecure.
-
-    <br/>**Solution: [Self-Custody Cloud Backup](./backup.md)**
 
 -  :material-sync-off: __Missing Sync__
 
@@ -70,6 +61,14 @@ with new stuff have the following problems:
     support syncing keys and settings between devices.
 
     **Solution: E2EE Cross-Platform Sync**
+
+-  :fontawesome-solid-face-tired: __Poor Mobile UX__
+
+    ---
+
+    It's difficult to launch dapps and multitask in mobile wallets.
+ 
+    **Solutions: [Quick Launch](#quick-launch) & [Multitasking](#multitasking)**
 
 
 </div>
