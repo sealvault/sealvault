@@ -1,4 +1,4 @@
-# Self-Custody Backup
+# Self-Custody Cloud Backup
 
 SealVault can **automatically back up your keys and profiles to your iCloud
 Storage** so that you can restore them if you lose your device or get a new one.
