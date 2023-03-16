@@ -6,11 +6,9 @@ in different profiles, but you have to be careful not to link them from an
 external wallet.
 
 <figure markdown>
-![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
+![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy class="img-max-height-600" }
 </figure>
 
-## Beta
+## Technical Docs
 
-Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz)
-
-Please reach out [on Telegram](https://t.me/agostbiro) for support and feedback.
+- [Privacy Model](./dev-docs/design/privacy-model.md)

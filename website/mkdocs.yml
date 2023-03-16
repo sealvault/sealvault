@@ -29,6 +29,8 @@ markdown_extensions:
   - md_in_html
   - admonition
   - pymdownx.details
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.superfences:
@@ -50,9 +52,9 @@ extra_javascript:
 
 nav:
   - App:
-    - index.md
+    - Home: index.md
     - Dapp Keys: dapp-keys.md
-    - Privacy: privacy.md
+    - Profiles: profiles.md
     - Backup: backup.md
   - Blog: blog/index.md
   - Developer Docs:

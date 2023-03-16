@@ -1,7 +1,3 @@
----
-title: Web3 Key Manager App
----
-
 <h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
 
 <figure markdown>
@@ -9,16 +5,89 @@ title: Web3 Key Manager App
 <figcaption></figcaption>
 </figure>
 
-!!! tip "Experiment freely with Web3"
-    SealVault is the first key manager with automated transaction approval.
-    This keeps you safe and gets out of the way simultaneously.
+SealVault is an open source project to build a self-custody Web3 key manager app
+that is primarily used for everyday browsing with social and gaming dapps.
+
+## User Problems
+
+Wallet users who regularly use social and gaming dapps and like to experiment
+with new stuff have the following problems:
+
+<div class="grid cards" markdown>
+
+-  :fontawesome-regular-id-badge: __Getting Doxxed__
+
+    ---
+
+    Users want their gaming identity, dating identity and shitpost accounts to be
+    isolated. This is challenging with blockchains where all data is public and
+    addresses are easily linked publicly with on-chain transactions. Wallets
+    don’t offer tools to solve this. 
+
+    **Solution: [Profiles](./profiles.md)**
+
+-  :fontawesome-solid-face-tired: __Approval Fatigue__
+
+    ---
+
+    Wallets have too many popups. Most signature approval can and should be
+    automated and when it cannot be automated, users should have simple prompts like
+    “sign in” or “pay” where they can trust the outcome.
+
+    <br/>**Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
+
+-  :fontawesome-solid-skull-crossbones: __Getting Hacked__
+
+    ---
+
+    Users are worried about trying out new dapps, because malicious dapps can easily
+    steal their stuff.
+
+    **Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
+
+-  :fontawesome-solid-face-tired: __Poor Mobile UX__
+
+    ---
+
+    It's difficult to launch dapps and multitask in mobile wallets.
+ 
+    <br/>**Solutions: [Quick Launch](#quick-launch) & [Multitasking](#multitasking)**
+
+-  :fontawesome-solid-seedling: __Seed Phrases__
+
+    ---
+
+    Wallets use seed phrases for backup and portability. Seed phrases are both
+    annoying and insecure.
+
+    <br/>**Solution: [Self-Custody Cloud Backup](./backup.md)**
+
+-  :material-sync-off: __Missing Sync__
+
+    ---
+
+    Users often want to use the same keys on different devices, but wallets don’t
+    support syncing keys and settings between devices.
+
+    **Solution: E2EE Cross-Platform Sync**
+
+
+</div>
 
 ## Features
 
 <div class="grid cards" markdown>
 
--   __Dapp Keys__
-    <figure markdown>
+-   :material-account-multiple: __Multiple Identities__
+    <figure markdown class="sv-center-block" id="profiles">
+    ![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
+    <figcaption>
+    Organize your dapps into profiles for isolated identities.
+    [More](./privacy.md)</figcaption>
+    </figure>
+    
+-   :material-key-plus: __Dapp Keys__
+    <figure markdown id="dapp-keys">
     ![iOS app profile view](./assets/images/screenshots/profile-view.png){ loading=lazy }
     <figcaption>
     You can create keys for each dapp that you add.
@@ -27,16 +96,8 @@ title: Web3 Key Manager App
     </figcaption>
     </figure>
 
--   __Multiple Identities__
-    <figure markdown>
-    ![iOS app profile list view](./assets/images/screenshots/profile-list.png){ loading=lazy }
-    <figcaption>
-    Organize your dapps into profiles for isolated identities.
-    [More](./privacy.md)</figcaption>
-    </figure>
-    
--   __Automated Transaction Approval__
-    <figure markdown>
+-   :material-robot: __Automated Transaction Approval__
+    <figure markdown id="automated-transaction-approval">
     ![iOS app add dapp view](./assets/images/screenshots/add-dapp.png){ loading=lazy }
     <figcaption>
     You decide which dapp to add, after that transactions are approved
@@ -44,61 +105,51 @@ title: Web3 Key Manager App
     </figcaption>
     </figure>
 
--   __Move Assets Between Wallets and Dapps__
-    <figure markdown>
-    ![iOS app token transfer view](./assets/images/screenshots/transfer-view.png){ loading=lazy }
+-   :material-cloud-lock: __Self-Custody Backup__
+    <figure markdown id="backup">
+    ![iOS backup settings](./assets/images/screenshots/backup-settings.png){ loading=lazy }
     <figcaption>
-    You can also transfer a pre-configured amount automatically when you add a new
-    dapp. [More](./dapp-keys.md)
+    Automatically back up your keys and profiles to your iCloud Storage. [More](./backup.md)
     </figcaption>
     </figure>
 
--   __Quick Launch Your Favorite Dapps__
-    <figure markdown>
+-   :material-rocket-launch: __Quick Launch Your Favorite Dapps__
+    <figure markdown id="quick-launch">
     ![iOS app profile view](./assets/images/screenshots/top-dapps.png){ loading=lazy }
     <figcaption>
     Best-in-class dapp browser with helpful notifications about dapp transactions.
-    [More](./dapp-keys.md)
     </figcaption>
     </figure>
 
--   __Built for Multitasking__
-    <figure markdown>
+-   :material-card-multiple: __Built for Multitasking__
+    <figure markdown id="multitasking">
     ![iOS app open dapp in browser menu](./assets/images/screenshots/dual-browsers.png){ loading=lazy }
     <figcaption>
     Open two dapps side-by-side and switch with a single tap while both of them remain connected.
     </figure>
     
--   __Self-Custody Backup__
-    <figure markdown>
-    ![iOS backup settings](./assets/images/screenshots/backup-settings.png){ loading=lazy }
-    </figure>
-    Automatically back up your keys and profiles to your iCloud Storage. [More](./backup.md)
-
--   __Multi Chain__
-    - Currently: Ethereum and Polygon PoS
-    - Planned: all the chains &#127881;
-
--   __Cross Platform__
-    - Currently: iOS
-    - Next: MacOS + E2EE sync
-    - Planned: Android, Window, Linux
-
--   __Open Source for Real__
-    - [GitHub Repo](https://github.com/sealvault/sealvault)
-    - [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license
-    - We &#10084;&#65039; PRs and forks
-
--   __Big Picture__
-    - General purpose decentralized databases will be ubiquitous in the future.
-    - Self-custody of keys is not the default outcome.
-    - We need to move beyond the wallet paradigm to realize truly decentralized web applications.
-    - Read the [blog post.](./blog/web3)
-
 </div>
 
-## Beta
+## Roadmap
 
-Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz)
+- [X] [Security model](./dev-docs/design/security-model.md)
+- [X] Cross-platform core in Rust
+- [X] iOS app with built-in browser ([TestFlight](https://testflight.apple.com/join/EHQYn6Oz))
+- [X] Ethereum and Polygon support
+- [X] [Dapp keys](./dapp-keys.md)
+- [X] [Profiles](./profiles.md)
+- [X] [Self-custody cloud backup](./backup.md)
+- [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
+- [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
+- [ ] MacOS app
+- [ ] E2EE Cross-Platform Sync
+- [ ] Support for more chains and decentralized protocols 
+- [ ] Android, Windows and Linux apps
+- [ ] Password storage & WebAuthn/Passkey support
 
-Please reach out [on Telegram](https://t.me/agostbiro) for support and feedback.
+## Get Involved
+
+- [Telegram](https://t.me/agostbiro)
+- [GitHub Repo](https://github.com/sealvault/sealvault)
+- [MPL 2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-%28mpl-2%29) license
+- We &#10084;&#65039; PRs and forks

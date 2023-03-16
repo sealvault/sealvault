@@ -4,38 +4,8 @@
   <img src="./website/src/assets/images/logo-with-text.png" alt="SealVault Logo">
 </div>
 
-## Experiment freely with Web3 
-
-SealVault is the first key manager with automated transaction approval. This
-keeps you safe and gets out of the way simultaneously.
-
-## Features
-
-### Dapp Keys :fire:
-
-You can create keys for each dapp that you add.
-This mitigates damage from compromised dapps and enables automatic transaction approval.
-[Learn more.](https://sealvault.org/dapp-keys/)
-
-### Multiple Identities 🕶️
-
-Organize your dapps into profiles for isolated identities. 
-[Learn more.](https://sealvault.org/privacy/)</figcaption>
-
-<div float="left" align="center">
-    <img src="./website/src/assets/images/screenshots/profile-view.png" height="600px" />
-    <img src="./website/src/assets/images/screenshots/add-dapp.png" height="600px" />
-</div>
-
-## Status
-
-The project is currently in public beta with an iOS app and Polygon PoS support.
-
-Install the iOS beta [here.](https://testflight.apple.com/join/EHQYn6Oz)
-
-Please reach out [on Telegram](https://t.me/agostbiro) for support and feedback.
-
-Support for more platforms and blockchains is coming. You can find out more in the [intro blog post.](https://sealvault.org/blog/web3-vision/)
+SealVault is an open source project to build a self-custody Web3 key manager app
+that is primarily used for everyday browsing with social and gaming dapps. Learn more on the [website.](https://sealvault.org)
 
 ## [Developer Docs](https://sealvault.org/dev-docs/)
 
