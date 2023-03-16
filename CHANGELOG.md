@@ -1,5 +1,19 @@
 # Changelog
 
+## 2023-02-16
+
+### iOS Beta v0.7.1
+
+- Inject Ethereum provider only into main frame by default
+- Refactor signing key to minimize time in memory ([#20](https://github.com/sealvault/sealvault/issues/20))
+- Under-the-hood improvements for upcoming cross-connect feature
+
+#### Improvements
+
+- Display NFTs for address
+- Auto-detect new chains ([#105](https://github.com/sealvault/sealvault/issues/105))
+- Under-the-hood improvements for upcoming cross-connect feature
+
 ## 2023-02-15
 
 ### iOS Beta v0.7.0
