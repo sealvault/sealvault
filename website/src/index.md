@@ -140,6 +140,7 @@ with new stuff have the following problems:
 - [X] [Profiles](./profiles.md)
 - [X] [Self-custody cloud backup](./backup.md)
 - [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
+- [ ] In-app on-ramp
 - [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
 - [ ] MacOS app
 - [ ] E2EE cross-platform sync
