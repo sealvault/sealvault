@@ -30,5 +30,6 @@ your backups with this secret alone.
 
 ## Technical Docs
 
-- [Data model](./dev-docs/design/data.md)
 - [Backup design](./dev-docs/design/backup.md)
+- [Data model](./dev-docs/design/data.md)
+- [Cryptography](./dev-docs/design/cryptography.md)
