@@ -22,8 +22,15 @@ theme:
     - announce.dismiss
 extra:
   generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sealvault/sealvault
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/sealvault
+
 plugins:
   - search
+
 markdown_extensions:
   - footnotes
   - attr_list
