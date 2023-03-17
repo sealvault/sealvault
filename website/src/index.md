@@ -1,5 +1,3 @@
-<h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
-
 <figure markdown>
 ![SealVault Logo](./assets/images/logo-with-text.png)
 <figcaption></figcaption>
