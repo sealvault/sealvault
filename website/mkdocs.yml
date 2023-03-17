@@ -18,6 +18,7 @@ theme:
     primary: white
   features:
     - navigation.tabs
+    - navigation.footer
     - announce.dismiss
 extra:
   generator: false

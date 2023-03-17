@@ -8,6 +8,12 @@
 SealVault is an open source project to build a self-custody Web3 key manager app
 that is primarily used for everyday browsing with social and gaming dapps.
 
+<div class="grid" markdown>
+<div class="sv-center-block" markdown>
+[Subscribe to our newsletter](https://sealvault.substack.com/subscribe){ .md-button .md-button--primary .sv-button-primary-color }
+</div>
+</div>
+
 ## User Problems
 
 Wallet users who regularly use social and gaming dapps and like to experiment
