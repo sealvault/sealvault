@@ -35,7 +35,7 @@ with new stuff have the following problems:
     Wallets use seed phrases for backup and portability. Seed phrases are both
     annoying and insecure.
     
-    **Solution: [Self-Custody Cloud Backup](./backup.md)**
+    **Solution: [Self-Custody Cloud Backup](./backup.md) & Social Recovery**
 
 -  :fontawesome-regular-id-badge: __Getting Doxxed__
 
