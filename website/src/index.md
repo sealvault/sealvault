@@ -145,9 +145,11 @@ with new stuff have the following problems:
 - [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
 - [ ] In-app on-ramp
 - [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
+- [ ] iOS App Store release
 - [ ] MacOS app
 - [ ] E2EE cross-platform sync
 - [ ] Support for more chains and decentralized protocols 
+- [ ] Smart personalization
 - [ ] Social recovery
 - [ ] Cross-profile zero-knowledge proofs
 - [ ] Android, Windows and Linux apps
