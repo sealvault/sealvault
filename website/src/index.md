@@ -15,7 +15,7 @@ that is primarily used for everyday browsing with social and gaming dapps.
 ## User Problems
 
 Wallet users who regularly use social and gaming dapps and like to experiment
-with new stuff have the following problems:
+with new projects have the following problems:
 
 <div class="grid cards" markdown>
 
@@ -24,7 +24,7 @@ with new stuff have the following problems:
     ---
 
     Users are worried about trying out new dapps, because malicious dapps can easily
-    steal their stuff.
+    steal their tokens.
 
     **Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
 
