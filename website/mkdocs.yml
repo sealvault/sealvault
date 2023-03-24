@@ -82,5 +82,6 @@ nav:
             - dev-docs/design/security-model.md
             - Attack Tree: dev-docs/design/attack-tree.md
             - Data-Flow Diagrams: dev-docs/design/data-flow.md
+            - Token Transfer Traces: dev-docs/design/token-transfer-traces.md
           - Privacy Model: dev-docs/design/privacy-model.md
       - Rust Code Guidelines: dev-docs/rust.md
