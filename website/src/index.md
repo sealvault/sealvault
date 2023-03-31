@@ -3,7 +3,7 @@
 <figcaption></figcaption>
 </figure>
 
-SealVault is an open source project to build a **safe, smooth and secure**
+SealVault is an open source project to build a **safe, smooth and private**
 self-custody Web3 key manager app that is primarily used for everyday browsing
 with social and gaming dapps.
 
