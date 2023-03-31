@@ -3,8 +3,9 @@
 <figcaption></figcaption>
 </figure>
 
-SealVault is an open source project to build a self-custody Web3 key manager app
-that is primarily used for everyday browsing with social and gaming dapps.
+SealVault is an open source project to build a **safe, smooth and secure**
+self-custody Web3 key manager app that is primarily used for everyday browsing
+with social and gaming dapps.
 
 <div class="grid" markdown>
 <div class="sv-center-block" markdown>
@@ -24,7 +25,7 @@ with new projects have the following problems:
     ---
 
     Users are worried about trying out new dapps, because malicious dapps can easily
-    steal their tokens.
+    steal their stuff.
 
     **Solutions: [Dapp Keys](./dapp-keys.md) & [Cross Connect](./dev-docs/design/cross-connect.md)**
 
