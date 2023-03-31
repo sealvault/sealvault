@@ -199,51 +199,35 @@ start subsidizing transaction costs.
 
 ## Wallets
 
-Wallets are the local key and transaction management solution in the blockchain
-world. They generate keys from seed phrases and assume few keys per user. Seed
-phrases have double purpose: they provide both backup and portability.
+Wallets are the self-custody key and transaction management solution in the
+blockchain world. Wallets generate keys from seed phrases and assume few keys
+per user.
 
-Seed phrases have three major disadvantages:
+Wallets have major pain points for Web3 early adopters who regularly use
+social and gaming dapps and like to experiment with new projects:
 
-1. They require manual management of cryptographic keys which is beyond the
-   capabilities of most internet users.
-2. One seed-phrase based wallet can only be used on one device at a time, ie.
-   different devices need different seed phrases and thus different keys.[^70]
-4. [Automated key-level isolation](../../dev-docs/design/dapp-keys.md) of
-   dapps doesn't work with seed phrase based key derivation.
-
-Due to constraints around key creation and data backup, wallets rely on
-requiring user review of each database mutation (transaction).  User review of
-transactions is already challenging for financial applications due to spoofing
-[threats](../../dev-docs/design/security-model.md) and it's impractical for
-non-financial applications like games.
+1. Users are worried about trying out new dapps, because malicious dapps can
+   easily steal their stuff.
+2. Wallets use seed phrases for backup and portability. Seed phrases are both
+   annoying and insecure.
+3. Users want their gaming identity, dating identity and shitpost accounts to be
+   isolated. This is challenging with wallets since blockchain data is public and
+   addresses are easily linked publicly with on-chain transactions.
+4. Wallets have too many popups. Most signature approval can and should be
+   automated and when it cannot be automated, users should have simple prompts
+   like “sign in” or “pay” where they can trust the outcome.
+5. Users often want to use the same keys on different devices, but wallets don’t
+   support syncing keys and settings between devices.
+6. It's difficult to launch dapps and multitask in mobile wallets.
 
 It is clear to us that in order to realize truly decentralized web applications,
 we need to move beyond the wallet paradigm for everyday key and transaction
 management.  This is why we're building [SealVault,](https://sealvault.org) a
-new type of key manager for your dapps with automated transaction approval and
-phishing protection through [key-level dapp
-isolation.](../../dapp-keys.md)
+new type of key manager that combines password manager and wallet features to
+provide a **safe, smooth and private** self-custody Web3 experience.
 
-## SealVault Goals
-
-Our long term goal with SealVault is to build a cross-platform key and
-transaction management application for general purpose decentralized databases
-that is as easy to use as a [cloud solution](#how-can-web3-go-wrong) would be
-while giving users ownership of their keys.
-
-Our short term goal is to build a key and transaction management application
-that helps users experiment freely with Web3 through automated transaction
-approval and phishing protection. Our first product that implements this is an
-iOS app with a built-in browser. It currently supports Polygon PoS only, but we
-want to support all protocols and chains where people are building interesting
-dapps.
-
-After the iOS app, we're going to release an Android version followed by desktop
-apps (Windows, MacOS, Linux) with E2EE cross-platform sync and self-custody
-backups with social recovery methods.
-
-Learn more on the [website.](https://sealvault.org)
+You can learn more SealVault and the roadmap on the
+[website.](https://sealvault.org)
 
 <figure markdown>
 [![SealVault Logo](../../assets/images/logo.png){ loading=lazy }](/)
@@ -290,11 +274,3 @@ Learn more on the [website.](https://sealvault.org)
 [^67]:
     Just as we default to cloud storage over local storage for free backups and the
     potential for collaboration.
-    
-[^70]: 
-    The issue is that if Eva creates a key A on her phone to interact with dapp
-    X and then wants to create a new key B on her laptop from the same seed phrase
-    to interact with dapp Y, then key A will be used for both dapp X and Y if there
-    are no on-chain transactions with app X yet or the laptop hasn't noticed them
-    yet, as the laptop will generate key A in these cases when Eva would expect key
-    B to be generated.
