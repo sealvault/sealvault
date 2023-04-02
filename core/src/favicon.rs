@@ -31,6 +31,19 @@ pub fn fetch_favicons(
     rt::block_on(fetch_favicons_async(client, urls))
 }
 
+/// Fetch favicons in the background without blocking to warm the cache.
+/// Returns none for each url.
+pub fn warm_favicons_cache(
+    client: HttpClient,
+    urls: Vec<Url>,
+) -> Result<Vec<Option<Vec<u8>>>, Error> {
+    let results = urls.iter().map(|_| None).collect();
+    rt::spawn(async move {
+        let _ = fetch_favicons_async(&client, urls).await;
+    });
+    Ok(results)
+}
+
 /// Fetch one favicon from the DuckDuckGo favicon api.
 /// Uses local cache and returns None if there was an error fetching the favicon.
 pub async fn fetch_favicon_async(

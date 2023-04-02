@@ -15,7 +15,7 @@ use url::Url;
 use crate::db::{models as m, ConnectionPool, DeferredTxConnection, DeterministicId};
 use crate::{
     async_runtime as rt, config,
-    favicon::fetch_favicons,
+    favicon::{fetch_favicons, warm_favicons_cache},
     http_client::HttpClient,
     protocols::{eth, eth::ankr, FungibleTokenType},
     resources::CoreResourcesI,
@@ -130,7 +130,14 @@ impl Assembler {
     }
 
     /// Combine data from multiple sources to create Profile data transfer objects.
-    pub fn assemble_profiles(&self) -> Result<Vec<CoreProfile>, Error> {
+    /// If `fetch_dapp_icons` is true, it fetches favicons for dapps which makes this function do
+    /// blocking network requests. If it's false the favicons are still fetched in the background,
+    /// but not returned so that the on the next invocation of the function they are returned from
+    /// cache.
+    pub fn assemble_profiles(
+        &self,
+        fetch_dapp_icons: bool,
+    ) -> Result<Vec<CoreProfile>, Error> {
         // Important to pass down connection to make sure we see a consistent view of the db.
         self.connection_pool().deferred_transaction(|mut tx_conn| {
             let mut profiles: Vec<CoreProfile> = Default::default();
@@ -144,7 +151,11 @@ impl Assembler {
                     ..
                 } = profile;
 
-                let dapps = self.assemble_dapps(&mut tx_conn, &deterministic_id)?;
+                let dapps = self.assemble_dapps(
+                    &mut tx_conn,
+                    &deterministic_id,
+                    fetch_dapp_icons,
+                )?;
                 let wallets = self.assemble_wallets(&mut tx_conn, &deterministic_id)?;
                 let picture =
                     m::ProfilePicture::fetch_image(tx_conn.as_mut(), &picture_id)?;
@@ -183,10 +194,15 @@ impl Assembler {
         &self,
         tx_conn: &mut DeferredTxConnection,
         profile_id: &DeterministicId,
+        fetch_dapp_icons: bool,
     ) -> Result<Vec<CoreDapp>, Error> {
         let dapps = m::Dapp::list_for_profile(tx_conn.as_mut(), profile_id)?;
         let urls: Vec<Url> = dapps.iter().map(|d| d.url.clone().into()).collect();
-        let favicons = fetch_favicons(self.http_client(), urls)?;
+        let favicons = if fetch_dapp_icons {
+            fetch_favicons(self.http_client(), urls)
+        } else {
+            warm_favicons_cache(self.http_client().clone(), urls)
+        }?;
         let mut results: Vec<CoreDapp> = Default::default();
         for (dapp, icon) in dapps.into_iter().zip(favicons) {
             let dapp = self.assemble_dapp(tx_conn, profile_id, dapp, icon)?;

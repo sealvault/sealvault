@@ -25,7 +25,7 @@ interface AppCore {
     i64? last_uploaded_backup();
 
     [Throws=CoreError]
-    sequence<CoreProfile> list_profiles();
+    sequence<CoreProfile> list_profiles(boolean fetch_dapp_icons);
 
     [Throws=CoreError]
     void create_profile(string name, string bundled_picture_name);

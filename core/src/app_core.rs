@@ -165,8 +165,12 @@ impl AppCore {
         Ok(res)
     }
 
-    pub fn list_profiles(&self) -> Result<Vec<dto::CoreProfile>, CoreError> {
-        let res = self.assembler().assemble_profiles()?;
+    /// See `assemble_profiles` for details.
+    pub fn list_profiles(
+        &self,
+        fetch_dapp_icons: bool,
+    ) -> Result<Vec<dto::CoreProfile>, CoreError> {
+        let res = self.assembler().assemble_profiles(fetch_dapp_icons)?;
         Ok(res)
     }
 
@@ -860,7 +864,7 @@ pub mod tests {
         }
 
         pub fn first_profile(&self) -> dto::CoreProfile {
-            let profiles = self.core.list_profiles().expect("cannot list profiles");
+            let profiles = self.core.list_profiles(true).expect("cannot list profiles");
             profiles.into_iter().next().expect("there is one profile")
         }
 
@@ -1285,17 +1289,17 @@ pub mod tests {
         let tmp = TmpCore::new()?;
 
         let first_profile = tmp.first_profile();
-        let initial_count = tmp.core.list_profiles()?.len();
+        let initial_count = tmp.core.list_profiles(true)?.len();
 
         let name = "foo".to_string();
         tmp.core.create_profile(name.clone(), "seal-1".into())?;
-        let profiles = tmp.core.list_profiles()?;
+        let profiles = tmp.core.list_profiles(true)?;
         assert_eq!(profiles.len(), initial_count + 1);
         assert_eq!(profiles[initial_count].name, name);
 
         let name = "bar".to_string();
         tmp.core.create_profile(name.clone(), "seal-2".into())?;
-        let profiles = tmp.core.list_profiles()?;
+        let profiles = tmp.core.list_profiles(true)?;
         assert_eq!(profiles.len(), initial_count + 2);
         assert_eq!(profiles[initial_count + 1].name, name);
 
@@ -1345,7 +1349,7 @@ pub mod tests {
         let keychain = core.resources.keychain();
 
         core.create_profile("profile-two".into(), "seal-1".into())?;
-        let profiles = core.list_profiles()?;
+        let profiles = core.list_profiles(true)?;
         assert_eq!(profiles.len(), 2);
 
         let profile_id_one: DeterministicId = profiles[0].id.clone().try_into()?;
