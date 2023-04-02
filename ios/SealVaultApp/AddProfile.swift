@@ -5,7 +5,9 @@
 import SwiftUI
 
 struct AddProfile: View {
-    @EnvironmentObject var model: GlobalModel
+    @EnvironmentObject private var model: GlobalModel
+    @EnvironmentObject private var bannerModel: BannerModel
+
     @Environment(\.dismiss) var dismiss
 
     @State var profileName: String = ""
@@ -51,8 +53,13 @@ struct AddProfile: View {
                 let profileName = self.profileName
                 if let imageName = self.imageName {
                     Task {
-                        await model.createProfile(name: profileName, bundledProfilePic: imageName)
+                        let maybeErrorBanner = await model.createProfile(
+                            name: profileName, bundledProfilePic: imageName
+                        )
                         DispatchQueue.main.async {
+                            if let bannerData = maybeErrorBanner {
+                                self.bannerModel.bannerData = bannerData
+                            }
                             dismiss()
                         }
                     }

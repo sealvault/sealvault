@@ -332,7 +332,7 @@ struct TransferButton: View {
     @ObservedObject var state: TransferState
     @EnvironmentObject private var bannerModel: BannerModel
 
-    func makeTransfer() async -> Bool {
+    func makeTransfer() async {
         await dispatchBackground(.userInteractive) {
             do {
                 if let toAddress = state.toChecksumAddress {
@@ -350,7 +350,6 @@ struct TransferButton: View {
                         try core.ethTransferFungibleToken(args: args)
                     }
                 }
-                return true
             } catch CoreError.User(let message) {
                 DispatchQueue.main.async {
                     bannerModel.bannerData = BannerData(
@@ -359,7 +358,6 @@ struct TransferButton: View {
                         type: .error
                     )
                 }
-                return false
             } catch CoreError.Retriable(let message) {
                 DispatchQueue.main.async {
                     bannerModel.bannerData = BannerData(
@@ -367,7 +365,6 @@ struct TransferButton: View {
                     )
                 }
                 print("Retriable error while transferring token: \(message)")
-                return false
             } catch let error {
                 DispatchQueue.main.async {
                     bannerModel.bannerData = BannerData(
@@ -375,7 +372,6 @@ struct TransferButton: View {
                     )
                 }
                 print("Fatal error while transferring token: \(error)")
-                return false
             }
 
         }
@@ -388,7 +384,7 @@ struct TransferButton: View {
             }
             state.processing = true
             Task {
-                let success = await makeTransfer()
+                await makeTransfer()
                 // Reset amount so that user doesn't submit twice by accident
                 state.amount = ""
                 state.processing = false

@@ -7,6 +7,8 @@ import SwiftUI
 @MainActor
 struct ProfileView: View {
     @EnvironmentObject private var model: GlobalModel
+    @EnvironmentObject private var bannerModel: BannerModel
+
     @ObservedObject var profile: Profile
 
     var body: some View {
@@ -33,14 +35,22 @@ struct ProfileView: View {
                                 .contextMenu {
                                     AsyncButton(action: {
                                         if let url = dapp.url {
-                                            await model.launchInBrowser(.left, profile: profile, url: url)
+                                            if let maybeError = await model.launchInBrowser(
+                                                .left, profile: profile, url: url
+                                            ) {
+                                                self.bannerModel.bannerData = maybeError
+                                            }
                                         }
                                     }, label: {
                                         Text("Open in Left Browser")
                                     })
                                     AsyncButton(action: {
                                         if let url = dapp.url {
-                                            await model.launchInBrowser(.right, profile: profile, url: url)
+                                            if let maybeError = await model.launchInBrowser(
+                                                .right, profile: profile, url: url
+                                            ) {
+                                                self.bannerModel.bannerData = maybeError
+                                            }
                                         }
                                     }, label: {
                                         Text("Open in Right Browser")
