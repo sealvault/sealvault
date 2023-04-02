@@ -1,8 +1,13 @@
 [![CI Status](https://github.com/sealvault/sealvault/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sealvault/sealvault/actions/workflows/ci.yml) 
 
-<div align="center">
-  <img src="./website/src/assets/images/logo-with-text.png" alt="SealVault Logo">
-</div>
+```text
+███████╗███████╗ █████╗ ██╗    ██╗   ██╗ █████╗ ██╗   ██╗██╗  ████████╗
+██╔════╝██╔════╝██╔══██╗██║    ██║   ██║██╔══██╗██║   ██║██║  ╚══██╔══╝
+███████╗█████╗  ███████║██║    ██║   ██║███████║██║   ██║██║     ██║   
+╚════██║██╔══╝  ██╔══██║██║    ╚██╗ ██╔╝██╔══██║██║   ██║██║     ██║   
+███████║███████╗██║  ██║███████╗╚████╔╝ ██║  ██║╚██████╔╝███████╗██║   
+╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝ ╚═══╝  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝
+```
 
 SealVault is an open source project to build a self-custody Web3 key manager app
 that is primarily used for everyday browsing with social and gaming dapps. 

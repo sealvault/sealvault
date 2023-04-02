@@ -1,7 +1,17 @@
-<figure markdown>
-![SealVault Logo](./assets/images/logo-with-text.png)
-<figcaption></figcaption>
-</figure>
+<h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
+
+<div class="grid" markdown>
+<div class="sv-center-block" markdown>
+<pre id="ascii-banner" class="sv-center-block">
+███████╗███████╗ █████╗ ██╗    ██╗   ██╗ █████╗ ██╗   ██╗██╗  ████████╗
+██╔════╝██╔════╝██╔══██╗██║    ██║   ██║██╔══██╗██║   ██║██║  ╚══██╔══╝
+███████╗█████╗  ███████║██║    ██║   ██║███████║██║   ██║██║     ██║   
+╚════██║██╔══╝  ██╔══██║██║    ╚██╗ ██╔╝██╔══██║██║   ██║██║     ██║   
+███████║███████╗██║  ██║███████╗╚████╔╝ ██║  ██║╚██████╔╝███████╗██║   
+╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝ ╚═══╝  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝   
+</pre>
+</div>
+</div>
 
 SealVault is an open source project to build a **safe, smooth and private**
 self-custody Web3 key manager app that is primarily used for everyday browsing
