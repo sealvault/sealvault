@@ -4,7 +4,7 @@ site_name: SealVault
 docs_dir: src
 
 # Copyright for the website contents is CC 4.0
-copyright: <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2023. "SealVault" and the <a href="/assets/images/logo.png">logo</a> are registered trademarks of SealVault Inc. The website content except for the logo is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+copyright: <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Copyright (c) SealVault Inc 2023. "SealVault" and the <a href="/assets/images/logo-transparent.png">logo</a> are registered trademarks of SealVault Inc. The website content except for the logo is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
 repo_url: https://github.com/sealvault/sealvault
 edit_uri: ""
@@ -12,10 +12,32 @@ edit_uri: ""
 theme:
   name: material
   custom_dir: src/overrides
-  logo: assets/images/logo.png
+  logo: assets/images/logo-transparent.png
   favicon: assets/images/favicon.png
   palette:
-    primary: white
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+
   features:
     - navigation.tabs
     - navigation.footer

@@ -230,7 +230,7 @@ You can learn more SealVault and the roadmap on the
 [website.](https://sealvault.org)
 
 <figure markdown>
-[![SealVault Logo](../../assets/images/logo.png){ loading=lazy }](/)
+[![SealVault Logo](../../assets/images/logo-color.png){ loading=lazy }](/)
 </figure>
 
 [^10]: 

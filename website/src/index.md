@@ -19,7 +19,8 @@ with social and gaming dapps.
 
 <div class="grid" markdown>
 <div class="sv-center-block" markdown>
-[Subscribe to our newsletter](https://sealvault.substack.com/subscribe){ .md-button .md-button--primary .sv-button-primary-color }
+
+[Subscribe to our newsletter](https://sealvault.substack.com/subscribe){ .md-button .md-button--primary }
 </div>
 </div>
 

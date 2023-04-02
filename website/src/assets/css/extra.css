@@ -15,11 +15,6 @@
     max-height: 600px;
 }
 
-.sv-button-primary-color {
-    background-color: #526cfe !important;
-    color: #ffffff !important;
-}
-
 #ascii-banner {
     font-size: max(0.75vw, 0.35rem);
     font-family: monospace;
