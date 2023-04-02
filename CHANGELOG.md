@@ -1,6 +1,15 @@
 # Changelog
 
-## 2023-02-16
+## 2023-04-02
+
+### iOS Beta v0.7.2
+
+- Update logo
+- Improve app startup time ([#https://github.com/sealvault/sealvault/pull/109])
+- Support opening block explorer for the appropriate chain if an address is used
+  on multiple chains.
+
+## 2023-03-16
 
 ### iOS Beta v0.7.1
 
