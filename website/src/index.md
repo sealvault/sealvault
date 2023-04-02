@@ -1,4 +1,10 @@
-<h1 hidden>This is a hack to prevent the static site generator auto-inserting a title</h1>
+<!--
+Emtpy h1 is a hack to prevent the static site generator auto-inserting a title.
+It cannot be hidden bc that screws up the header topic change on scroll.
+Unset all styles to remove padding after.
+-->
+
+<h1 style="all: unset;"></h1>
 
 <div class="grid" markdown>
 <div class="sv-center-block" markdown>
