@@ -5,7 +5,7 @@
 ### iOS Beta v0.7.2
 
 - Update logo
-- Improve app startup time ([#https://github.com/sealvault/sealvault/pull/109])
+- Improve app startup time ([#109](https://github.com/sealvault/sealvault/pull/109]))
 - Support opening block explorer for the appropriate chain if an address is used
   on multiple chains.
 
