@@ -19,7 +19,7 @@ class Dapp: Identifiable, ObservableObject {
     @Published var lastUsed: String?
 
     /// Favicon
-    @Published var favicon: UIImage
+    @Published var favicon: UIImage?
 
     required init(
         _ core: AppCoreProtocol, id: String, profileId: String, humanIdentifier: String, url: URL?,
@@ -94,8 +94,8 @@ extension Dapp {
         humanIdentifier
     }
 
-    var image: Image {
-        Image(uiImage: favicon)
+    var image: Image? {
+        favicon.map {Image(uiImage: $0)}
     }
 }
 

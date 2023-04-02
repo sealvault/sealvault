@@ -30,7 +30,9 @@ struct AppInner: View {
             .environmentObject(model)
             .environmentObject(bannerModel)
             .task {
-                await model.refreshProfiles()
+                // We aren't fetching dapp icons here because that'd make blocking
+                // network requests and we want to show profiles asap on startup.
+                await model.refreshProfiles(fetchDappIcons: false)
 
                 #if DEBUG
                 if CommandLine.arguments.contains(Config.createProfileArg) {

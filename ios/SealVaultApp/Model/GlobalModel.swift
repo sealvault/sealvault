@@ -124,10 +124,10 @@ extension GlobalModel {
         }
     }
 
-    private func listProfiles(_ qos: DispatchQoS.QoSClass) async -> [CoreProfile]? {
+    private func listProfiles(_ qos: DispatchQoS.QoSClass, fetchDappIcons: Bool) async -> [CoreProfile]? {
         return await dispatchBackground(qos) {
             do {
-                return try self.core.listProfiles()
+                return try self.core.listProfiles(fetchDappIcons: fetchDappIcons)
             } catch {
                 print("Error fetching profile data: \(error)")
                 return nil
@@ -268,8 +268,8 @@ extension GlobalModel {
         colorScheme == .dark ? .black : Color(UIColor.systemGray6)
     }
 
-    func refreshProfiles() async {
-        let profiles = await self.listProfiles(.userInteractive)
+    func refreshProfiles(fetchDappIcons: Bool = true) async {
+        let profiles = await self.listProfiles(.userInteractive, fetchDappIcons: fetchDappIcons)
         let activeProfileId = await self.fetchActiveProfileId(.userInteractive)
 
         if let profiles = profiles {
@@ -431,7 +431,7 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     static func toCoreDapp(_ dapp: Dapp) -> CoreDapp {
-        let icon = [UInt8](dapp.favicon.pngData()!)
+        let icon = dapp.favicon.map { [UInt8]($0.pngData()!) }
         let url = dapp.url?.absoluteString ?? "https://ens.domains"
         let addresses = dapp.addresses.addressList.map(Self.toCoreAddress)
 
@@ -551,7 +551,7 @@ class PreviewAppCore: AppCoreProtocol {
         throw CoreError.Fatal(message: "not implemented")
     }
 
-    func listProfiles() throws -> [CoreProfile] {
+    func listProfiles(fetchDappIcons _: Bool) throws -> [CoreProfile] {
         let wallets = [
             Address.ethereumWallet(),
             Address.polygonWallet()
@@ -657,7 +657,7 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     func topDapps(limit: UInt32) throws -> [String] {
-        let res = try! listProfiles().first!.dapps.map {$0.id}.prefix(Int(limit))
+        let res = try! listProfiles(fetchDappIcons: true).first!.dapps.map {$0.id}.prefix(Int(limit))
         return [String](res)
     }
 }
@@ -665,7 +665,7 @@ class PreviewAppCore: AppCoreProtocol {
 extension GlobalModel {
     static func buildForPreview() -> GlobalModel {
         let core = PreviewAppCore()
-        let profiles = try! core.listProfiles().map { Profile.fromCore(core, $0) }
+        let profiles = try! core.listProfiles(fetchDappIcons: true).map { Profile.fromCore(core, $0) }
         let activeProfileId = try! core.activeProfileId()
         return GlobalModel(
             core: core, profiles: profiles, activeProfileId: activeProfileId, callbackModel: CallbackModel()

@@ -12,8 +12,12 @@ struct DappRow: View {
             Text(dapp.displayName)
                 .font(.headline)
         } icon: {
-            IconView(image: dapp.image, iconSize: 24)
-                .accessibility(label: Text("Dapp icon"))
+            if let image = dapp.image {
+                IconView(image: image, iconSize: 24)
+                    .accessibility(label: Text("Dapp icon"))
+            } else {
+                ProgressView()
+            }
         }
     }
 }

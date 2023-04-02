@@ -143,7 +143,7 @@ struct DappApproval_Previews: PreviewProvider {
         let model = GlobalModel.buildForPreview()
         let profileId = model.activeProfileId!
         let dapp = Dapp.quickswap()
-        let favicon = [UInt8](dapp.favicon.pngData()!)
+        let favicon = [UInt8](dapp.favicon!.pngData()!)
         let params = DappApprovalParams(
             profileId: profileId, dappIdentifier: dapp.humanIdentifier, favicon: favicon, amount: "0.1",
             transferAllotment: true, tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS", chainId: 137,

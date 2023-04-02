@@ -11,7 +11,7 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 
 use crate::{config, Error};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HttpClient {
     client: ClientWithMiddleware,
 }
