@@ -13,14 +13,6 @@ struct AddressMenu: View {
             if let button = topButton {
                 button()
             }
-
-            if let url = address.blockchainExplorerLink {
-                Button(action: {
-                    UIApplication.shared.open(url)
-                }, label: {
-                    Text("Open in Block Explorer")
-                })
-            }
             Button(action: {
                 UIPasteboard.general.string = address.checksumAddress
             }, label: {

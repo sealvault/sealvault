@@ -28,7 +28,7 @@ struct TokenView: View {
             }
         } header: {
             HStack(spacing: 5) {
-                Text(address.chainDisplayName)
+                ChainMenu(address: address)
                 if profile.isAddressSelectedForAdapp(addressId: address.id) {
                     Image(systemName: "checkmark.circle")
                         .foregroundColor(.green)
