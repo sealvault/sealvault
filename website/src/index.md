@@ -7,7 +7,6 @@ Unset all styles to remove padding after.
 <h1 style="all: unset;"></h1>
 
 <div class="grid" markdown>
-<div class="sv-center-block" markdown>
 <pre id="ascii-banner" class="sv-center-block">
 ███████╗███████╗ █████╗ ██╗    ██╗   ██╗ █████╗ ██╗   ██╗██╗  ████████╗
 ██╔════╝██╔════╝██╔══██╗██║    ██║   ██║██╔══██╗██║   ██║██║  ╚══██╔══╝
@@ -16,7 +15,6 @@ Unset all styles to remove padding after.
 ███████║███████╗██║  ██║███████╗╚████╔╝ ██║  ██║╚██████╔╝███████╗██║   
 ╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝ ╚═══╝  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝   
 </pre>
-</div>
 </div>
 
 SealVault is an open source project to build a **safe, smooth and private**
@@ -147,6 +145,7 @@ with new projects have the following problems:
     ![iOS app open dapp in browser menu](./assets/images/screenshots/dual-browsers.png){ loading=lazy }
     <figcaption>
     Open two dapps side-by-side and switch with a single tap while both of them remain connected.
+    </figcaption>
     </figure>
     
 </div>
