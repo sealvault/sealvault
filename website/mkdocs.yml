@@ -13,7 +13,7 @@ theme:
   name: material
   custom_dir: src/overrides
   logo: assets/images/logo-transparent.png
-  favicon: assets/images/favicon.png
+  favicon: assets/images/favicon.ico
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
