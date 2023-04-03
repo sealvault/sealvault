@@ -1,3 +1,6 @@
 *SnapShot*
 *.launch
 *.out
+*.st
+*.fp
+states
