@@ -3,16 +3,16 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use diesel::prelude::*;
-use generic_array::{
-    typenum::{U2, U3},
-    GenericArray,
-};
+use generic_array::{typenum::U3, GenericArray};
 
 use crate::{
     db::{
         deterministic_id::{DeriveDeterministicId, DeterministicId, EntityName},
         models as m,
-        models::AddressId,
+        models::{
+            token_to_address::{NewTokenToAddressEntity, TokenToAddressEntity},
+            AddressId,
+        },
         schema::{tokens, tokens_to_addresses},
         DeferredTxConnection,
     },
@@ -138,60 +138,6 @@ impl<'a> TryFrom<TokenEntity<'a>> for NewTokenEntity<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
-#[diesel(primary_key(deterministic_id))]
-#[diesel(table_name = tokens_to_addresses)]
-struct TokenToAddress {
-    pub deterministic_id: DeterministicId,
-    pub address_id: DeterministicId,
-    pub chain_id: DeterministicId,
-    pub created_at: String,
-    pub updated_at: Option<String>,
-}
-
-#[readonly::make]
-struct TokenToAddressEntity<'a> {
-    pub token_id: &'a DeterministicId,
-    pub address_id: &'a AddressId,
-}
-
-impl<'a> DeriveDeterministicId<'a, &'a str, U2> for TokenToAddressEntity<'a> {
-    fn entity_name(&'a self) -> EntityName {
-        EntityName::TokenToAddress
-    }
-
-    fn unique_columns(&'a self) -> GenericArray<&'a str, U2> {
-        [self.token_id.as_ref(), self.address_id.as_ref()].into()
-    }
-}
-
-#[derive(Insertable)]
-#[diesel(table_name = tokens_to_addresses)]
-struct NewTokenToAddressEntity<'a> {
-    deterministic_id: DeterministicId,
-    token_id: &'a DeterministicId,
-    address_id: &'a AddressId,
-    created_at: String,
-}
-
-impl<'a> TryFrom<TokenToAddressEntity<'a>> for NewTokenToAddressEntity<'a> {
-    type Error = Error;
-
-    fn try_from(value: TokenToAddressEntity<'a>) -> Result<Self, Self::Error> {
-        let deterministic_id = value.deterministic_id()?;
-        let TokenToAddressEntity {
-            token_id,
-            address_id,
-        } = value;
-        Ok(Self {
-            deterministic_id,
-            token_id,
-            address_id,
-            created_at: rfc3339_timestamp(),
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -199,7 +145,7 @@ mod tests {
     use anyhow::Result;
 
     use super::*;
-    use crate::app_core::tests::TmpCore;
+    use crate::{app_core::tests::TmpCore, db::models::token_to_address::TokenToAddress};
 
     impl Token {
         pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Self>, Error> {

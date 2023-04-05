@@ -18,6 +18,7 @@ mod local_settings;
 mod profile;
 mod profile_picture;
 mod token;
+mod token_to_address;
 
 #[allow(deprecated)]
 pub use account::{Account, AccountEntity, AccountParams};
