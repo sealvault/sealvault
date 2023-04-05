@@ -18,7 +18,7 @@ use crate::{
         schema::{
             addresses, asymmetric_keys, chains, dapps, data_encryption_keys, profiles,
         },
-        DeferredTxConnection, JsonValue,
+        DeferredTxConnection,
     },
     encryption::{KeyEncryptionKey, KeyName, Keychain},
     protocols::{eth, BlockchainProtocol},
@@ -334,7 +334,7 @@ impl Address {
         use addresses::dsl as a;
         use chains::dsl as c;
 
-        let protocol_data: Vec<JsonValue> = addresses::table
+        let protocol_data: Vec<eth::ProtocolData> = addresses::table
             .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
             .filter(a::address.eq(address))
             .select(c::protocol_data)
@@ -342,8 +342,7 @@ impl Address {
 
         let mut results: Vec<eth::ChainId> = Default::default();
         for pd in protocol_data.into_iter() {
-            let chain_data: eth::ProtocolData = pd.convert_into()?;
-            results.push(chain_data.chain_id);
+            results.push(pd.chain_id);
         }
 
         Ok(results)
@@ -472,11 +471,13 @@ impl Address {
                 .filter(a::deterministic_id.eq(address_id))
                 .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
                 .select((a::address, dek::name, ak::encrypted_der, c::protocol_data))
-                .first::<(eth::ChecksumAddress, String, EncryptionOutput, JsonValue)>(
-                    tx_conn.as_mut(),
-                )?;
+                .first::<(
+                    eth::ChecksumAddress,
+                    String,
+                    EncryptionOutput,
+                    eth::ProtocolData,
+                )>(tx_conn.as_mut())?;
 
-        let eth::ProtocolData { chain_id, .. } = protocol_data.convert_into()?;
         let dek_name = KeyName::from_str(&dek_name).map_err(|_| Error::Fatal {
             error: format!("Unknown DEK name: {dek_name}"),
         })?;
@@ -489,7 +490,7 @@ impl Address {
 
         let result = eth::EncryptedSigningKey::builder()
             .address(address)
-            .chain_id(chain_id)
+            .chain_id(protocol_data.chain_id)
             .encrypted_secret_key(encrypted_secret_key)
             .encrypted_dek(encrypted_dek)
             .dek_name(dek_name)
@@ -509,9 +510,8 @@ impl Address {
             .filter(a::deterministic_id.eq(address_id))
             .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
             .select(c::protocol_data)
-            .first::<JsonValue>(conn)?;
+            .first::<eth::ProtocolData>(conn)?;
 
-        let protocol_data: eth::ProtocolData = protocol_data.convert_into()?;
         Ok(protocol_data.chain_id)
     }
 }

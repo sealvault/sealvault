@@ -9,6 +9,9 @@ diesel = { version = "2.0.3", features = ["sqlite"] }
 # with the feature flag. We need at least 0.24, bc that bundles SQLite 3.38.0 which
 # ships with JSON support compiled in.
 libsqlite3-sys = { version = ">=0.24, <0.26.0", features = ["bundled"] }
+olpc-cjson = "0.1.3"
+serde = { version = "1.0.153", features = ["serde_derive", "derive", "alloc"] }
+serde_json = { version = "1.0.94", features = ["alloc", "raw_value"] }
 
 [dev-dependencies]
 anyhow = { version = "1.0.69", features = ["backtrace"] }

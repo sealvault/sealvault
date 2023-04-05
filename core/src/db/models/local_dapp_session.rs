@@ -10,7 +10,7 @@ use crate::{
         models as m,
         models::AddressId,
         schema::{addresses, asymmetric_keys, chains, local_dapp_sessions, profiles},
-        DeferredTxConnection, DeterministicId, JsonValue,
+        DeferredTxConnection, DeterministicId,
     },
     protocols::eth,
     utils::{new_uuid, rfc3339_timestamp},
@@ -79,15 +79,14 @@ impl LocalDappSessionEntity {
         use chains as c;
         use local_dapp_sessions::dsl as lds;
 
-        let protocol_data_json: JsonValue = addresses::table
+        let protocol_data = addresses::table
             .inner_join(
                 local_dapp_sessions::table.on(lds::address_id.eq(ad::deterministic_id)),
             )
             .inner_join(chains::table.on(c::deterministic_id.eq(ad::chain_id)))
             .filter(lds::uuid.eq(&self.uuid))
             .select(c::protocol_data)
-            .first::<JsonValue>(conn)?;
-        let protocol_data: eth::ProtocolData = protocol_data_json.convert_into()?;
+            .first::<eth::ProtocolData>(conn)?;
 
         Ok(protocol_data.chain_id)
     }

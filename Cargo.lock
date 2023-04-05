@@ -1108,6 +1108,9 @@ dependencies = [
  "derive_more",
  "diesel",
  "libsqlite3-sys",
+ "olpc-cjson",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

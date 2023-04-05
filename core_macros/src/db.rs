@@ -38,6 +38,61 @@ macro_rules! sql_text {
     };
 }
 
+/// Implement `ToSql` and `FromSql` for types that implement `serde::{Deserialize, Serialize}` using
+/// canonical JSON serialization. Canonical serialization is important for unique constraints.
+/// Sqlite stores JSON as ordinary strings, but allows querying them with JSON operators.
+#[macro_export]
+macro_rules! sql_json {
+    ($type_name:ident) => {
+        impl diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::sqlite::Sqlite>
+            for $type_name
+        {
+            fn from_sql(
+                bytes: diesel::backend::RawValue<diesel::sqlite::Sqlite>,
+            ) -> diesel::deserialize::Result<Self> {
+                use std::string::String;
+
+                use diesel::{deserialize::FromSql, sql_types::Text, sqlite::Sqlite};
+
+                let s = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+                let result: $type_name = serde_json::from_str(&s)?;
+                Ok(result)
+            }
+        }
+
+        impl $type_name {
+            /// Serialize the value as JSON in a way that makes sure that if a map has the same keys and values,
+            /// it produces the same JSON string.
+            pub fn canonical_json(&self) -> Result<String, serde_json::Error> {
+                use serde::ser::Error;
+
+                let mut buf = Vec::new();
+                let mut ser = serde_json::Serializer::with_formatter(
+                    &mut buf,
+                    olpc_cjson::CanonicalFormatter::new(),
+                );
+                self.serialize(&mut ser)?;
+                let s = String::from_utf8(buf)
+                    .map_err(|_| serde_json::Error::custom("Invalid UTF-8."))?;
+                Ok(s)
+            }
+        }
+
+        impl diesel::serialize::ToSql<diesel::sql_types::Text, diesel::sqlite::Sqlite>
+            for $type_name
+        {
+            fn to_sql(
+                &self,
+                out: &mut diesel::serialize::Output<diesel::sqlite::Sqlite>,
+            ) -> diesel::serialize::Result {
+                let s = self.canonical_json()?;
+                out.set_value(s);
+                Ok(diesel::serialize::IsNull::No)
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -54,6 +109,7 @@ mod tests {
         sql_types::{HasSqlType, SingleValue, SqlType, Text},
         Connection, IntoSql, Queryable, RunQueryDsl, SqliteConnection,
     };
+    use serde::{Deserialize, Serialize};
 
     pub fn connection() -> SqliteConnection {
         let mut conn = SqliteConnection::establish(":memory:").unwrap();
@@ -107,6 +163,27 @@ mod tests {
     fn test_sql_text() -> Result<()> {
         let text = TestText::from_str("hello")?;
         test_type_round_trip::<Text, _>(text)?;
+        Ok(())
+    }
+
+    #[derive(
+        Debug, Clone, Eq, PartialEq, Serialize, Deserialize, AsExpression, FromSqlRow,
+    )]
+    #[diesel(sql_type = Text)]
+    struct TestJson {
+        foo: String,
+        bar: i32,
+    }
+
+    sql_json!(TestJson);
+
+    #[test]
+    fn test_sql_json() -> Result<()> {
+        let value = TestJson {
+            foo: "hello".into(),
+            bar: 42,
+        };
+        test_type_round_trip::<Text, _>(value)?;
         Ok(())
     }
 }

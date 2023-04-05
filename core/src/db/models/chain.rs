@@ -9,7 +9,7 @@ use crate::{
     db::{
         deterministic_id::{DeriveDeterministicId, EntityName},
         schema::chains,
-        DeferredTxConnection, DeterministicId, JsonValue,
+        DeferredTxConnection, DeterministicId,
     },
     protocols::{eth, BlockchainProtocol},
     utils::rfc3339_timestamp,
@@ -22,8 +22,8 @@ use crate::{
 pub struct Chain {
     pub deterministic_id: DeterministicId,
     pub protocol: BlockchainProtocol,
-    pub protocol_data: JsonValue,
-    pub user_settings: JsonValue,
+    pub protocol_data: eth::ProtocolData,
+    pub user_settings: eth::ChainSettings,
     pub created_at: String,
     pub updated_at: Option<String>,
 }
@@ -51,12 +51,10 @@ impl TryFrom<Chain> for EthChain {
                 error: format!("Expected Ethereum protocol, instead got: {}", protocol),
             });
         }
-        let chain_data: eth::ProtocolData = protocol_data.convert_into()?;
-        let user_settings: eth::ChainSettings = user_settings.convert_into()?;
 
         Ok(Self {
             db_id: deterministic_id,
-            chain_id: chain_data.chain_id,
+            chain_id: protocol_data.chain_id,
             user_settings,
         })
     }
@@ -84,12 +82,10 @@ impl Chain {
         deterministic_id: &DeterministicId,
     ) -> Result<eth::ChainId, Error> {
         use chains::dsl as c;
-        let protocol_data: JsonValue = chains::table
+        let protocol_data: eth::ProtocolData = chains::table
             .filter(c::deterministic_id.eq(&deterministic_id))
             .select(c::protocol_data)
             .first(conn)?;
-
-        let protocol_data: eth::ProtocolData = protocol_data.convert_into()?;
 
         Ok(protocol_data.chain_id)
     }
@@ -116,11 +112,11 @@ impl Chain {
         let chain_entity = ChainEntity::new_eth(chain_id)?;
         let deterministic_id = chain_entity.deterministic_id()?;
 
-        let settings: JsonValue = chains::table
+        let settings: eth::ChainSettings = chains::table
             .filter(c::deterministic_id.eq(&deterministic_id))
             .select(c::user_settings)
             .first(conn)?;
-        settings.convert_into()
+        Ok(settings)
     }
 
     /// Fetch an Ethereum chain and return its deterministic id if it exists.
@@ -130,7 +126,7 @@ impl Chain {
     ) -> Result<Option<DeterministicId>, Error> {
         use chains::dsl as c;
 
-        let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
+        let protocol_data = eth::ProtocolData::new(chain_id);
 
         let deterministic_id = chains::table
             .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
@@ -149,8 +145,8 @@ impl Chain {
     ) -> Result<DeterministicId, Error> {
         use chains::dsl as c;
 
-        let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
-        let user_settings = JsonValue::convert_from(chain_id.default_user_settings())?;
+        let protocol_data = eth::ProtocolData::new(chain_id);
+        let user_settings = chain_id.default_user_settings();
 
         let chain_entity = ChainEntity::new_eth(chain_id)?;
         let deterministic_id = chain_entity.deterministic_id()?;
@@ -179,10 +175,14 @@ struct ChainEntity {
 
 impl ChainEntity {
     fn new_eth(chain_id: eth::ChainId) -> Result<Self, Error> {
-        let protocol_data = JsonValue::convert_from(eth::ProtocolData::new(chain_id))?;
+        let protocol_data = eth::ProtocolData::new(chain_id);
+        let protocol_data_json =
+            protocol_data.canonical_json().map_err(|e| Error::Fatal {
+                error: format!("Failed to canonicalize protocol data: {}", e),
+            })?;
         Ok(Self {
             protocol: BlockchainProtocol::Ethereum.to_string(),
-            protocol_data: protocol_data.canonical_json()?,
+            protocol_data: protocol_data_json,
         })
     }
 }
