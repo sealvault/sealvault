@@ -20,6 +20,7 @@ mod protocol_data;
 mod rpc_provider;
 mod signer;
 mod token;
+mod token_balances;
 
 pub type EthereumAsymmetricKey = AsymmetricKey<Secp256k1>;
 pub use chain_id::ChainId;
@@ -31,7 +32,5 @@ pub use protocol_data::ProtocolData;
 pub use rpc_provider::anvil::AnvilRpcManager;
 pub use rpc_provider::{RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
-pub use token::{
-    FungibleTokenAmount, FungibleTokenBalance, NFTBalance, NativeTokenAmount,
-    TokenBalances,
-};
+pub use token::{FungibleTokenAmount, NativeTokenAmount};
+pub use token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances};

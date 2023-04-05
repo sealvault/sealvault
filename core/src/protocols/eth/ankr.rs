@@ -28,10 +28,7 @@ use url::Url;
 
 use crate::{
     protocols::{
-        eth::{
-            token::FungibleTokenBalance, ChainId, NFTBalance, NativeTokenAmount,
-            TokenBalances,
-        },
+        eth::{ChainId, NativeTokenAmount},
         FungibleTokenType,
     },
     Error,
@@ -494,7 +491,10 @@ impl From<AnkrTokenType> for FungibleTokenType {
 #[cfg(test)]
 pub use tests::AnkrRpc;
 
-use crate::protocols::eth::ChecksumAddress;
+use crate::protocols::eth::{
+    token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances},
+    ChecksumAddress,
+};
 
 #[cfg(test)]
 mod tests {

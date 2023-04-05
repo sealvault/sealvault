@@ -129,7 +129,7 @@ impl FungibleTokenAmount {
 
 /// Based on
 /// https://github.com/gakonst/ethers-rs/blob/3681099af328610b429fd22eab5e9f68f693c60c/ethers-core/src/utils/mod.rs#L101
-fn display_amount(amount: U256, decimals: u8) -> String {
+pub(super) fn display_amount(amount: U256, decimals: u8) -> String {
     let decimals_us: usize = decimals.into();
     let scale = U256::exp10(decimals_us);
 
@@ -180,53 +180,6 @@ fn parse_amount(amount: &str, decimals: u8) -> Result<U256, Error> {
     U256::from_dec_str(&val.round().to_string()).map_err(|_| Error::Retriable {
         error: format!("Cannot parse {} as U256", val),
     })
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct FungibleTokenBalance {
-    pub chain_id: ChainId,
-    pub contract_address: ChecksumAddress,
-    pub amount: U256,
-    pub decimals: u8,
-    pub symbol: String,
-    pub name: String,
-    pub logo: Option<url::Url>,
-}
-
-impl FungibleTokenBalance {
-    pub fn display_amount(&self) -> String {
-        display_amount(self.amount, self.decimals)
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NFTBalance {
-    pub chain_id: ChainId,
-    pub contract_address: ChecksumAddress,
-    pub symbol: String,
-    pub collection_name: String,
-    pub name: String,
-    pub token_id: String,
-    pub image_url: Option<url::Url>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TokenBalances {
-    pub chain_id: ChainId,
-    pub native_token: NativeTokenAmount,
-    pub fungible_tokens: Vec<FungibleTokenBalance>,
-    pub nfts: Vec<NFTBalance>,
-}
-
-impl TokenBalances {
-    pub fn default_for_chain(chain_id: ChainId) -> Self {
-        TokenBalances {
-            chain_id,
-            native_token: NativeTokenAmount::zero_balance(chain_id),
-            fungible_tokens: Vec::new(),
-            nfts: Vec::new(),
-        }
-    }
 }
 
 #[cfg(test)]
