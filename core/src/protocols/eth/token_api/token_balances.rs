@@ -2,7 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::fmt::Debug;
+
 use ethers::prelude::U256;
+use url::Url;
 
 use crate::protocols::eth::{token, ChainId, ChecksumAddress, NativeTokenAmount};
 
@@ -13,8 +16,7 @@ pub struct FungibleTokenBalance {
     pub amount: U256,
     pub decimals: u8,
     pub symbol: String,
-    pub name: String,
-    pub logo: Option<url::Url>,
+    pub logo: Option<Url>,
 }
 
 impl FungibleTokenBalance {
@@ -31,7 +33,7 @@ pub struct NFTBalance {
     pub collection_name: String,
     pub name: String,
     pub token_id: String,
-    pub image_url: Option<url::Url>,
+    pub image_url: Option<Url>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

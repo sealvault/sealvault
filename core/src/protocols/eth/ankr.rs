@@ -299,7 +299,7 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
             token_decimals,
             blockchain,
             token_symbol,
-            token_name,
+
             thumbnail,
             ..
         } = value;
@@ -315,7 +315,6 @@ impl TryFrom<AnkrFungibleTokenBalance> for FungibleTokenBalance {
             amount: balance_raw_integer.into(),
             decimals: token_decimals,
             symbol: token_symbol,
-            name: token_name,
             logo,
         })
     }
@@ -492,7 +491,7 @@ impl From<AnkrTokenType> for FungibleTokenType {
 pub use tests::AnkrRpc;
 
 use crate::protocols::eth::{
-    token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances},
+    token_api::{FungibleTokenBalance, NFTBalance, TokenBalances},
     ChecksumAddress,
 };
 

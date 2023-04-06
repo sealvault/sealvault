@@ -217,7 +217,6 @@ mod tests {
             amount: Default::default(),
             decimals: 0,
             symbol: "".to_string(),
-            name: "".to_string(),
             logo: None,
         }];
 

@@ -343,7 +343,7 @@ impl Assembler {
         address: eth::ChecksumAddress,
     ) -> Result<Vec<CoreTokens>, Error> {
         self.assemble_tokens(address).or_else(|error| {
-            log::error!("Error fetching tokens from Ankr API: '{error}'");
+            log::error!("Error fetching tokens: '{error}'");
             // Fall back to just fetching native token
             self.assemble_native_tokens(address)
         })
