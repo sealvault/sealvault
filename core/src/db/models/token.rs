@@ -35,8 +35,25 @@ pub struct Token {
 }
 
 impl Token {
-    /// Assumes there is already an address (possibly) for the chain in the DB.
-    pub fn upsert_tokens(
+    pub fn upsert_token(
+        tx_conn: &mut DeferredTxConnection,
+        address_id: &AddressId,
+        chain_id: eth::ChainId,
+        contract_address: eth::ChecksumAddress,
+        token_type: TokenType,
+    ) -> Result<(), Error> {
+        let chain_db_id = m::Chain::fetch_or_create_eth_chain_id(tx_conn, chain_id)?;
+        let new_token: NewTokenEntity = TokenEntity {
+            address: &contract_address,
+            chain_id: &chain_db_id,
+            type_: token_type,
+        }
+        .try_into()?;
+
+        Self::upsert_token_inner(tx_conn, address_id, &new_token)
+    }
+
+    pub fn upsert_token_balances(
         tx_conn: &mut DeferredTxConnection,
         token_balances: &eth::TokenBalances,
         address_id: &AddressId,
@@ -66,24 +83,31 @@ impl Token {
 
         fungible_tokens.chain(nfts).try_for_each(|token| {
             let token = token?;
-
-            diesel::insert_into(tokens::table)
-                .values(&token)
-                .on_conflict_do_nothing()
-                .execute(tx_conn.as_mut())?;
-
-            let token_to_address: NewTokenToAddressEntity = TokenToAddressEntity {
-                token_id: &token.deterministic_id,
-                address_id,
-            }
-            .try_into()?;
-            diesel::insert_into(tokens_to_addresses::table)
-                .values(token_to_address)
-                .on_conflict_do_nothing()
-                .execute(tx_conn.as_mut())?;
-
-            Ok(())
+            Self::upsert_token_inner(tx_conn, address_id, &token)
         })
+    }
+
+    fn upsert_token_inner(
+        tx_conn: &mut DeferredTxConnection,
+        address_id: &AddressId,
+        token: &NewTokenEntity,
+    ) -> Result<(), Error> {
+        diesel::insert_into(tokens::table)
+            .values(token)
+            .on_conflict_do_nothing()
+            .execute(tx_conn.as_mut())?;
+
+        let token_to_address: NewTokenToAddressEntity = TokenToAddressEntity {
+            token_id: &token.deterministic_id,
+            address_id,
+        }
+        .try_into()?;
+
+        diesel::insert_into(tokens_to_addresses::table)
+            .values(token_to_address)
+            .on_conflict_do_nothing()
+            .execute(tx_conn.as_mut())?;
+        Ok(())
     }
 
     pub fn eth_tokens_for_address(
@@ -241,7 +265,7 @@ mod tests {
         tmp_core
             .connection_pool()
             .deferred_transaction(|mut tx_conn| {
-                Token::upsert_tokens(&mut tx_conn, &token_balances, &address_id)
+                Token::upsert_token_balances(&mut tx_conn, &token_balances, &address_id)
             })?;
 
         let nft_address: eth::ChecksumAddress =
@@ -259,7 +283,7 @@ mod tests {
         tmp_core
             .connection_pool()
             .deferred_transaction(|mut tx_conn| {
-                Token::upsert_tokens(&mut tx_conn, &token_balances, &address_id)
+                Token::upsert_token_balances(&mut tx_conn, &token_balances, &address_id)
             })?;
 
         let mut conn = tmp_core.connection_pool().connection()?;

@@ -210,6 +210,23 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
         assertEq(chainId, ethereum.chainId)
       })
 
+      test("wallet_watchAsset", async (method) => {
+        let result = await window.ethereum.request({
+          method,
+          params: {
+            type: "ERC20",
+            options: {
+              address: "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
+              symbol: "FOO",
+              decimals: 18,
+              image: "https://foo.io/token-image.svg",
+            },
+          },
+        })
+
+        assert(result, "result is not true")
+      })
+
       test("eth_sendTransaction", async (method) => {
         const chain_id = await window.ethereum.request({ method: "eth_chainId" })
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })

@@ -36,6 +36,10 @@ pub enum InPageRequest {
     #[serde(rename = "wallet_switchEthereumChain", with = "sequence_len_one")]
     WalletSwitchEthereumChain(SwitchEthereumChainParameter),
 
+    /// https://docs.metamask.io/guide/rpc-api.html#unrestricted-methods
+    #[serde(rename = "wallet_watchAsset")]
+    WalletWatchAsset(WatchAssetParams),
+
     // Ethereum RPC methods
     #[serde(rename = "web3_clientVersion", with = "empty_params")]
     Web3ClientVersion(()),
@@ -342,6 +346,34 @@ pub struct AddEthereumChainParameter {
 #[serde(rename_all = "camelCase")]
 pub struct SwitchEthereumChainParameter {
     pub chain_id: String, // A 0x-prefixed hexadecimal string
+}
+
+/// From https://docs.metamask.io/guide/rpc-api.html#unrestricted-methods
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchAssetParams {
+    #[serde(rename = "type")]
+    pub type_: WatchAssetType,
+    pub options: WatchAssetOptions,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum WatchAssetType {
+    Erc20,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchAssetOptions {
+    /// The address of the token contract.
+    pub address: String,
+    /// A ticker symbol or shorthand, up to 11 characters
+    pub symbol: Option<String>,
+    /// The number of token decimals.
+    pub decimals: Option<u8>,
+    /// A string url of the token logo
+    pub image: Option<String>,
 }
 
 /// From [Foundry](https://github.com/foundry-rs/foundry/blob/1d9a34ecfe265d49b4237c9eb670d5aec389b646/anvil/core/src/eth/serde_helpers.rs)

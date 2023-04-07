@@ -518,7 +518,7 @@ impl Assembler {
                 })?;
 
                 // Update DB from remote API
-                m::Token::upsert_tokens(&mut tx_conn, &balances, &address_id)?;
+                m::Token::upsert_token_balances(&mut tx_conn, &balances, &address_id)?;
 
                 let eth::TokenBalances {
                     chain_id,

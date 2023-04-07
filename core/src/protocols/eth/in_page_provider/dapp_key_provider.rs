@@ -22,14 +22,17 @@ use crate::{
     encryption::Keychain,
     favicon::fetch_favicon_async,
     http_client::HttpClient,
-    protocols::eth::{
-        explorer,
-        in_page_provider::in_page_request::{
-            AddEthereumChainParameter, InPageRequest, InPageRequestParams,
-            SwitchEthereumChainParameter,
+    protocols::{
+        eth::{
+            explorer,
+            in_page_provider::in_page_request::{
+                AddEthereumChainParameter, InPageRequest, InPageRequestParams,
+                SwitchEthereumChainParameter, WatchAssetParams, WatchAssetType,
+            },
+            ChainId, ChainSettings, ChecksumAddress, EncryptedSigningKey, RpcManagerI,
+            Signer,
         },
-        ChainId, ChainSettings, ChecksumAddress, EncryptedSigningKey, RpcManagerI,
-        Signer,
+        TokenType,
     },
     public_suffix_list::PublicSuffixList,
     resources::CoreResourcesI,
@@ -213,6 +216,9 @@ impl DappKeyProvider {
             }
             InPageRequest::WalletSwitchEthereumChain(param) => {
                 self.wallet_switch_ethereum_chain(param, session).await
+            }
+            InPageRequest::WalletWatchAsset(param) => {
+                self.wallet_watch_asset(param, session).await
             }
             InPageRequest::Web3ClientVersion(..) => self.web3_client_version(),
             InPageRequest::Web3Sha3(payload) => self.web3_sha3(payload).await,
@@ -804,6 +810,32 @@ impl DappKeyProvider {
         // Result should be null on success. We need type annotations for serde.
         let result: Option<String> = None;
         to_value(result)
+    }
+
+    async fn wallet_watch_asset(
+        &self,
+        param: WatchAssetParams,
+        session: m::LocalDappSession,
+    ) -> Result<serde_json::Value, Error> {
+        let contract_address: Address =
+            param.options.address.parse().map_err(|_| Error::JsonRpc {
+                code: InPageErrorCode::InvalidParams.into(),
+                message: "Invalid contract address".into(),
+            })?;
+
+        self.connection_pool()
+            .deferred_transaction_async(move |mut tx_conn| match param.type_ {
+                WatchAssetType::Erc20 => m::Token::upsert_token(
+                    &mut tx_conn,
+                    &session.address_id,
+                    session.chain_id,
+                    contract_address.into(),
+                    TokenType::Fungible,
+                ),
+            })
+            .await?;
+
+        to_value(true)
     }
 
     async fn change_eth_chain(
