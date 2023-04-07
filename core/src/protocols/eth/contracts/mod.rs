@@ -63,6 +63,10 @@ pub mod test_util {
             wallet.with_chain_id(self.chain_id)
         }
 
+        pub fn deployer_address(&self) -> ChecksumAddress {
+            self.deployer_wallet().address().into()
+        }
+
         pub fn provider(&self) -> Provider<Http> {
             self.rpc_provider.provider.clone()
         }

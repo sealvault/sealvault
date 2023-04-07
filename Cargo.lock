@@ -4340,6 +4340,7 @@ dependencies = [
  "async-trait",
  "base64 0.21.0",
  "blake3",
+ "bytes",
  "cacache",
  "chacha20poly1305",
  "chrono",
@@ -4386,6 +4387,7 @@ dependencies = [
  "strum_macros",
  "subtle",
  "tempfile",
+ "test-log",
  "thiserror",
  "tokio",
  "typed-builder",
@@ -4958,6 +4960,17 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "test-log"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f0c854faeb68a048f0f2dc410c5ddae3bf83854ef0e4977d58306a5edef50e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

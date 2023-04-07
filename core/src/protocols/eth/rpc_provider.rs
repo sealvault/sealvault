@@ -260,6 +260,7 @@ impl RpcProvider {
 
 /// A trait to let us inject dynamic Anvil url at test time.
 pub trait RpcManagerI: Debug + Send + Sync {
+    fn http_endpoint(&self, chain_id: ChainId) -> Url;
     fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider;
 }
 
@@ -284,6 +285,10 @@ impl Debug for RpcManager {
 }
 
 impl RpcManagerI for RpcManager {
+    fn http_endpoint(&self, chain_id: ChainId) -> Url {
+        chain_id.http_rpc_endpoint()
+    }
+
     fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider {
         let http_endpoint = chain_id.http_rpc_endpoint();
         RpcProvider::new(chain_id, http_endpoint)
@@ -399,6 +404,10 @@ pub mod anvil {
     }
 
     impl RpcManagerI for AnvilRpcManager {
+        fn http_endpoint(&self, chain_id: ChainId) -> Url {
+            self.anvil_endpoint(chain_id)
+        }
+
         fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider {
             let http_endpoint = self.anvil_endpoint(chain_id);
             let mut provider = RpcProvider::new(chain_id, http_endpoint);
