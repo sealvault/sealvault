@@ -167,3 +167,5 @@ func tapButton(_ app: XCUIApplication, _ accessibilityIdentifier: String, tabBar
     _ = button.waitForExistence(timeout: buttonTimeoutSeconds)
     button.tap()
 }
+
+// swiftlint:enable force_try
