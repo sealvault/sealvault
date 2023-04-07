@@ -496,9 +496,8 @@ impl Assembler {
         &self,
         address: eth::ChecksumAddress,
     ) -> Result<Vec<CoreTokens>, Error> {
-        use ankr::AnkrRpcI;
-        let ankr_api = ankr::AnkrRpc::new()?;
-        let token_balances = rt::block_on(ankr_api.get_token_balances(address))?;
+        let ankr_api = ankr::AnkrApi::new()?;
+        let token_balances = rt::block_on(ankr_api.fetch_token_balances(address))?;
 
         self.connection_pool().deferred_transaction(|mut tx_conn| {
             let mut results: Vec<CoreTokens> = Default::default();

@@ -6,20 +6,12 @@ use std::collections::HashMap;
 
 use derive_more::{AsRef, Display, Into};
 use ethers::types::{Address, U256};
-#[cfg(not(test))]
-use jsonrpsee::core::client::CertificateStore;
-// Behind flag otherwise `cargo fix` removes it
-#[cfg(not(test))]
-use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::{
     core::{
-        async_trait,
-        client::ClientT,
+        client::{CertificateStore, ClientT},
         params::{BatchRequestBuilder, ObjectParams},
-        RpcResult,
     },
-    http_client::HttpClient,
-    proc_macros::rpc,
+    http_client::{HttpClient, HttpClientBuilder},
 };
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -35,46 +27,35 @@ use crate::{
 };
 
 // Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
-#[cfg(not(test))]
 const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";
 // NFT API doesn't support more than 50
 const PAGE_SIZE: usize = 50;
 
-// The rpc macro adds the methods in this trait to the Jsonrpsee http client in this file.
-// Server derive for tests.
-#[rpc(client, server, namespace = "ankr")]
-trait AnkrRpcApi {
-    #[method(name = "getAccountBalance", param_kind = map)]
-    async fn get_account_balance(
-        &self,
-        walletAddress: String,
-        blockchain: Vec<AnkrBlockchain>,
-        pageSize: usize,
-        pageToken: Option<String>,
-    ) -> RpcResult<AnkrFungibleTokenBalances>;
-
-    #[method(name = "getNFTsByOwner", param_kind = map)]
-    async fn get_nfts_by_owner(
-        &self,
-        walletAddress: String,
-        blockchain: Vec<AnkrBlockchain>,
-        pageSize: usize,
-        pageToken: Option<String>,
-    ) -> RpcResult<AnkrNFTBalances>;
+pub struct AnkrApi {
+    client: HttpClient,
 }
 
-/// The purpose of this trait is to let us mock the Ankr backend for tests.
-/// It's async to make it easy to fetch multiple addresses concurrently.
-#[async_trait]
-pub trait AnkrRpcI<'a> {
-    fn client(&'a self) -> &'a HttpClient;
+impl AnkrApi {
+    pub fn new() -> Result<Self, Error> {
+        Self::new_with_overrides(ANKR_API)
+    }
+
+    pub fn new_with_overrides(api_endpoint: impl AsRef<str>) -> Result<Self, Error> {
+        let client = HttpClientBuilder::default()
+            .certificate_store(CertificateStore::WebPki)
+            .build(api_endpoint)
+            .map_err(|err| Error::Fatal {
+                error: err.to_string(),
+            })?;
+        Ok(Self { client })
+    }
 
     /// Fetch native, fungible and non-fungible token balances for an address on all supported
     /// chains from Ankr Advanced API. If there is no balance on a chain, no `TokenBalances` for
     /// that chain will be returned.
-    async fn get_token_balances(
-        &'a self,
-        address: ChecksumAddress,
+    pub(crate) async fn fetch_token_balances(
+        &self,
+        owner_address: ChecksumAddress,
     ) -> Result<Vec<TokenBalances>, AnkrRpcError> {
         let mut fungible_page_token: Option<String> = None;
         let mut nft_page_token: Option<String> = None;
@@ -86,11 +67,11 @@ pub trait AnkrRpcI<'a> {
             let mut request = BatchRequestBuilder::new();
 
             if first_call || fungible_page_token.is_some() {
-                let fungible_args = object_params(&address, fungible_page_token)?;
+                let fungible_args = object_params(&owner_address, fungible_page_token)?;
                 request.insert("ankr_getAccountBalance", fungible_args)?;
             }
             if first_call || nft_page_token.is_some() {
-                let nft_args = object_params(&address, nft_page_token)?;
+                let nft_args = object_params(&owner_address, nft_page_token)?;
                 request.insert("ankr_getNFTsByOwner", nft_args)?;
             }
 
@@ -98,10 +79,7 @@ pub trait AnkrRpcI<'a> {
                 break;
             }
 
-            let results = self
-                .client()
-                .batch_request::<AnkrApiResult>(request)
-                .await?;
+            let results = self.client.batch_request::<AnkrApiResult>(request).await?;
             first_call = false;
 
             fungible_page_token = None;
@@ -162,31 +140,6 @@ impl From<AnkrRpcError> for Error {
             },
             AnkrRpcError::Jsonrpsee(source) => source.into(),
         }
-    }
-}
-
-#[cfg(not(test))]
-pub struct AnkrRpc {
-    client: HttpClient,
-}
-
-#[cfg(not(test))]
-impl AnkrRpc {
-    pub fn new() -> Result<Self, Error> {
-        let client = HttpClientBuilder::default()
-            .certificate_store(CertificateStore::WebPki)
-            .build(ANKR_API)
-            .map_err(|err| Error::Fatal {
-                error: err.to_string(),
-            })?;
-        Ok(Self { client })
-    }
-}
-
-#[cfg(not(test))]
-impl<'a> AnkrRpcI<'a> for AnkrRpc {
-    fn client(&'a self) -> &'a HttpClient {
-        &self.client
     }
 }
 
@@ -487,9 +440,6 @@ impl From<AnkrTokenType> for FungibleTokenType {
     }
 }
 
-#[cfg(test)]
-pub use tests::AnkrRpc;
-
 use crate::protocols::eth::{
     token_api::{FungibleTokenBalance, NFTBalance, TokenBalances},
     ChecksumAddress,
@@ -502,7 +452,7 @@ mod tests {
     use anyhow::{anyhow, Result};
     use jsonrpsee::{
         core::{async_trait, RpcResult},
-        http_client::{HttpClient, HttpClientBuilder},
+        proc_macros::rpc,
         server::{
             logger::{HttpRequest, Logger, MethodKind, TransportProtocol},
             ServerBuilder, ServerHandle,
@@ -516,12 +466,12 @@ mod tests {
 
     const TEST_ADDRESS: &str = "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE";
 
-    pub struct AnkrRpc {
-        client: HttpClient,
+    pub struct AnkrRpcTest {
+        pub api: AnkrApi,
         _sever_handle: ServerHandle,
     }
 
-    impl AnkrRpc {
+    impl AnkrRpcTest {
         pub fn new() -> Result<Self, Error> {
             let server = rt::block_on(
                 ServerBuilder::default()
@@ -535,23 +485,34 @@ mod tests {
             let server_handle = server
                 .start(AnkrRpcApiServerImpl.into_rpc())
                 .expect("can start server");
-            let client =
-                HttpClientBuilder::default()
-                    .build(url)
-                    .map_err(|err| Error::Fatal {
-                        error: err.to_string(),
-                    })?;
+            let api = AnkrApi::new_with_overrides(url)?;
             Ok(Self {
-                client,
+                api,
                 _sever_handle: server_handle,
             })
         }
     }
 
-    impl<'a> AnkrRpcI<'a> for AnkrRpc {
-        fn client(&'a self) -> &'a HttpClient {
-            &self.client
-        }
+    // Server derive for tests.
+    #[rpc(server, namespace = "ankr")]
+    trait AnkrRpcApi {
+        #[method(name = "getAccountBalance", param_kind = map)]
+        async fn get_account_balance(
+            &self,
+            walletAddress: String,
+            blockchain: Vec<AnkrBlockchain>,
+            pageSize: usize,
+            pageToken: Option<String>,
+        ) -> RpcResult<AnkrFungibleTokenBalances>;
+
+        #[method(name = "getNFTsByOwner", param_kind = map)]
+        async fn get_nfts_by_owner(
+            &self,
+            walletAddress: String,
+            blockchain: Vec<AnkrBlockchain>,
+            pageSize: usize,
+            pageToken: Option<String>,
+        ) -> RpcResult<AnkrNFTBalances>;
     }
 
     struct AnkrRpcApiServerImpl;
@@ -827,9 +788,9 @@ mod tests {
     }
 
     #[test]
-    fn get_token_balances() -> Result<()> {
-        let ankr = AnkrRpc::new()?;
-        let results = rt::block_on(ankr.get_token_balances(TEST_ADDRESS.parse()?))?;
+    fn fetch_token_balances() -> Result<()> {
+        let ankr = AnkrRpcTest::new()?;
+        let results = rt::block_on(ankr.api.fetch_token_balances(TEST_ADDRESS.parse()?))?;
 
         assert_eq!(results.len(), 4);
 
