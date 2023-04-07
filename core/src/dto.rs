@@ -546,7 +546,7 @@ impl Assembler {
             // If an address doesn't have any tokens, Ankr API won't return a result for it, but we
             // still want to display a 0 balance for the native token if the address is in the DB.
             let existing_chains: HashSet<eth::ChainId> =
-                m::Address::fetch_chains_for_address(&mut tx_conn, address)?
+                m::Address::fetch_eth_chains_for_address(tx_conn.as_mut(), address)?
                     .into_iter()
                     .collect();
 

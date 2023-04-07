@@ -374,18 +374,6 @@ impl Address {
         Ok(address_ids)
     }
 
-    /// Fetch all chain ids for a checksum address.
-    pub fn fetch_chains_for_address(
-        conn: &mut DeferredTxConnection,
-        address: eth::ChecksumAddress,
-    ) -> Result<Vec<eth::ChainId>, Error> {
-        let addresses = Self::fetch_by_eth_address(conn.as_mut(), address)?;
-        addresses
-            .iter()
-            .map(|address_id| Self::fetch_eth_chain_id(conn.as_mut(), address_id))
-            .collect()
-    }
-
     /// Fetch the address id by the checksum address on a given chain if the checksum address is in
     /// the DB.
     pub fn fetch_or_create_id_by_address_on_chain(
