@@ -17,7 +17,7 @@ use crate::{
     async_runtime as rt, config,
     favicon::{fetch_favicons, warm_favicons_cache},
     http_client::HttpClient,
-    protocols::{eth, eth::ankr, FungibleTokenType},
+    protocols::{eth, FungibleTokenType},
     resources::CoreResourcesI,
     Error,
 };
@@ -496,8 +496,12 @@ impl Assembler {
         &self,
         address: eth::ChecksumAddress,
     ) -> Result<Vec<CoreTokens>, Error> {
-        let ankr_api = ankr::AnkrApi::new()?;
-        let token_balances = rt::block_on(ankr_api.fetch_token_balances(address))?;
+        let mut conn = self.connection_pool().connection()?;
+        let tokens_for_address = m::Token::eth_tokens_for_address(&mut conn, address)?;
+        let token_balances = rt::block_on(eth::fetch_token_balances(
+            self.resources.rpc_manager(),
+            tokens_for_address,
+        ))?;
 
         self.connection_pool().deferred_transaction(|mut tx_conn| {
             let mut results: Vec<CoreTokens> = Default::default();

@@ -10,10 +10,10 @@ use std::{collections::HashMap, fmt::Debug, num::NonZeroUsize, sync::Arc};
 use ethers::{
     abi::AbiDecode,
     contract::FunctionCall,
-    prelude::{Provider, StreamExt, U256},
-    providers::Http,
-    types::{transaction::eip2718::TypedTransaction, Address},
+    providers::{Http, Provider},
+    types::{transaction::eip2718::TypedTransaction, Address, U256},
 };
+use futures::StreamExt;
 use itertools::Itertools;
 use jsonrpsee::{
     core::{
@@ -67,7 +67,7 @@ impl<'a> NativeTokenAPi<'a> {
     /// Fetch token balances through standard Ethereum RPC calls.
     /// Only supports native and ERC20 tokens currently.
     /// `fungible_tokens` is a map from chain ID to ERC20 contract address.
-    pub async fn fetch_token_balances(
+    pub(super) async fn fetch_token_balances(
         &'a self,
         owner_address: ChecksumAddress,
         fungible_tokens: HashMap<ChainId, Vec<ChecksumAddress>>,

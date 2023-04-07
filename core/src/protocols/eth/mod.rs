@@ -33,4 +33,6 @@ pub use rpc_provider::anvil::AnvilRpcManager;
 pub use rpc_provider::{RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
 pub use token::{FungibleTokenAmount, NativeTokenAmount};
-pub use token_api::{FungibleTokenBalance, NFTBalance, TokenBalances};
+pub use token_api::{
+    fetch_token_balances, FungibleTokenBalance, NFTBalance, TokenBalances,
+};
