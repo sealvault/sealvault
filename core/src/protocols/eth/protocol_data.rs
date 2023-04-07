@@ -30,3 +30,9 @@ impl From<ChainId> for ProtocolData {
         Self::new(chain_id)
     }
 }
+
+impl From<ProtocolData> for ChainId {
+    fn from(protocol_data: ProtocolData) -> Self {
+        protocol_data.chain_id
+    }
+}

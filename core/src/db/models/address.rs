@@ -349,7 +349,7 @@ impl Address {
     }
 
     /// Fetch all address ids for an Ethereum checksum addresses.
-    fn fetch_by_eth_address(
+    pub fn fetch_by_eth_address(
         conn: &mut SqliteConnection,
         address: eth::ChecksumAddress,
     ) -> Result<Vec<AddressId>, Error> {

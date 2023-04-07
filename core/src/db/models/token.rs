@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use std::collections::HashMap;
+
 use diesel::prelude::*;
 use generic_array::{typenum::U3, GenericArray};
 
@@ -13,10 +15,10 @@ use crate::{
             token_to_address::{NewTokenToAddressEntity, TokenToAddressEntity},
             AddressId,
         },
-        schema::{tokens, tokens_to_addresses},
+        schema::{addresses, chains, tokens, tokens_to_addresses},
         DeferredTxConnection,
     },
-    protocols::{eth, TokenType},
+    protocols::{eth, BlockchainProtocol, TokenType},
     utils::rfc3339_timestamp,
     Error,
 };
@@ -83,6 +85,40 @@ impl Token {
             Ok(())
         })
     }
+
+    pub fn eth_tokens_for_address(
+        conn: &mut SqliteConnection,
+        address: eth::ChecksumAddress,
+    ) -> Result<EthTokensForAddress, Error> {
+        use addresses::dsl as a;
+        use chains::dsl as c;
+        use tokens::dsl as t;
+        use tokens_to_addresses::dsl as tta;
+
+        let rows = addresses::table
+            .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
+            .inner_join(
+                tokens_to_addresses::table.on(a::deterministic_id.eq(tta::address_id)),
+            )
+            .inner_join(tokens::table.on(tta::token_id.eq(t::deterministic_id)))
+            .filter(a::address.eq(address))
+            .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
+            .select((c::protocol_data, t::address, t::type_))
+            .load::<(eth::ProtocolData, eth::ChecksumAddress, TokenType)>(conn)?;
+
+        let mut result = EthTokensForAddress::new(address);
+        for (protocol_data, contract_address, token_type) in rows {
+            let chain_id: eth::ChainId = protocol_data.into();
+            let entry = match token_type {
+                TokenType::Fungible => result.fungible_tokens.entry(chain_id),
+                TokenType::Nft => result.nfts.entry(chain_id),
+            }
+            .or_default();
+            entry.push(contract_address)
+        }
+
+        Ok(result)
+    }
 }
 
 #[readonly::make]
@@ -138,26 +174,33 @@ impl<'a> TryFrom<TokenEntity<'a>> for NewTokenEntity<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EthTokensForAddress {
+    /// The owner address.
+    pub address: eth::ChecksumAddress,
+    /// Map of chain id to contract addresses for fungible tokens.
+    pub fungible_tokens: HashMap<eth::ChainId, Vec<eth::ChecksumAddress>>,
+    /// Map of chain id to contract addresses for nfts.
+    pub nfts: HashMap<eth::ChainId, Vec<eth::ChecksumAddress>>,
+}
+
+impl EthTokensForAddress {
+    fn new(address: eth::ChecksumAddress) -> Self {
+        Self {
+            address,
+            fungible_tokens: Default::default(),
+            nfts: Default::default(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
 
     use anyhow::Result;
 
     use super::*;
-    use crate::{app_core::tests::TmpCore, db::models::token_to_address::TokenToAddress};
-
-    impl Token {
-        pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Self>, Error> {
-            Ok(tokens::table.load::<Self>(conn)?)
-        }
-    }
-
-    impl TokenToAddress {
-        pub fn list_all(conn: &mut SqliteConnection) -> Result<Vec<Self>, Error> {
-            Ok(tokens_to_addresses::table.load::<Self>(conn)?)
-        }
-    }
+    use crate::app_core::tests::TmpCore;
 
     #[test]
     fn upsert_token_balances() -> Result<()> {
@@ -166,9 +209,11 @@ mod tests {
         let owner_address: eth::ChecksumAddress = wallet.checksum_address.parse()?;
         let chain_id = eth::ChainId::PolygonMumbai;
         let native_token = eth::NativeTokenAmount::zero_balance(chain_id);
+        let fungible_token_address: eth::ChecksumAddress =
+            "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48".parse()?;
         let fungible_tokens = vec![eth::FungibleTokenBalance {
             chain_id,
-            contract_address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48".parse()?,
+            contract_address: fungible_token_address,
             amount: Default::default(),
             decimals: 0,
             symbol: "".to_string(),
@@ -200,9 +245,11 @@ mod tests {
                 Token::upsert_tokens(&mut tx_conn, &token_balances, &address_id)
             })?;
 
+        let nft_address: eth::ChecksumAddress =
+            "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB".parse()?;
         token_balances.nfts = vec![eth::NFTBalance {
             chain_id,
-            contract_address: "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB".parse()?,
+            contract_address: nft_address,
             symbol: "".to_string(),
             collection_name: "".to_string(),
             name: "".to_string(),
@@ -217,12 +264,16 @@ mod tests {
             })?;
 
         let mut conn = tmp_core.connection_pool().connection()?;
-        let tokens = Token::list_all(&mut conn)?;
-        let tokens_to_addresses = TokenToAddress::list_all(&mut conn)?;
-        assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens_to_addresses.len(), 2);
-        let token_types: HashSet<TokenType> = tokens.iter().map(|t| t.type_).collect();
-        assert_eq!(token_types.len(), 2);
+
+        let address = m::Address::fetch_address(&mut conn, &address_id)?;
+
+        let tokens = Token::eth_tokens_for_address(&mut conn, address)?;
+        let fungible_token_addresses = tokens.fungible_tokens.get(&chain_id).unwrap();
+        assert_eq!(fungible_token_addresses.len(), 1);
+        assert_eq!(fungible_token_addresses[0], fungible_token_address);
+        let nft_addresses = tokens.nfts.get(&chain_id).unwrap();
+        assert_eq!(nft_addresses.len(), 1);
+        assert_eq!(nft_addresses[0], nft_address);
 
         Ok(())
     }
