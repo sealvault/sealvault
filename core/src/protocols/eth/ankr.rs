@@ -451,7 +451,7 @@ pub(crate) mod tests {
 
     use anyhow::{anyhow, Result};
     use jsonrpsee::{
-        core::{async_trait, RpcResult},
+        core::{async_trait, Error as JsonRpcError, RpcResult},
         proc_macros::rpc,
         server::{
             logger::{HttpRequest, Logger, MethodKind, TransportProtocol},
@@ -473,6 +473,10 @@ pub(crate) mod tests {
 
     impl AnkrRpcTest {
         pub async fn new() -> Self {
+            Self::new_with_overrides(TEST_ADDRESS.parse().expect("static ok")).await
+        }
+
+        pub async fn new_with_overrides(owner_address: Address) -> Self {
             let server = ServerBuilder::default()
                 .custom_tokio_runtime(rt::handle())
                 .set_logger(ServerLogger)
@@ -481,8 +485,9 @@ pub(crate) mod tests {
                 .expect("can build server");
             let server_addr = server.local_addr().expect("has local address");
             let url: Url = format!("http://{server_addr}").parse().expect("url ok");
+            let server_impl = AnkrRpcApiServerImpl { owner_address };
             let server_handle = server
-                .start(AnkrRpcApiServerImpl.into_rpc())
+                .start(server_impl.into_rpc())
                 .expect("can start server");
             Self {
                 url,
@@ -513,7 +518,9 @@ pub(crate) mod tests {
         ) -> RpcResult<AnkrNFTBalances>;
     }
 
-    pub(crate) struct AnkrRpcApiServerImpl;
+    pub(crate) struct AnkrRpcApiServerImpl {
+        pub owner_address: Address,
+    }
 
     // Test mock of the Ankr API.
     #[async_trait]
@@ -525,7 +532,10 @@ pub(crate) mod tests {
             _pageSize: usize,
             pageToken: Option<String>,
         ) -> RpcResult<AnkrFungibleTokenBalances> {
-            if walletAddress != TEST_ADDRESS {
+            let wallet_address: Address = walletAddress.parse().map_err(|_| {
+                JsonRpcError::Custom("Invalid address: '{walletAddress}'".into())
+            })?;
+            if wallet_address != self.owner_address {
                 return Ok(AnkrFungibleTokenBalances {
                     total_balance_usd: "0".into(),
                     assets: Default::default(),
@@ -539,7 +549,7 @@ pub(crate) mod tests {
                     "tokenSymbol": "MATIC",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "0.377722525838175",
                     "balanceRawInteger": "377722525838175000",
                     "balanceUsd": "758122.816954017524929879",
@@ -552,7 +562,7 @@ pub(crate) mod tests {
                     "tokenSymbol": "GTH",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "1.34878804811250167",
                     "balanceRawInteger": "1348788048112501670",
                     "balanceUsd": "36879.68160811588817217",
@@ -566,7 +576,7 @@ pub(crate) mod tests {
                     "tokenDecimals": 18,
                     "tokenType": "ERC20",
                     "contractAddress": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "6.2051369",
                     "balanceRawInteger": "6205136900000000000",
                     "balanceUsd": "7.972012197965147476",
@@ -580,7 +590,7 @@ pub(crate) mod tests {
                     "tokenSymbol": "MATIC",
                     "tokenDecimals": 18,
                     "tokenType": "NATIVE",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "3.101612806260749202",
                     "balanceRawInteger": "3101612806260749202",
                     "balanceUsd": "3.965641407725317588",
@@ -594,7 +604,7 @@ pub(crate) mod tests {
                     "tokenDecimals": 6,
                     "tokenType": "ERC20",
                     "contractAddress": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "2.783265",
                     "balanceRawInteger": "2783265",
                     "balanceUsd": "2.783265",
@@ -609,7 +619,7 @@ pub(crate) mod tests {
                     "tokenDecimals": 18,
                     "tokenType": "ERC20",
                     "contractAddress": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
-                    "holderAddress": TEST_ADDRESS,
+                    "holderAddress": self.owner_address,
                     "balance": "0.776958671817900955",
                     "balanceRawInteger": "776958671817900955",
                     "balanceUsd": "0.779110201097638487",
@@ -644,14 +654,14 @@ pub(crate) mod tests {
             _pageSize: usize,
             pageToken: Option<String>,
         ) -> RpcResult<AnkrNFTBalances> {
-            let owner: Address = walletAddress.parse().map_err(|_| {
+            let wallet_address: Address = walletAddress.parse().map_err(|_| {
                 use jsonrpsee::types::error::CallError;
                 CallError::InvalidParams(anyhow!("Invalid address: '{walletAddress}'"))
             })?;
 
-            if walletAddress != TEST_ADDRESS {
+            if wallet_address != self.owner_address {
                 return Ok(AnkrNFTBalances {
-                    owner,
+                    owner: wallet_address,
                     assets: Default::default(),
                     next_page_token: Some("".into()),
                 });
@@ -717,7 +727,7 @@ pub(crate) mod tests {
             };
 
             Ok(AnkrNFTBalances {
-                owner,
+                owner: self.owner_address,
                 assets,
                 next_page_token,
             })
