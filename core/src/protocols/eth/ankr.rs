@@ -309,6 +309,17 @@ pub enum AnkrBlockchain {
     PolygonMumbai,
 }
 
+impl AnkrBlockchain {
+    pub fn supported(chain_id: ChainId) -> bool {
+        match chain_id {
+            ChainId::EthMainnet
+            | ChainId::EthGoerli
+            | ChainId::PolygonMainnet
+            | ChainId::PolygonMumbai => true,
+        }
+    }
+}
+
 impl From<ChainId> for AnkrBlockchain {
     fn from(chain_id: ChainId) -> Self {
         match chain_id {

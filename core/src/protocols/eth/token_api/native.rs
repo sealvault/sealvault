@@ -66,14 +66,17 @@ impl<'a> NativeTokenAPi<'a> {
 
     /// Fetch token balances through standard Ethereum RPC calls.
     /// Only supports native and ERC20 tokens currently.
+    /// `native_tokens` are the chain ids where the address can have native tokens.
     /// `fungible_tokens` is a map from chain ID to ERC20 contract address.
     pub(super) async fn fetch_token_balances(
         &'a self,
         owner_address: ChecksumAddress,
+        native_token_chains: Vec<ChainId>,
         fungible_tokens: HashMap<ChainId, Vec<ChecksumAddress>>,
     ) -> Result<Vec<TokenBalances>, Error> {
-        let chain_ids = fungible_tokens.keys().copied();
-        let native_tokens = self.fetch_native_tokens(owner_address, chain_ids).await?;
+        let native_tokens = self
+            .fetch_native_tokens(owner_address, native_token_chains)
+            .await?;
 
         let mut fungible_tokens = self
             .fetch_fungible_tokens(owner_address, fungible_tokens)
@@ -445,6 +448,7 @@ mod tests {
                 .collect();
         let token_balances = rt::block_on(token_api.fetch_token_balances(
             contract_deployer.deployer_address(),
+            vec![chain_id],
             fungible_tokens,
         ))?;
 

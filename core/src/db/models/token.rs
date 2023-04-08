@@ -111,13 +111,16 @@ impl Token {
     }
 
     pub fn eth_tokens_for_address(
-        conn: &mut SqliteConnection,
+        tx_conn: &mut DeferredTxConnection,
         address: eth::ChecksumAddress,
     ) -> Result<EthTokensForAddress, Error> {
         use addresses::dsl as a;
         use chains::dsl as c;
         use tokens::dsl as t;
         use tokens_to_addresses::dsl as tta;
+
+        let native_tokens =
+            m::Address::fetch_eth_chains_for_address(tx_conn.as_mut(), address)?;
 
         let rows = addresses::table
             .inner_join(chains::table.on(a::chain_id.eq(c::deterministic_id)))
@@ -128,9 +131,11 @@ impl Token {
             .filter(a::address.eq(address))
             .filter(c::protocol.eq(BlockchainProtocol::Ethereum))
             .select((c::protocol_data, t::address, t::type_))
-            .load::<(eth::ProtocolData, eth::ChecksumAddress, TokenType)>(conn)?;
+            .load::<(eth::ProtocolData, eth::ChecksumAddress, TokenType)>(
+                tx_conn.as_mut(),
+            )?;
 
-        let mut result = EthTokensForAddress::new(address);
+        let mut result = EthTokensForAddress::new(address, native_tokens);
         for (protocol_data, contract_address, token_type) in rows {
             let chain_id: eth::ChainId = protocol_data.into();
             let entry = match token_type {
@@ -202,6 +207,8 @@ impl<'a> TryFrom<TokenEntity<'a>> for NewTokenEntity<'a> {
 pub struct EthTokensForAddress {
     /// The owner address.
     pub address: eth::ChecksumAddress,
+    /// Chain ids where the address can have native tokens.
+    pub native_tokens: Vec<eth::ChainId>,
     /// Map of chain id to contract addresses for fungible tokens.
     pub fungible_tokens: HashMap<eth::ChainId, Vec<eth::ChecksumAddress>>,
     /// Map of chain id to contract addresses for nfts.
@@ -209,9 +216,10 @@ pub struct EthTokensForAddress {
 }
 
 impl EthTokensForAddress {
-    fn new(address: eth::ChecksumAddress) -> Self {
+    fn new(address: eth::ChecksumAddress, native_tokens: Vec<eth::ChainId>) -> Self {
         Self {
             address,
+            native_tokens,
             fungible_tokens: Default::default(),
             nfts: Default::default(),
         }
@@ -286,11 +294,13 @@ mod tests {
                 Token::upsert_token_balances(&mut tx_conn, &token_balances, &address_id)
             })?;
 
-        let mut conn = tmp_core.connection_pool().connection()?;
+        let tokens = tmp_core
+            .connection_pool()
+            .deferred_transaction(|mut tx_conn| {
+                let address = m::Address::fetch_address(tx_conn.as_mut(), &address_id)?;
+                Token::eth_tokens_for_address(&mut tx_conn, address)
+            })?;
 
-        let address = m::Address::fetch_address(&mut conn, &address_id)?;
-
-        let tokens = Token::eth_tokens_for_address(&mut conn, address)?;
         let fungible_token_addresses = tokens.fungible_tokens.get(&chain_id).unwrap();
         assert_eq!(fungible_token_addresses.len(), 1);
         assert_eq!(fungible_token_addresses[0], fungible_token_address);

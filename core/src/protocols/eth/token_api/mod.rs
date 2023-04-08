@@ -13,7 +13,9 @@ pub use token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances};
 use crate::{
     db::models as m,
     protocols::eth::{
-        ankr::AnkrApi, token_api::native::NativeTokenAPi, ChainId, RpcManagerI,
+        ankr::{AnkrApi, AnkrBlockchain},
+        token_api::native::NativeTokenAPi,
+        ChainId, RpcManagerI,
     },
     Error,
 };
@@ -24,44 +26,48 @@ pub async fn fetch_token_balances(
 ) -> Result<Vec<TokenBalances>, Error> {
     let m::EthTokensForAddress {
         address,
+        native_tokens,
         fungible_tokens,
         ..
     } = tokens_for_address;
 
-    let fungible_tokens_by_api = fungible_tokens.into_iter().fold(
-        HashMap::new(),
-        |mut acc, (chain_id, contract_addresses)| {
-            let api = TokenApi::for_chain(chain_id);
-            acc.entry(api)
-                .or_insert_with(HashMap::new)
-                .insert(chain_id, contract_addresses);
-            acc
-        },
+    // Always fetch from Ankr API for discovery.
+    let ankr = AnkrApi::new()?;
+    let ankr_future = ankr.fetch_token_balances(address);
+
+    // Fetch tokens through native API that aren't supported by Ankr
+    let native_api_native_tokens = native_tokens
+        .into_iter()
+        .filter(|chain_id| !AnkrBlockchain::supported(*chain_id))
+        .collect::<Vec<_>>();
+    let native_api_fungible_tokens: HashMap<_, _> = fungible_tokens
+        .into_iter()
+        .filter(|(chain_id, contract_addresses)| {
+            TokenApi::for_chain(*chain_id) == TokenApi::Native
+        })
+        .collect();
+    let native = NativeTokenAPi::new(rpc_manager);
+    let native_future = native.fetch_token_balances(
+        address,
+        native_api_native_tokens,
+        native_api_fungible_tokens,
     );
 
-    let results = futures::stream::iter(fungible_tokens_by_api.into_iter())
-        .map(|(api, fungible_tokens)| async move {
-            let result = match api {
-                TokenApi::Ankr => {
-                    let ankr = AnkrApi::new()?;
-                    ankr.fetch_token_balances(address).await?
-                }
-                TokenApi::Native => {
-                    let native = NativeTokenAPi::new(rpc_manager);
-                    native
-                        .fetch_token_balances(address, fungible_tokens)
-                        .await?
-                }
-            };
-            Ok::<_, Error>(result)
+    let (ankr_res, native_res) = futures::join!(ankr_future, native_future);
+    let mut ankr_items = ankr_res
+        .map_err(|err| {
+            log::error!("Error fetching tokens from Ankr API: '{err}'");
+            err
         })
-        .buffered(TokenApi::iter().len())
-        .collect::<Vec<Result<Vec<_>, Error>>>()
-        .await
-        .into_iter()
-        .collect::<Result<Vec<Vec<_>>, Error>>()?;
-
-    Ok(results.into_iter().flatten().collect())
+        .unwrap_or_default();
+    let mut native_items = native_res
+        .map_err(|err| {
+            log::error!("Error fetching tokens from native API: '{err}'");
+            err
+        })
+        .unwrap_or_default();
+    ankr_items.append(&mut native_items);
+    Ok(ankr_items)
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, strum_macros::EnumIter)]

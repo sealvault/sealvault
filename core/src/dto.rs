@@ -496,8 +496,10 @@ impl Assembler {
         &self,
         address: eth::ChecksumAddress,
     ) -> Result<Vec<CoreTokens>, Error> {
-        let mut conn = self.connection_pool().connection()?;
-        let tokens_for_address = m::Token::eth_tokens_for_address(&mut conn, address)?;
+        let tokens_for_address =
+            self.connection_pool().deferred_transaction(|mut tx_conn| {
+                m::Token::eth_tokens_for_address(&mut tx_conn, address)
+            })?;
         let token_balances = rt::block_on(eth::fetch_token_balances(
             self.resources.rpc_manager(),
             tokens_for_address,
