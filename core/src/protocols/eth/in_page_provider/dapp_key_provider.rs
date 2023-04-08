@@ -639,17 +639,15 @@ impl DappKeyProvider {
         } = legacy_tx;
 
         if chain_id.is_some() && chain_id != Some(session.chain_id.into()) {
-            return Err(Error::JsonRpc {
-                code: InPageErrorCode::InvalidParams.into(),
-                message: "Chain id is not the active chain id.".into(),
-            });
+            return Err(invalid_params(
+                "Chain id is not the active chain id.".into(),
+            ));
         }
 
         if from.is_some() && from != Some(session.address.into()) {
-            return Err(Error::JsonRpc {
-                code: InPageErrorCode::InvalidParams.into(),
-                message: "From address is not the connected address.".into(),
-            });
+            return Err(invalid_params(
+                "From address is not the connected address.".into(),
+            ));
         }
 
         // Rest of the parameters are filled in automatically.
@@ -768,10 +766,7 @@ impl DappKeyProvider {
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
         if session.address != address {
-            return Err(Error::JsonRpc {
-                code: InPageErrorCode::InvalidParams.into(),
-                message: "Invalid address".into(),
-            });
+            return Err(invalid_params("Invalid address".into()));
         }
 
         let (session, encrypted_signing_key) =
@@ -852,11 +847,11 @@ impl DappKeyProvider {
         param: WatchAssetParams,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
-        let contract_address: Address =
-            param.options.address.parse().map_err(|_| Error::JsonRpc {
-                code: InPageErrorCode::InvalidParams.into(),
-                message: "Invalid contract address".into(),
-            })?;
+        let contract_address: Address = param
+            .options
+            .address
+            .parse()
+            .map_err(|_| invalid_params("Invalid contract address".into()))?;
 
         self.connection_pool()
             .deferred_transaction_async(move |mut tx_conn| match param.type_ {
@@ -1019,26 +1014,18 @@ fn parse_request(raw_request: &str) -> Result<Request, Error> {
 }
 
 fn strip_0x_hex_prefix(s: &str) -> Result<&str, Error> {
-    s.strip_prefix("0x").ok_or_else(|| Error::JsonRpc {
-        code: InPageErrorCode::InvalidParams.into(),
-        message: "Message must start with 0x".into(),
-    })
+    s.strip_prefix("0x")
+        .ok_or_else(|| invalid_params("Message must start with 0x".into()))
 }
 
 fn parse_0x_chain_id(hex_chain_id: &str) -> Result<ChainId, Error> {
     // U64 should support
     let chain_id = strip_0x_hex_prefix(hex_chain_id)?;
-    let chain_id =
-        ethers::core::types::U64::from_str_radix(chain_id, 16).map_err(|_| {
-            Error::JsonRpc {
-                code: InPageErrorCode::InvalidParams.into(),
-                message: "Invalid U64".into(),
-            }
-        })?;
-    let chain_id: ChainId = chain_id.try_into().map_err(|_| Error::JsonRpc {
-        code: InPageErrorCode::InvalidParams.into(),
-        message: "Unsupported chain id".into(),
-    })?;
+    let chain_id = ethers::core::types::U64::from_str_radix(chain_id, 16)
+        .map_err(|_| invalid_params("Invalid U64".into()))?;
+    let chain_id: ChainId = chain_id
+        .try_into()
+        .map_err(|_| invalid_params("Unsupported chain id".into()))?;
     Ok(chain_id)
 }
 
@@ -1066,6 +1053,13 @@ fn invalid_raw_request() -> Error {
     // because we need the request id for that, hence the retriable error here.
     Error::Retriable {
         error: "Could not parse JSON-RPC request".into(),
+    }
+}
+
+fn invalid_params(message: String) -> Error {
+    Error::JsonRpc {
+        code: InPageErrorCode::InvalidParams.into(),
+        message,
     }
 }
 
