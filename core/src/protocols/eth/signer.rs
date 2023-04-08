@@ -11,10 +11,7 @@ use ethers::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, BlockId, Bytes, Signature as EthereumSignature, U256, U64,
     },
-    providers::{
-        maybe, Http, Middleware, MiddlewareError, PendingTransaction, Provider,
-        ProviderError,
-    },
+    providers::{maybe, Middleware, MiddlewareError, PendingTransaction, ProviderError},
     types::{
         transaction::eip712::{Eip712, TypedData},
         Chain, TransactionRequest,
@@ -160,30 +157,33 @@ impl<'a> Signer<'a> {
 
 /// Signer middleware for ethers-rs using our key management.
 #[derive(Debug)]
-pub(super) struct SignerMiddleware<'a> {
-    provider: &'a Provider<Http>,
+pub(super) struct SignerMiddleware<'a, M> {
+    inner: M,
     signer: Signer<'a>,
 }
 
-impl<'a> SignerMiddleware<'a> {
+impl<'a, M: Middleware> SignerMiddleware<'a, M> {
     pub fn new(
-        provider: &'a Provider<Http>,
+        inner: M,
         keychain: &'a Keychain,
         encrypted_signing_key: &'a EncryptedSigningKey,
     ) -> Self {
         let signer = Signer::new(keychain, encrypted_signing_key);
-        Self { provider, signer }
+        Self { inner, signer }
     }
 }
 
 #[async_trait]
-impl<'a> Middleware for SignerMiddleware<'a> {
-    type Error = SignerMiddlewareError<Provider<Http>>;
-    type Provider = Http;
-    type Inner = Provider<Http>;
+impl<'a, M: Middleware> Middleware for SignerMiddleware<'a, M>
+where
+    SignerMiddlewareError<M>: From<<M as Middleware>::Error>,
+{
+    type Error = SignerMiddlewareError<M>;
+    type Provider = M::Provider;
+    type Inner = M;
 
     fn inner(&self) -> &Self::Inner {
-        self.provider
+        &self.inner
     }
 
     /// Returns the client's address
