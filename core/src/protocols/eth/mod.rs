@@ -29,7 +29,7 @@ pub use checksum_address::ChecksumAddress;
 pub use encrypted_signing_key::EncryptedSigningKey;
 pub use protocol_data::ProtocolData;
 #[cfg(test)]
-pub use rpc_provider::anvil::AnvilRpcManager;
+pub use rpc_provider::local::LocalRpcManager;
 pub use rpc_provider::{RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
 pub use token::{FungibleTokenAmount, NativeTokenAmount};

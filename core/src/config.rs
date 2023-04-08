@@ -43,3 +43,6 @@ pub const FAVICON_API: &str = "https://icons.duckduckgo.com/ip3/";
 
 // iOS
 pub const IOS_SERVICE: &str = "org.sealvault";
+
+// Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
+pub const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";

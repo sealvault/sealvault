@@ -36,19 +36,19 @@ pub mod test_util {
     use crate::{
         async_runtime as rt,
         protocols::eth::{
-            AnvilRpcManager, ChainId, ChecksumAddress, RpcManagerI, RpcProvider,
+            ChainId, ChecksumAddress, LocalRpcManager, RpcManagerI, RpcProvider,
         },
     };
 
     pub struct TestContractDeployer {
         pub chain_id: ChainId,
-        pub anvil_rpc: AnvilRpcManager,
+        pub anvil_rpc: LocalRpcManager,
         pub rpc_provider: RpcProvider,
     }
 
     impl TestContractDeployer {
         pub fn init(chain_id: ChainId) -> Self {
-            let anvil_rpc = AnvilRpcManager::new();
+            let anvil_rpc = LocalRpcManager::new();
             let rpc_provider = anvil_rpc.eth_api_provider(chain_id);
             Self {
                 chain_id,

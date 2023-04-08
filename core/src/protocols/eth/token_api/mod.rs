@@ -6,8 +6,6 @@ mod token_balances;
 
 use std::collections::HashMap;
 
-use futures::StreamExt;
-use strum::IntoEnumIterator;
 pub use token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances};
 
 use crate::{
@@ -32,8 +30,8 @@ pub async fn fetch_token_balances(
     } = tokens_for_address;
 
     // Always fetch from Ankr API for discovery.
-    let ankr = AnkrApi::new()?;
-    let ankr_future = ankr.fetch_token_balances(address);
+    let ankr_api = AnkrApi::new(rpc_manager).await?;
+    let ankr_future = ankr_api.fetch_token_balances(address);
 
     // Fetch tokens through native API that aren't supported by Ankr
     let native_api_native_tokens = native_tokens
@@ -42,12 +40,10 @@ pub async fn fetch_token_balances(
         .collect::<Vec<_>>();
     let native_api_fungible_tokens: HashMap<_, _> = fungible_tokens
         .into_iter()
-        .filter(|(chain_id, contract_addresses)| {
-            TokenApi::for_chain(*chain_id) == TokenApi::Native
-        })
+        .filter(|(chain_id, _)| TokenApi::for_chain(*chain_id) == TokenApi::Native)
         .collect();
-    let native = NativeTokenAPi::new(rpc_manager);
-    let native_future = native.fetch_token_balances(
+    let native_api = NativeTokenAPi::new(rpc_manager);
+    let native_future = native_api.fetch_token_balances(
         address,
         native_api_native_tokens,
         native_api_fungible_tokens,

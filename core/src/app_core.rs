@@ -718,7 +718,7 @@ pub mod tests {
         connection_pool: ConnectionPool,
         keychain: Keychain,
         http_client: HttpClient,
-        rpc_manager: Box<eth::AnvilRpcManager>,
+        rpc_manager: Box<eth::LocalRpcManager>,
         public_suffix_list: PublicSuffixList,
         backup_storage: Box<TmpBackupStorage>,
         device_id: DeviceIdentifier,
@@ -727,7 +727,7 @@ pub mod tests {
 
     impl CoreResourcesMock {
         pub fn new(tmp_dir: TmpCoreDir, disable_backups: bool) -> Result<Self, Error> {
-            let rpc_manager = Box::new(eth::AnvilRpcManager::new());
+            let rpc_manager = Box::new(eth::LocalRpcManager::new());
             let ui_callback_state = Arc::new(UICallbackState::new());
             let ui_callbacks = Box::new(CoreUICallbackMock::new(ui_callback_state));
             let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;

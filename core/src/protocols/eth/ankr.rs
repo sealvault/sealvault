@@ -8,10 +8,10 @@ use derive_more::{AsRef, Display, Into};
 use ethers::types::{Address, U256};
 use jsonrpsee::{
     core::{
-        client::{CertificateStore, ClientT},
+        client::ClientT,
         params::{BatchRequestBuilder, ObjectParams},
     },
-    http_client::{HttpClient, HttpClientBuilder},
+    http_client::HttpClient,
 };
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -26,8 +26,6 @@ use crate::{
     Error,
 };
 
-// Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
-const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";
 // NFT API doesn't support more than 50
 const PAGE_SIZE: usize = 50;
 
@@ -36,17 +34,8 @@ pub struct AnkrApi {
 }
 
 impl AnkrApi {
-    pub fn new() -> Result<Self, Error> {
-        Self::new_with_overrides(ANKR_API)
-    }
-
-    pub fn new_with_overrides(api_endpoint: impl AsRef<str>) -> Result<Self, Error> {
-        let client = HttpClientBuilder::default()
-            .certificate_store(CertificateStore::WebPki)
-            .build(api_endpoint)
-            .map_err(|err| Error::Fatal {
-                error: err.to_string(),
-            })?;
+    pub async fn new(rpc_manager: &dyn RpcManagerI) -> Result<Self, Error> {
+        let client = rpc_manager.ankr_api_client().await?;
         Ok(Self { client })
     }
 
@@ -453,11 +442,11 @@ impl From<AnkrTokenType> for FungibleTokenType {
 
 use crate::protocols::eth::{
     token_api::{FungibleTokenBalance, NFTBalance, TokenBalances},
-    ChecksumAddress,
+    ChecksumAddress, RpcManagerI,
 };
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::{net::SocketAddr, time::Instant};
 
     use anyhow::{anyhow, Result};
@@ -473,34 +462,32 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::async_runtime as rt;
+    use crate::{async_runtime as rt, protocols::eth::LocalRpcManager};
 
     const TEST_ADDRESS: &str = "0x58853958f16dE02C5b1edfdb49f1c7D8b5308bCE";
 
-    pub struct AnkrRpcTest {
-        pub api: AnkrApi,
-        _sever_handle: ServerHandle,
+    pub(crate) struct AnkrRpcTest {
+        pub url: Url,
+        _server_handle: ServerHandle,
     }
 
     impl AnkrRpcTest {
-        pub fn new() -> Result<Self, Error> {
-            let server = rt::block_on(
-                ServerBuilder::default()
-                    .custom_tokio_runtime(rt::handle())
-                    .set_logger(ServerLogger)
-                    .build("127.0.0.1:0"),
-            )
-            .expect("can build server");
+        pub async fn new() -> Self {
+            let server = ServerBuilder::default()
+                .custom_tokio_runtime(rt::handle())
+                .set_logger(ServerLogger)
+                .build("127.0.0.1:0")
+                .await
+                .expect("can build server");
             let server_addr = server.local_addr().expect("has local address");
-            let url = format!("http://{server_addr}");
+            let url: Url = format!("http://{server_addr}").parse().expect("url ok");
             let server_handle = server
                 .start(AnkrRpcApiServerImpl.into_rpc())
                 .expect("can start server");
-            let api = AnkrApi::new_with_overrides(url)?;
-            Ok(Self {
-                api,
-                _sever_handle: server_handle,
-            })
+            Self {
+                url,
+                _server_handle: server_handle,
+            }
         }
     }
 
@@ -526,7 +513,7 @@ mod tests {
         ) -> RpcResult<AnkrNFTBalances>;
     }
 
-    struct AnkrRpcApiServerImpl;
+    pub(crate) struct AnkrRpcApiServerImpl;
 
     // Test mock of the Ankr API.
     #[async_trait]
@@ -800,8 +787,9 @@ mod tests {
 
     #[test]
     fn fetch_token_balances() -> Result<()> {
-        let ankr = AnkrRpcTest::new()?;
-        let results = rt::block_on(ankr.api.fetch_token_balances(TEST_ADDRESS.parse()?))?;
+        let rpc_manager = LocalRpcManager::new();
+        let ankr_api = rt::block_on(AnkrApi::new(&rpc_manager))?;
+        let results = rt::block_on(ankr_api.fetch_token_balances(TEST_ADDRESS.parse()?))?;
 
         assert_eq!(results.len(), 4);
 

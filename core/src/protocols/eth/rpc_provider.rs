@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use ethers::{
     core::types::{BlockNumber, TransactionRequest, H256},
     providers::{Http, Middleware, PendingTransaction, Provider},
@@ -16,7 +17,7 @@ use serde::Serialize;
 use url::Url;
 
 use crate::{
-    async_runtime as rt,
+    async_runtime as rt, config,
     encryption::Keychain,
     protocols::eth::{
         contracts::ERC20Contract, signer::SignerMiddleware, token::FungibleToken,
@@ -258,10 +259,13 @@ impl RpcProvider {
     }
 }
 
-/// A trait to let us inject dynamic Anvil url at test time.
+/// A trait to let us inject local Anvil and Ankr servers at test time.
+#[async_trait]
 pub trait RpcManagerI: Debug + Send + Sync {
-    fn http_endpoint(&self, chain_id: ChainId) -> Url;
+    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url;
     fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider;
+    // This has to be async, because the local jsonrpsee server is built with an async method.
+    async fn ankr_api_client(&self) -> Result<jsonrpsee::http_client::HttpClient, Error>;
 }
 
 pub struct RpcManager {}
@@ -284,14 +288,25 @@ impl Debug for RpcManager {
     }
 }
 
+#[async_trait]
 impl RpcManagerI for RpcManager {
-    fn http_endpoint(&self, chain_id: ChainId) -> Url {
+    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url {
         chain_id.http_rpc_endpoint()
     }
 
     fn eth_api_provider(&self, chain_id: ChainId) -> RpcProvider {
         let http_endpoint = chain_id.http_rpc_endpoint();
         RpcProvider::new(chain_id, http_endpoint)
+    }
+
+    async fn ankr_api_client(&self) -> Result<jsonrpsee::http_client::HttpClient, Error> {
+        let client = jsonrpsee::http_client::HttpClientBuilder::default()
+            .certificate_store(jsonrpsee::core::client::CertificateStore::WebPki)
+            .build(config::ANKR_API)
+            .map_err(|err| Error::Fatal {
+                error: err.to_string(),
+            })?;
+        Ok(client)
     }
 }
 
@@ -315,7 +330,7 @@ fn tx_failed_error() -> Error {
 }
 
 #[cfg(test)]
-pub mod anvil {
+pub mod local {
     use std::{
         fmt::Formatter,
         sync::{Arc, RwLock},
@@ -329,6 +344,7 @@ pub mod anvil {
     };
 
     use super::*;
+    use crate::protocols::eth::ankr::tests::AnkrRpcTest;
 
     const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     const POLL_INTERVAL_MS: u64 = 10;
@@ -340,15 +356,21 @@ pub mod anvil {
         }
     }
 
-    pub struct AnvilRpcManager {
+    pub struct LocalRpcManager {
         // Lazy initialized Anvil instance.
         anvil_instance: Arc<RwLock<Option<AnvilInstance>>>,
+        /// Lazy initialized Ankr RPC test server.
+        ankr_rpc_test: Arc<RwLock<Option<AnkrRpcTest>>>,
     }
 
-    impl AnvilRpcManager {
+    impl LocalRpcManager {
         pub fn new() -> Self {
             let anvil_instance = Arc::new(RwLock::new(None));
-            Self { anvil_instance }
+            let ankr_rpc_test = Arc::new(RwLock::new(None));
+            Self {
+                anvil_instance,
+                ankr_rpc_test,
+            }
         }
 
         pub(super) fn anvil_endpoint(&self, chain_id: ChainId) -> Url {
@@ -368,6 +390,22 @@ pub mod anvil {
                 surely_anvil.as_ref().unwrap().endpoint()
             };
             Url::parse(&endpoint).expect("valid url")
+        }
+
+        pub(super) async fn ankr_endpoint(&self) -> Url {
+            let is_started: bool = {
+                let maybe_ankr = self.ankr_rpc_test.read().unwrap();
+                maybe_ankr.is_some()
+            };
+            if !is_started {
+                let ankr_test = AnkrRpcTest::new().await;
+                let _ = self.ankr_rpc_test.write().unwrap().insert(ankr_test);
+            }
+            let endpoint = {
+                let surely_ankr = self.ankr_rpc_test.read().unwrap();
+                surely_ankr.as_ref().unwrap().url.clone()
+            };
+            endpoint
         }
 
         pub fn wallet(&self) -> LocalWallet {
@@ -397,14 +435,15 @@ pub mod anvil {
         }
     }
 
-    impl Default for AnvilRpcManager {
+    impl Default for LocalRpcManager {
         fn default() -> Self {
             Self::new()
         }
     }
 
-    impl RpcManagerI for AnvilRpcManager {
-        fn http_endpoint(&self, chain_id: ChainId) -> Url {
+    #[async_trait]
+    impl RpcManagerI for LocalRpcManager {
+        fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url {
             self.anvil_endpoint(chain_id)
         }
 
@@ -415,9 +454,21 @@ pub mod anvil {
                 provider.set_poll_interval(Duration::from_millis(POLL_INTERVAL_MS));
             provider
         }
+
+        async fn ankr_api_client(
+            &self,
+        ) -> Result<jsonrpsee::http_client::HttpClient, Error> {
+            let url = self.ankr_endpoint().await;
+            let client = jsonrpsee::http_client::HttpClientBuilder::default()
+                .build(url)
+                .map_err(|err| Error::Fatal {
+                    error: err.to_string(),
+                })?;
+            Ok(client)
+        }
     }
 
-    impl Debug for AnvilRpcManager {
+    impl Debug for LocalRpcManager {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let anvil_instance = self.anvil_instance.read().unwrap();
             let endpoint = anvil_instance.as_ref().map(|a| a.endpoint());
@@ -439,12 +490,12 @@ mod tests {
 
     use super::*;
     use crate::protocols::eth::{
-        contracts::test_util::TestContractDeployer, AnvilRpcManager,
+        contracts::test_util::TestContractDeployer, LocalRpcManager,
     };
 
     #[test]
     fn get_block_number() -> Result<()> {
-        let rpc_manager = anvil::AnvilRpcManager::new();
+        let rpc_manager = local::LocalRpcManager::new();
         let provider = rpc_manager.eth_api_provider(ChainId::default_dapp_chain());
 
         let result = provider.proxy_rpc_request("eth_blockNumber", ())?;
@@ -457,7 +508,7 @@ mod tests {
 
     #[test]
     fn native_token_balance() -> Result<()> {
-        let rpc_manager = AnvilRpcManager::new();
+        let rpc_manager = LocalRpcManager::new();
         let chain_id = ChainId::EthMainnet;
         let provider = rpc_manager.eth_api_provider(chain_id);
         let accounts = rt::block_on(provider.provider.get_accounts())?;
@@ -472,7 +523,7 @@ mod tests {
     #[test]
     fn sends_native_token() -> Result<()> {
         let chain_id = ChainId::EthMainnet;
-        let rpc_manager = AnvilRpcManager::new();
+        let rpc_manager = LocalRpcManager::new();
         let rpc_provider = rpc_manager.eth_api_provider(chain_id);
 
         let keychain = Keychain::new();
