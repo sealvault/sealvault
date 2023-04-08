@@ -4,7 +4,9 @@
 
 use std::{fmt::Debug, sync::Arc};
 
-use ethers::types::{Address, Bytes, TransactionRequest, H256};
+use ethers::types::{
+    Address, Bytes, Eip1559TransactionRequest, TransactionRequest, H256,
+};
 use jsonrpsee::{
     core::server::helpers::MethodResponse,
     types::{error::ErrorCode, ErrorObject, Request},
@@ -624,15 +626,48 @@ impl DappKeyProvider {
 
     async fn eth_send_transaction(
         &self,
-        mut tx: TransactionRequest,
+        legacy_tx: TransactionRequest,
         session: m::LocalDappSession,
     ) -> Result<serde_json::Value, Error> {
+        let TransactionRequest {
+            from,
+            to,
+            value,
+            data,
+            chain_id,
+            ..
+        } = legacy_tx;
+
+        if chain_id.is_some() && chain_id != Some(session.chain_id.into()) {
+            return Err(Error::JsonRpc {
+                code: InPageErrorCode::InvalidParams.into(),
+                message: "Chain id is not the active chain id.".into(),
+            });
+        }
+
+        if from.is_some() && from != Some(session.address.into()) {
+            return Err(Error::JsonRpc {
+                code: InPageErrorCode::InvalidParams.into(),
+                message: "From address is not the connected address.".into(),
+            });
+        }
+
+        // Rest of the parameters are filled in automatically.
+        let tx = Eip1559TransactionRequest {
+            chain_id,
+            from,
+            to,
+            value,
+            data,
+            nonce: None,
+            gas: None,
+            max_priority_fee_per_gas: None,
+            max_fee_per_gas: None,
+            access_list: Default::default(),
+        };
+
         let (session, encrypted_signing_key) =
             self.fetch_eth_encrypted_signing_key(session).await?;
-
-        // Remove nonce to fill with latest nonce from remote API in signer to make sure tx nonce is
-        // current. MetaMask does this too.
-        tx.nonce = None;
 
         let provider = self
             .rpc_manager()

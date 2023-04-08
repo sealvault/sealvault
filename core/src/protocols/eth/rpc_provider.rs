@@ -9,7 +9,7 @@ use std::{
 
 use async_trait::async_trait;
 use ethers::{
-    core::types::{BlockNumber, TransactionRequest, H256},
+    core::types::{BlockNumber, Eip1559TransactionRequest, H256},
     providers::{Http, Middleware, PendingTransaction, Provider},
     types::BlockId,
 };
@@ -70,7 +70,7 @@ impl RpcProvider {
         &self,
         keychain: &Keychain,
         encrypted_signing_key: &EncryptedSigningKey,
-        tx: TransactionRequest,
+        tx: Eip1559TransactionRequest,
     ) -> Result<H256, Error> {
         rt::block_on(self.send_transaction_async(keychain, encrypted_signing_key, tx))
     }
@@ -79,7 +79,7 @@ impl RpcProvider {
         &self,
         keychain: &Keychain,
         encrypted_signing_key: &EncryptedSigningKey,
-        tx: TransactionRequest,
+        tx: Eip1559TransactionRequest,
     ) -> Result<H256, Error> {
         let signer =
             SignerMiddleware::new(&self.provider, keychain, encrypted_signing_key);
@@ -136,7 +136,7 @@ impl RpcProvider {
 
         // TODO use EIP-1559 once we can get reliable `max_priority_fee_per_gas` estimates on all
         // chains.
-        let tx = TransactionRequest::new()
+        let tx = Eip1559TransactionRequest::new()
             .to(to_address.to_address())
             .value(amount.amount)
             .from(encrypted_signing_key.address.to_address());
@@ -425,7 +425,7 @@ pub mod local {
             let accounts =
                 rt::block_on(provider.provider.get_accounts()).expect("get_accounts ok");
             let value = U256::exp10(18) * amount_eth;
-            let tx = TransactionRequest::new()
+            let tx = Eip1559TransactionRequest::new()
                 .to(to_address.to_address())
                 .value(value)
                 .from(accounts[0]);

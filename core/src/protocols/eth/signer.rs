@@ -15,7 +15,10 @@ use ethers::{
         maybe, Http, Middleware, MiddlewareError, PendingTransaction, Provider,
         ProviderError,
     },
-    types::transaction::eip712::{Eip712, TypedData},
+    types::{
+        transaction::eip712::{Eip712, TypedData},
+        Chain, TransactionRequest,
+    },
 };
 use k256::{FieldBytes, Secp256k1};
 use sha3::{Digest, Keccak256};
@@ -200,6 +203,19 @@ impl<'a> Middleware for SignerMiddleware<'a> {
         if tx.chain_id().is_none() {
             let chain_id: U64 = self.signer.chain_id().into();
             tx.set_chain_id(chain_id);
+        }
+
+        // If a chain_id is matched to a known chain that doesn't support EIP-1559, automatically
+        // change transaction to be Legacy type.
+        // From: https://github.com/gakonst/ethers-rs/blob/da743fc8b29ffeb650c767f622bb19eba2f057b7/ethers-middleware/src/signer.rs#L266
+        if let Some(chain_id) = tx.chain_id() {
+            let chain = Chain::try_from(chain_id.as_u64());
+            if chain.unwrap_or_default().is_legacy() {
+                if let TypedTransaction::Eip1559(inner) = tx {
+                    let tx_req: TransactionRequest = inner.clone().into();
+                    *tx = TypedTransaction::Legacy(tx_req);
+                }
+            }
         }
 
         let nonce = maybe(
