@@ -21,7 +21,6 @@ use url::Url;
 use crate::{
     async_runtime as rt, config,
     db::{models as m, ConnectionPool, DeterministicId},
-    encryption::Keychain,
     favicon::fetch_favicon_async,
     http_client::HttpClient,
     protocols::{
@@ -31,8 +30,8 @@ use crate::{
                 AddEthereumChainParameter, InPageRequest, InPageRequestParams,
                 SwitchEthereumChainParameter, WatchAssetParams, WatchAssetType,
             },
-            ChainId, ChainSettings, ChecksumAddress, EncryptedSigningKey, RpcManagerI,
-            Signer,
+            BaseProvider, ChainId, ChainSettings, ChecksumAddress, EncryptedSigningKey,
+            RpcManagerI, Signer,
         },
         TokenType,
     },
@@ -77,10 +76,6 @@ impl DappKeyProvider {
 
     fn http_client(&self) -> &HttpClient {
         self.resources.http_client()
-    }
-
-    fn keychain(&self) -> &Keychain {
-        self.resources.keychain()
     }
 
     // TODO add rate limiting
@@ -523,11 +518,10 @@ impl DappKeyProvider {
         let res = async {
             let provider = resources
                 .rpc_manager()
-                .eth_api_provider(wallet_signing_key.chain_id);
+                .eth_signer_provider_async(resources.keychain_arc(), wallet_signing_key)
+                .await;
             let tx_hash = provider
                 .transfer_native_token_async(
-                    resources.keychain(),
-                    &wallet_signing_key,
                     session.address,
                     &chain_settings.default_dapp_allotment,
                 )
@@ -669,10 +663,13 @@ impl DappKeyProvider {
 
         let provider = self
             .rpc_manager()
-            .eth_api_provider(encrypted_signing_key.chain_id);
+            .eth_signer_provider_async(
+                self.resources.keychain_arc(),
+                encrypted_signing_key,
+            )
+            .await;
 
-        let tx_hash_fut =
-            provider.send_transaction_async(self.keychain(), &encrypted_signing_key, tx);
+        let tx_hash_fut = provider.send_transaction_async(tx);
 
         let resources = self.resources.clone();
         let session = Self::approved_dapp_transaction(resources, session).await;
@@ -771,7 +768,7 @@ impl DappKeyProvider {
 
         let (session, encrypted_signing_key) =
             self.fetch_eth_encrypted_signing_key(session).await?;
-        let signer = Signer::new(self.keychain(), &encrypted_signing_key);
+        let signer = Signer::new(self.resources.keychain_arc(), encrypted_signing_key);
         let signature = signer.personal_sign(message)?;
 
         let resources = self.resources.clone();

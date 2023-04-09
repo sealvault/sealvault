@@ -13,7 +13,7 @@ use crate::{
     Error,
 };
 
-#[derive(TypedBuilder)]
+#[derive(Clone, TypedBuilder)]
 #[readonly::make]
 pub struct EncryptedSigningKey {
     pub chain_id: ChainId,

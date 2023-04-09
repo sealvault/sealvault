@@ -262,3 +262,17 @@ impl From<&ethers::providers::ProviderError> for Error {
         }
     }
 }
+
+impl From<&ethers::providers::JsonRpcError> for Error {
+    fn from(err: &ethers::providers::JsonRpcError) -> Self {
+        match i32::try_from(err.code) {
+            Ok(code) => Self::JsonRpc {
+                code: code.into(),
+                message: err.message.clone(),
+            },
+            Err(_) => Self::Retriable {
+                error: err.to_string(),
+            },
+        }
+    }
+}

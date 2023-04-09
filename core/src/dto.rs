@@ -17,7 +17,7 @@ use crate::{
     async_runtime as rt, config,
     favicon::{fetch_favicons, warm_favicons_cache},
     http_client::HttpClient,
-    protocols::{eth, FungibleTokenType},
+    protocols::{eth, eth::BaseProvider, FungibleTokenType},
     resources::CoreResourcesI,
     Error,
 };

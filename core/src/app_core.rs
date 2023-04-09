@@ -25,6 +25,7 @@ use crate::{
         eth::{
             in_page_provider,
             in_page_provider::{DappKeyProvider, InPageRequestContextI},
+            BaseProvider,
         },
     },
     public_suffix_list::PublicSuffixList,
@@ -56,7 +57,7 @@ impl AppCore {
 
         let rpc_manager = Box::new(eth::RpcManager::new());
         let connection_pool = ConnectionPool::new(&args.db_file_path)?;
-        let keychain = Keychain::new();
+        let keychain = Arc::new(Keychain::new());
         let public_suffix_list = PublicSuffixList::new()?;
         let http_client = HttpClient::new(args.cache_dir);
 
@@ -318,13 +319,8 @@ impl AppCore {
         )?;
         let rpc_provider = self
             .rpc_manager()
-            .eth_api_provider(encrypted_secret_key.chain_id);
-        let tx_hash_res = rpc_provider.transfer_native_token(
-            self.keychain(),
-            &encrypted_secret_key,
-            to_address,
-            &amount,
-        );
+            .eth_signer_provider(self.resources.keychain_arc(), encrypted_secret_key);
+        let tx_hash_res = rpc_provider.transfer_native_token(to_address, &amount);
 
         let resources = self.resources.clone();
         rt::spawn_blocking(move || {
@@ -358,10 +354,8 @@ impl AppCore {
 
         let rpc_provider = self
             .rpc_manager()
-            .eth_api_provider(encrypted_signing_key.chain_id);
+            .eth_signer_provider(self.resources.keychain_arc(), encrypted_signing_key);
         let tx_hash_res = rpc_provider.transfer_fungible_token(
-            self.keychain(),
-            &encrypted_signing_key,
             to_address,
             &args.amount_decimal,
             contract_address,
@@ -716,7 +710,7 @@ pub mod tests {
         tmp_dir: TmpCoreDir,
         ui_callbacks: Box<CoreUICallbackMock>,
         connection_pool: ConnectionPool,
-        keychain: Keychain,
+        keychain: Arc<Keychain>,
         http_client: HttpClient,
         rpc_manager: Box<eth::LocalRpcManager>,
         public_suffix_list: PublicSuffixList,
@@ -731,7 +725,7 @@ pub mod tests {
             let ui_callback_state = Arc::new(UICallbackState::new());
             let ui_callbacks = Box::new(CoreUICallbackMock::new(ui_callback_state));
             let connection_pool = ConnectionPool::new(&tmp_dir.db_file_path)?;
-            let keychain = Keychain::new();
+            let keychain = Arc::new(Keychain::new());
 
             let cache_dir = tmp_dir
                 .cache_dir
@@ -762,7 +756,7 @@ pub mod tests {
         }
 
         pub fn set_keychain(&mut self, keychain: Keychain) {
-            self.keychain = keychain
+            self.keychain = Arc::new(keychain)
         }
 
         pub fn set_device_id(&mut self, device_id: DeviceIdentifier) {
@@ -781,6 +775,10 @@ pub mod tests {
 
         fn keychain(&self) -> &Keychain {
             &self.keychain
+        }
+
+        fn keychain_arc(&self) -> Arc<Keychain> {
+            self.keychain.clone()
         }
 
         fn http_client(&self) -> &HttpClient {

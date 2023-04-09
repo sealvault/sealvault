@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use typed_builder::TypedBuilder;
 
@@ -22,6 +22,7 @@ pub trait CoreResourcesI: Debug + Send + Sync {
     fn ui_callbacks(&self) -> &dyn CoreUICallbackI;
     fn connection_pool(&self) -> &ConnectionPool;
     fn keychain(&self) -> &Keychain;
+    fn keychain_arc(&self) -> Arc<Keychain>;
     fn http_client(&self) -> &HttpClient;
     fn rpc_manager(&self) -> &dyn eth::RpcManagerI;
     fn public_suffix_list(&self) -> &PublicSuffixList;
@@ -36,7 +37,7 @@ pub trait CoreResourcesI: Debug + Send + Sync {
 pub struct CoreResources {
     ui_callbacks: Box<dyn CoreUICallbackI>,
     connection_pool: ConnectionPool,
-    keychain: Keychain,
+    keychain: Arc<Keychain>,
     http_client: HttpClient,
     rpc_manager: Box<dyn eth::RpcManagerI>,
     public_suffix_list: PublicSuffixList,
@@ -56,6 +57,10 @@ impl CoreResourcesI for CoreResources {
 
     fn keychain(&self) -> &Keychain {
         &self.keychain
+    }
+
+    fn keychain_arc(&self) -> Arc<Keychain> {
+        self.keychain.clone()
     }
 
     fn http_client(&self) -> &HttpClient {

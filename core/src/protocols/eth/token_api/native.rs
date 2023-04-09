@@ -32,8 +32,8 @@ use url::Url;
 use crate::{
     config,
     protocols::eth::{
-        contracts::ERC20Contract, ChainId, ChecksumAddress, FungibleTokenBalance,
-        NativeTokenAmount, RpcManagerI, TokenBalances,
+        contracts::ERC20Contract, BaseProvider, ChainId, ChecksumAddress,
+        FungibleTokenBalance, NativeTokenAmount, RpcManagerI, TokenBalances,
     },
     Error,
 };
@@ -422,7 +422,7 @@ mod tests {
 
         let contract_deployer = TestContractDeployer::init(chain_id);
         let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
-        let _rpc_provider = contract_deployer.anvil_rpc.eth_api_provider(chain_id);
+        let _rpc_provider = contract_deployer.rpc_manager.eth_api_provider(chain_id);
         let provider = Arc::new(contract_deployer.provider());
         let contract = ERC20Contract::new(contract_address, provider);
         let symbol = rt::block_on(contract.symbol().call())?;
@@ -437,7 +437,7 @@ mod tests {
         assert!(!balance.is_zero());
 
         let token_api = NativeTokenAPi::new_with_overrides(
-            &contract_deployer.anvil_rpc,
+            &contract_deployer.rpc_manager,
             max_batch_size,
         );
 

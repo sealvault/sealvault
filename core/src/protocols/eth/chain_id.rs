@@ -7,6 +7,7 @@ use ethers::{
         types::{U256, U64},
         utils::parse_units,
     },
+    types::Chain,
     utils::ParseUnits,
 };
 use num_derive::FromPrimitive;
@@ -134,6 +135,22 @@ impl ChainId {
         Url::parse(raw_url).expect("unit test catches panics")
     }
 
+    pub fn max_gas_price(&self) -> U256 {
+        let units = match *self {
+            Self::EthMainnet => parse_units("100", "gwei"),
+            Self::EthGoerli => parse_units("100", "gwei"),
+            Self::PolygonMainnet => parse_units("1000", "gwei"),
+            Self::PolygonMumbai => parse_units("1000", "gwei"),
+        }
+        .expect("unit test catches panics");
+
+        match units {
+            ParseUnits::U256(amount) => amount,
+            // Max gas price cannot be negative. Unit test checks this exhaustively.
+            ParseUnits::I256(_) => unreachable!(),
+        }
+    }
+
     fn default_dapp_allotment(&self) -> NativeTokenAmount {
         let units = match *self {
             Self::EthMainnet => parse_units("0", "ether"),
@@ -194,6 +211,13 @@ impl From<ChainId> for U256 {
     }
 }
 
+impl From<ChainId> for Chain {
+    fn from(value: ChainId) -> Self {
+        let chain_id: u64 = value.into();
+        chain_id.try_into().expect("unit test catches panics")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
@@ -233,6 +257,29 @@ mod tests {
         }
 
         assert!(count > U256::zero());
+        Ok(())
+    }
+
+    #[test]
+    fn max_gas_price_no_panic() -> Result<()> {
+        let mut count = U256::zero();
+        for chain_id in ChainId::iter() {
+            count += chain_id.max_gas_price();
+        }
+
+        assert!(count > U256::zero());
+        Ok(())
+    }
+
+    #[test]
+    fn to_ethers_no_panic() -> Result<()> {
+        let mut count = 0u64;
+        for chain_id in ChainId::iter() {
+            let _chain: Chain = chain_id.into();
+            count += 1;
+        }
+
+        assert!(count > 0);
         Ok(())
     }
 

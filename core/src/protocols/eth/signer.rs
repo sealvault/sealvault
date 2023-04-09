@@ -3,7 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Based on: https://github.com/gakonst/ethers-rs/blob/239f559ca04b296a1b4cd1fc7588f29b125be565/ethers-middleware/src/signer.rs
-use std::{convert::From, fmt};
+use std::{convert::From, fmt, sync::Arc};
 
 use async_trait::async_trait;
 use ethers::{
@@ -11,7 +11,7 @@ use ethers::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, BlockId, Bytes, Signature as EthereumSignature, U256, U64,
     },
-    providers::{maybe, Middleware, MiddlewareError, PendingTransaction, ProviderError},
+    providers::{maybe, Middleware, MiddlewareError, PendingTransaction},
     types::{
         transaction::eip712::{Eip712, TypedData},
         Chain, TransactionRequest,
@@ -28,15 +28,15 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Signer<'a> {
-    keychain: &'a Keychain,
-    encrypted_signing_key: &'a EncryptedSigningKey,
+pub struct Signer {
+    keychain: Arc<Keychain>,
+    encrypted_signing_key: EncryptedSigningKey,
 }
 
-impl<'a> Signer<'a> {
+impl Signer {
     pub fn new(
-        keychain: &'a Keychain,
-        encrypted_signing_key: &'a EncryptedSigningKey,
+        keychain: Arc<Keychain>,
+        encrypted_signing_key: EncryptedSigningKey,
     ) -> Self {
         Self {
             keychain,
@@ -81,7 +81,7 @@ impl<'a> Signer<'a> {
 
         // It's important to minimize the time the signing key spends in memory unencrypted.
         let sig = {
-            let signing_key = self.encrypted_signing_key.decrypt(self.keychain)?;
+            let signing_key = self.encrypted_signing_key.decrypt(&self.keychain)?;
             signing_key.try_sign_digest(digest)
         }?;
 
@@ -157,16 +157,16 @@ impl<'a> Signer<'a> {
 
 /// Signer middleware for ethers-rs using our key management.
 #[derive(Debug)]
-pub(super) struct SignerMiddleware<'a, M> {
+pub(super) struct SignerMiddleware<M> {
     inner: M,
-    signer: Signer<'a>,
+    signer: Signer,
 }
 
-impl<'a, M: Middleware> SignerMiddleware<'a, M> {
+impl<M: Middleware> SignerMiddleware<M> {
     pub fn new(
         inner: M,
-        keychain: &'a Keychain,
-        encrypted_signing_key: &'a EncryptedSigningKey,
+        keychain: Arc<Keychain>,
+        encrypted_signing_key: EncryptedSigningKey,
     ) -> Self {
         let signer = Signer::new(keychain, encrypted_signing_key);
         Self { inner, signer }
@@ -174,10 +174,7 @@ impl<'a, M: Middleware> SignerMiddleware<'a, M> {
 }
 
 #[async_trait]
-impl<'a, M: Middleware> Middleware for SignerMiddleware<'a, M>
-where
-    SignerMiddlewareError<M>: From<<M as Middleware>::Error>,
-{
+impl<M: Middleware> Middleware for SignerMiddleware<M> {
     type Error = SignerMiddlewareError<M>;
     type Provider = M::Provider;
     type Inner = M;
@@ -225,7 +222,10 @@ where
         .await?;
         tx.set_nonce(nonce);
 
-        self.inner().fill_transaction(tx, block).await?;
+        self.inner()
+            .fill_transaction(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::Middleware)?;
 
         Ok(())
     }
@@ -247,7 +247,11 @@ where
         let signed_tx = tx.rlp_signed(&sig);
 
         // Submit the raw transaction
-        let res = self.inner().send_raw_transaction(signed_tx).await?;
+        let res = self
+            .inner()
+            .send_raw_transaction(signed_tx)
+            .await
+            .map_err(SignerMiddlewareError::Middleware)?;
 
         Ok(res)
     }
@@ -258,7 +262,11 @@ where
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         self.signer.verify_tx_params(tx)?;
-        let res = self.inner().estimate_gas(tx, block).await?;
+        let res = self
+            .inner()
+            .estimate_gas(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::Middleware)?;
         Ok(res)
     }
 
@@ -268,7 +276,11 @@ where
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
         // Call doesn't mutate, no need to verify params.
-        let res = self.inner().call(tx, block).await?;
+        let res = self
+            .inner()
+            .call(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::Middleware)?;
         Ok(res)
     }
 
@@ -302,7 +314,11 @@ where
         block: Option<BlockId>,
     ) -> Result<AccessListWithGasUsed, Self::Error> {
         self.signer.verify_tx_params(tx)?;
-        let res = self.inner().create_access_list(tx, block).await?;
+        let res = self
+            .inner()
+            .create_access_list(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::Middleware)?;
         Ok(res)
     }
 }
@@ -312,8 +328,6 @@ pub enum SignerMiddlewareError<M: Middleware> {
     /// Thrown when the internal middleware errors
     #[error(transparent)]
     Middleware(M::Error),
-    #[error(transparent)]
-    Provider(#[from] ProviderError),
     #[error(transparent)]
     App(#[from] Error),
 }
@@ -329,23 +343,6 @@ impl<M: Middleware> MiddlewareError for SignerMiddlewareError<M> {
         match self {
             SignerMiddlewareError::Middleware(e) => Some(e),
             _ => None,
-        }
-    }
-}
-
-impl<M: Middleware> From<SignerMiddlewareError<M>> for Error {
-    fn from(error: SignerMiddlewareError<M>) -> Self {
-        match error {
-            SignerMiddlewareError::Middleware(middleware_error) => {
-                match middleware_error.as_provider_error() {
-                    Some(provider_error) => provider_error.into(),
-                    None => Error::Retriable {
-                        error: middleware_error.to_string(),
-                    },
-                }
-            }
-            SignerMiddlewareError::Provider(provider_error) => provider_error.into(),
-            SignerMiddlewareError::App(inner) => inner,
         }
     }
 }
@@ -498,10 +495,10 @@ mod tests {
         assert!(matches!(tx, TypedTransaction::Legacy(_)));
 
         let secret_key = SK.parse::<EthereumAsymmetricKey>()?;
-        let keychain = Keychain::new();
+        let keychain = Arc::new(Keychain::new());
         let encrypted_signing_key =
             EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
-        let signer = Signer::new(&keychain, &encrypted_signing_key);
+        let signer = Signer::new(keychain, encrypted_signing_key.clone());
 
         // We're calling implementation specific `hazmat_sign_bytes` here instead of the middleware
         // `sign_transaction`, because our implementation of `sign_transaction` refuses to sign a
@@ -531,13 +528,13 @@ mod tests {
     #[test]
     fn personal_sign() -> Result<()> {
         let chain_id = ChainId::default_dapp_chain();
-        let keychain = Keychain::new();
+        let keychain = Arc::new(Keychain::new());
         for case in PERSONAL_SIGN_VECTORS.iter() {
             let encrypted_signing_key =
                 EncryptedSigningKey::test_key(&keychain, case.key(), chain_id)?;
             assert_eq!(encrypted_signing_key.address.to_string(), case.address);
 
-            let signer = Signer::new(&keychain, &encrypted_signing_key);
+            let signer = Signer::new(keychain.clone(), encrypted_signing_key.clone());
 
             let signature = signer.personal_sign(case.message())?;
 
@@ -625,14 +622,14 @@ mod tests {
         let data: TypedData = serde_json::from_value(data)?;
         let expected_signature: EthereumSignature = "0x4355c47d63924e8a72e509b65029052eb6c299d53a04e167c5775fd466751c9d07299936d304c153f6443dfa05f40ff007d72911b6f72307f996231605b915621c".parse()?;
 
-        let keychain = Keychain::new();
+        let keychain = Arc::new(Keychain::new());
         let secret_key: EthereumAsymmetricKey =
             "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4".parse()?;
 
         let chain_id = ChainId::default_dapp_chain();
         let encrypted_signing_key =
             EncryptedSigningKey::test_key(&keychain, secret_key, chain_id)?;
-        let signer = Signer::new(&keychain, &encrypted_signing_key);
+        let signer = Signer::new(keychain, encrypted_signing_key.clone());
 
         let signature = signer.sign_typed_data(&data)?;
 

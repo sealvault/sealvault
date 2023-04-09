@@ -35,31 +35,25 @@ pub mod test_util {
 
     use crate::{
         async_runtime as rt,
-        protocols::eth::{
-            ChainId, ChecksumAddress, LocalRpcManager, RpcManagerI, RpcProvider,
-        },
+        protocols::eth::{ChainId, ChecksumAddress, LocalRpcManager, RpcManagerI},
     };
 
     pub struct TestContractDeployer {
         pub chain_id: ChainId,
-        pub anvil_rpc: LocalRpcManager,
-        pub rpc_provider: RpcProvider,
+        pub rpc_manager: LocalRpcManager,
     }
 
     impl TestContractDeployer {
         pub fn init(chain_id: ChainId) -> Self {
-            let anvil_rpc = LocalRpcManager::new();
-            let rpc_provider = anvil_rpc.eth_api_provider(chain_id);
             Self {
                 chain_id,
-                anvil_rpc,
-                rpc_provider,
+                rpc_manager: LocalRpcManager::new(),
             }
         }
 
         /// Deployer wallet gets the initial balance of tokens.
         pub fn deployer_wallet(&self) -> LocalWallet {
-            let wallet = self.anvil_rpc.wallet();
+            let wallet = self.rpc_manager.wallet();
             wallet.with_chain_id(self.chain_id)
         }
 
@@ -68,7 +62,7 @@ pub mod test_util {
         }
 
         pub fn provider(&self) -> Provider<Http> {
-            self.rpc_provider.provider.clone()
+            self.rpc_manager.ethers_provider(self.chain_id)
         }
 
         /// Deploy FungibleTokenTest ERC20 contract on local Anvil node.

@@ -46,3 +46,8 @@ pub const IOS_SERVICE: &str = "org.sealvault";
 
 // Port number is important for, otherwise Jsonrpsee HTTP client doesn't work
 pub const ANKR_API: &str = "https://rpc.ankr.com:443/multichain";
+
+// Ethers middleware
+pub const GAS_ESCALATOR_COEFFICIENT: f64 = 1.125;
+/// How often to increase the gas price in seconds if a transaction hasn't been mined.
+pub const GAS_ESCALATOR_INTERVAL_SEC: u64 = 60;
