@@ -79,6 +79,7 @@ impl TokenApi {
             ChainId::EthGoerli => Self::Ankr,
             ChainId::PolygonMainnet => Self::Ankr,
             ChainId::PolygonMumbai => Self::Ankr,
+            ChainId::FilecoinHyperspaceTestnet => Self::Native,
         }
     }
 }

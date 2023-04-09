@@ -45,6 +45,8 @@ pub enum ChainId {
 
     PolygonMainnet = 137,
     PolygonMumbai = 80001,
+
+    FilecoinHyperspaceTestnet = 3141,
 }
 
 impl ChainId {
@@ -67,6 +69,8 @@ impl ChainId {
 
             Self::PolygonMainnet => "137",
             Self::PolygonMumbai => "80001",
+
+            Self::FilecoinHyperspaceTestnet => "3141",
         }
         .into()
     }
@@ -91,6 +95,8 @@ impl ChainId {
 
             Self::PolygonMainnet => "Polygon PoS",
             Self::PolygonMumbai => "Polygon PoS Mumbai Testnet",
+
+            Self::FilecoinHyperspaceTestnet => "Filecoin Hyperspace Testnet",
         }
         .into()
     }
@@ -102,6 +108,8 @@ impl ChainId {
 
             Self::PolygonMainnet => false,
             Self::PolygonMumbai => true,
+
+            Self::FilecoinHyperspaceTestnet => true,
         }
     }
 
@@ -112,6 +120,8 @@ impl ChainId {
 
             Self::PolygonMainnet => NativeToken::Matic,
             Self::PolygonMumbai => NativeToken::Matic,
+
+            Self::FilecoinHyperspaceTestnet => NativeToken::TestFil,
         }
     }
 
@@ -121,6 +131,9 @@ impl ChainId {
             ChainId::EthGoerli => "https://rpc.ankr.com/eth_goerli",
             ChainId::PolygonMainnet => "https://rpc.ankr.com/polygon",
             ChainId::PolygonMumbai => "https://rpc.ankr.com/polygon_mumbai",
+            ChainId::FilecoinHyperspaceTestnet => {
+                "https://api.hyperspace.node.glif.io/rpc/v1"
+            }
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -131,6 +144,7 @@ impl ChainId {
             Self::EthGoerli => "https://goerli.etherscan.io/",
             Self::PolygonMainnet => "https://polygonscan.com/",
             Self::PolygonMumbai => "https://mumbai.polygonscan.com/",
+            Self::FilecoinHyperspaceTestnet => "https://hyperspace.filfox.info/en/",
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -141,6 +155,7 @@ impl ChainId {
             Self::EthGoerli => parse_units("100", "gwei"),
             Self::PolygonMainnet => parse_units("1000", "gwei"),
             Self::PolygonMumbai => parse_units("1000", "gwei"),
+            Self::FilecoinHyperspaceTestnet => parse_units("1000", "gwei"),
         }
         .expect("unit test catches panics");
 
@@ -152,19 +167,16 @@ impl ChainId {
     }
 
     fn default_dapp_allotment(&self) -> NativeTokenAmount {
-        let units = match *self {
-            Self::EthMainnet => parse_units("0", "ether"),
-            Self::EthGoerli => parse_units("0.1", "ether"),
-            Self::PolygonMainnet => parse_units("0.1", "ether"),
-            Self::PolygonMumbai => parse_units("0.1", "ether"),
-        }
-        .expect("unit test catches panics");
+        let amount = match *self {
+            Self::EthMainnet => "0.1",
+            Self::EthGoerli => "0.1",
+            Self::PolygonMainnet => "0.1",
+            Self::PolygonMumbai => "0.1",
+            Self::FilecoinHyperspaceTestnet => "0.2",
+        };
 
-        match units {
-            ParseUnits::U256(amount) => NativeTokenAmount::new(*self, amount),
-            // Default dapp allotment cannot be negative. Unit test checks this exhaustively.
-            ParseUnits::I256(_) => unreachable!(),
-        }
+        NativeTokenAmount::new_from_decimal(*self, amount)
+            .expect("unit test catches panics")
     }
 
     pub fn default_user_settings(&self) -> ChainSettings {

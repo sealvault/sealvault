@@ -300,23 +300,13 @@ pub enum AnkrBlockchain {
 
 impl AnkrBlockchain {
     pub fn supported(chain_id: ChainId) -> bool {
-        match chain_id {
+        matches!(
+            chain_id,
             ChainId::EthMainnet
-            | ChainId::EthGoerli
-            | ChainId::PolygonMainnet
-            | ChainId::PolygonMumbai => true,
-        }
-    }
-}
-
-impl From<ChainId> for AnkrBlockchain {
-    fn from(chain_id: ChainId) -> Self {
-        match chain_id {
-            ChainId::EthMainnet => AnkrBlockchain::Eth,
-            ChainId::EthGoerli => AnkrBlockchain::EthGoerli,
-            ChainId::PolygonMainnet => AnkrBlockchain::Polygon,
-            ChainId::PolygonMumbai => AnkrBlockchain::PolygonMumbai,
-        }
+                | ChainId::EthGoerli
+                | ChainId::PolygonMainnet
+                | ChainId::PolygonMumbai
+        )
     }
 }
 
@@ -818,7 +808,7 @@ pub(crate) mod tests {
                     assert_eq!(balances.fungible_tokens.len(), 2);
                     assert_eq!(balances.nfts.len(), 2);
                 }
-                ChainId::PolygonMumbai => {
+                _ => {
                     assert_ne!(balances.native_token.amount, U256::zero());
                 }
             }

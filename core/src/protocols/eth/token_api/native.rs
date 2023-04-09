@@ -376,6 +376,7 @@ fn chain_id_to_logo_name(chain_id: ChainId) -> Option<&'static str> {
         ChainId::EthGoerli => None,
         ChainId::PolygonMainnet => Some("polygon"),
         ChainId::PolygonMumbai => None,
+        ChainId::FilecoinHyperspaceTestnet => None,
     }
 }
 

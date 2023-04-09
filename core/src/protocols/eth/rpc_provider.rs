@@ -120,6 +120,9 @@ impl RpcManagerI for RpcManager {
                     .expect("chain is valid")
                     .category(GasCategory::Fast),
             ),
+            ChainId::FilecoinHyperspaceTestnet => Box::new(
+                gas_oracle::ProviderOracle::new(self.ethers_provider(chain_id)),
+            ),
         }
     }
 
@@ -322,7 +325,9 @@ impl SignerRpcProvider {
     ) -> Result<H256, Error> {
         let pending_tx = self
             .provider
-            .send_transaction(tx, Some(BlockId::Number(BlockNumber::Latest)))
+            // Important that block parameter is `None`, because Filecoin network doesn't support
+            // block parameter for `eth_estimateGas`.
+            .send_transaction(tx, None)
             .await
             .map_err(Self::map_err)?;
         Ok(pending_tx.tx_hash())

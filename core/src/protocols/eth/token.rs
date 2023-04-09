@@ -19,6 +19,11 @@ use crate::{
 pub enum NativeToken {
     Eth,
     Matic,
+    FiL,
+    // Filecoin Testnet
+    #[strum(serialize = "tFIL")]
+    #[serde(rename = "tFIL")]
+    TestFil,
 }
 
 impl NativeToken {
@@ -27,6 +32,8 @@ impl NativeToken {
         match *self {
             Self::Eth => 18,
             Self::Matic => 18,
+            Self::FiL => 18,
+            Self::TestFil => 18,
         }
     }
 

@@ -148,7 +148,14 @@ pub enum InPageRequest {
     EthCreateAccessList(TransactionRequest, #[serde(default)] Option<BlockId>),
 
     #[serde(rename = "eth_estimateGas")]
-    EthEstimateGas(TransactionRequest, #[serde(default)] Option<BlockId>),
+    EthEstimateGas(
+        TransactionRequest,
+        // Important to skip serializing if block parameter is `None`, because Filecoin network
+        // doesn't support it.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default)]
+        Option<BlockId>,
+    ),
 
     #[serde(rename = "eth_getTransactionByHash", with = "sequence_len_one")]
     EthGetTransactionByHash(TxHash),
