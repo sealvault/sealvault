@@ -1,5 +1,18 @@
 # Changelog
 
+## 2023-04-09
+
+### iOS Beta v0.8.0
+
+- Increase transaction reliability by using gas oracles to estimate gas fees and
+  gradually increasing gas price for unconfirmed transactions.
+- Add support for `wallet_watchAsset` MetaMask RPC method to add custom fungible
+  tokens to wallet.
+- Add support Filecoin (FEVM) Hyperspace testnet. There is no NFT support and no
+  automatic custom token discovery support yet (tracking issues:
+  [#112](https://github.com/sealvault/sealvault/issues/112) and
+  [#113](https://github.com/sealvault/sealvault/issues/113)).
+
 ## 2023-04-02
 
 ### iOS Beta v0.7.2
