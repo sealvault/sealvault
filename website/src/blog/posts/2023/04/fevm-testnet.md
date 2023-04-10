@@ -5,8 +5,8 @@ authors:
 - agostbiro
 
 links:
-- dev-docs/principles.md
 - dev-docs/design/dapp-keys.md
+- dev-docs/design/cross-connect.md
 ---
 
 # Dev Update: Filecoin FEVM Support & Upcoming Features
