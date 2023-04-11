@@ -1,0 +1,3 @@
+---- MODULE MCTokenTransfer ----
+EXTENDS TokenTransfer
+====

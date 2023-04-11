@@ -6,3 +6,4 @@
 states
 *.dot
 *.png
+*TTrace*
