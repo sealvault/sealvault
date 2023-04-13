@@ -152,6 +152,9 @@ Next ==
         \/ TransferCustom(s)
         \/ ApproveCustom(s)
         \/ UnknownTransaction(s)
+        \/ MetaTransferCustom(s)
+        \/ MetaApproveCustom(s)
+        \/ MetaUnknownTransaction(s)
     \* Events
     \/ NativeTokenTransfer
     \/ CustomTokenApproval
