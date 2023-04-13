@@ -14,9 +14,9 @@ vars == << events, transactions >>
 
 TransactionType == {
     \* IERC20 transfer call.
-    "transfer-custom", 
+    "transfer-custom",
     \* IERC20 approve call.
-    "approve", 
+    "approve",
     \* Call a contract method that is not part of IERC20.
     "unknown-transaction",
 
@@ -28,9 +28,9 @@ TransactionType == {
     \* by any standard that the author knows of.
 
     \* IERC20 transfer call with a meta transaction.
-    "meta-transfer-custom", 
+    "meta-transfer-custom",
     \* IERC20 approve call with a meta transaction.
-    "meta-approve", 
+    "meta-approve",
     \* Call a method that is not part of IERC20 with a meta transaction.
     "meta-unknown-transaction"
 }
@@ -54,7 +54,7 @@ TypeOK ==
     /\ events \subseteq Event
     /\ transactions \subseteq Transaction
 
-Init == 
+Init ==
     /\ events = { }
     /\ transactions = { }
 
@@ -63,59 +63,59 @@ Init ==
 TransactionExists(type, signer) ==
     /\ \E t \in transactions: t.type = type /\ t.signer = signer
 
-SendTransactionOnce(tx) == 
+SendTransactionOnce(tx) ==
     \* Restrict to one transaction always to keep the state space small. In
     \* practice there might be multiple transactions, eg. if one gets stuck in the
     \* mem pool and a new one is sent with higher gas allowance to replace it.
     /\ ~ TransactionExists(tx.type, tx.signer)
     /\ transactions' = transactions \union {tx}
 
-TransferCustom(signer) == 
+TransferCustom(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "transfer-custom", signer |-> signer])
     /\ UNCHANGED events
 
-ApproveCustom(signer) == 
+ApproveCustom(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "approve", signer |-> signer])
     /\ UNCHANGED events
 
-UnknownTransaction(signer) == 
+UnknownTransaction(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "unknown-transaction", signer |-> signer])
     /\ UNCHANGED events
 
-MetaTransferCustom(signer) == 
+MetaTransferCustom(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "meta-transfer-custom", signer |-> signer])
     /\ UNCHANGED events
 
-MetaApproveCustom(signer) == 
+MetaApproveCustom(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "meta-approve", signer |-> signer])
     /\ UNCHANGED events
 
-MetaUnknownTransaction(signer) == 
+MetaUnknownTransaction(signer) ==
     /\ ~ "CustomTokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "meta-unknown-transaction", signer |-> signer])
     /\ UNCHANGED events
 
 \* Events
 
-CustomTokenApproval == 
+CustomTokenApproval ==
     /\ ~ "CustomTokenApproval" \in events
-    /\ 
+    /\
         \/ TransactionExists("approve", "owner")
         \/ TransactionExists("meta-approve", "owner")
     /\ events' = events \union {"CustomTokenApproval"}
     /\ UNCHANGED transactions
 
-CustomTokenTransfer == 
+CustomTokenTransfer ==
     /\ ~ "CustomTokenTransfer" \in events
-    /\ 
+    /\
         \/ TransactionExists("transfer-custom", "owner")
         \/ TransactionExists("meta-transfer-custom", "owner")
-        \/ 
+        \/
             /\ "CustomTokenApproval" \in events
             /\
                 \/ TransactionExists("transfer-custom", "spender")
@@ -144,5 +144,10 @@ Next ==
     \/ CustomTokenTransfer
 
 Spec == Init /\ [][Next]_vars
+
+Inv ==
+    TypeOK /\
+    \* Sanity check that a token can be only transferred if a transaction was signed by the owner.
+    "CustomTokenTransfer" \in events => \E t \in transactions: t.signer = "owner"
 
 =============================================================================
