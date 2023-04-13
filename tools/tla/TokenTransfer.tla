@@ -1,5 +1,7 @@
 ------------------------------- MODULE TokenTransfer ------------------------------
 
+\* Gas fees are not modeled.
+
 EXTENDS FiniteSets, Sequences
 
 VARIABLES
@@ -11,8 +13,6 @@ VARIABLES
 vars == << events, transactions >>
 
 TransactionType == {
-    \* A transaction that transfers the native token and nothing else.
-    "transfer-native", 
     \* IERC20 transfer call.
     "transfer-custom", 
     \* IERC20 approve call.
@@ -42,10 +42,6 @@ TransactionType == {
 Signer == {"owner", "spender", "any"}
 
 Event == {
-    \* A native token owned by the address was transferred. 
-    \* There is no corresponding even in the Ethereum protocol.
-    \* Gas fees are not modeled.
-    "NativeTokenTransfer",
     \* IERC20 Transfer event.
     "CustomTokenTransfer",
     \* IERC20 Approval event.
@@ -73,11 +69,6 @@ SendTransactionOnce(tx) ==
     \* mem pool and a new one is sent with higher gas allowance to replace it.
     /\ ~ TransactionExists(tx.type, tx.signer)
     /\ transactions' = transactions \union {tx}
-
-TransferNative(signer) == 
-    /\ ~ "NativeTokenTransfer" \in events
-    /\ SendTransactionOnce([type |-> "transfer-native", signer |-> signer])
-    /\ UNCHANGED events
 
 TransferCustom(signer) == 
     /\ ~ "CustomTokenTransfer" \in events
@@ -111,12 +102,6 @@ MetaUnknownTransaction(signer) ==
 
 \* Events
 
-NativeTokenTransfer ==
-    /\ ~ "NativeTokenTransfer" \in events
-    /\ TransactionExists("transfer-native", "owner")
-    /\ events' = events \union {"NativeTokenTransfer"}
-    /\ UNCHANGED transactions
-
 CustomTokenApproval == 
     /\ ~ "CustomTokenApproval" \in events
     /\ 
@@ -148,7 +133,6 @@ CustomTokenTransfer ==
 Next ==
     \* Transactions
     \/ \E s \in Signer:
-        \/ TransferNative(s)
         \/ TransferCustom(s)
         \/ ApproveCustom(s)
         \/ UnknownTransaction(s)
@@ -156,7 +140,6 @@ Next ==
         \/ MetaApproveCustom(s)
         \/ MetaUnknownTransaction(s)
     \* Events
-    \/ NativeTokenTransfer
     \/ CustomTokenApproval
     \/ CustomTokenTransfer
 
