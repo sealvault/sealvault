@@ -145,9 +145,19 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
-Inv ==
-    TypeOK /\
-    \* Sanity check that a token can be only transferred if a transaction was signed by the owner.
+\* A token can be only transferred if a transaction was signed by the owner.
+TransferRequiresOwnerSig ==
     "CustomTokenTransfer" \in events => \E t \in transactions: t.signer = "owner"
+
+\* If there was no token approval, then the owner must have signed a transfer transaction to transfer a token.
+WithoutApprovalOnlyTransfer ==
+    ("CustomTokenTransfer" \in events /\ ~ "CustomTokenApproval" \in events) => 
+        \E t \in transactions: 
+            t.signer = "owner" /\ t.type \in {"transfer-custom", "meta-transfer-custom"}
+
+Inv ==
+    /\ TypeOK
+    /\ TransferRequiresOwnerSig
+    /\ WithoutApprovalOnlyTransfer
 
 =============================================================================
