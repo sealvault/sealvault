@@ -143,7 +143,9 @@ Next ==
     \/ CustomTokenApproval
     \/ CustomTokenTransfer
 
-Spec == Init /\ [][Next]_vars
+Spec == 
+    /\ Init 
+    /\ [][Next]_vars 
 
 \* A token can be only transferred if a transaction was signed by the owner.
 TransferRequiresOwnerSig ==
@@ -155,9 +157,15 @@ WithoutApprovalOnlyTransfer ==
         \E t \in transactions: 
             t.signer = "owner" /\ t.type \in {"transfer-custom", "meta-transfer-custom"}
 
-Inv ==
+Invariants ==
     /\ TypeOK
     /\ TransferRequiresOwnerSig
     /\ WithoutApprovalOnlyTransfer
+
+TemporalProperties ==
+    \* Neither event is guaranteed to happen if enabling conditions are always on
+    \* due to stuttering steps. In other words, there is no (weak) fairness in the system.
+    /\ <>[](ENABLED <<CustomTokenTransfer>>_events) => ~ []<><<CustomTokenTransfer>>_events
+    /\ <>[](ENABLED <<CustomTokenApproval>>_events) => ~ []<><<CustomTokenTransfer>>_events
 
 =============================================================================
