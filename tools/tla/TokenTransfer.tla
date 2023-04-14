@@ -19,6 +19,10 @@ TransactionType == {
     "approve",
     \* Call a contract method that is not part of IERC20.
     "unknown-transaction",
+    \* ERC-2612 transaction
+    "permit",
+    \* Permit2 pattern transaction
+    "permit2",
 
     \* The following are meta transactions. Meta transactions are signed with an
     \* off-chain signature (typically EIP-712), and then relayed by another party
@@ -32,7 +36,11 @@ TransactionType == {
     \* IERC20 approve call with a meta transaction.
     "meta-approve",
     \* Call a method that is not part of IERC20 with a meta transaction.
-    "meta-unknown-transaction"
+    "meta-unknown-transaction",
+    \* ERC-2612 transaction submitted by a relayer
+    "meta-permit",
+    \* Permit2 pattern transaction submitted by a relayer
+    "meta-permit2"
 }
 
 \* The signer of the transaction or the meta transaction.
@@ -89,6 +97,16 @@ UnknownTransaction(signer) ==
     /\ SendTransactionOnce([type |-> "unknown-transaction", signer |-> signer])
     /\ UNCHANGED events
 
+Permit(signer) ==
+    /\ ~ "TokenTransfer" \in events
+    /\ SendTransactionOnce([type |-> "permit", signer |-> signer])
+    /\ UNCHANGED events
+
+Permit2(signer) ==
+    /\ ~ "TokenTransfer" \in events
+    /\ SendTransactionOnce([type |-> "permit2", signer |-> signer])
+    /\ UNCHANGED events
+
 MetaTransfer(signer) ==
     /\ ~ "TokenTransfer" \in events
     /\ SendTransactionOnce([type |-> "meta-transfer", signer |-> signer])
@@ -104,11 +122,23 @@ MetaUnknownTransaction(signer) ==
     /\ SendTransactionOnce([type |-> "meta-unknown-transaction", signer |-> signer])
     /\ UNCHANGED events
 
+MetaPermit(signer) ==
+    /\ ~ "TokenTransfer" \in events
+    /\ SendTransactionOnce([type |-> "meta-permit", signer |-> signer])
+    /\ UNCHANGED events
+
+MetaPermit2(signer) ==
+    /\ ~ "TokenTransfer" \in events
+    /\ SendTransactionOnce([type |-> "meta-permit2", signer |-> signer])
+    /\ UNCHANGED events
+
 \* Events
 
 ApprovedToken == 
     \/ TransactionExists("approve", "owner")
     \/ TransactionExists("meta-approve", "owner")
+    \/ TransactionExists("permit", "owner")
+    \/ TransactionExists("meta-permit", "owner")
 
 TokenApproval ==
     /\ ~ "TokenApproval" \in events
@@ -122,7 +152,7 @@ OwnerTransferToken ==
         \/ TransactionExists("meta-transfer", "owner")
     /\ events' = events \union {"TokenTransferOwner"}
 
-SpentToken ==
+SpendToken ==
     \/ TransactionExists("transfer", "spender")
     \/ TransactionExists("meta-transfer", "spender")
     \* If the approved spender is a contract, then any contract
@@ -132,10 +162,14 @@ SpentToken ==
     \/ TransactionExists("unknown-transaction", "any")
     \/ TransactionExists("meta-unknown-transaction", "owner")
     \/ TransactionExists("meta-unknown-transaction", "any")
+    \/ TransactionExists("permit2", "owner")
+    \/ TransactionExists("permit2", "any")
+    \/ TransactionExists("meta-permit2", "owner")
+    \/ TransactionExists("meta-permit2", "any")
 
 SpendWithApproval ==
     /\ "TokenApproval" \in events
-    /\ SpentToken
+    /\ SpendToken
     /\ events' = events \union {"TokenTransferSpender"}
 
 TokenWasTransferred == 
@@ -157,6 +191,10 @@ Next ==
         \/ MetaTransfer(s)
         \/ MetaApprove(s)
         \/ MetaUnknownTransaction(s)
+        \/ Permit(s)
+        \/ MetaPermit(s)
+        \/ Permit2(s)
+        \/ MetaPermit2(s)
     \* Events
     \/ TokenApproval
     \/ TokenTransfer
@@ -167,12 +205,12 @@ Spec ==
 
 \* A token can be only transferred if a transaction was signed by the owner.
 TransferRequiresOwnerSig ==
-    "TokenTransfer" \in events => \E t \in transactions: t.signer = "owner"
+    TokenWasTransferred => \E t \in transactions: t.signer = "owner"
 
 \* If there was no token approval, then the owner must have signed a transfer
 \* transaction to transfer a token.
 WithoutApprovalOnlyTransfer ==
-    ("TokenTransfer" \in events /\ ~ "TokenApproval" \in events) => 
+    (TokenWasTransferred /\ ~ "TokenApproval" \in events) => 
         \E t \in transactions: 
             t.signer = "owner" /\ t.type \in {"transfer", "meta-transfer"}
 
