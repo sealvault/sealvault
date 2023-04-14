@@ -17,12 +17,12 @@ TransactionType == {
     "transfer",
     \* IERC20 approve call.
     "approve",
-    \* Call a contract method that is not part of IERC20.
-    "unknown-transaction",
     \* ERC-2612 transaction
     "permit",
     \* Permit2 pattern transaction
     "permit2",
+    \* Call a contract method that is not part of IERC20.
+    "unknown-transaction",
 
     \* The following are meta transactions. Meta transactions are signed with an
     \* off-chain signature (typically EIP-712), and then relayed by another party
@@ -35,12 +35,12 @@ TransactionType == {
     "meta-transfer",
     \* IERC20 approve call with a meta transaction.
     "meta-approve",
-    \* Call a method that is not part of IERC20 with a meta transaction.
-    "meta-unknown-transaction",
     \* ERC-2612 transaction submitted by a relayer
     "meta-permit",
     \* Permit2 pattern transaction submitted by a relayer
-    "meta-permit2"
+    "meta-permit2",
+    \* Call a method that is not part of IERC20 with a meta transaction.
+    "meta-unknown-transaction"
 }
 
 \* The signer of the transaction or the meta transaction.
@@ -134,7 +134,7 @@ MetaPermit2(signer) ==
 
 \* Events
 
-ApprovedToken == 
+ApprovedToken ==
     \/ TransactionExists("approve", "owner")
     \/ TransactionExists("meta-approve", "owner")
     \/ TransactionExists("permit", "owner")
@@ -172,12 +172,12 @@ SpendWithApproval ==
     /\ SpendToken
     /\ events' = events \union {"TokenTransferSpender"}
 
-TokenWasTransferred == 
+TokenWasTransferred ==
     {"TokenTransferOwner", "TokenTransferSpender"} \intersect events # { }
 
 TokenTransfer ==
     /\ ~ TokenWasTransferred
-    /\ 
+    /\
         \/ OwnerTransferToken
         \/ SpendWithApproval
     /\ UNCHANGED transactions
@@ -187,21 +187,21 @@ Next ==
     \/ \E s \in Signer:
         \/ Transfer(s)
         \/ Approve(s)
+        \/ Permit(s)
+        \/ Permit2(s)
         \/ UnknownTransaction(s)
         \/ MetaTransfer(s)
         \/ MetaApprove(s)
-        \/ MetaUnknownTransaction(s)
-        \/ Permit(s)
         \/ MetaPermit(s)
-        \/ Permit2(s)
         \/ MetaPermit2(s)
+        \/ MetaUnknownTransaction(s)
     \* Events
     \/ TokenApproval
     \/ TokenTransfer
 
-Spec == 
-    /\ Init 
-    /\ [][Next]_vars 
+Spec ==
+    /\ Init
+    /\ [][Next]_vars
 
 \* A token can be only transferred if a transaction was signed by the owner.
 TransferRequiresOwnerSig ==
@@ -210,8 +210,8 @@ TransferRequiresOwnerSig ==
 \* If there was no token approval, then the owner must have signed a transfer
 \* transaction to transfer a token.
 WithoutApprovalOnlyTransfer ==
-    (TokenWasTransferred /\ ~ "TokenApproval" \in events) => 
-        \E t \in transactions: 
+    (TokenWasTransferred /\ ~ "TokenApproval" \in events) =>
+        \E t \in transactions:
             t.signer = "owner" /\ t.type \in {"transfer", "meta-transfer"}
 
 \* Asserts that these invariants hold at every execution step.
