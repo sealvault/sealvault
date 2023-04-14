@@ -42,9 +42,11 @@ TransactionType == {
 Signer == {"owner", "spender", "any"}
 
 Event == {
-    \* IERC20 Transfer event.
-    "TokenTransfer",
-    \* IERC20 Approval event.
+    \* The token was transferred by the owner.
+    "TokenTransferOwner",
+    \* The token was transferred by the approved spender.
+    "TokenTransferSpender",
+    \* The token was approved by the owner.
     "TokenApproval"
 }
 
@@ -52,6 +54,8 @@ Transaction == [type: TransactionType, signer: Signer]
 
 TypeOK ==
     /\ events \subseteq Event
+    \* Sanity check for the spec: the token can be only transferred once.
+    /\ ~ {"TokenTransferOwner", "TokenTransferSpender"} \subseteq events
     /\ transactions \subseteq Transaction
 
 Init ==
@@ -102,33 +106,46 @@ MetaUnknownTransaction(signer) ==
 
 \* Events
 
+ApprovedToken == 
+    \/ TransactionExists("approve", "owner")
+    \/ TransactionExists("meta-approve", "owner")
+
 TokenApproval ==
     /\ ~ "TokenApproval" \in events
-    /\
-        \/ TransactionExists("approve", "owner")
-        \/ TransactionExists("meta-approve", "owner")
+    /\ ApprovedToken
     /\ events' = events \union {"TokenApproval"}
     /\ UNCHANGED transactions
 
-
-TokenTransfer ==
-    /\ ~ "TokenTransfer" \in events
+OwnerTransferToken ==
     /\
         \/ TransactionExists("transfer", "owner")
         \/ TransactionExists("meta-transfer", "owner")
-        \/
-            /\ "TokenApproval" \in events
-            /\
-                \/ TransactionExists("transfer", "spender")
-                \/ TransactionExists("meta-transfer", "spender")
-                \* If the approved spender is a contract, then any contract
-                \* method call can lead to a transfer and there is no guarantee,
-                \* that the originator of the transaction is the owner.
-                \/ TransactionExists("unknown-transaction", "owner")
-                \/ TransactionExists("unknown-transaction", "any")
-                \/ TransactionExists("meta-unknown-transaction", "owner")
-                \/ TransactionExists("meta-unknown-transaction", "any")
-    /\ events' = events \union {"TokenTransfer"}
+    /\ events' = events \union {"TokenTransferOwner"}
+
+SpentToken ==
+    \/ TransactionExists("transfer", "spender")
+    \/ TransactionExists("meta-transfer", "spender")
+    \* If the approved spender is a contract, then any contract
+    \* method call can lead to a transfer and there is no guarantee,
+    \* that the originator of the transaction is the owner.
+    \/ TransactionExists("unknown-transaction", "owner")
+    \/ TransactionExists("unknown-transaction", "any")
+    \/ TransactionExists("meta-unknown-transaction", "owner")
+    \/ TransactionExists("meta-unknown-transaction", "any")
+
+SpendWithApproval ==
+    /\ "TokenApproval" \in events
+    /\ SpentToken
+    /\ events' = events \union {"TokenTransferSpender"}
+
+TokenWasTransferred == 
+    {"TokenTransferOwner", "TokenTransferSpender"} \intersect events # { }
+
+TokenTransfer ==
+    /\ ~ TokenWasTransferred
+    /\ 
+        \/ OwnerTransferToken
+        \/ SpendWithApproval
     /\ UNCHANGED transactions
 
 Next ==
@@ -152,21 +169,29 @@ Spec ==
 TransferRequiresOwnerSig ==
     "TokenTransfer" \in events => \E t \in transactions: t.signer = "owner"
 
-\* If there was no token approval, then the owner must have signed a transfer transaction to transfer a token.
+\* If there was no token approval, then the owner must have signed a transfer
+\* transaction to transfer a token.
 WithoutApprovalOnlyTransfer ==
     ("TokenTransfer" \in events /\ ~ "TokenApproval" \in events) => 
         \E t \in transactions: 
             t.signer = "owner" /\ t.type \in {"transfer", "meta-transfer"}
 
+\* Asserts that these invariants hold at every execution step.
 Invariants ==
     /\ TypeOK
     /\ TransferRequiresOwnerSig
     /\ WithoutApprovalOnlyTransfer
 
+\* Asserts that there is no weak fairness in the system. Just because a
+\* transaction was submitted to the mempool, doesn't guarantee that it happens.
+\* Similarly, just because meta transaction was submitted to a relayer, doesn't
+\* mean that it'll be carried out.
 TemporalProperties ==
-    \* Neither event is guaranteed to happen if enabling conditions are always on
-    \* due to stuttering steps. In other words, there is no (weak) fairness in the system.
-    /\ <>[](ENABLED <<TokenTransfer>>_events) => ~ []<><<TokenTransfer>>_events
-    /\ <>[](ENABLED <<TokenApproval>>_events) => ~ []<><<TokenTransfer>>_events
+    \* If a token transfer by the owner is possible, doesn't guarantee that it happens.
+    /\ <>[](ENABLED <<OwnerTransferToken>>_events) => ~ []<><<OwnerTransferToken>>_events
+    \* If a token approval is possible, doesn't guarantee that it happens.
+    /\ <>[](ENABLED <<TokenApproval>>_events) => ~ []<><<TokenApproval>>_events
+    \* If a token was approved, doesn't guarantee that the approvee will spend it.
+    /\ <>[](ENABLED <<SpendWithApproval>>_events) => ~ []<><<SpendWithApproval>>_events
 
 =============================================================================
