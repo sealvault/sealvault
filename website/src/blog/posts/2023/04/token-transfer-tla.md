@@ -193,7 +193,7 @@ Looking at the structure of the specification, it's obvious that my initial
 underestimated the complexity of the problem. There are 2 ways the owner can
 transfer the tokens, there are 4 ways a spender can be approved and there are 10
 ways spenders can transfer tokens, so that means there are $2 + 4 * 10 =
-42$ ways an ERC-20 token can be transferred from an EOA.
+42$ ways a custom token can be transferred from an EOA.
 
 The entire specification with invariants and temporal properties that codify our
 assumptions is available on [GitHub.](https://github.com/sealvault/sealvault/blob/main/tools/tla/TokenTransfer.tla)
