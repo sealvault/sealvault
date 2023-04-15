@@ -31,16 +31,16 @@ The first step towards building a better a solution is to understand what can
 wrong. The most common thing that [goes
 wrong](/dev-docs/design/attack-tree/#approval-spoofing) when the same Ethereum
 address is connected to multiple dapps is that a malicious or compromised dapp
-transfers the user’s tokens without their consent. While the user is a victim of
-fraud, the transaction that transfers the tokens is valid per the Ethereum
+transfers the user’s tokens without their consent. The user is a victim of
+fraud, but the transaction that transfers the tokens is valid per the Ethereum
 protocol. So in order to prevent fraud, we have to understand how valid
 transactions can occur.
 
 There is only one way a native token can be transferred from an EOA ignoring gas
-fees (namely the user signs a transaction authorizing the transfer), but there
-are many different ways custom tokens can be transferred with a combination of
-spender approvals and meta transactions. I initially collected 13 different ways
-a custom token can be transferred and [visualized
+fees (namely the user signs a transaction authorizing the transfer). There are
+many different ways custom tokens can be transferred though with a combination
+of spender approvals and meta transactions. I initially collected 13 different
+ways a custom token can be transferred and [visualized
 it](/dev-docs/design/token-transfer-traces/#custom-token-transfer) using
 diagrams. Diagrams explain well how a given a solution works, but it’s difficult
 to know if they give a complete picture of the system. This is why I turned to
@@ -51,40 +51,53 @@ A TLA+ specification is a declarative statement of what can happen in a system
 using logic and set operators. TLA+ also comes with a model checker called TLC
 that generates system behaviors based on the specification and checks that the
 possible behaviors satisfy certain formulas. While TLA+ is a general purpose
-specification language, it is most commonly used to specify distributed systems
-in both industry and academia. In fact, it was when I realized that securing
-Ethereum token transfers in a wallet application is a distributed systems
-problem that I turned to TLA+.
+specification language, it is most commonly used to specify distributed systems.
+In fact, it was when I realized that securing Ethereum token transfers in a
+wallet application is a distributed systems problem that I turned to TLA+.
 
-The parties to a custom token transfer from a dapp are the wallet application,
-the dapp application, Ethereum nodes and relayer nodes that submit messages
-signed by the user to smart contracts to save gas fees for the user. As wallet
-implementors, we can assume that the Ethereum protocol functions correctly, but
-we can’t make any assumptions about the behavior of dapps and relayers. We also
-cannot make assumptions about message delivery or assume that if a transaction
-was submitted, it’ll be carried out.
+The parties to a custom token transfer from a dapp are the following:
 
-Our TLA+ spec abstracts away different custom token types
+- the wallet application,
+- the dapp application, 
+- Ethereum nodes,
+- relayer nodes that submit messages signed by the user to smart contracts to save gas fees for the user. 
+
+As wallet implementors, we can assume that the Ethereum protocol functions
+correctly, but we can’t make any assumptions about the behavior of dapps and
+relayers. We also cannot make assumptions about message delivery or assume that
+if a transaction was submitted, it’ll be carried out.
+
+Our TLA+ spec abstracts away 
+
+- different custom token types
 ([ERC-20](https://eips.ethereum.org/EIPS/eip-20),
 [ERC-721](https://eips.ethereum.org/EIPS/eip-721),
-[ERC-1155](https://eips.ethereum.org/EIPS/eip-1155)), where transactions
-originate from and how they’re
-delivered to nodes. It’s only concerned with transaction types, who the signer
-is and whether a transaction occurred after a valid transaction was submitted.
-Whether a transaction occurred is modeled with events.
+[ERC-1155](https://eips.ethereum.org/EIPS/eip-1155)), 
+- where transactions originate from,
+- how transactions are delivered to nodes.
 
-There are 10 types of transactions: standard custom token method calls
-(`transfer` or `approve`), [ERC-2612
-Permit](http://localhost:8000/dev-docs/design/token-transfer-traces/#permit)
-transactions and
-[Permit2](http://localhost:8000/dev-docs/design/token-transfer-traces/#permit2)
-transactions, and most importantly a transaction that calls an unknown method.
+The spec is only concerned with transaction types, who the signer is and whether
+a transaction occurred after a valid transaction was submitted. Whether a
+transaction occurred is modeled with events.
+
+There are five basic types of transactions that can lead to custom token
+transfers:
+
+1. Standard `transfer` method calls,
+1. Standard `approve` method calls,
+1. [ERC-2612
+   Permit](http://localhost:8000/dev-docs/design/token-transfer-traces/#permit)
+   transactions,
+1. [Permit2](http://localhost:8000/dev-docs/design/token-transfer-traces/#permit2)
+transactions, 
+1. and most importantly a transaction that calls an unknown method.
+
 An unknown method call can lead to a token transfer if a contract was approved
 as spender for the token. Each transaction type also has a corresponding meta
-transaction when the transaction is submitted by a relayer. Signers can be the
-token owner, an approved spender EOA or any address. Any address can be the
-signer to transfer a token if a contract address was approved as spender for the
-token.
+transaction when the transaction is submitted by a relayer, so that makes ten
+types of transactions in total. Signers can be the token owner, an approved
+spender EOA or any address. Any address can be the signer to transfer a token if
+a contract address was approved as spender for the token.
 
 The valid actions in the system are specified as either submitting a transaction
 submitted or emitting a token approval or a token transfer event:
