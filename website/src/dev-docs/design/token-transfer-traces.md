@@ -2,17 +2,22 @@
 
 ## Overview
 
-This document lists the different ways a token can be transferred from an
-externally owned account (EOA) with the Ethereum protocol. The document
-differentiates between custom and native tokens, but not between custom tokens
-([ERC-20](https://eips.ethereum.org/EIPS/eip-20),
+This document explains the different ways a token can be transferred from an
+externally owned account (EOA) with the Ethereum protocol. It is a companion to
+the custom token transfer [TLA+
+spec.](https://github.com/sealvault/sealvault/blob/main/tools/tla/TokenTransfer.tla)
+There is also a [blog post](/blog/2023/04/token-transfer-tla) that
+explains the TLA+ spec.
+
+The document differentiates between custom and native tokens, but not between
+custom tokens ([ERC-20](https://eips.ethereum.org/EIPS/eip-20),
 [ERC-721](https://eips.ethereum.org/EIPS/eip-721),
-[ERC-1155](https://eips.ethereum.org/EIPS/eip-1155)) and ignores the different transfer methods of contracts.
+[ERC-1155](https://eips.ethereum.org/EIPS/eip-1155)) and ignores the different
+transfer methods of contracts. Gas fees are not modelled.
 
 ## Native Token Transfer
 
-A native token transfer happens without contract execution. Gas payments are
-not modelled.
+A native token transfer happens without contract execution. 
 
 ```mermaid
 flowchart TB
@@ -277,9 +282,12 @@ flowchart TB
 With meta transactions ([ERC-2771](https://eips.ethereum.org/EIPS/eip-2771)),
 the token implementation trusts a forwarder contract to feed it transactions to
 save gas fees for the EOA. The token contract treats method calls from the
-forwarder as if they were called by the EOA directly. It is assumed that the
-forwarder contract verifies off-chain signatures by the user, but it's not
-verified by the token contract.
+forwarder as if they were called by the EOA directly. 
+
+It is assumed that the forwarder contract verifies off-chain signatures by the
+user, but it's not verified by the token contract. If the relayer fails to
+verify the owner's signature, we treat that as a vulnerability of the token
+contract, since it's the token contract that chooses to trust the relayer.
 
 ### Meta Custom Token Transfer
 

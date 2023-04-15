@@ -1,6 +1,12 @@
 ------------------------------- MODULE TokenTransfer ------------------------------
 
-\* Gas fees are not modeled.
+\* The spec abstracts away different custom token types where transactions
+\* originate from and how they’re delivered to nodes. It’s only concerned with
+\* transaction types, who the signer is and whether a transaction occurred after a
+\* valid transaction was submitted. Whether a transaction occurred is modeled with
+\* events. Gas fees are not modeled.
+\* See https://sealvault.org/dev-docs/design/token-transfer-traces/ for a
+\* detailed explanation of the various transaction patterns.
 
 EXTENDS FiniteSets, Sequences
 
