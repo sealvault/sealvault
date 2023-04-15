@@ -90,14 +90,15 @@ transfers:
    transactions,
 1. [Permit2](http://localhost:8000/dev-docs/design/token-transfer-traces/#permit2)
 transactions, 
-1. and most importantly a transaction that calls an unknown method.
+1. and most importantly a transaction that calls an unknown method of an unknown
+   contract.
 
-An unknown method call can lead to a token transfer if a contract was approved
-as spender for the token. Each transaction type also has a corresponding meta
-transaction when the transaction is submitted by a relayer, so that makes ten
-types of transactions in total. Signers can be the token owner, an approved
-spender EOA or any address. Any address can be the signer to transfer a token if
-a contract address was approved as spender for the token.
+An unknown transaction call can lead to a token transfer if a contract was
+approved as spender for the token. Each transaction type also has a
+corresponding meta transaction when the transaction is submitted by a relayer,
+so that makes ten types of transactions in total. Signers can be the token
+owner, an approved spender EOA or any address. Any address can be the signer to
+transfer a token if a contract address was approved as spender for the token.
 
 The valid actions in the system are specified as either submitting a transaction
 or emitting a token approval or a token transfer event:
