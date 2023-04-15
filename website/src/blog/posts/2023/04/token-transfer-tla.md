@@ -100,7 +100,7 @@ spender EOA or any address. Any address can be the signer to transfer a token if
 a contract address was approved as spender for the token.
 
 The valid actions in the system are specified as either submitting a transaction
-submitted or emitting a token approval or a token transfer event:
+or emitting a token approval or a token transfer event:
 
 ```tla+
 Next ==
