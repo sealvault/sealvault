@@ -19,15 +19,15 @@ links:
 <!-- more -->
 
 At SealVault, we’re trying to build solutions where we can make security
-guarantees to users. This gives user peace of mind and improves UX since it lets
-us automate things and get rid of confusing warnings.
+guarantees to users. This gives users peace of mind and improves UX since it
+lets us automate things and get rid of confusing warnings.
 
 Connecting an Ethereum address to multiple dapps is common practice in wallet
 applications, but it’s very difficult to make security guarantees in this
 setting. Wallets typically make no guarantees and rely on the user’s judgement
 to secure her assets.
 
-The first step towards building a better a solution is to understand what can
+The first step towards building a better solution is to understand what can go
 wrong. The most common thing that [goes
 wrong](/dev-docs/design/attack-tree/#approval-spoofing) when the same Ethereum
 address is connected to multiple dapps is that a malicious or compromised dapp
