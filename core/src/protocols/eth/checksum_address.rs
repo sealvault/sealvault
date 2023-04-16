@@ -175,7 +175,6 @@ mod tests {
     fn no_prefix_is_not_ok() -> Result<()> {
         let result: Result<ChecksumAddress, ChecksumAddressError> =
             "8b6B4C4BaEA2fE3615adB7fB9Ae2af2b67b0077a".parse();
-        dbg!(&result);
         assert!(matches!(result, Err(_)));
         Ok(())
     }

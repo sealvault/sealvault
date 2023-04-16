@@ -5,6 +5,7 @@
 use std::{collections::HashSet, iter, ops::Sub, sync::Arc};
 
 use futures::StreamExt;
+use itertools::izip;
 use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
@@ -17,7 +18,7 @@ use crate::{
     async_runtime as rt, config,
     favicon::{fetch_favicons, warm_favicons_cache},
     http_client::HttpClient,
-    protocols::{eth, eth::BaseProvider, FungibleTokenType},
+    protocols::{eth, eth::BaseProvider, FungibleTokenType, TokenType},
     resources::CoreResourcesI,
     Error,
 };
@@ -437,8 +438,18 @@ impl Assembler {
 
     fn assemble_fungible_tokens(
         &self,
+        tx_conn: &mut DeferredTxConnection,
+        chain_id: eth::ChainId,
         tokens: Vec<eth::FungibleTokenBalance>,
     ) -> Result<Vec<CoreFungibleToken>, Error> {
+        let contract_addresses = tokens.iter().map(|t| &t.contract_address);
+        let token_ids = m::Token::fetch_eth_token_ids(
+            tx_conn.as_mut(),
+            TokenType::Fungible,
+            chain_id,
+            contract_addresses,
+        )?;
+
         let (tokens_with_logo, tokens_no_logo): (Vec<_>, Vec<_>) =
             tokens.into_iter().partition(|token| token.logo.is_some());
 
@@ -450,46 +461,53 @@ impl Assembler {
             .into_iter()
             .chain(iter::repeat(None).take(tokens_no_logo.len()));
 
-        let result: Result<Vec<CoreFungibleToken>, Error> = tokens_with_logo
-            .into_iter()
-            .chain(tokens_no_logo)
-            .zip(icons_for_all)
-            .map(|(token, icon)| {
-                let amount = token.display_amount();
-                let eth::FungibleTokenBalance {
-                    contract_address,
-                    symbol,
-                    ..
-                } = token;
-                Ok(CoreFungibleToken::builder()
-                    // The id being the contract address is relied on in the core
-                    // `eth_transfer_fungible_token` interface.
-                    .id(contract_address.to_string())
-                    .symbol(symbol)
-                    .amount(Some(amount))
-                    .token_type(FungibleTokenType::Custom)
-                    .icon(icon)
-                    .build())
-            })
-            .collect();
-        result
+        let results: Vec<_> = izip!(
+            tokens_with_logo.into_iter().chain(tokens_no_logo),
+            token_ids,
+            icons_for_all
+        )
+        .map(|(token, token_id, icon)| {
+            let amount = token.display_amount();
+            let eth::FungibleTokenBalance { symbol, .. } = token;
+            CoreFungibleToken::builder()
+                .id(token_id.into())
+                .symbol(symbol)
+                .amount(Some(amount))
+                .token_type(FungibleTokenType::Custom)
+                .icon(icon)
+                .build()
+        })
+        .collect();
+
+        Ok(results)
     }
 
-    fn assemble_nfts(&self, tokens: Vec<eth::NFTBalance>) -> Vec<CoreNFT> {
-        tokens
+    fn assemble_nfts(
+        &self,
+        tx_conn: &mut DeferredTxConnection,
+        chain_id: eth::ChainId,
+        tokens: Vec<eth::NFTBalance>,
+    ) -> Result<Vec<CoreNFT>, Error> {
+        let contract_addresses = tokens.iter().map(|token| &token.contract_address);
+        let token_ids = m::Token::fetch_eth_token_ids(
+            tx_conn.as_mut(),
+            TokenType::Nft,
+            chain_id,
+            contract_addresses,
+        )?;
+
+        let results: Vec<_> = tokens
             .into_iter()
-            .map(|token| {
-                let eth::NFTBalance {
-                    chain_id,
-                    contract_address,
-                    name,
-                    token_id,
-                    ..
-                } = token;
-                let id = format!("{chain_id}-{contract_address}-{token_id}");
-                CoreNFT::builder().id(id).display_name(name).build()
+            .zip(token_ids.into_iter())
+            .map(|(token, token_id)| {
+                let eth::NFTBalance { name, .. } = token;
+                CoreNFT::builder()
+                    .id(token_id.into())
+                    .display_name(name)
+                    .build()
             })
-            .collect()
+            .collect();
+        Ok(results)
     }
 
     fn assemble_tokens(
@@ -535,8 +553,12 @@ impl Assembler {
                     chain_id,
                     Some(native_token.display_amount()),
                 )?;
-                let fungible_tokens = self.assemble_fungible_tokens(fungible_tokens)?;
-                let nfts = self.assemble_nfts(nfts);
+                let fungible_tokens = self.assemble_fungible_tokens(
+                    &mut tx_conn,
+                    chain_id,
+                    fungible_tokens,
+                )?;
+                let nfts = self.assemble_nfts(&mut tx_conn, chain_id, nfts)?;
 
                 results.push(
                     CoreTokens::builder()

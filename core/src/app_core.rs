@@ -341,8 +341,9 @@ impl AppCore {
         &self,
         args: EthTransferFungibleTokenArgs,
     ) -> Result<(), CoreError> {
-        // TODO we use contract address as token id for now, but it should be chain specific
-        let contract_address: eth::ChecksumAddress = args.token_id.clone().try_into()?;
+        let token_id: m::TokenId = args.token_id.parse()?;
+        let mut conn = self.connection_pool().connection()?;
+        let contract_address = m::Token::fetch_contract_address(&mut conn, &token_id)?;
         let from_address_id: m::AddressId = args.from_address_id.clone().try_into()?;
         let to_address: eth::ChecksumAddress =
             args.to_checksum_address.clone().try_into()?;
@@ -618,9 +619,12 @@ fn build_partial_token_transfer_result(
                 }?;
                 Ok((chain_id, to_display_name))
             })?;
-    let res = if let Some(contract_address) = token_id {
+    let res = if let Some(token_id) = token_id {
+        let token_id: m::TokenId = token_id.parse()?;
+        let mut conn = resources.connection_pool().connection()?;
+        let contract_address = m::Token::fetch_contract_address(&mut conn, &token_id)?;
         let rpc = resources.rpc_manager().eth_api_provider(chain_id);
-        let token_symbol = rpc.fungible_token_symbol(contract_address.try_into()?)?;
+        let token_symbol = rpc.fungible_token_symbol(contract_address)?;
         TokenTransferResult::builder()
             .amount(amount_decimal)
             .token_symbol(token_symbol)
@@ -662,6 +666,7 @@ pub mod tests {
     use super::*;
     use crate::{
         backup::{BackupStorageI, TmpBackupStorage},
+        protocols::TokenType,
         CoreInPageCallbackI, DappAllotmentTransferResult, DappApprovalParams,
         DappSignatureResult, DappTransactionApproved, DappTransactionResult,
     };
@@ -1343,7 +1348,10 @@ pub mod tests {
         Ok(())
     }
 
-    fn setup_profiles(core: &AppCore) -> Result<(m::AddressId, eth::ChecksumAddress)> {
+    fn setup_profiles(
+        core: &AppCore,
+        chain_id: eth::ChainId,
+    ) -> Result<(m::AddressId, eth::ChecksumAddress)> {
         let keychain = core.resources.keychain();
 
         core.create_profile("profile-two".into(), "seal-1".into())?;
@@ -1356,7 +1364,7 @@ pub mod tests {
         let res = core.connection_pool().deferred_transaction(|mut tx_conn| {
             let params_one = m::CreateEthAddressParams::builder()
                 .profile_id(&profile_id_one)
-                .chain_id(eth::ChainId::EthMainnet)
+                .chain_id(chain_id)
                 .is_profile_wallet(true)
                 .build();
             let from_id = m::Address::create_eth_key_and_address(
@@ -1366,7 +1374,7 @@ pub mod tests {
             )?;
             let params_two = m::CreateEthAddressParams::builder()
                 .profile_id(&profile_id_two)
-                .chain_id(eth::ChainId::EthMainnet)
+                .chain_id(chain_id)
                 .is_profile_wallet(true)
                 .build();
             let to_id = m::Address::create_eth_key_and_address(
@@ -1385,7 +1393,7 @@ pub mod tests {
     fn cannot_transfer_native_token_between_profiles() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let (from_id, to_address) = setup_profiles(&tmp.core)?;
+        let (from_id, to_address) = setup_profiles(&tmp.core, eth::ChainId::EthMainnet)?;
         let args = EthTransferNativeTokenArgs::builder()
             .from_address_id(from_id.into())
             .to_checksum_address(to_address.to_string())
@@ -1405,15 +1413,39 @@ pub mod tests {
     fn cannot_transfer_fungible_token_between_profiles() -> Result<()> {
         let tmp = TmpCore::new()?;
 
-        let (from_id, to_address) = setup_profiles(&tmp.core)?;
+        let chain_id = eth::ChainId::EthMainnet;
+        let contract_address: eth::ChecksumAddress =
+            "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".parse()?;
 
-        let contract_address: String =
-            "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".into();
+        let (from_id, to_address) = setup_profiles(&tmp.core, chain_id)?;
+
+        let token_id = tmp
+            .core
+            .connection_pool()
+            .deferred_transaction(|mut tx_conn| {
+                m::Token::upsert_token(
+                    &mut tx_conn,
+                    &from_id,
+                    chain_id,
+                    contract_address,
+                    TokenType::Fungible,
+                )?;
+                m::Token::fetch_eth_token_ids(
+                    tx_conn.as_mut(),
+                    TokenType::Fungible,
+                    chain_id,
+                    vec![&contract_address],
+                )
+            })?
+            .into_iter()
+            .next()
+            .unwrap();
+
         let args = EthTransferFungibleTokenArgs::builder()
             .from_address_id(from_id.into())
             .to_checksum_address(to_address.to_string())
             .amount_decimal("1.".into())
-            .token_id(contract_address)
+            .token_id(token_id.into())
             .build();
         let result = tmp.core.eth_transfer_fungible_token(args);
 

@@ -150,6 +150,48 @@ impl Token {
 
         Ok(result)
     }
+
+    /// Fetch the token id for each contract address from the db.
+    pub fn fetch_eth_token_ids<'a>(
+        conn: &mut SqliteConnection,
+        token_type: TokenType,
+        chain_id: eth::ChainId,
+        contract_addresses: impl IntoIterator<Item = &'a eth::ChecksumAddress>,
+    ) -> Result<Vec<TokenId>, Error> {
+        use chains::dsl as c;
+        use tokens::dsl as t;
+
+        let protocol_data: eth::ProtocolData = chain_id.into();
+
+        let token_ids: Vec<_> = tokens::table
+            .inner_join(chains::table.on(t::chain_id.eq(c::deterministic_id)))
+            .select(t::deterministic_id)
+            .filter(
+                t::address
+                    .eq_any(contract_addresses)
+                    .and(t::type_.eq(token_type))
+                    .and(c::protocol.eq(BlockchainProtocol::Ethereum))
+                    .and(c::protocol_data.eq(&protocol_data)),
+            )
+            .load::<TokenId>(conn)?;
+
+        Ok(token_ids)
+    }
+
+    /// Fetch the token id for each contract address from the db.
+    pub fn fetch_contract_address(
+        conn: &mut SqliteConnection,
+        token_id: &TokenId,
+    ) -> Result<eth::ChecksumAddress, Error> {
+        use tokens::dsl as t;
+
+        let contract_address = tokens::table
+            .select(t::address)
+            .filter(t::deterministic_id.eq(token_id))
+            .first::<eth::ChecksumAddress>(conn)?;
+
+        Ok(contract_address)
+    }
 }
 
 #[derive(
