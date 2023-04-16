@@ -4,6 +4,9 @@
 
 #![feature(slice_take)]
 
+// Needed for `core_macros`
+extern crate self as uniffi_sealvault_core;
+
 #[macro_use]
 extern crate diesel;
 extern crate lazy_static;
@@ -15,11 +18,11 @@ pub mod app_core;
 pub mod assets;
 pub mod async_runtime;
 pub mod config;
+pub mod db;
 pub mod dto;
 pub mod protocols;
 
 mod backup;
-mod db;
 mod device;
 mod encryption;
 mod error;

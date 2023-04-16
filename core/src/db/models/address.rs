@@ -4,7 +4,7 @@
 
 use std::{collections::HashSet, str::FromStr};
 
-use core_macros::sql_text;
+use core_macros::{deterministic_id, sql_text};
 use derive_more::{AsRef, Display, Into};
 use diesel::{expression::AsExpression, prelude::*, sql_types::Bool, SqliteConnection};
 use generic_array::{typenum::U2, GenericArray};
@@ -619,28 +619,7 @@ pub struct CreateEthAddressParams<'a> {
 #[repr(transparent)]
 pub struct AddressId(String);
 
-impl From<DeterministicId> for AddressId {
-    fn from(value: DeterministicId) -> Self {
-        Self(value.into())
-    }
-}
-
-impl TryFrom<String> for AddressId {
-    type Error = Error;
-
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        Ok(DeterministicId::try_from(s)?.into())
-    }
-}
-
-impl FromStr for AddressId {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.to_string().try_into()
-    }
-}
-
+deterministic_id!(AddressId);
 sql_text!(AddressId);
 
 #[cfg(test)]

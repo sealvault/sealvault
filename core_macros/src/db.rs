@@ -38,6 +38,37 @@ macro_rules! sql_text {
     };
 }
 
+/// Implement `ToSql` using the type's `to_string` method and `FromSql` using the type's `FromStr`
+/// implementation.
+#[macro_export]
+macro_rules! deterministic_id {
+    ($type_name:ident) => {
+        impl std::convert::From<uniffi_sealvault_core::db::DeterministicId>
+            for $type_name
+        {
+            fn from(value: uniffi_sealvault_core::db::DeterministicId) -> Self {
+                Self(value.into())
+            }
+        }
+
+        impl TryFrom<String> for $type_name {
+            type Error = uniffi_sealvault_core::Error;
+
+            fn try_from(s: String) -> Result<Self, Self::Error> {
+                Ok(uniffi_sealvault_core::db::DeterministicId::try_from(s)?.into())
+            }
+        }
+
+        impl std::str::FromStr for $type_name {
+            type Err = uniffi_sealvault_core::Error;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                s.to_string().try_into()
+            }
+        }
+    };
+}
+
 /// Implement `ToSql` and `FromSql` for types that implement `serde::{Deserialize, Serialize}` using
 /// canonical JSON serialization. Canonical serialization is important for unique constraints.
 /// Sqlite stores JSON as ordinary strings, but allows querying them with JSON operators.
