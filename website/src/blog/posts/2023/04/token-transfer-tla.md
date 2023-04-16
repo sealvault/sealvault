@@ -31,7 +31,7 @@ The first step towards building a better solution is to understand what can go
 wrong. The most common thing that [goes
 wrong](/dev-docs/design/attack-tree/#approval-spoofing) when the same Ethereum
 address is connected to multiple dapps is that a malicious or compromised dapp
-transfers the user’s tokens without their consent. The user is a victim of
+transfers the user’s tokens without her consent. The user is a victim of
 fraud, but the transaction that transfers the tokens is valid per the Ethereum
 protocol. So in order to prevent fraud, we have to understand how valid
 transactions can occur.
