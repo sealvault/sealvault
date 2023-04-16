@@ -4,6 +4,8 @@
 
 use std::collections::HashMap;
 
+use core_macros::{deterministic_id, sql_text};
+use derive_more::{AsRef, Display, Into};
 use diesel::prelude::*;
 use generic_array::{typenum::U3, GenericArray};
 
@@ -26,7 +28,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Queryable, Identifiable)]
 #[diesel(primary_key(deterministic_id))]
 pub struct Token {
-    pub deterministic_id: DeterministicId,
+    pub deterministic_id: TokenId,
     pub identifier: eth::ChecksumAddress,
     pub chain_id: DeterministicId,
     pub type_: TokenType,
@@ -149,6 +151,28 @@ impl Token {
         Ok(result)
     }
 }
+
+#[derive(
+    Debug,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Into,
+    AsRef,
+    AsExpression,
+    FromSqlRow,
+)]
+#[diesel(sql_type = diesel::sql_types::Text)]
+#[as_ref(forward)]
+#[repr(transparent)]
+pub struct TokenId(String);
+
+deterministic_id!(TokenId);
+sql_text!(TokenId);
 
 #[readonly::make]
 struct TokenEntity<'a> {
