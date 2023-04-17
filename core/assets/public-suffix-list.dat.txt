@@ -1054,8 +1054,7 @@ fm
 // fo : https://en.wikipedia.org/wiki/.fo
 fo
 
-// fr : http://www.afnic.fr/
-// domaines descriptifs : https://www.afnic.fr/medias/documents/Cadre_legal/Afnic_Naming_Policy_12122016_VEN.pdf
+// fr : https://www.afnic.fr/ https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 fr
 asso.fr
 com.fr
@@ -1063,7 +1062,7 @@ gouv.fr
 nom.fr
 prd.fr
 tm.fr
-// domaines sectoriels : https://www.afnic.fr/en/products-and-services/the-fr-tld/sector-based-fr-domains-4.html
+// Former "domaines sectoriels", still registration suffixes
 aeroport.fr
 avocat.fr
 avoues.fr
@@ -4073,8 +4072,7 @@ ac.mu
 co.mu
 or.mu
 
-// museum : http://about.museum/naming/
-// http://index.museum/
+// museum : https://welcome.museum/wp-content/uploads/2018/05/20180525-Registration-Policy-MUSEUM-EN_VF-2.pdf https://welcome.museum/buy-your-dot-museum-2/
 museum
 academy.museum
 agriculture.museum
@@ -5864,7 +5862,7 @@ zarow.pl
 zgora.pl
 zgorzelec.pl
 
-// pm : http://www.afnic.fr/medias/documents/AFNIC-naming-policy2012.pdf
+// pm : https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 pm
 
 // pn : http://www.government.pn/PnRegistry/policies.htm
@@ -5962,7 +5960,7 @@ net.qa
 org.qa
 sch.qa
 
-// re : http://www.afnic.re/obtenir/chartes/nommage-re/annexe-descriptifs
+// re : https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 re
 asso.re
 com.re
@@ -6219,7 +6217,7 @@ td
 // http://www.telnic.org/
 tel
 
-// tf : https://en.wikipedia.org/wiki/.tf
+// tf : https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 tf
 
 // tg : https://en.wikipedia.org/wiki/.tg
@@ -6838,7 +6836,7 @@ edu.vu
 net.vu
 org.vu
 
-// wf : http://www.afnic.fr/medias/documents/AFNIC-naming-policy2012.pdf
+// wf : https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 wf
 
 // ws : https://en.wikipedia.org/wiki/.ws
@@ -6850,7 +6848,7 @@ org.ws
 gov.ws
 edu.ws
 
-// yt : http://www.afnic.fr/medias/documents/AFNIC-naming-policy2012.pdf
+// yt : https://www.afnic.fr/wp-media/uploads/2022/12/afnic-naming-policy-2023-01-01.pdf
 yt
 
 // IDN ccTLDs
@@ -7192,7 +7190,7 @@ org.zw
 
 // newGTLDs
 
-// List of new gTLDs imported from https://www.icann.org/resources/registries/gtlds/v2/gtlds.json on 2023-02-22T15:15:03Z
+// List of new gTLDs imported from https://www.icann.org/resources/registries/gtlds/v2/gtlds.json on 2023-04-14T15:13:16Z
 // This list is auto-generated, don't edit it manually.
 // aaa : 2015-02-26 American Automobile Association, Inc.
 aaa
@@ -9324,7 +9322,7 @@ ovh
 // page : 2014-12-04 Charleston Road Registry Inc.
 page
 
-// panasonic : 2015-07-30 Panasonic Corporation
+// panasonic : 2015-07-30 Panasonic Holdings Corporation
 panasonic
 
 // paris : 2014-01-30 City of Paris
@@ -12549,6 +12547,10 @@ ngo.ng
 edu.scot
 sch.so
 
+// HostFly : https://www.ie.ua
+// Submitted by Bohdan Dub <support@hostfly.com.ua>
+ie.ua
+
 // HostyHosting (hostyhosting.com)
 hostyhosting.io
 
@@ -13007,6 +13009,7 @@ cloudapp.net
 azurestaticapps.net
 1.azurestaticapps.net
 2.azurestaticapps.net
+3.azurestaticapps.net
 centralus.azurestaticapps.net
 eastasia.azurestaticapps.net
 eastus2.azurestaticapps.net
@@ -13092,7 +13095,19 @@ netlify.app
 
 // ngrok : https://ngrok.com/
 // Submitted by Alan Shreve <alan@ngrok.com>
+ngrok.app
+ngrok-free.app
+ngrok.dev
+ngrok-free.dev
 ngrok.io
+ap.ngrok.io
+au.ngrok.io
+eu.ngrok.io
+in.ngrok.io
+jp.ngrok.io
+sa.ngrok.io
+us.ngrok.io
+ngrok.pizza
 
 // Nimbus Hosting Ltd. : https://www.nimbushosting.co.uk/
 // Submitted by Nicholas Ford <nick@nimbushosting.co.uk>
@@ -13488,6 +13503,10 @@ qoto.io
 // Qualifio : https://qualifio.com/
 // Submitted by Xavier De Cock <xdecock@gmail.com>
 qualifioapp.com
+
+// Quality Unit: https://qualityunit.com
+// Submitted by Vasyl Tsalko <vtsalko@qualityunit.com>
+ladesk.com
 
 // QuickBackend: https://www.quickbackend.com
 // Submitted by Dani Biro <dani@pymet.com>
