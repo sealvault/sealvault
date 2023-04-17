@@ -124,23 +124,30 @@ pledge](./cross-connect.md#pledge-approval) decisions.
 
 When a new [dapp](dapp-keys.md#what-is-a-dapp) requests to connect for the first
 time, the in-page provider asks the user through a dialog if they want to add
-this new dapp, creates a new [dapp key](./dapp-keys.md) for the dapp and
-connects the new dapp key automatically. Defaulting to creating a new [dapp
-key](./dapp-keys.md) and connecting that by default protects the user from
-phishing that relies on misidentifying the dapp that the user interacts with.
+this new dapp. If the user wants to add the new dapp, they're asked to select an
+existing address (wallet or dapp key) to connect. Alternatively, the user can
+also choose to create a new dapp key.
+
+Prompting the user whether they want to add a new dapp before letting them
+select which address to connect protects the user from phishing that relies on
+misidentifying the dapp the user interacts with.
 
 ```mermaid
 flowchart TB
-    new_dapp([New dapp requests connect]) -->  add_dapp{{User wants to add new dapp?}}
-    add_dapp -- Yes --> create_key[Create new dapp key]
+    new_dapp([New dapp requests connect]) -->  add_dapp{{Add new dapp?}}
+    add_dapp -- Yes --> select_or_create{{Select address or create dapp key?}}
+    select_or_create -- Select address --> select_address[\User selects address/]
+    select_address --> connect_selected([Connect selected address])
+    select_or_create -- Create dapp key --> create_key[App creates new dapp key]
+    create_key --> connect_new([Connect new dapp key])
     add_dapp -- No --> reject([Reject connect request])
-    create_key --> connect([Connect new dapp key])
+    select_or_create -- Cancel --> reject
     
     %% CSS-based class defs don't work
     classDef green stroke:green;
     classDef red stroke:red;
     classDef yellow stroke:#e9c46a;
-    class connect green
+    class connect_selected,connect_new green
     class new_dapp yellow
     class reject red
 
@@ -150,22 +157,26 @@ flowchart TB
 
 When a [dapp](dapp-keys.md#what-is-a-dapp) that was added before by the user
 requests to connect, if [dapp key](./dapp-keys.md) was last connected, then auto
-connect it, else request from user which to connect. The default in the
-selection is the last connected address.
+connect it, else let the user select user which key to connect. The default in
+the selection is the last connected address and the user can also choose to
+create a dapp key here.
 
 ```mermaid
 flowchart TB
     added_dapp([Added dapp requests connect]) -->  last_connected{{Last connected dapp key?}}
     last_connected -- Yes --> connect_dapp_key([Connect dapp key automatically])
-    last_connected -- No --> select_address[\User selects address/]
+    last_connected -- No --> select_or_create{{Select address or create dapp key?}}
+    select_or_create -- Select address --> select_address[\User selects address/]
+    select_or_create -- Create dapp key --> create_key[App creates new dapp key]
+    create_key --> connect_new([Connect new dapp key])
     select_address -- Yes --> connect_selected([Connect selected])
-    select_address -- No --> reject([Reject connect request])
+    select_or_create -- Cancel --> reject([Reject connect request])
     
     %% CSS-based class defs don't work
     classDef green stroke:green;
     classDef red stroke:red;
     classDef yellow stroke:#e9c46a;
-    class connect_dapp_key,connect_selected green
+    class connect_new,connect_selected,connect_dapp_key green
     class added_dapp yellow
     class reject red
 

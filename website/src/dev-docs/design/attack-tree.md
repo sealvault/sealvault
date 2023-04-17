@@ -452,6 +452,11 @@ authorizing a transaction without being aware of authorizing a transaction.
 The protected assets are a user's native, fungible tokens and non-fungible
 tokens.
 
+!!! note
+
+    Placing the victim under time pressure is common in social attacks, so users are
+    more likely to ignore warnings than normally.
+
 ### Phishing and Social Engineering
 
 ```mermaid
@@ -496,14 +501,15 @@ SealVault offers two mitigations for phishing:
 
 1. When a user [connects a new dapp](./in-page-provider.md#new-dapp-flow) for
    the first time, the in-page provider asks the user through a dialog if they
-   want to add this new dapp, creates a new dapp key for the dapp and connects
-   the new dapp key. Defaulting to creating a new dapp key and connecting that
-   by default protects the user from phishing attacks that rely on
-   misidentifying the dapp that the user interacts with.
+   want to add this new dapp. Prompting the user whether they want to add a new
+   dapp before letting them select which address to connect protects the user
+   from phishing that relies on misidentifying the dapp the user interacts with.
 2. When a user [cross-connects](./cross-connect.md) a key to a dapp, we reduce
    approval decisions to payment, pledge a token, or sign in. If we cannot
    guarantee the outcome, we refuse the request and prompt the user to continue
-   with the [dapp key.](./dapp-keys.md)
+   with the [dapp key.](./dapp-keys.md) This protects the user from phishing
+   that relies on misidentifying the outcome of the transaction, and it's more
+   effective than warnings.
 
 #### Social Engineering
 
