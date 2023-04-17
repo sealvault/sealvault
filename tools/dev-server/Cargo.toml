@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.69"
-axum = { version = "0.6.10", features = ["tower-log"] }
+anyhow = "1.0.70"
+axum = { version = "0.6.15", features = ["tower-log"] }
 dotenv = "0.15.0"
 env_logger = "0.10.0"
-ethers = { version = "2.0.0", features = ["legacy", "eip712"] }
-hyper = { version = "0.14.24", features = ["full"] }
+ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "2514163", features = ["legacy", "eip712"] }
+hyper = { version = "0.14.26", features = ["full"] }
 log = { version = "0.4.17", features = ["serde"] }
 sealvault_core = { path = "../../core" }
 sealvault_tools_lib = { path = "../tools-lib" }
-tokio = { version = "1.26.0", features = ["full"] }
+tokio = { version = "1.27.0", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.4.0", features = ["fs", "trace"] }

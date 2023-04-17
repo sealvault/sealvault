@@ -36,7 +36,7 @@ type ProviderType = Provider<Http>;
 // Ethers `Middleware` is not object safe hence the complex type.
 type SignerMiddlewareType = NonceManagerMiddleware<
     GasOracleMiddleware<
-        SignerMiddleware<GasEscalatorMiddleware<ProviderType, GeometricGasPrice>>,
+        SignerMiddleware<GasEscalatorMiddleware<ProviderType>>,
         Box<dyn GasOracle>,
     >,
 >;
@@ -123,6 +123,9 @@ impl RpcManagerI for RpcManager {
             ChainId::FilecoinHyperspaceTestnet => Box::new(
                 gas_oracle::ProviderOracle::new(self.ethers_provider(chain_id)),
             ),
+            ChainId::ZkSync => Box::new(gas_oracle::ProviderOracle::new(
+                self.ethers_provider(chain_id),
+            )),
         }
     }
 

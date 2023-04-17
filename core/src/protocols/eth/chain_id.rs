@@ -47,6 +47,8 @@ pub enum ChainId {
     PolygonMumbai = 80001,
 
     FilecoinHyperspaceTestnet = 3141,
+
+    ZkSync = 324,
 }
 
 impl ChainId {
@@ -71,6 +73,8 @@ impl ChainId {
             Self::PolygonMumbai => "80001",
 
             Self::FilecoinHyperspaceTestnet => "3141",
+
+            Self::ZkSync => "324",
         }
         .into()
     }
@@ -97,6 +101,8 @@ impl ChainId {
             Self::PolygonMumbai => "Polygon PoS Mumbai Testnet",
 
             Self::FilecoinHyperspaceTestnet => "Filecoin Hyperspace Testnet",
+
+            Self::ZkSync => "zkSync Era Mainnet",
         }
         .into()
     }
@@ -110,6 +116,8 @@ impl ChainId {
             Self::PolygonMumbai => true,
 
             Self::FilecoinHyperspaceTestnet => true,
+
+            Self::ZkSync => false,
         }
     }
 
@@ -122,18 +130,21 @@ impl ChainId {
             Self::PolygonMumbai => NativeToken::Matic,
 
             Self::FilecoinHyperspaceTestnet => NativeToken::TestFil,
+
+            Self::ZkSync => NativeToken::Eth,
         }
     }
 
     pub fn http_rpc_endpoint(&self) -> Url {
         let raw_url = match *self {
-            ChainId::EthMainnet => "https://rpc.ankr.com/eth",
-            ChainId::EthGoerli => "https://rpc.ankr.com/eth_goerli",
-            ChainId::PolygonMainnet => "https://rpc.ankr.com/polygon",
-            ChainId::PolygonMumbai => "https://rpc.ankr.com/polygon_mumbai",
-            ChainId::FilecoinHyperspaceTestnet => {
+            Self::EthMainnet => "https://rpc.ankr.com/eth",
+            Self::EthGoerli => "https://rpc.ankr.com/eth_goerli",
+            Self::PolygonMainnet => "https://rpc.ankr.com/polygon",
+            Self::PolygonMumbai => "https://rpc.ankr.com/polygon_mumbai",
+            Self::FilecoinHyperspaceTestnet => {
                 "https://api.hyperspace.node.glif.io/rpc/v1"
             }
+            Self::ZkSync => "https://mainnet.era.zksync.io",
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -145,6 +156,7 @@ impl ChainId {
             Self::PolygonMainnet => "https://polygonscan.com/",
             Self::PolygonMumbai => "https://mumbai.polygonscan.com/",
             Self::FilecoinHyperspaceTestnet => "https://hyperspace.filfox.info/en/",
+            Self::ZkSync => "https://explorer.zksync.io/",
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -156,6 +168,7 @@ impl ChainId {
             Self::PolygonMainnet => parse_units("1000", "gwei"),
             Self::PolygonMumbai => parse_units("1000", "gwei"),
             Self::FilecoinHyperspaceTestnet => parse_units("1000", "gwei"),
+            Self::ZkSync => parse_units("100", "gwei"),
         }
         .expect("unit test catches panics");
 
@@ -168,11 +181,12 @@ impl ChainId {
 
     fn default_dapp_allotment(&self) -> NativeTokenAmount {
         let amount = match *self {
-            Self::EthMainnet => "0.1",
-            Self::EthGoerli => "0.1",
+            Self::EthMainnet => "0.01",
+            Self::EthGoerli => "0.01",
             Self::PolygonMainnet => "0.1",
             Self::PolygonMumbai => "0.1",
             Self::FilecoinHyperspaceTestnet => "0.2",
+            Self::ZkSync => "0.01",
         };
 
         NativeTokenAmount::new_from_decimal(*self, amount)

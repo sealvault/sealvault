@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = "1.0.70"
 hex = "0.4.3"
 log = { version = "0.4.17", features = ["serde"] }
 sealvault_core = { path = "../../core" }
-tempfile = "3.4.0"
+tempfile = "3.5.0"
