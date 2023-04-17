@@ -65,7 +65,12 @@ Proving ownership of an address in the Ethereum ecosystem is very similar from a
 UX perspective to passwordless sign in. Therefore, we present signature approval
 requests to prove ownership of an address as sign in requests, even if sometimes
 they are authorization requests from a technical perspective (as opposed to
-authentication requests).
+authentication requests). 
+
+If the sign in message is not a [SIWE](https://eips.ethereum.org/EIPS/eip-4361)
+message, then the original message is displayed to the user since it might have
+legal implications (e.g. attesting not to be a U.S. resident on DEXes for
+compliance reasons).
 
 ## Payment Approval
 
@@ -147,7 +152,8 @@ can simulate the outcome of [on-chain
 signatures](./in-page-provider.md#on-chain-signatures) to learn the outcome,
 [off-chain signatures](./in-page-provider.md#off-chain-signatures) can lead to
 on-chain transactions as well and there is no standard format that can be used
-to interpret the signed data programmatically.
+to interpret the signed data programmatically. See the [Token Transfer
+Traces](./token-transfer-traces.md) document for more details.
 
 ### Handling Sign In Requests
 

@@ -89,12 +89,17 @@ provider document for more info.
 Depends on the blockchain.  On chains like Polygon PoS and Solana with
 negligible transaction fees this is not an issue.  On Ethereum L1 transaction
 fees could be prohibitive and users will use [cross-connect](./cross-connect.md)
-more.
+more. [EIP-3074](https://eips.ethereum.org/EIPS/eip-3074) would fix this by
+letting the user pay for gas fees from their wallet address.
 
 #### Isn't having to send coins for transaction fees to many addresses going to be annoying?
 
 This is a UX issue under the control of the app.  We automate gas top-ups to
-make this convenient.
+make this convenient. 
+
+Note that [EIP-3074](https://eips.ethereum.org/EIPS/eip-3074) would eliminate
+the need to send tokens for transaction fees by letting the user pay for gas
+fees from their wallet address.
 
 #### Can't two front ends hosted on different domains call the same contract?
 
@@ -121,9 +126,8 @@ We disallow that. A domain in the public suffix list shouldn't host anything.
 
 #### What if a domain that was initially used for one dapp is added to the public suffix list later?
 
-In this case the dapp becomes invalid and users have to manually transfer
-transferable tokens to a new dapp identified by the new registrable domain of
-the previous `suffix.tld` dapp.
+In this case the dapp becomes invalid and users have to [change the
+dapp](#changing-dapp-for-address) for the address to reflect the new domain.
 
 #### What if a suffix is removed from the public suffix list?
 
@@ -131,8 +135,9 @@ We maintain our own append only version of the [public suffix
 list](https://publicsuffix.org/list/public_suffix_list.dat) to prevent sharing
 keys for dapps that used to resolve to different registrable domains.
 
-## Related Standards
+## Related
 
+- [Dapp Isolation Mechanisms in the Ethereum Ecosystem](https://ethereum-magicians.org/t/dapp-isolation-mechanisms/13611)
 - [Same-Site Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite)
 - [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
 - [Dfinity Webauthn](https://medium.com/dfinity/web-authentication-and-identity-on-the-internet-computer-a9bd5754c547)
