@@ -6,7 +6,8 @@ title: In-Page Provider
 
 The in-page provider exposes protocol-specific functionality through the web
 browser to dapps. A dapp is a web app that interacts with smart contracts
-through its front end code. The in-page provider lets dapps can generate signatures with the user's keys. 
+through its front end code. The in-page provider lets dapps generate signatures
+with the user's keys.
 
 We'll discuss in-page providers in the context of the Ethereum ecosystem
 ([EIP-1193](https://eips.ethereum.org/EIPS/eip-1193)) in the following.
