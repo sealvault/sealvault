@@ -81,6 +81,7 @@ impl TokenApi {
             ChainId::PolygonMumbai => Self::Ankr,
             ChainId::FilecoinHyperspaceTestnet => Self::Native,
             ChainId::ZkSync => Self::Native,
+            ChainId::ZkSyncTestnet => Self::Native,
         }
     }
 }

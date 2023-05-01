@@ -49,6 +49,7 @@ pub enum ChainId {
     FilecoinHyperspaceTestnet = 3141,
 
     ZkSync = 324,
+    ZkSyncTestnet = 280,
 }
 
 impl ChainId {
@@ -75,6 +76,7 @@ impl ChainId {
             Self::FilecoinHyperspaceTestnet => "3141",
 
             Self::ZkSync => "324",
+            Self::ZkSyncTestnet => "280",
         }
         .into()
     }
@@ -103,6 +105,7 @@ impl ChainId {
             Self::FilecoinHyperspaceTestnet => "Filecoin Hyperspace Testnet",
 
             Self::ZkSync => "zkSync Era Mainnet",
+            Self::ZkSyncTestnet => "zkSync Era Testnet",
         }
         .into()
     }
@@ -118,6 +121,7 @@ impl ChainId {
             Self::FilecoinHyperspaceTestnet => true,
 
             Self::ZkSync => false,
+            Self::ZkSyncTestnet => true,
         }
     }
 
@@ -132,6 +136,7 @@ impl ChainId {
             Self::FilecoinHyperspaceTestnet => NativeToken::TestFil,
 
             Self::ZkSync => NativeToken::Eth,
+            Self::ZkSyncTestnet => NativeToken::Eth,
         }
     }
 
@@ -145,6 +150,7 @@ impl ChainId {
                 "https://api.hyperspace.node.glif.io/rpc/v1"
             }
             Self::ZkSync => "https://mainnet.era.zksync.io",
+            Self::ZkSyncTestnet => "https://testnet.era.zksync.dev",
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -157,6 +163,7 @@ impl ChainId {
             Self::PolygonMumbai => "https://mumbai.polygonscan.com/",
             Self::FilecoinHyperspaceTestnet => "https://hyperspace.filfox.info/en/",
             Self::ZkSync => "https://explorer.zksync.io/",
+            Self::ZkSyncTestnet => "https://goerli.explorer.zksync.io/",
         };
         Url::parse(raw_url).expect("unit test catches panics")
     }
@@ -169,6 +176,7 @@ impl ChainId {
             Self::PolygonMumbai => parse_units("1000", "gwei"),
             Self::FilecoinHyperspaceTestnet => parse_units("1000", "gwei"),
             Self::ZkSync => parse_units("100", "gwei"),
+            Self::ZkSyncTestnet => parse_units("100", "gwei"),
         }
         .expect("unit test catches panics");
 
@@ -187,6 +195,7 @@ impl ChainId {
             Self::PolygonMumbai => "0.1",
             Self::FilecoinHyperspaceTestnet => "0.2",
             Self::ZkSync => "0.01",
+            Self::ZkSyncTestnet => "0.01",
         };
 
         NativeTokenAmount::new_from_decimal(*self, amount)

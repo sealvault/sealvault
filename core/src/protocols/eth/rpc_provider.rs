@@ -126,6 +126,9 @@ impl RpcManagerI for RpcManager {
             ChainId::ZkSync => Box::new(gas_oracle::ProviderOracle::new(
                 self.ethers_provider(chain_id),
             )),
+            ChainId::ZkSyncTestnet => Box::new(gas_oracle::ProviderOracle::new(
+                self.ethers_provider(chain_id),
+            )),
         }
     }
 
