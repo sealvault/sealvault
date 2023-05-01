@@ -36,6 +36,11 @@ class TransferState: ObservableObject {
         return toChecksumAddress
     }
 
+    var canTransferInApp: Bool {
+        return profile.wallets.addressList.first { canTransferTo($0) } != nil ||
+            profile.dappList.first { $0.addresses.addressList.first { canTransferTo($0) } != nil } != nil
+    }
+
     required init(
         profile: Profile, token: Token, fromAddress: Address
     ) {
@@ -165,6 +170,7 @@ struct ToSection: View {
                                 }
                             }
                         }
+                        .disabled(!state.canTransferInApp)
                     case .external:
                         VStack {
                             TextField("Paste address here", text: $state.toExternal)
