@@ -384,7 +384,7 @@ impl DappKeyProvider {
             .dapp_identifier(dapp_identifier)
             .favicon(favicon)
             .amount(dapp_allotment.display_amount())
-            .transfer_allotment(!dapp_allotment.amount.is_zero())
+            .transfer_allotment(false)
             .token_symbol(chain_id.native_token().symbol())
             .chain_display_name(chain_id.display_name())
             .chain_id(chain_id)

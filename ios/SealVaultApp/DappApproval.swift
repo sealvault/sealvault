@@ -51,11 +51,6 @@ struct DappApproval: View {
         viewModel.profileList.first(where: { $0.id == request.params.profileId })!
     }
 
-    private var showDisclosure: Bool {
-        // Start with the disclosure open the first three times the user adds a dapp
-        profile.dappList.count <= Config.showDisclosureDappCount
-    }
-
     private var dappIcon: Image {
         let image = Dapp.faviconWithFallback(request.params.favicon)
         return Image(uiImage: image)
@@ -63,9 +58,12 @@ struct DappApproval: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            DappApprovalHeader(
-                request: request, showDisclosure: showDisclosure, transferAllotment: request.params.transferAllotment
-            )
+            HStack {
+                Text("Create new key for dapp")
+                    .font(.title)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 40)
 
             Spacer()
 
@@ -106,36 +104,6 @@ struct DappApproval: View {
     }
 }
 
-struct DappApprovalHeader: View {
-    @ObservedObject var request: DappApprovalRequest
-    @State var showDisclosure: Bool
-    @State var transferAllotment: Bool
-
-    var body: some View {
-        HStack {
-            DisclosureGroup(isExpanded: $showDisclosure, content: {
-                Toggle(isOn: $transferAllotment) {
-                    Text("""
-    Transfer \(request.params.amount) \(request.params.tokenSymbol) on \(request.params.chainDisplayName) to new \
-    dapp address for network fees.
-    """).font(.callout)
-                }
-                .padding()
-            },
-            label: {
-                Text("Create new key for dapp")
-                    .font(.title2)
-            })
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .onChange(of: transferAllotment) { newValue in
-            request.params.transferAllotment = newValue
-        }
-    }
-
-}
-
 #if DEBUG
 
 struct DappApproval_Previews: PreviewProvider {
@@ -146,7 +114,7 @@ struct DappApproval_Previews: PreviewProvider {
         let favicon = [UInt8](dapp.favicon!.pngData()!)
         let params = DappApprovalParams(
             profileId: profileId, dappIdentifier: dapp.humanIdentifier, favicon: favicon, amount: "0.1",
-            transferAllotment: true, tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS", chainId: 137,
+            transferAllotment: false, tokenSymbol: "MATIC", chainDisplayName: "Polygon PoS", chainId: 137,
             jsonRpcRequest: ""
         )
         let request = DappApprovalRequest(context: nil, params: params)
