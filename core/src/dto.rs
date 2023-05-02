@@ -617,7 +617,7 @@ impl Assembler {
 lazy_static! {
     // Hack to get errors that should be displayed to users.
     static ref JSONRPC_USER_ERROR_REGEX: Regex =
-        Regex::new(r"funds|gas|underpriced").expect("static is ok");
+        Regex::new(r"funds|gas|underpriced|insufficient|balance").expect("static is ok");
 }
 
 impl From<Error> for CoreError {
