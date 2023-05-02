@@ -9,11 +9,17 @@ use ethers::{
     core::types::{BlockNumber, Eip1559TransactionRequest, H256},
     middleware::{
         gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
-        gas_oracle::{self as gas_oracle, GasCategory, GasOracle, GasOracleMiddleware},
+        gas_oracle::{
+            self as gas_oracle, GasCategory, GasOracle, GasOracleError,
+            GasOracleMiddleware,
+        },
         MiddlewareBuilder, NonceManagerMiddleware,
     },
-    providers::{Http, Middleware, MiddlewareError, PendingTransaction, Provider},
-    types::{Address, BlockId},
+    providers::{
+        Http, Middleware, MiddlewareError, PendingTransaction, Provider, ProviderError,
+    },
+    types::{Address, BlockId, U256},
+    utils::eip1559_default_estimator,
 };
 use serde::Serialize;
 use url::Url;
@@ -123,10 +129,10 @@ impl RpcManagerI for RpcManager {
             ChainId::FilecoinHyperspaceTestnet => Box::new(
                 gas_oracle::ProviderOracle::new(self.ethers_provider(chain_id)),
             ),
-            ChainId::ZkSync => Box::new(gas_oracle::ProviderOracle::new(
+            ChainId::ZkSync => Box::new(GasOracleWithoutFeeHistory::new(
                 self.ethers_provider(chain_id),
             )),
-            ChainId::ZkSyncTestnet => Box::new(gas_oracle::ProviderOracle::new(
+            ChainId::ZkSyncTestnet => Box::new(GasOracleWithoutFeeHistory::new(
                 self.ethers_provider(chain_id),
             )),
         }
@@ -140,6 +146,56 @@ impl RpcManagerI for RpcManager {
                 error: err.to_string(),
             })?;
         Ok(client)
+    }
+}
+
+/// A gas oracle that estimates fees without gas price history.
+/// This is required for ZkSync that doesn't support `eth_feeHistory`.
+#[derive(Clone, Debug)]
+#[must_use]
+struct GasOracleWithoutFeeHistory<M: Middleware> {
+    provider: M,
+}
+
+impl<M: Middleware> GasOracleWithoutFeeHistory<M> {
+    pub fn new(provider: M) -> Self {
+        Self { provider }
+    }
+
+    fn map_err(error: ProviderError) -> GasOracleError {
+        GasOracleError::ProviderError(Box::new(error))
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<M: Middleware> GasOracle for GasOracleWithoutFeeHistory<M>
+where
+    M::Error: 'static,
+{
+    async fn fetch(&self) -> Result<U256, GasOracleError> {
+        self.provider
+            .get_gas_price()
+            .await
+            .map_err(|err| GasOracleError::ProviderError(Box::new(err)))
+    }
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+        let base_fee_per_gas = self
+            .provider
+            .get_block(BlockNumber::Latest)
+            .await
+            .map_err(|err| GasOracleError::ProviderError(Box::new(err)))?
+            .ok_or_else(|| ProviderError::CustomError("Latest block not found".into()))
+            .map_err(Self::map_err)?
+            .base_fee_per_gas
+            .ok_or_else(|| ProviderError::CustomError("EIP-1559 not activated".into()))
+            .map_err(Self::map_err)?;
+
+        Ok(eip1559_default_estimator(
+            base_fee_per_gas,
+            Default::default(),
+        ))
     }
 }
 
