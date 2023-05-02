@@ -16,7 +16,6 @@ struct AddProfile: View {
     @State var approveDisabled: Bool = true
 
     @ScaledMetric var imageSize: CGFloat = 120
-    @ScaledMetric var titlePadding: CGFloat = 40
     @ScaledMetric var vStackSpacing: CGFloat = 20
 
     private let cornerRadius: Double = 10
@@ -25,9 +24,7 @@ struct AddProfile: View {
         let clipShape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
         VStack(spacing: vStackSpacing) {
-            Text("Create Profile")
-                .font(.largeTitle)
-                .padding(.top, titlePadding)
+            SheetTitle(title: "Create Profile")
 
             Spacer()
 

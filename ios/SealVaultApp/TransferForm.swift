@@ -207,10 +207,7 @@ struct InAppPicker: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                Text("Select Dapp or Profile Wallet").font(.title2)
-            }
-            .padding(20)
+            SheetTitle(title: "Select Dapp or Profile Wallet")
 
             Spacer()
 

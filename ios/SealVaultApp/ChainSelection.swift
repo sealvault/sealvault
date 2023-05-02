@@ -15,10 +15,7 @@ struct ChainSelection: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                Text(title).font(.title2)
-            }
-            .padding(20)
+            SheetTitle(title: title)
 
             Spacer()
 

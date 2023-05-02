@@ -58,12 +58,7 @@ struct DappApproval: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                Text("Create new key for dapp")
-                    .font(.title)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 40)
+            SheetTitle(title: "Create Dapp Key")
 
             Spacer()
 
