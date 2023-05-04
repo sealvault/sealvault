@@ -29,7 +29,7 @@ While most [in-page provider](./in-page-provider.md) implementations let users
 cross-connect keys without restrictions, our approach to security is to
 [eliminate attack vectors](./security-model.md#deception-mitigation) where we
 can.  Therefore, in cross-connect mode, we reduce the decision the user has to
-make to sign in, payment approval and token pledge decisions and reject
+make to sign in, payment approval and spender approval decisions and reject
 signature requests where we cannot guarantee this. If a signature request is
 blocked, users are guided to switch to the [dapp key](./dapp-keys.md) to
 continue. The dapp key is an isolation mechanism that
@@ -137,7 +137,7 @@ the following categories:
 
 1. [Sign in](#sign-in) request
 2. [Payment](#payment-approval) request
-3. [Token pledge](#pledge-approval) request
+3. [Spender approval](#pledge-approval) request
 4. Unknown
 
 We cannot interpret all signature requests as one of the first three categories,
@@ -147,7 +147,7 @@ request and direct the user use the [dapp key](./dapp-keys.md) to continue.
 Identifying sign in requests is challenging, because there is no standard format
 to prove ownership of an address.
 
-Identifying payment and token pledge requests is challenging, because, while we
+Identifying payment and spender approval requests is challenging, because, while we
 can simulate the outcome of [on-chain
 signatures](./in-page-provider.md#on-chain-signatures) to learn the outcome,
 [off-chain signatures](./in-page-provider.md#off-chain-signatures) can lead to
@@ -161,7 +161,7 @@ Traces](./token-transfer-traces.md) document for more details.
 
     This section is still work in progress.
 
-### Handling Payment and Token Pledge Requests
+### Handling Payment and Spender Approval Requests
 
 #### Data Needed
 
