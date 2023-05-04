@@ -45,7 +45,7 @@ patterns for web apps need cross connect:
 |---------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [Sign In](#sign-in)                   | Off-chain        | - Prove ownership of an address (e.g. [SIWE](https://eips.ethereum.org/EIPS/eip-4361) or accept ToS). <br/> - Prove ownership of assets (e.g. [nf.td](https://nf.td/) and [Phi Land](https://philand.xyz/)).                      |
 | [Payment Approval](#payment-approval) | On- or off-chain | - Mint an NFT based on an allow list or holding an asset (e.g. [Sunflower Land](https://sunflower-land.com/) + [Bumpkins](https://bumpkins.io/), [Lens](https://www.lens.xyz/) ecosystem).<br/>- Supply collateral for a loan.   |
-| [Pledge Approval](#pledge-approval)   | On- or off-chain | - List a game item for sale on an exchange while playing the game (e.g. [Sunflower Land](https://sunflower-land.com/)).                                                                                                          |
+| [Spender Approval](#pledge-approval)   | On- or off-chain | - List a game item for sale on an exchange while playing the game (e.g. [Sunflower Land](https://sunflower-land.com/)).                                                                                                          |
 
 ## Sign In
 
@@ -85,7 +85,7 @@ Apple Pay prompt on iOS.
 </figcaption>
 </figure>
 
-## Pledge Approval
+## Spender Approval
 
 [Spender approval](./in-page-provider.md#spender-approvals) is a novel concept
 introduced by Ethereum. Its purpose is to let decentralized exchanges settle
@@ -103,7 +103,7 @@ smooth experience for spender approvals:
 2. We need to keep track of approvals and let users find and revoke them in a
    way that matches their mental model.
 
-### Pledge Approval Dialog
+### Spender Approval Dialog
 
 In order to solve first challenge, we use a two phase approval dialog:
 
@@ -168,7 +168,7 @@ Traces](./token-transfer-traces.md) document for more details.
 We need to extract the following data from the
 [on-](./in-page-provider.md#on-chain-signatures) and
 [off-chain](./in-page-provider.md#off-chain-signatures) signature requests for
-the payment and pledge approval dialogs:
+the payment and spender approval dialogs:
 
 - Native token spent on network fees
 - Native token transferred
@@ -198,7 +198,7 @@ from [on-chain signature](./in-page-provider.md#on-chain-signatures) requests.
 There is no universal solution to extract the [data we need](#data-needed) from
 [off-chain signature](./in-page-provider.md#off-chain-signatures) requests.
 
-Off-chain signature requests that are payment or pledge approval[^20] requests
+Off-chain signature requests that are payment or spender approval[^20] requests
 typically follow the [EIP-712](https://eips.ethereum.org/EIPS/eip-712) standard,
 but the standard only defines the format of the signed data, not its semantics.
 Therefore, in order to extract the [data needed,](#data-needed), we have to
