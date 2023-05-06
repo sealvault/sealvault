@@ -122,14 +122,11 @@ from interactions between different permission systems is underexplored.
 Examples:
 
 - [Ceramic](https://blog.ceramic.network/capability-based-data-security-on-ceramic)
-  - [Farcaster Delegated Signers](https://www.youtube.com/watch?v=ZzySey1azWM) -
-  [Lit Protocol Session
-  Keys](https://developer.litprotocol.com/sdk/explanation/walletsigs/sessionsigs/)
-  - [Sequence Session
-  Keys](https://docs.sequence.xyz/wallet/guides/session-keys) - [Sign-In With
-  Ethereum + Session
-  Keys](https://blog.spruceid.com/from-sign-in-with-ethereum-to-session-keys/) -
-  [UCANs](https://ucan.xyz/#delegation)
+- [Farcaster Delegated Signers](https://www.youtube.com/watch?v=ZzySey1azWM) 
+- [Lit Protocol Session Keys](https://developer.litprotocol.com/sdk/explanation/walletsigs/sessionsigs/)
+- [Sequence Session Keys](https://docs.sequence.xyz/wallet/guides/session-keys) 
+- [Sign-In With Ethereum + Session Keys](https://blog.spruceid.com/from-sign-in-with-ethereum-to-session-keys/) 
+- [UCANs](https://ucan.xyz/#delegation)
 
 ### Session Keys for Smart Contract Wallets
 
@@ -172,17 +169,17 @@ of session keys moot, so we should start thinking about solutions here.
 
 Wallet examples:
 
-- [Argent](https://www.notion.so/Argent-X-Supporting-On-chain-Games-1ec71fc2b6ad4fe19b8f22cc677838b9)
-  (WIP) - [Biconomy with MM Snaps](https://www.youtube.com/watch?v=NBQEtLjN84E)
-  (PoC) - [Candide](https://docs.candidewallet.com/develop/wallet/session-keys/)
-  (WIP) - [Rollup.id](https://github.com/proofzero/rollupid/issues/2118) -
-  [Starknet Burners](https://github.com/dontpanicdao/starknet-burner) (PoC) -
-  [ZeroDev](https://docs.zerodev.app/use-wallets/use-session-keys)
+- [Argent](https://www.notion.so/Argent-X-Supporting-On-chain-Games-1ec71fc2b6ad4fe19b8f22cc677838b9) (WIP) 
+- [Biconomy with MM Snaps](https://www.youtube.com/watch?v=NBQEtLjN84E) (PoC) 
+- [Candide](https://docs.candidewallet.com/develop/wallet/session-keys/) (WIP) 
+- [Rollup.id](https://github.com/proofzero/rollupid/issues/2118) 
+- [Starknet Burners](https://github.com/dontpanicdao/starknet-burner) (PoC) 
+- [ZeroDev](https://docs.zerodev.app/use-wallets/use-session-keys)
 
 Dapp examples:
 
-- [Cartridge.gg](https://www.notion.so/Session-Keys-9e60f92a2f8c4912bd8f61eee3fdfed6)
-  (WIP) - [MUD](https://github.com/latticexyz/mud/issues/327) (WIP)
+- [Cartridge.gg](https://www.notion.so/Session-Keys-9e60f92a2f8c4912bd8f61eee3fdfed6) (WIP) 
+- [MUD](https://github.com/latticexyz/mud/issues/327) (WIP)
 
 ### Dapp Keys
 
@@ -214,8 +211,8 @@ A standard for dapp key derivation from seed phrases was proposed in
 stagnant. I know of two dapp key implementations in the wild, but neither follow
 [EIP-1775](https://eips.ethereum.org/EIPS/eip-1775):
 
-- [Dark Forest](https://blog.zkga.me/df-04-faq) (manual backup) -
-  [SealVault](https://sealvault.org/dapp-keys/) (automatic backup; we’ve
+- [Dark Forest](https://blog.zkga.me/df-04-faq) (manual backup) 
+- [SealVault](https://sealvault.org/dapp-keys/) (automatic backup; we’ve
   implemented this)
 
 ### WebAuthn Signers
@@ -250,15 +247,15 @@ additional delegation step must be used from the WebAuthn key to a session key.
 
 Examples:
 
-- [Cartridge.gg](https://hackmd.io/@tarrence/Hkjrm8cJj) - [AA Passkey Wallet
-  PoC](https://github.com/itsobvioustech/aa-passkeys-wallet)
+- [Cartridge.gg](https://hackmd.io/@tarrence/Hkjrm8cJj) 
+- [AA Passkey Wallet PoC](https://github.com/itsobvioustech/aa-passkeys-wallet)
 
 Related:
 
 - [Secure Payment
   Confirmation](https://www.w3.org/TR/secure-payment-confirmation/) for
-  cross-origin WebAuthn - [How ICP uses
-  WebAuthn](https://medium.com/dfinity/web-authentication-and-identity-on-the-internet-computer-a9bd5754c547)
+  cross-origin WebAuthn
+- [How ICP uses WebAuthn](https://medium.com/dfinity/web-authentication-and-identity-on-the-internet-computer-a9bd5754c547)
 
 *An earlier version of this post has appeared on the [Ethereum Magicians
 forum.](https://ethereum-magicians.org/t/dapp-isolation-mechanisms/13611)*
