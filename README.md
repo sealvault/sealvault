@@ -31,7 +31,7 @@ Exposed to host languages via [uniffi-rs](https://github.com/mozilla/uniffi-rs).
 
 ### [iOS](./ios)
 
-iOS Web3 password manager app with a built-in web browser. Written in Swift with 
+iOS Web3 key manager app with a built-in web browser. Written in Swift with 
 the SwiftUI framework.
 
 ### [Tools](./tools)
