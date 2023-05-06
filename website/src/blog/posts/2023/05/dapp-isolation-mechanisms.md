@@ -6,7 +6,6 @@ authors:
 
 links:
   - dev-docs/design/dapp-keys.md
-  - /dapp-keys.md
 ---
 
 # Dapp Isolation Mechanisms in the Ethereum Ecosystem
