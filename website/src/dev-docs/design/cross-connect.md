@@ -74,9 +74,9 @@ compliance reasons).
 
 ## Payment Approval
 
-Internet users are familiar with making online payments. In cross-connect mode
-we strive to provide the same payment approval experience as making payments
-with Apple Pay.
+Internet users are familiar with making online payments. Payment approval type
+requests, let that be making a swap, minting an NFT or supplying collateral for
+a loan, should be as simple as Apple Pay.
 
 <figure markdown>
 ![Apple Pay prompt on iOS](../../assets/images/apple-pay-demo.png){ loading=lazy }
@@ -84,6 +84,9 @@ with Apple Pay.
 Apple Pay prompt on iOS.
 </figcaption>
 </figure>
+
+If the user receives a standard token in exchange for the payment, the payment
+is akin to a trade and we display both the spent and received tokens.
 
 ## Spender Approval
 
