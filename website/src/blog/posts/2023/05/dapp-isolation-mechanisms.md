@@ -133,12 +133,9 @@ Examples:
 
 ### Session Keys for Smart Contract Wallets
 
-*I don’t have the full picture on SCW session keys, so I’m just thinking out
-loud here.*
-
 Session keys for smart contract wallets (SCW) are a new mechanism. Many SCW
-teams are working on session keys, but I’m not aware of any production
-implementations yet.
+teams are working on session keys and the first production implementations are
+starting to pop up.
 
 The idea is the same as with off-chain session keys: an ephemeral key is created
 by a dapp, the SCW assigns some permissions to the ephemeral key after which the
@@ -146,8 +143,8 @@ dapp can produce signatures for a limited set of transactions using the session
 key without requiring the user’s approval.
 
 SCW session keys can use [EIP-4337](https://eips.ethereum.org/EIPS/eip-4337)
-paymasters by @vbuterin et al. so the ephemeral key can submit transactions
-without holding tokens to pay for gas fees.
+paymasters so the ephemeral key can submit transactions without holding tokens
+to pay for gas fees.
 
 A straightforward implementation of SCW session key permissions is to restrict
 the contract methods and contract addresses the session key can call. As
@@ -203,8 +200,8 @@ need to be backed up and they need to receive tokens for gas fees.
 
 Having to transfer tokens to dapp keys can be prohibitive on L1, but it’s less
 of a problem on cheap L2s. [EIP-3074](https://eips.ethereum.org/EIPS/eip-3074)
-and sponsored transactions by @SamWilsn et al.  would eliminate the need to
-transfer tokens for gas fees.
+and sponsored transactions would eliminate the need to transfer tokens for gas
+fees.
 
 One further challenge with dapp keys is that many apps assume one EOA per user
 when using the user's on-chain history for authorization purposes. However, this
@@ -213,9 +210,9 @@ Cash](https://delegate.cash/). Additionally, having many addresses can cause
 headaches when preparing tax returns.
 
 A standard for dapp key derivation from seed phrases was proposed in
-[EIP-1775](https://eips.ethereum.org/EIPS/eip-1775) by @Bunjin and @danfinlay,
-but the proposal seems stagnant. I know of two dapp key implementations in the
-wild, but neither follow [EIP-1775](https://eips.ethereum.org/EIPS/eip-1775):
+[EIP-1775](https://eips.ethereum.org/EIPS/eip-1775), but the proposal seems
+stagnant. I know of two dapp key implementations in the wild, but neither follow
+[EIP-1775](https://eips.ethereum.org/EIPS/eip-1775):
 
 - [Dark Forest](https://blog.zkga.me/df-04-faq) (manual backup) -
   [SealVault](https://sealvault.org/dapp-keys/) (automatic backup; we’ve
