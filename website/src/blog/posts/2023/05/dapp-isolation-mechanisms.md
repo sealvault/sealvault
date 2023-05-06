@@ -21,7 +21,7 @@ things and ultimately benefit the ecosystem as a whole.*
 
 <!-- more -->
 
-# What is Dapp Isolation
+## What is Dapp Isolation
 
 Assume a universe with two tokens Doken and Goken, and two dapps
 [dapp.com](http://dapp.com/) and [gapp.com](http://gapp.com/). Both dapps try to
@@ -51,13 +51,13 @@ aren’t part of the Ethereum protocol, they come with some caveats. This posts
 lists the various isolation mechanisms and discusses their strengths and
 limitations.
 
-# Isolation Boundaries
+## Isolation Boundaries
 
 A dapp is a website that interacts with smart contracts through its front end
 code. Users typically identify dapps by their domains. We can isolate dapps
 either at the domain level or at the smart contract level.
 
-## Domain Level Isolation
+### Domain Level Isolation
 
 The main advantage of domain level isolation is that it matches how users
 identify dapps.
@@ -78,7 +78,7 @@ example, WalletConnect [states](https://youtu.be/L1KitRiwP8Y?t=727) that they
 have an 80% solution which is ok for their intended use (phishing mitigation),
 but it's unclear whether it can be relied on for automated signature approval.
 
-## Smart Contract Level Isolation
+### Smart Contract Level Isolation
 
 Smart contract level isolation makes it easy to enforce restrictions on
 transactions, but it’s not as straightforward as it sounds. A legitimate smart
@@ -95,12 +95,12 @@ addresses. If the dapp identifier mapping needs to be accessed on-chain, that
 further complicates things and most likely requires an oracle, unless the
 registry is on-chain. However, that introduces the problem of name squatting.
 
-# Dapp Isolation Implementations
+## Dapp Isolation Implementations
 
 This section reviews implementations of dapp isolation currently used or being
 developed in the ecosystem.
 
-## Off-Chain Session Keys
+### Off-Chain Session Keys
 
 Off-chain session keys are the most widely deployed mechanism for automated
 signature approval in the ecosystem currently.
@@ -131,7 +131,7 @@ Examples:
   Keys](https://blog.spruceid.com/from-sign-in-with-ethereum-to-session-keys/) -
   [UCANs](https://ucan.xyz/#delegation)
 
-## Session Keys for Smart Contract Wallets
+### Session Keys for Smart Contract Wallets
 
 *I don’t have the full picture on SCW session keys, so I’m just thinking out
 loud here.*
@@ -187,7 +187,7 @@ Dapp examples:
 - [Cartridge.gg](https://www.notion.so/Session-Keys-9e60f92a2f8c4912bd8f61eee3fdfed6)
   (WIP) - [MUD](https://github.com/latticexyz/mud/issues/327) (WIP)
 
-## Dapp Keys
+### Dapp Keys
 
 Dapp keys are externally owned accounts (EOA) that are unique to a domain.
 Binding an EOA to a dapp by domain is an effective isolation mechanism that
@@ -221,7 +221,7 @@ wild, but neither follow [EIP-1775](https://eips.ethereum.org/EIPS/eip-1775):
   [SealVault](https://sealvault.org/dapp-keys/) (automatic backup; we’ve
   implemented this)
 
-## WebAuthn Signers
+### WebAuthn Signers
 
 The WebAuthn protocol introduces passwordless authentication to the internet
 using public key cryptography with
