@@ -7,6 +7,8 @@ authors:
 links:
   - dev-docs/design/dapp-keys.md
   - dev-docs/design/cross-connect.md
+  - dev-docs/design/token-transfer-traces.md
+  - dev-docs/design/attack-tree.md
 ---
 
 # What if Ethereum Signature Approval Was as Simple as Apple Pay?
