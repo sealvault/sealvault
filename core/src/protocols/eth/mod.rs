@@ -21,6 +21,7 @@ mod rpc_provider;
 mod signer;
 mod token;
 mod token_api;
+mod zksync_gas_oracle;
 
 pub type EthereumAsymmetricKey = AsymmetricKey<Secp256k1>;
 pub use chain_id::ChainId;
