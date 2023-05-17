@@ -56,7 +56,7 @@ where
             .to(to)
             .data(vec![0xff, 0xff, 0xff]);
 
-        let result: ZksyncFee = self
+        let result: ZkSyncFee = self
             .inner
             .provider()
             .request("zks_estimateFee", vec![tx])
@@ -68,7 +68,7 @@ where
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct ZksyncFee {
+struct ZkSyncFee {
     /// zkSync version of EIP1559 maxFeePerGas.
     pub max_fee_per_gas: U256,
     /// zkSync version of EIP1559 maxPriorityFeePerGas.
