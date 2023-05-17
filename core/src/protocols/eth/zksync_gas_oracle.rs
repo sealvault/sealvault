@@ -12,7 +12,6 @@ use ethers::{
 /// A gas oracle that uses the ZkSync specific "zks_estimateFee" RPC method to fetch EIP-1559 fee
 /// estimates.
 #[derive(Clone, Debug)]
-#[must_use]
 pub struct ZkSyncGasOracle<M: Middleware> {
     inner: M,
 }
