@@ -484,7 +484,7 @@ pub mod local {
     };
 
     use super::*;
-    use crate::protocols::eth::ankr::tests::AnkrRpcTest;
+    use crate::protocols::eth::token_api::ankr::tests::AnkrRpcTest;
 
     const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     const POLL_INTERVAL_MS: u64 = 10;

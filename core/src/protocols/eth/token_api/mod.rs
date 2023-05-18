@@ -3,6 +3,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 mod native;
 mod token_balances;
+// Some names need to be be camel case in ankr for generated code.
+#[allow(non_snake_case)]
+pub mod ankr;
 
 use std::collections::HashMap;
 
@@ -11,8 +14,10 @@ pub use token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances};
 use crate::{
     db::models as m,
     protocols::eth::{
-        ankr::{AnkrApi, AnkrBlockchain},
-        token_api::native::NativeTokenAPi,
+        token_api::{
+            ankr::{AnkrApi, AnkrBlockchain},
+            native::NativeTokenAPi,
+        },
         ChainId, RpcManagerI,
     },
     Error,
