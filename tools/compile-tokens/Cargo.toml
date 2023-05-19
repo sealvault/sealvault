@@ -1,0 +1,12 @@
+[package]
+name = "compile-tokens"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+strum = { version = "0.24.1", features = ["derive", "strum_macros"] }
+sealvault_core = { path = "../../core" }
+tempfile = "3.5.0"
+anyhow = "1.0.70"
+serde = { version = "1.0.160", features = ["serde_derive", "derive", "alloc"] }
+serde_json = { version = "1.0.96", features = ["alloc", "raw_value"] }

@@ -961,6 +961,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "compile-tokens"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "sealvault_core",
+ "serde",
+ "serde_json",
+ "strum",
+ "tempfile",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

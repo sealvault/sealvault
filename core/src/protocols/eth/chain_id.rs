@@ -94,6 +94,7 @@ impl ChainId {
         hex_chain_id
     }
 
+    /// The name that is displayed to users.
     pub fn display_name(&self) -> String {
         match *self {
             Self::EthMainnet => "Ethereum",
@@ -108,6 +109,22 @@ impl ChainId {
             Self::ZkSyncTestnet => "zkSync Era Testnet",
         }
         .into()
+    }
+
+    /// Returns the corresponding blockchain name in https://github.com/trustwallet/assets/tree/master/blockchains
+    pub fn trust_wallet_asset_name(&self) -> Option<&'static str> {
+        match *self {
+            Self::EthMainnet => Some("ethereum"),
+            Self::EthGoerli => None,
+
+            Self::PolygonMainnet => Some("polygon"),
+            Self::PolygonMumbai => None,
+
+            Self::FilecoinHyperspaceTestnet => None,
+
+            Self::ZkSync => Some("zksync"),
+            Self::ZkSyncTestnet => None,
+        }
     }
 
     pub fn is_test_net(&self) -> bool {

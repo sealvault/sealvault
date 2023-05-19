@@ -52,9 +52,12 @@ pub use crate::{
     },
     error::Error,
     protocols::{
-        eth::in_page_provider::{
-            CoreInPageCallbackI, DappApprovalParams, DappKeyProvider,
-            InPageRequestContextI,
+        eth::{
+            in_page_provider::{
+                CoreInPageCallbackI, DappApprovalParams, DappKeyProvider,
+                InPageRequestContextI,
+            },
+            ChainId,
         },
         FungibleTokenType,
     },
