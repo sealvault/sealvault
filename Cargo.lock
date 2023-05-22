@@ -965,11 +965,13 @@ name = "compile-tokens"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "reqwest",
  "sealvault_core",
  "serde",
  "serde_json",
  "strum",
  "tempfile",
+ "url",
 ]
 
 [[package]]
