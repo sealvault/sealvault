@@ -22,12 +22,21 @@ pub struct CommonTokens {
 }
 
 impl CommonTokens {
-    #[allow(dead_code)]
-    fn from_assets() -> Result<Self, Error> {
+    pub(super) fn from_assets() -> Result<Self, Error> {
         let s = load_asset_as_string(ETH_COMMON_TOKENS)?;
         serde_json::from_str(&s).map_err(|_| Error::Fatal {
             error: "Failed to parse common tokens".to_string(),
         })
+    }
+
+    pub(super) fn contract_addresses_for_chain(
+        &self,
+        chain_id: ChainId,
+    ) -> Vec<ChecksumAddress> {
+        self.fungible_tokens
+            .get(&chain_id)
+            .map(|tokens| tokens.iter().map(|token| token.address).collect())
+            .unwrap_or_default()
     }
 }
 

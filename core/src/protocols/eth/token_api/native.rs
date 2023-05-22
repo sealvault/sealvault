@@ -32,7 +32,7 @@ use url::Url;
 use crate::{
     config,
     protocols::eth::{
-        contracts::ERC20Contract, BaseProvider, ChainId, ChecksumAddress,
+        contracts::ERC20Contract, BaseProvider, ChainId, ChecksumAddress, CommonTokens,
         FungibleTokenBalance, NativeTokenAmount, RpcManagerI, TokenBalances,
     },
     Error,
@@ -43,23 +43,31 @@ lazy_static! {
 }
 
 pub struct NativeTokenAPi<'a> {
-    max_batch_size: NonZeroUsize,
     rpc_manager: &'a dyn RpcManagerI,
+    common_tokens: CommonTokens,
+    max_batch_size: NonZeroUsize,
 }
 
 #[allow(dead_code)]
 impl<'a> NativeTokenAPi<'a> {
     #[allow(dead_code)]
-    pub fn new(rpc_manager: &'a dyn RpcManagerI) -> Self {
-        Self::new_with_overrides(rpc_manager, *MAX_BATCH_SIZE)
+    pub fn new(rpc_manager: &'a dyn RpcManagerI) -> Result<Self, Error> {
+        let common_tokens = CommonTokens::from_assets()?;
+        Ok(Self::new_with_overrides(
+            rpc_manager,
+            common_tokens,
+            *MAX_BATCH_SIZE,
+        ))
     }
 
     fn new_with_overrides(
         rpc_manager: &'a dyn RpcManagerI,
+        common_tokens: CommonTokens,
         max_batch_size: NonZeroUsize,
     ) -> Self {
         Self {
             rpc_manager,
+            common_tokens,
             max_batch_size,
         }
     }
@@ -74,6 +82,11 @@ impl<'a> NativeTokenAPi<'a> {
         native_token_chains: Vec<ChainId>,
         fungible_tokens: HashMap<ChainId, Vec<ChecksumAddress>>,
     ) -> Result<Vec<TokenBalances>, Error> {
+        let fungible_tokens = self.extend_fungible_with_common_tokens(
+            native_token_chains.clone(),
+            fungible_tokens,
+        );
+
         let native_tokens = self
             .fetch_native_tokens(owner_address, native_token_chains)
             .await?;
@@ -96,6 +109,30 @@ impl<'a> NativeTokenAPi<'a> {
                 })
             })
             .collect()
+    }
+
+    fn extend_fungible_with_common_tokens(
+        &self,
+        native_token_chains: Vec<ChainId>,
+        mut fungible_tokens: HashMap<ChainId, Vec<ChecksumAddress>>,
+    ) -> HashMap<ChainId, Vec<ChecksumAddress>> {
+        let all_chain_ids = native_token_chains
+            .into_iter()
+            .chain(fungible_tokens.keys().cloned())
+            .unique()
+            .collect::<Vec<ChainId>>();
+
+        // Extend fungible tokens with token addresses from common tokens list
+        for chain_id in all_chain_ids.iter() {
+            let common_tokens =
+                self.common_tokens.contract_addresses_for_chain(*chain_id);
+            let token_addresses = fungible_tokens.remove(chain_id).unwrap_or_default();
+            let unique_addresses =
+                token_addresses.into_iter().chain(common_tokens).unique();
+            fungible_tokens.insert(*chain_id, unique_addresses.collect());
+        }
+
+        fungible_tokens
     }
 
     async fn fetch_native_tokens(
@@ -356,7 +393,7 @@ fn call_result_to_balance(
 fn logo_url(chain_id: ChainId, contract_address: &ChecksumAddress) -> Option<Url> {
     chain_id_to_logo_name(chain_id).and_then(|chain_name| {
         let url = format!(
-            "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/{}/assets/{}/logo.png",
+            "https://raw.githubusercontent.com/sealvault/assets/master/blockchains/{}/assets/{}/logo.png",
             chain_name,
             contract_address
         );
@@ -388,12 +425,13 @@ mod tests {
 
     use super::*;
     use crate::{
-        async_runtime as rt, protocols::eth::contracts::test_util::TestContractDeployer,
+        async_runtime as rt,
+        protocols::eth::{contracts::test_util::TestContractDeployer, CommonTokenInfo},
     };
 
     #[test]
     fn test_logo_url_ethereum() {
-        let expected: Url = "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png".parse().unwrap();
+        let expected: Url = "https://raw.githubusercontent.com/sealvault/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png".parse().unwrap();
         let actual = logo_url(
             ChainId::EthMainnet,
             &"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -406,7 +444,7 @@ mod tests {
 
     #[test]
     fn test_logo_url_polygon() {
-        let expected: Url = "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174/logo.png".parse().unwrap();
+        let expected: Url = "https://raw.githubusercontent.com/sealvault/assets/master/blockchains/polygon/assets/0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174/logo.png".parse().unwrap();
         let actual = logo_url(
             ChainId::PolygonMainnet,
             &"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
@@ -425,7 +463,6 @@ mod tests {
 
         let contract_deployer = TestContractDeployer::init(chain_id);
         let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
-        let _rpc_provider = contract_deployer.rpc_manager.eth_api_provider(chain_id);
         let provider = Arc::new(contract_deployer.provider());
         let contract = ERC20Contract::new(contract_address, provider);
         let symbol = rt::block_on(contract.symbol().call())?;
@@ -441,6 +478,7 @@ mod tests {
 
         let token_api = NativeTokenAPi::new_with_overrides(
             &contract_deployer.rpc_manager,
+            CommonTokens::from_assets()?,
             max_batch_size,
         );
 
@@ -472,6 +510,45 @@ mod tests {
         assert_eq!(balances.fungible_tokens[0].amount, balance);
         // There is only a logo, bc we specified Ethereum mainnet as the chain id.
         assert!(balances.fungible_tokens[0].logo.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_token_balances_with_common_tokens() -> Result<()> {
+        // One token needs 3 calls, so batch size of 2 lets us simulate paging.
+        let max_batch_size = NonZeroUsize::new(2).unwrap();
+        let chain_id = ChainId::EthMainnet;
+
+        let contract_deployer = TestContractDeployer::init(chain_id);
+        let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
+
+        let common_tokens = CommonTokens {
+            commit_hash: "test".to_string(),
+            fungible_tokens: HashMap::from([(
+                chain_id,
+                vec![CommonTokenInfo {
+                    address: contract_address,
+                    logo_uri: None,
+                }],
+            )]),
+        };
+
+        let token_api = NativeTokenAPi::new_with_overrides(
+            &contract_deployer.rpc_manager,
+            common_tokens,
+            max_batch_size,
+        );
+
+        let token_balances = rt::block_on(token_api.fetch_token_balances(
+            contract_deployer.deployer_address(),
+            vec![chain_id],
+            // No contracts supplied to make sure that common tokens are used.
+            Default::default(),
+        ))?;
+
+        assert_eq!(token_balances.len(), 1);
+        assert_eq!(token_balances[0].fungible_tokens.len(), 1);
 
         Ok(())
     }

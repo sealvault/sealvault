@@ -49,7 +49,7 @@ pub async fn fetch_token_balances(
         .into_iter()
         .filter(|(chain_id, _)| TokenApi::for_chain(*chain_id) == TokenApi::Native)
         .collect();
-    let native_api = NativeTokenAPi::new(rpc_manager);
+    let native_api = NativeTokenAPi::new(rpc_manager)?;
     let native_future = native_api.fetch_token_balances(
         address,
         native_api_native_tokens,
