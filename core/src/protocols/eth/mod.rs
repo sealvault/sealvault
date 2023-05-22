@@ -32,5 +32,6 @@ pub use rpc_provider::{BaseProvider, RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
 pub use token::{FungibleTokenAmount, NativeTokenAmount};
 pub use token_api::{
-    fetch_token_balances, FungibleTokenBalance, NFTBalance, TokenBalances,
+    fetch_token_balances, CommonTokenInfo, CommonTokens, FungibleTokenBalance,
+    NFTBalance, TokenBalances,
 };

@@ -7,7 +7,9 @@ use std::{collections::HashMap, env, fs, path::Path, process::Command};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 use tempfile::tempdir;
-use uniffi_sealvault_core::{protocols::eth::ChecksumAddress, ChainId};
+use uniffi_sealvault_core::protocols::eth::{
+    ChainId, ChecksumAddress, CommonTokenInfo, CommonTokens,
+};
 use url::Url;
 
 const TOKENS_REPO: &str = "https://github.com/sealvault/assets";
@@ -53,7 +55,7 @@ fn main() -> Result<()> {
 
     let blockchains_dir = workdir.path().join(BLOCKCHAINS_DIR);
 
-    let mut fungible_tokens: HashMap<ChainId, Vec<TokenInfo>> = Default::default();
+    let mut fungible_tokens: HashMap<ChainId, Vec<CommonTokenInfo>> = Default::default();
 
     for chain_id in ChainId::iter() {
         if let Some(chain_name) = chain_id.trust_wallet_asset_name() {
@@ -67,9 +69,11 @@ fn main() -> Result<()> {
                     serde_json::from_reader(fs::File::open(token_list)?)?;
                 let tokens = tokens
                     .into_iter()
-                    .map(|TrustWalletTokenListItem { address, logo_uri }| TokenInfo {
-                        address,
-                        logo_uri: Some(logo_uri),
+                    .map(|TrustWalletTokenListItem { address, logo_uri }| {
+                        CommonTokenInfo {
+                            address,
+                            logo_uri: Some(logo_uri),
+                        }
                     })
                     .collect::<Vec<_>>();
                 fungible_tokens.insert(chain_id, tokens);
@@ -93,7 +97,7 @@ fn main() -> Result<()> {
 }
 
 fn tokens_without_token_list(
-    fungible_tokens: &mut HashMap<ChainId, Vec<TokenInfo>>,
+    fungible_tokens: &mut HashMap<ChainId, Vec<CommonTokenInfo>>,
     chain_id: ChainId,
     tokens_dir: &Path,
 ) -> Result<()> {
@@ -117,27 +121,13 @@ fn tokens_without_token_list(
             Some(logo_uri)
         };
 
-        let token_info = TokenInfo { address, logo_uri };
+        let token_info = CommonTokenInfo { address, logo_uri };
         fungible_tokens
             .entry(chain_id)
             .or_default()
             .push(token_info);
     }
     Ok(())
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct CommonTokens {
-    /// The commit hash of https://github.com/sealvault/assets from which the tokens were compiled
-    commit_hash: String,
-    /// The common fungible tokens for each chain
-    fungible_tokens: HashMap<ChainId, Vec<TokenInfo>>,
-}
-
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct TokenInfo {
-    address: ChecksumAddress,
-    logo_uri: Option<Url>,
 }
 
 #[derive(Debug, serde::Deserialize)]

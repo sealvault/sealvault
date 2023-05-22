@@ -31,6 +31,7 @@ pub const REQUEST_HANDLER_PLACEHOLDER: &str = "<SEALVAULT_REQUEST_HANDLER>";
 pub const DEFAULT_CHAIN_ID_PLACEHOLDER: &str = "<SEALVAULT_DEFAULT_CHAIN_ID>";
 pub const DEFAULT_NETWORK_VERSION_PLACEHOLDER: &str =
     "<SEALVAULT_DEFAULT_NETWORK_VERSION>";
+pub const ETH_COMMON_TOKENS: &str = "protocols/eth/common-tokens.json";
 pub const ETH_NATIVE_TOKEN_PREFIX: &str = "protocols/eth/native-tokens";
 pub const NATIVE_TOKEN_EXTENSION: &str = ".png";
 pub const FALLBACK_FAVICON_ASSET: &str = "fallback-favicon.png";

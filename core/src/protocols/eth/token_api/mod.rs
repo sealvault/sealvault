@@ -6,9 +6,11 @@ mod token_balances;
 // Some names need to be be camel case in ankr for generated code.
 #[allow(non_snake_case)]
 pub mod ankr;
+mod common_tokens;
 
 use std::collections::HashMap;
 
+pub use common_tokens::{CommonTokenInfo, CommonTokens};
 pub use token_balances::{FungibleTokenBalance, NFTBalance, TokenBalances};
 
 use crate::{
