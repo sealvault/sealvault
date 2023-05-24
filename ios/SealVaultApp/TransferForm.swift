@@ -51,7 +51,7 @@ class TransferState: ObservableObject {
 
     fileprivate func canTransferTo(_ toAddress: Address) -> Bool {
         // TODO: use protocol + chain id and move to address
-        return toAddress.chainDisplayName == fromAddress.chainDisplayName && fromAddress.id != toAddress.id
+        return toAddress.chain == fromAddress.chain && fromAddress.id != toAddress.id
     }
 }
 
@@ -269,7 +269,7 @@ struct ChainSection: View {
                 Text("On")
                 Spacer()
                 Label {
-                    Text(state.fromAddress.chainDisplayName)
+                    Text(state.fromAddress.chain.displayName)
                 } icon: {
                     IconView(image: state.fromAddress.image, iconSize: 24)
                 }

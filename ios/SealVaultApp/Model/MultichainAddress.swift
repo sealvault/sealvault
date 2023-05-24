@@ -25,10 +25,10 @@ class MultichainAddress: Identifiable, ObservableObject {
         firstAddress?.checksumAddress
     }
 
-    var addressesByChain: [String: [Address]] {
-        var result: [String: [Address]] = Dictionary()
+    var addressesByChain: [CoreEthChain: [Address]] {
+        var result: [CoreEthChain: [Address]] = Dictionary()
         for address in addresses.values {
-            result[address.chainDisplayName, default: []].append(address)
+            result[address.chain, default: []].append(address)
         }
         return result
     }

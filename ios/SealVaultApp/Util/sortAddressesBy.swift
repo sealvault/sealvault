@@ -6,7 +6,7 @@ import Foundation
 
 func sortAddressesBy(_ first: Address, _ second: Address) -> Bool {
     if first.isTestNet == second.isTestNet {
-        return first.chainDisplayName < second.chainDisplayName
+        return first.chain.displayName < second.chain.displayName
     } else {
         return !first.isTestNet
     }

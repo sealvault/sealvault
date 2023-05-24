@@ -9,11 +9,11 @@ struct ChainLabel: View {
 
     var body: some View {
         Label {
-            Text(address.chainDisplayName)
+            Text(address.chain.displayName)
         }
         icon: {
             IconView(image: address.image, iconSize: 24)
-                .accessibility(label: Text(address.chainDisplayName))
+                .accessibility(label: Text(address.chain.displayName))
         }
     }
 }

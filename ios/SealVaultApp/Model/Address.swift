@@ -13,7 +13,7 @@ class Address: Identifiable, ObservableObject {
     let isWallet: Bool
     let isTestNet: Bool
     @Published var blockchainExplorerLink: URL?
-    @Published var chainDisplayName: String
+    @Published var chain: CoreEthChain
     @Published var chainIcon: UIImage
 
     @Published var nativeToken: Token
@@ -30,14 +30,14 @@ class Address: Identifiable, ObservableObject {
     }
 
     required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
-                  blockchainExplorerLink: URL?, chainDisplayName: String, chainIcon: UIImage, nativeToken: Token) {
+                  blockchainExplorerLink: URL?, chain: CoreEthChain, chainIcon: UIImage, nativeToken: Token) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
         self.isWallet = isWallet
         self.isTestNet = isTestNet
         self.blockchainExplorerLink = blockchainExplorerLink
-        self.chainDisplayName = chainDisplayName
+        self.chain = chain
         self.chainIcon = chainIcon
         self.nativeToken = nativeToken
         self.fungibleTokens = Dictionary()
@@ -50,7 +50,7 @@ class Address: Identifiable, ObservableObject {
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
             core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
-            isTestNet: address.isTestNet, blockchainExplorerLink: url, chainDisplayName: address.chainDisplayName,
+            isTestNet: address.isTestNet, blockchainExplorerLink: url, chain: address.chain,
             chainIcon: chainIcon, nativeToken: nativeToken
         )
     }
@@ -85,7 +85,7 @@ class Address: Identifiable, ObservableObject {
             )
             // These values may become user configurable at some point
             self.blockchainExplorerLink = URL(string: address.blockchainExplorerLink)
-            self.chainDisplayName = address.chainDisplayName
+            self.chain = address.chain
             self.chainIcon = Self.convertIcon(address.chainIcon)
             self.updateNativeToken(address.nativeToken)
             self.nativeToken.updateFromCore(address.nativeToken)
@@ -216,9 +216,10 @@ extension Address {
         let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
         let id = "ETH-\(checksumAddress)-\(isWallet)"
+        let chain = CoreEthChain(chainId: 1, displayName: "Ethereum")
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress,
-            isWallet: isWallet, isTestNet: false, blockchainExplorerLink: explorer, chainDisplayName: "Ethereum",
+            isWallet: isWallet, isTestNet: false, blockchainExplorerLink: explorer, chain: chain,
             chainIcon: icon, nativeToken: nativeToken
         )
     }
@@ -228,9 +229,10 @@ extension Address {
         let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
         let id = "POLYGON-\(checksumAddress)-\(isWallet)"
+        let chain = CoreEthChain(chainId: 137, displayName: "Polygon PoS")
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet, isTestNet: false,
-            blockchainExplorerLink: explorer, chainDisplayName: "Polygon PoS", chainIcon: icon, nativeToken: nativeToken
+            blockchainExplorerLink: explorer, chain: chain, chainIcon: icon, nativeToken: nativeToken
         )
     }
 }

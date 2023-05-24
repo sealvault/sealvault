@@ -53,7 +53,7 @@ pub struct CoreAddress {
     pub is_wallet: bool,
     pub checksum_address: String,
     pub blockchain_explorer_link: String,
-    pub chain_display_name: String,
+    pub chain: CoreEthChain,
     pub is_test_net: bool,
     pub chain_icon: Vec<u8>,
     pub native_token: CoreFungibleToken,
@@ -91,6 +91,15 @@ pub struct CoreEthChain {
     pub chain_id: u64,
     #[builder(setter(into))]
     pub display_name: String,
+}
+
+impl From<eth::ChainId> for CoreEthChain {
+    fn from(value: eth::ChainId) -> Self {
+        Self {
+            chain_id: value.into(),
+            display_name: value.display_name(),
+        }
+    }
 }
 
 /// Errors passed to the UI.
@@ -307,7 +316,7 @@ impl Assembler {
             .is_wallet(is_wallet)
             .checksum_address(address.to_string())
             .blockchain_explorer_link(explorer_link)
-            .chain_display_name(chain_id.display_name())
+            .chain(chain_id.into())
             .is_test_net(chain_id.is_test_net())
             .chain_icon(chain_icon)
             .native_token(native_token)

@@ -125,7 +125,7 @@ dictionary CoreAddress {
     boolean is_wallet;
     string checksum_address;
     string blockchain_explorer_link;
-    string chain_display_name;
+    CoreEthChain chain;
     boolean is_test_net;
     sequence<u8> chain_icon;
     CoreFungibleToken native_token;

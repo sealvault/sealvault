@@ -134,7 +134,7 @@ extension Profile {
     }
 
     var walletChains: String {
-        return displayList(self.wallets.addressList.map { $0.chainDisplayName })
+        return displayList(self.wallets.addressList.map { $0.chain.displayName })
     }
 
     private func displayList(_ items: [String], maxItems: Int = 3) -> String {

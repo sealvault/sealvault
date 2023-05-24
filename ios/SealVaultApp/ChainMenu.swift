@@ -8,7 +8,7 @@ struct ChainMenu: View {
     @ObservedObject var address: Address
 
     var body: some View {
-        Menu(address.chainDisplayName) {
+        Menu(address.chain.displayName) {
             if let url = address.blockchainExplorerLink {
                 Button(action: {
                     UIApplication.shared.open(url)

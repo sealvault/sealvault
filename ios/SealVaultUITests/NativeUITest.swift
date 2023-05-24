@@ -52,6 +52,7 @@ final class NativeUITest: XCTestCase {
 
         setActiveProfile(app, profileName: "Default")
         tapButton(app, "Default profile")
+        print(app.debugDescription)
         tapButton(app, "Default Profile Wallet, Polygon PoS")
         tapButton(app, "MATIC")
         tapButton(app, "Select Dapp or Profile Wallet")

@@ -447,7 +447,7 @@ class PreviewAppCore: AppCoreProtocol {
         let blockchainExplorerLink = address.blockchainExplorerLink?.absoluteString ?? "https://etherscani.io"
         return CoreAddress(
             id: address.id, isWallet: address.isWallet, checksumAddress: address.checksumAddress,
-            blockchainExplorerLink: blockchainExplorerLink, chainDisplayName: address.chainDisplayName,
+            blockchainExplorerLink: blockchainExplorerLink, chain: address.chain,
             isTestNet: address.isTestNet, chainIcon: icon, nativeToken: nativeToken
         )
     }
