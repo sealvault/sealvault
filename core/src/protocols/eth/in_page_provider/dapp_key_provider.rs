@@ -2,14 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{fmt::Debug, sync::Arc};
+use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
 use ethers::types::{
     Address, Bytes, Eip1559TransactionRequest, TransactionRequest, H256,
 };
 use jsonrpsee::{
     core::server::helpers::MethodResponse,
-    types::{error::ErrorCode, ErrorObject, Request},
+    types::{error::ErrorCode, ErrorObject, Id, Request, ResponsePayload},
 };
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -130,13 +130,9 @@ impl DappKeyProvider {
             Ok(in_page_request) => {
                 match self.dispatch(in_page_request, &raw_request).await {
                     Ok(None) => Ok(None),
-                    Ok(Some(result)) => Ok(Some(MethodResponse::response(
-                        request.id,
-                        result,
-                        config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
-                    ))),
+                    Ok(Some(result)) => Ok(Some(value_to_response(request.id, result)?)),
                     Err(Error::JsonRpc { code, message }) => {
-                        // We need to select a data type even though data is none, <String>
+                        // We need to select a data type even though data is none
                         let data: Option<String> = None;
                         let error_object = ErrorObject::owned(code.code(), message, data);
                         Ok(Some(MethodResponse::error(request.id, error_object)))
@@ -406,11 +402,7 @@ impl DappKeyProvider {
         let request = parse_request(&dapp_approval.json_rpc_request)?;
         let session = self.add_new_dapp(dapp_approval.clone()).await?;
         let accounts = self.eth_request_accounts(session).await?;
-        let response = MethodResponse::response(
-            request.id,
-            accounts,
-            config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
-        );
+        let response = value_to_response(request.id, accounts)?;
         self.respond_to_request(response).await?;
         Ok(())
     }
@@ -1037,6 +1029,15 @@ fn to_value(val: impl Serialize) -> Result<serde_json::Value, Error> {
     })
 }
 
+fn value_to_response(id: Id, result: serde_json::Value) -> Result<MethodResponse, Error> {
+    let cow: Cow<'_, serde_json::Value> = Cow::Owned(result);
+    Ok(MethodResponse::response(
+        id,
+        ResponsePayload::Result(cow),
+        config::MAX_JSONRPC_RESPONSE_SIZE_BYTES,
+    ))
+}
+
 fn dapp_transaction_result_error(
     mut partial_result: DappTransactionResult,
     err: Error,
@@ -1110,9 +1111,9 @@ impl From<InPageErrorCode> for ErrorObject<'static> {
 // More tests are in integrations tests in the [dev server.](tools/dev-server/static/ethereum.html)
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
+    use anyhow::{anyhow, Result};
     use ethers::types::{Address, TransactionRequest, U256};
-    use jsonrpsee::types::{Id, RequestSer, Response};
+    use jsonrpsee::types::{Id, RequestSer, Response, ResponsePayload};
     use strum::IntoEnumIterator;
 
     use super::*;
@@ -1149,9 +1150,18 @@ mod tests {
         provider.test_call(InPageRequest::EthAccounts(()))?;
         core.wait_for_first_in_page_response();
         let responses = core.responses();
-        let response = responses.first().unwrap();
-        let response: Response<Vec<String>> = serde_json::from_str(response).unwrap();
-        Ok(response.result.into_iter().next().unwrap())
+        let response = responses.first().expect("there is a response");
+        dbg!(&response);
+        let response: Response<Vec<String>> =
+            serde_json::from_str(response).expect("response is valid json");
+        match response.payload {
+            ResponsePayload::Result(result) => {
+                let result = result.into_owned();
+                let address = result.into_iter().next().expect("there is an address");
+                Ok(address)
+            }
+            ResponsePayload::Error(err) => Err(anyhow!("error: {}", err.message())),
+        }
     }
 
     fn check_dapp_authorization(core: &TmpCore) {

@@ -4,7 +4,7 @@
 
 use diesel::r2d2;
 use jsonrpsee::types::{
-    error::{CallError, ErrorCode as JsonrpseeErrorCode, ErrorCode},
+    error::{ErrorCode as JsonrpseeErrorCode, ErrorCode},
     ErrorObject,
 };
 
@@ -172,8 +172,12 @@ impl From<tokio::task::JoinError> for Error {
 
 impl From<jsonrpsee::core::Error> for Error {
     fn from(err: jsonrpsee::core::Error) -> Self {
-        let error: jsonrpsee::types::ErrorObjectOwned = err.into();
-        error.into()
+        match err {
+            jsonrpsee::core::Error::Call(call_err) => call_err.into(),
+            other_err => Error::Retriable {
+                error: other_err.to_string(),
+            },
+        }
     }
 }
 
@@ -184,13 +188,6 @@ impl From<InPageErrorCode> for Error {
             code,
             message: code.to_string(),
         }
-    }
-}
-
-impl From<CallError> for Error {
-    fn from(error: CallError) -> Self {
-        let error: ErrorObject = error.into();
-        error.into()
     }
 }
 

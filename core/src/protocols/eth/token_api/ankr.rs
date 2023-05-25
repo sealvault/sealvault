@@ -328,7 +328,7 @@ enum AnkrApiResult {
     GetNFTsByOwner(AnkrNFTBalances),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnkrFungibleTokenBalances {
     total_balance_usd: String,
@@ -336,7 +336,7 @@ pub struct AnkrFungibleTokenBalances {
     next_page_token: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnkrFungibleTokenBalance {
     blockchain: AnkrBlockchain,
@@ -389,7 +389,7 @@ impl From<AnkrBalanceRawInteger> for String {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnkrNFTBalances {
     /// Owner address
@@ -398,7 +398,7 @@ pub struct AnkrNFTBalances {
     next_page_token: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnkrNFTBalance {
     blockchain: AnkrBlockchain,
@@ -412,7 +412,7 @@ pub struct AnkrNFTBalance {
 }
 
 #[derive(
-    Debug, Eq, PartialEq, Serialize, Deserialize, EnumString, strum_macros::Display,
+    Clone, Debug, Eq, PartialEq, Serialize, Deserialize, EnumString, strum_macros::Display,
 )]
 #[strum(serialize_all = "UPPERCASE")]
 #[serde(rename_all = "UPPERCASE")]
@@ -439,15 +439,15 @@ use crate::protocols::eth::{
 pub(crate) mod tests {
     use std::{net::SocketAddr, time::Instant};
 
-    use anyhow::{anyhow, Result};
+    use anyhow::Result;
     use jsonrpsee::{
-        core::{async_trait, Error as JsonRpcError, RpcResult},
+        core::{async_trait, RpcResult},
         proc_macros::rpc,
         server::{
             logger::{HttpRequest, Logger, MethodKind, TransportProtocol},
             ServerBuilder, ServerHandle,
         },
-        types::Params,
+        types::{ErrorObject, Params},
     };
     use serde_json::json;
 
@@ -523,7 +523,11 @@ pub(crate) mod tests {
             pageToken: Option<String>,
         ) -> RpcResult<AnkrFungibleTokenBalances> {
             let wallet_address: Address = walletAddress.parse().map_err(|_| {
-                JsonRpcError::Custom("Invalid address: '{walletAddress}'".into())
+                ErrorObject::owned(
+                    -32000,
+                    format!("Invalid address: '{walletAddress}'"),
+                    None::<String>,
+                )
             })?;
             if wallet_address != self.owner_address {
                 return Ok(AnkrFungibleTokenBalances {
@@ -645,8 +649,11 @@ pub(crate) mod tests {
             pageToken: Option<String>,
         ) -> RpcResult<AnkrNFTBalances> {
             let wallet_address: Address = walletAddress.parse().map_err(|_| {
-                use jsonrpsee::types::error::CallError;
-                CallError::InvalidParams(anyhow!("Invalid address: '{walletAddress}'"))
+                ErrorObject::owned(
+                    -32602,
+                    format!("Invalid address: '{walletAddress}'"),
+                    None::<String>,
+                )
             })?;
 
             if wallet_address != self.owner_address {

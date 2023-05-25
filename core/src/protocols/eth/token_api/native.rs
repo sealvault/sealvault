@@ -17,7 +17,7 @@ use futures::StreamExt;
 use itertools::Itertools;
 use jsonrpsee::{
     core::{
-        client::{CertificateStore, ClientT},
+        client::ClientT,
         params::{ArrayParams, BatchRequestBuilder},
         Error as JsonRpcError,
     },
@@ -214,7 +214,7 @@ impl<'a> NativeTokenAPi<'a> {
         calls: Vec<EthCall>,
     ) -> Result<Vec<EthCallResult>, JsonRpcError> {
         let client = HttpClientBuilder::default()
-            .certificate_store(CertificateStore::WebPki)
+            .use_webpki_rustls()
             .build(self.rpc_manager.eth_rpc_endpoint(chain_id))?;
 
         let mut results: Vec<EthCallResult> = Vec::with_capacity(calls.len());

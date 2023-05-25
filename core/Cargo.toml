@@ -37,8 +37,8 @@ hex = "0.4.3"
 http = "0.2.9"
 http-cache-reqwest = "0.7.2"
 itertools = "0.10.5"
-# Git version needed for unreleased https://github.com/paritytech/jsonrpsee/pull/845
-jsonrpsee = { version = "0.16.2", features = ["server", "http-client", "macros"] }
+jsonrpsee = { version = "0.18.2", features = ["server", "http-client", "macros"] }
+jsonrpsee-http-client = { version = "0.18.2", features = ["webpki-tls"]}
 k256 = { version = "0.13.1", features = ["digest", "ecdsa", "pkcs8", "pem"] }
 lazy_static = "1.4.0"
 # This is a dependency of Diesel. We add it here to use bundled (statically linked SQLite)

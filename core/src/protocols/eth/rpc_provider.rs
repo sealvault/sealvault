@@ -135,7 +135,7 @@ impl RpcManagerI for RpcManager {
 
     async fn ankr_api_client(&self) -> Result<jsonrpsee::http_client::HttpClient, Error> {
         let client = jsonrpsee::http_client::HttpClientBuilder::default()
-            .certificate_store(jsonrpsee::core::client::CertificateStore::WebPki)
+            .use_webpki_rustls()
             .build(config::ANKR_API)
             .map_err(|err| Error::Fatal {
                 error: err.to_string(),
