@@ -126,8 +126,6 @@ dictionary CoreAddress {
     string checksum_address;
     string blockchain_explorer_link;
     CoreEthChain chain;
-    boolean is_test_net;
-    sequence<u8> chain_icon;
     CoreFungibleToken native_token;
 };
 
@@ -166,6 +164,9 @@ dictionary CoreArgs {
 dictionary CoreEthChain {
     u64 chain_id;
     string display_name;
+    boolean is_test_net;
+    boolean can_track_token;
+    sequence<u8> icon;
 };
 
 dictionary DappApprovalParams {

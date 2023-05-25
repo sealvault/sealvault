@@ -5,9 +5,9 @@
 import Foundation
 
 func sortAddressesBy(_ first: Address, _ second: Address) -> Bool {
-    if first.isTestNet == second.isTestNet {
+    if first.chain.isTestNet == second.chain.isTestNet {
         return first.chain.displayName < second.chain.displayName
     } else {
-        return !first.isTestNet
+        return !first.chain.isTestNet
     }
 }

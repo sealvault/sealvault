@@ -11,10 +11,8 @@ class Address: Identifiable, ObservableObject {
     let id: String
     let checksumAddress: String
     let isWallet: Bool
-    let isTestNet: Bool
     @Published var blockchainExplorerLink: URL?
     @Published var chain: CoreEthChain
-    @Published var chainIcon: UIImage
 
     @Published var nativeToken: Token
     @Published var fungibleTokens: [String: Token]
@@ -29,29 +27,25 @@ class Address: Identifiable, ObservableObject {
         self.nfts.values.sorted(by: {$0.displayName < $1.displayName})
     }
 
-    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool, isTestNet: Bool,
-                  blockchainExplorerLink: URL?, chain: CoreEthChain, chainIcon: UIImage, nativeToken: Token) {
+    required init(_ core: AppCoreProtocol, id: String, checksumAddress: String, isWallet: Bool,
+                  blockchainExplorerLink: URL?, chain: CoreEthChain, nativeToken: Token) {
         self.core = core
         self.id = id
         self.checksumAddress = checksumAddress
         self.isWallet = isWallet
-        self.isTestNet = isTestNet
         self.blockchainExplorerLink = blockchainExplorerLink
         self.chain = chain
-        self.chainIcon = chainIcon
         self.nativeToken = nativeToken
         self.fungibleTokens = Dictionary()
         self.nfts = Dictionary()
     }
 
     static func fromCore(_ core: AppCoreProtocol, _ address: CoreAddress) -> Self {
-        let chainIcon = Self.convertIcon(address.chainIcon)
         let url = URL(string: address.blockchainExplorerLink)
         let nativeToken = Token.fromCore(address.nativeToken)
         return Self(
             core, id: address.id, checksumAddress: address.checksumAddress, isWallet: address.isWallet,
-            isTestNet: address.isTestNet, blockchainExplorerLink: url, chain: address.chain,
-            chainIcon: chainIcon, nativeToken: nativeToken
+            blockchainExplorerLink: url, chain: address.chain, nativeToken: nativeToken
         )
     }
 
@@ -86,7 +80,6 @@ class Address: Identifiable, ObservableObject {
             // These values may become user configurable at some point
             self.blockchainExplorerLink = URL(string: address.blockchainExplorerLink)
             self.chain = address.chain
-            self.chainIcon = Self.convertIcon(address.chainIcon)
             self.updateNativeToken(address.nativeToken)
             self.nativeToken.updateFromCore(address.nativeToken)
         }
@@ -179,7 +172,7 @@ extension Address {
     }
 
     var image: Image {
-        Image(uiImage: chainIcon)
+        Image(uiImage: Self.convertIcon(chain.icon))
     }
 }
 
@@ -216,11 +209,10 @@ extension Address {
         let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
         let id = "ETH-\(checksumAddress)-\(isWallet)"
-        let chain = CoreEthChain(chainId: 1, displayName: "Ethereum")
+        let chain = Self.ethereumChain()
         return Self(
             PreviewAppCore(), id: id, checksumAddress: checksumAddress,
-            isWallet: isWallet, isTestNet: false, blockchainExplorerLink: explorer, chain: chain,
-            chainIcon: icon, nativeToken: nativeToken
+            isWallet: isWallet, blockchainExplorerLink: explorer, chain: chain, nativeToken: nativeToken
         )
     }
 
@@ -229,11 +221,31 @@ extension Address {
         let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
         let id = "POLYGON-\(checksumAddress)-\(isWallet)"
-        let chain = CoreEthChain(chainId: 137, displayName: "Polygon PoS")
+        let chain = Self.polygonChain()
         return Self(
-            PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet, isTestNet: false,
-            blockchainExplorerLink: explorer, chain: chain, chainIcon: icon, nativeToken: nativeToken
+            PreviewAppCore(), id: id, checksumAddress: checksumAddress, isWallet: isWallet,
+            blockchainExplorerLink: explorer, chain: chain, nativeToken: nativeToken
         )
+    }
+
+    static func ethereumChain() -> CoreEthChain {
+        return CoreEthChain(chainId: 1, displayName: "Ethereum", isTestNet: false, canTrackToken: false,
+                     icon: [UInt8](UIImage(named: "eth")!.pngData()!))
+    }
+
+    static func goerliChain() -> CoreEthChain {
+        return CoreEthChain(chainId: 5, displayName: "Ethereum Goerli Testnet", isTestNet: true, canTrackToken: false,
+                     icon: [UInt8](UIImage(named: "eth")!.pngData()!))
+    }
+
+    static func polygonChain() -> CoreEthChain {
+        return CoreEthChain(chainId: 137, displayName: "Polygon PoS", isTestNet: false, canTrackToken: false,
+                     icon: [UInt8](UIImage(named: "matic")!.pngData()!))
+    }
+
+    static func mumbaiChain() -> CoreEthChain {
+        return CoreEthChain(chainId: 80001, displayName: "Polygon PoS Mumbai Testnet", isTestNet: true,
+                     canTrackToken: false, icon: [UInt8](UIImage(named: "matic")!.pngData()!))
     }
 }
 #endif

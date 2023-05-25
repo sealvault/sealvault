@@ -54,8 +54,6 @@ pub struct CoreAddress {
     pub checksum_address: String,
     pub blockchain_explorer_link: String,
     pub chain: CoreEthChain,
-    pub is_test_net: bool,
-    pub chain_icon: Vec<u8>,
     pub native_token: CoreFungibleToken,
 }
 
@@ -87,17 +85,21 @@ pub struct CoreEthChain {
     /// Ethereum chain id.
     /// Not using db ids here, because Ethereum chains are lazy-inserted into the DB, so not all
     /// addable chains will have a DB id yet.
-    #[builder(setter(into))]
     pub chain_id: u64,
-    #[builder(setter(into))]
     pub display_name: String,
+    pub is_test_net: bool,
+    pub can_track_token: bool,
+    pub icon: Vec<u8>,
 }
 
 impl From<eth::ChainId> for CoreEthChain {
-    fn from(value: eth::ChainId) -> Self {
+    fn from(chain: eth::ChainId) -> Self {
         Self {
-            chain_id: value.into(),
-            display_name: value.display_name(),
+            chain_id: chain.into(),
+            display_name: chain.display_name(),
+            is_test_net: chain.is_test_net(),
+            can_track_token: eth::can_track_token(chain),
+            icon: chain.native_token().icon(),
         }
     }
 }
@@ -309,7 +311,6 @@ impl Assembler {
         let is_wallet =
             m::Address::is_profile_wallet(tx_conn.as_mut(), &deterministic_id)?;
 
-        let chain_icon = chain_id.native_token().icon()?;
         let explorer_link: String = eth::explorer::address_url(chain_id, address)?.into();
         let result = CoreAddress::builder()
             .id(deterministic_id.into())
@@ -317,8 +318,6 @@ impl Assembler {
             .checksum_address(address.to_string())
             .blockchain_explorer_link(explorer_link)
             .chain(chain_id.into())
-            .is_test_net(chain_id.is_test_net())
-            .chain_icon(chain_icon)
             .native_token(native_token)
             .build();
 
@@ -434,7 +433,7 @@ impl Assembler {
         amount: Option<String>,
     ) -> Result<CoreFungibleToken, Error> {
         let native_token_id = format!("eth-{chain_id}-{address}");
-        let icon = Some(chain_id.native_token().icon()?);
+        let icon = Some(chain_id.native_token().icon());
         let native_token = CoreFungibleToken::builder()
             .id(native_token_id)
             .symbol(chain_id.native_token().to_string())
@@ -612,13 +611,7 @@ impl Assembler {
     /// List supported Ethereum chains
     pub fn list_eth_chains(&self) -> Vec<CoreEthChain> {
         eth::ChainId::iter()
-            .map(|chain_id| {
-                let display_name = chain_id.display_name();
-                CoreEthChain::builder()
-                    .chain_id(chain_id)
-                    .display_name(display_name)
-                    .build()
-            })
+            .map(|chain_id| chain_id.into())
             .collect()
     }
 }

@@ -37,14 +37,14 @@ impl NativeToken {
         }
     }
 
-    pub fn icon(&self) -> Result<Vec<u8>, Error> {
+    pub fn icon(&self) -> Vec<u8> {
         let icon_path = format!(
             "{}/{}{}",
             config::ETH_NATIVE_TOKEN_PREFIX,
             &self,
             config::NATIVE_TOKEN_EXTENSION
         );
-        load_binary(&icon_path)
+        load_binary(&icon_path).expect("unit test catches panic")
     }
 
     pub fn symbol(&self) -> String {
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn all_have_icons() -> Result<()> {
         for token in NativeToken::iter() {
-            let icon = token.icon()?;
+            let icon = token.icon();
             assert!(!icon.is_empty())
         }
         Ok(())

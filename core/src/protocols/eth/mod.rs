@@ -35,3 +35,13 @@ pub use token_api::{
     fetch_token_balances, CommonTokenInfo, CommonTokens, FungibleTokenBalance,
     NFTBalance, TokenBalances,
 };
+
+/// Whether we can track a fungible token on a given chain through the token API.
+pub fn can_track_token(chain: ChainId) -> bool {
+    use crate::protocols::eth::token_api::ankr::AnkrBlockchain;
+
+    // If the chain is supported by Ankr, then we fetch token balances from Ankr which is good
+    // because it allows us to automatically detect tokens, but we cannot track tokens other than
+    // those supported by Ankr.
+    !AnkrBlockchain::supported(chain)
+}

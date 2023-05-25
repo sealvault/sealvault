@@ -442,13 +442,11 @@ class PreviewAppCore: AppCoreProtocol {
     }
 
     static func toCoreAddress(_ address: Address) -> CoreAddress {
-        let icon = [UInt8](address.chainIcon.pngData()!)
         let nativeToken = Self.toCoreToken(address.nativeToken)
         let blockchainExplorerLink = address.blockchainExplorerLink?.absoluteString ?? "https://etherscani.io"
         return CoreAddress(
             id: address.id, isWallet: address.isWallet, checksumAddress: address.checksumAddress,
-            blockchainExplorerLink: blockchainExplorerLink, chain: address.chain,
-            isTestNet: address.isTestNet, chainIcon: icon, nativeToken: nativeToken
+            blockchainExplorerLink: blockchainExplorerLink, chain: address.chain, nativeToken: nativeToken
         )
     }
 
@@ -649,10 +647,10 @@ class PreviewAppCore: AppCoreProtocol {
 
     func listEthChains() -> [CoreEthChain] {
         [
-            CoreEthChain(chainId: 1, displayName: "Ethereum"),
-            CoreEthChain(chainId: 5, displayName: "Ethereum Goerli Testnet"),
-            CoreEthChain(chainId: 137, displayName: "Polygon PoS"),
-            CoreEthChain(chainId: 80001, displayName: "Polygon PoS Mumbai Testnet")
+            Address.ethereumChain(),
+            Address.goerliChain(),
+            Address.polygonChain(),
+            Address.mumbaiChain()
         ]
     }
 
