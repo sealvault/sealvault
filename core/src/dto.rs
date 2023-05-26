@@ -2,7 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{collections::HashSet, iter, ops::Sub, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    iter,
+    ops::Sub,
+    sync::Arc,
+};
 
 use futures::StreamExt;
 use itertools::izip;
@@ -451,7 +456,7 @@ impl Assembler {
         tokens: Vec<eth::FungibleTokenBalance>,
     ) -> Result<Vec<CoreFungibleToken>, Error> {
         let contract_addresses = tokens.iter().map(|t| &t.contract_address);
-        let token_ids = m::Token::fetch_eth_token_ids(
+        let mut token_ids = m::Token::fetch_eth_token_ids(
             tx_conn.as_mut(),
             TokenType::Fungible,
             chain_id,
@@ -471,23 +476,23 @@ impl Assembler {
 
         let results: Vec<_> = izip!(
             tokens_with_logo.into_iter().chain(tokens_no_logo),
-            token_ids,
             icons_for_all
         )
-        .map(|(token, token_id, icon)| {
+        .map(|(token, icon)| {
             let amount = token.display_amount();
             let eth::FungibleTokenBalance { symbol, .. } = token;
-            CoreFungibleToken::builder()
+            let token_id = get_token_id(&mut token_ids, &token.contract_address)?;
+            Ok(CoreFungibleToken::builder()
                 .id(token_id.into())
                 .symbol(symbol)
                 .amount(Some(amount))
                 .token_type(FungibleTokenType::Custom)
                 .icon(icon)
-                .build()
+                .build())
         })
         .collect();
 
-        Ok(results)
+        results.into_iter().collect()
     }
 
     fn assemble_nfts(
@@ -497,7 +502,7 @@ impl Assembler {
         tokens: Vec<eth::NFTBalance>,
     ) -> Result<Vec<CoreNFT>, Error> {
         let contract_addresses = tokens.iter().map(|token| &token.contract_address);
-        let token_ids = m::Token::fetch_eth_token_ids(
+        let mut token_ids = m::Token::fetch_eth_token_ids(
             tx_conn.as_mut(),
             TokenType::Nft,
             chain_id,
@@ -506,16 +511,17 @@ impl Assembler {
 
         let results: Vec<_> = tokens
             .into_iter()
-            .zip(token_ids.into_iter())
-            .map(|(token, token_id)| {
+            .map(|token| {
                 let eth::NFTBalance { name, .. } = token;
-                CoreNFT::builder()
+                let token_id = get_token_id(&mut token_ids, &token.contract_address)?;
+                Ok(CoreNFT::builder()
                     .id(token_id.into())
                     .display_name(name)
-                    .build()
+                    .build())
             })
             .collect();
-        Ok(results)
+
+        results.into_iter().collect()
     }
 
     fn assemble_tokens(
@@ -614,6 +620,16 @@ impl Assembler {
             .map(|chain_id| chain_id.into())
             .collect()
     }
+}
+
+fn get_token_id(
+    token_ids: &mut HashMap<eth::ChecksumAddress, m::TokenId>,
+    token_address: &eth::ChecksumAddress,
+) -> Result<m::TokenId, Error> {
+    token_ids.remove(token_address).ok_or_else(|| Error::Fatal {
+        error: "Expected all tokens to have been inserted into the DB at this point."
+            .into(),
+    })
 }
 
 lazy_static! {

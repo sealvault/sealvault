@@ -32,7 +32,7 @@ use crate::{
     Error,
 };
 
-type ProviderType = Provider<Http>;
+pub type ProviderType = Provider<Http>;
 
 // Ethers `Middleware` is not object safe hence the complex type.
 type SignerMiddlewareType = NonceManagerMiddleware<
@@ -45,7 +45,9 @@ type SignerMiddlewareType = NonceManagerMiddleware<
 /// A trait to let us inject local servers at test time.
 #[async_trait]
 pub trait RpcManagerI: Debug + Send + Sync {
-    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url;
+    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> &'static str;
+
+    fn eth_rpc_url(&self, chain_id: ChainId) -> Url;
 
     fn ethers_provider(&self, chain_id: ChainId) -> ProviderType;
 
@@ -96,12 +98,16 @@ impl RpcManager {
 
 #[async_trait]
 impl RpcManagerI for RpcManager {
-    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url {
+    fn eth_rpc_endpoint(&self, chain_id: ChainId) -> &'static str {
         chain_id.http_rpc_endpoint()
     }
 
+    fn eth_rpc_url(&self, chain_id: ChainId) -> Url {
+        chain_id.http_rpc_url()
+    }
+
     fn ethers_provider(&self, chain_id: ChainId) -> ProviderType {
-        let http_endpoint = self.eth_rpc_endpoint(chain_id);
+        let http_endpoint = self.eth_rpc_url(chain_id);
         Provider::new(Http::new(http_endpoint))
     }
 
@@ -576,12 +582,17 @@ pub mod local {
 
     #[async_trait]
     impl RpcManagerI for LocalRpcManager {
-        fn eth_rpc_endpoint(&self, chain_id: ChainId) -> Url {
+        fn eth_rpc_endpoint(&self, chain_id: ChainId) -> &'static str {
+            // Only used in testing, ok to leak.
+            Box::leak(self.anvil_endpoint(chain_id).to_string().into_boxed_str())
+        }
+
+        fn eth_rpc_url(&self, chain_id: ChainId) -> Url {
             self.anvil_endpoint(chain_id)
         }
 
         fn ethers_provider(&self, chain_id: ChainId) -> ProviderType {
-            let http_endpoint = self.eth_rpc_endpoint(chain_id);
+            let http_endpoint = self.eth_rpc_url(chain_id);
             Provider::new(Http::new(http_endpoint))
                 .interval(Duration::from_millis(POLL_INTERVAL_MS))
         }

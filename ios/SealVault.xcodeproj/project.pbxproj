@@ -47,6 +47,7 @@
 		688C29BE283FF33A00474900 /* ProfileRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29BD283FF33A00474900 /* ProfileRow.swift */; };
 		688C29E92840F69100474900 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29E82840F69100474900 /* Profile.swift */; };
 		688C29EB284102FC00474900 /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688C29EA284102FC00474900 /* Address.swift */; };
+		68A7A9652A1E3BA200B6CCCE /* ImportToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A7A9642A1E3BA200B6CCCE /* ImportToken.swift */; };
 		68B6C3FD28426B040025BCEA /* DappRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C3FC28426B040025BCEA /* DappRow.swift */; };
 		68B6C40128426C120025BCEA /* Dapp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B6C40028426C120025BCEA /* Dapp.swift */; };
 		68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68BA09A6295E06D0007D2340 /* AddProfile.swift */; };
@@ -124,6 +125,7 @@
 		688C29BD283FF33A00474900 /* ProfileRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRow.swift; sourceTree = "<group>"; };
 		688C29E82840F69100474900 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		688C29EA284102FC00474900 /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
+		68A7A9642A1E3BA200B6CCCE /* ImportToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportToken.swift; sourceTree = "<group>"; };
 		68B6C3FC28426B040025BCEA /* DappRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DappRow.swift; sourceTree = "<group>"; };
 		68B6C40028426C120025BCEA /* Dapp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dapp.swift; sourceTree = "<group>"; };
 		68BA09A6295E06D0007D2340 /* AddProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProfile.swift; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 			isa = PBXGroup;
 			children = (
 				68BA09A6295E06D0007D2340 /* AddProfile.swift */,
+				68A7A9642A1E3BA200B6CCCE /* ImportToken.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
 				688C29B9283FE94300474900 /* AppTabNavigation.swift */,
@@ -459,6 +462,7 @@
 				686D8BB628E5ED7C00031375 /* AddressView.swift in Sources */,
 				681713712977296400D95AA4 /* RandomColor.swift in Sources */,
 				68BA09A7295E06D0007D2340 /* AddProfile.swift in Sources */,
+				68A7A9652A1E3BA200B6CCCE /* ImportToken.swift in Sources */,
 				68BA3D13295B531D00AB3CE8 /* authenticate.swift in Sources */,
 				68F6291228251A0900BDCD02 /* SealVaultApp.swift in Sources */,
 				686D8BB828E5FF4A00031375 /* TokenAmount.swift in Sources */,

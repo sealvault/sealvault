@@ -1,15 +1,21 @@
+use std::sync::Arc;
+
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 use ethers::core::types::U256;
+use ethers::{abi::AbiError, contract::ContractError};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::{
     assets::load_binary,
-    config,
-    protocols::eth::{ChainId, ChecksumAddress},
+    async_runtime as rt, config,
+    protocols::eth::{
+        contracts::ERC20Contract, rpc_provider::ProviderType, Address, ChainId,
+        ChecksumAddress, RpcManagerI,
+    },
     Error,
 };
 
@@ -159,6 +165,48 @@ pub(super) fn display_amount(amount: U256, decimals: u8) -> String {
     res
 }
 
+/// Make calls to the token address to check if the token address is an ERC20 contract.
+pub fn is_valid_fungible_token_address(
+    rpc_manager: &dyn RpcManagerI,
+    chain_id: ChainId,
+    token_address: Address,
+) -> Result<bool, Error> {
+    let provider = Arc::new(rpc_manager.ethers_provider(chain_id));
+    let contract = ERC20Contract::new(token_address, provider);
+    let calls = async move {
+        let symbol_call = contract.symbol();
+        let decimals_call = contract.decimals();
+        let balance_call = contract.balance_of(Address::zero());
+        futures::join!(
+            symbol_call.call(),
+            decimals_call.call(),
+            balance_call.call()
+        )
+    };
+    let (symbol_res, decimals_res, balance_res) = rt::block_on(calls);
+    let result = map_fungible_token_test_call(symbol_res.map(|_| ()))?
+        && map_fungible_token_test_call(decimals_res.map(|_| ()))?
+        && map_fungible_token_test_call(balance_res.map(|_| ()))?;
+    Ok(result)
+}
+
+fn map_fungible_token_test_call(
+    result: Result<(), ContractError<ProviderType>>,
+) -> Result<bool, Error> {
+    match result {
+        Ok(_) => Ok(true),
+        Err(err) => match err {
+            // Contract doesn't exist
+            ContractError::AbiError(AbiError::DecodingError(_)) => Ok(false),
+            // Address exists as EOA or contract, but doesn't implement ERC20
+            ContractError::Revert(_) => Ok(false),
+            err => Err(Error::Retriable {
+                error: err.to_string(),
+            }),
+        },
+    }
+}
+
 fn parse_amount(amount: &str, decimals: u8) -> Result<U256, Error> {
     use rust_decimal::MathematicalOps;
 
@@ -197,6 +245,7 @@ mod tests {
     use strum::IntoEnumIterator;
 
     use super::*;
+    use crate::protocols::eth::contracts::test_util::TestContractDeployer;
 
     #[test]
     fn parse_amount_fractional() -> Result<()> {
@@ -315,5 +364,33 @@ mod tests {
     fn test_display_native_token_amount() {
         let nta = NativeTokenAmount::new(ChainId::EthMainnet, U256::exp10(18));
         assert_eq!(nta.display_amount(), "1")
+    }
+
+    #[test]
+    fn test_is_valid_fungible_token() -> Result<()> {
+        let chain_id = ChainId::EthMainnet;
+
+        let contract_deployer = TestContractDeployer::init(chain_id);
+        let contract_address = contract_deployer.deploy_fungible_token_test_contract()?;
+
+        assert!(is_valid_fungible_token_address(
+            &contract_deployer.rpc_manager,
+            chain_id,
+            contract_address.into()
+        )?);
+
+        assert!(!is_valid_fungible_token_address(
+            &contract_deployer.rpc_manager,
+            chain_id,
+            Address::random()
+        )?);
+
+        assert!(!is_valid_fungible_token_address(
+            &contract_deployer.rpc_manager,
+            chain_id,
+            contract_deployer.deployer_address().into()
+        )?);
+
+        Ok(())
     }
 }

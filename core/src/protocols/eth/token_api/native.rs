@@ -165,8 +165,7 @@ impl<'a> NativeTokenAPi<'a> {
                     owner_address,
                     chain_id,
                     contract_addresses,
-                )
-                    .await;
+                ).await;
                 match result {
                     // `buffered` needs futures but filter map returns values.
                     Ok(result) => Some(async move { (chain_id, result) }),
@@ -190,8 +189,7 @@ impl<'a> NativeTokenAPi<'a> {
         // TODO we don't actually use this so ideally we wouldn't have to create it, but the
         // `ERC20Contract` needs it as argument. We als don't really need the `ERC20Contract`, only the
         // call data, so this could be made a lot more efficient.
-        let rpc_endpoint = self.rpc_manager.eth_rpc_endpoint(chain_id);
-        let provider = Arc::new(Provider::new(Http::new(rpc_endpoint.clone())));
+        let provider = Arc::new(self.rpc_manager.ethers_provider(chain_id));
 
         let mut calls: Vec<EthCall> = Vec::with_capacity(
             fungible_token_addresses.len() * FunctionName::iter().len(),
@@ -213,9 +211,10 @@ impl<'a> NativeTokenAPi<'a> {
         chain_id: ChainId,
         calls: Vec<EthCall>,
     ) -> Result<Vec<EthCallResult>, JsonRpcError> {
+        let url = self.rpc_manager.eth_rpc_endpoint(chain_id);
         let client = HttpClientBuilder::default()
             .use_webpki_rustls()
-            .build(self.rpc_manager.eth_rpc_endpoint(chain_id))?;
+            .build(url)?;
 
         let mut results: Vec<EthCallResult> = Vec::with_capacity(calls.len());
 

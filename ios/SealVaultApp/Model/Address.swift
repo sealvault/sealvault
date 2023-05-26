@@ -206,7 +206,6 @@ extension Address {
 
     static func ethereum(checksumAddress: String, isWallet: Bool) -> Self {
         let nativeToken = Token.eth(checksumAddress)
-        let icon = UIImage(named: "eth")!
         let explorer = URL(string: "https://etherscan.io/address/\(checksumAddress)")!
         let id = "ETH-\(checksumAddress)-\(isWallet)"
         let chain = Self.ethereumChain()
@@ -218,7 +217,6 @@ extension Address {
 
     static func polygon(checksumAddress: String, isWallet: Bool) -> Self {
         let nativeToken = Token.matic(checksumAddress)
-        let icon = UIImage(named: "matic")!
         let explorer = URL(string: "https://polygonscan.com/address/\(checksumAddress)")!
         let id = "POLYGON-\(checksumAddress)-\(isWallet)"
         let chain = Self.polygonChain()

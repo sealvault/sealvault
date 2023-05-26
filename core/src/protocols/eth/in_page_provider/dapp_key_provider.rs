@@ -1151,7 +1151,6 @@ mod tests {
         core.wait_for_first_in_page_response();
         let responses = core.responses();
         let response = responses.first().expect("there is a response");
-        dbg!(&response);
         let response: Response<Vec<String>> =
             serde_json::from_str(response).expect("response is valid json");
         match response.payload {

@@ -27,6 +27,7 @@ use crate::{
             in_page_provider::{DappKeyProvider, InPageRequestContextI},
             BaseProvider,
         },
+        TokenType,
     },
     public_suffix_list::PublicSuffixList,
     resources::{CoreResources, CoreResourcesI},
@@ -243,6 +244,46 @@ impl AppCore {
         let address_id: m::AddressId = address_id.parse()?;
         let result = self.assembler().assemble_address(&address_id)?;
         Ok(result)
+    }
+
+    pub fn track_eth_fungible_token(
+        &self,
+        address_id: String,
+        chain_id: u64,
+        token_address: String,
+    ) -> Result<(), CoreError> {
+        let address_id: m::AddressId = address_id.try_into()?;
+        let chain_id: eth::ChainId = chain_id.try_into()?;
+
+        let token_address: eth::Address =
+            token_address.parse().map_err(|_| Error::User {
+                explanation: "The supplied address doesn't look like an Ethereum address"
+                    .into(),
+            })?;
+        let is_valid_address = eth::is_valid_fungible_token_address(
+            self.rpc_manager(),
+            chain_id,
+            token_address,
+        )?;
+        if !is_valid_address {
+            return Err(Error::User {
+                explanation: format!("We cannot find an ERC20 token contract at the supplied address on {chain_id}")
+            })?;
+        }
+        // Ok to cast since we've checked that it's a valid address.
+        let token_address: eth::ChecksumAddress = token_address.into();
+
+        self.connection_pool().deferred_transaction(|mut tx_conn| {
+            m::Token::upsert_token(
+                &mut tx_conn,
+                &address_id,
+                chain_id,
+                token_address,
+                TokenType::Fungible,
+            )
+        })?;
+
+        Ok(())
     }
 
     pub fn tokens_for_eth_address(
@@ -1419,27 +1460,25 @@ pub mod tests {
 
         let (from_id, to_address) = setup_profiles(&tmp.core, chain_id)?;
 
-        let token_id = tmp
-            .core
-            .connection_pool()
-            .deferred_transaction(|mut tx_conn| {
-                m::Token::upsert_token(
-                    &mut tx_conn,
-                    &from_id,
-                    chain_id,
-                    contract_address,
-                    TokenType::Fungible,
-                )?;
-                m::Token::fetch_eth_token_ids(
-                    tx_conn.as_mut(),
-                    TokenType::Fungible,
-                    chain_id,
-                    vec![&contract_address],
-                )
-            })?
-            .into_iter()
-            .next()
-            .unwrap();
+        let mut token_ids =
+            tmp.core
+                .connection_pool()
+                .deferred_transaction(|mut tx_conn| {
+                    m::Token::upsert_token(
+                        &mut tx_conn,
+                        &from_id,
+                        chain_id,
+                        contract_address,
+                        TokenType::Fungible,
+                    )?;
+                    m::Token::fetch_eth_token_ids(
+                        tx_conn.as_mut(),
+                        TokenType::Fungible,
+                        chain_id,
+                        vec![&contract_address],
+                    )
+                })?;
+        let token_id = token_ids.remove(&contract_address).unwrap();
 
         let args = EthTransferFungibleTokenArgs::builder()
             .from_address_id(from_id.into())

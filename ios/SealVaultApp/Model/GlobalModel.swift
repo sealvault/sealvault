@@ -348,6 +348,34 @@ extension GlobalModel {
         }
     }
 
+    func importToken(userAddress: Address, tokenAddress: String) async -> BannerData? {
+        let errorMessage: String? = await dispatchBackground(.userInteractive) {
+            do {
+                try self.core.trackEthFungibleToken(
+                    addressId: userAddress.id, chainId: userAddress.chain.chainId, tokenAddress: tokenAddress
+                )
+                return nil
+            } catch CoreError.User(let message) {
+                return message
+            } catch CoreError.Retriable(let message) {
+                print("Retriable error importing token: \(message)")
+                return Config.retriableErrorMessage
+            } catch let error {
+                print("Fatal error import token: \(error)")
+                return Config.fatalErrorMessage
+            }
+        }
+        if let message = errorMessage {
+            return BannerData(
+                title: "Error importing token",
+                detail: message,
+                type: .error
+            )
+        } else {
+            return nil
+        }
+    }
+
     func addEthChain(chainId: UInt64, addressId: String) async {
         await dispatchBackground(.userInteractive) {
             do {
@@ -401,6 +429,10 @@ import SwiftUI
 /// The App Core is quite heavy as it runs migrations etc on startup, and we don't need it for preview, so we just
 /// pass this stub.
 class PreviewAppCore: AppCoreProtocol {
+    func trackEthFungibleToken(addressId: String, chainId: UInt64, tokenAddress: String) throws {
+
+    }
+
     func fetchAddress(addressId: String) throws -> CoreAddress {
         Self.toCoreAddress(Address.polygonDapp())
     }

@@ -49,6 +49,9 @@ interface AppCore {
     CoreTokens tokens_for_address_id(string address_id);
 
     [Throws=CoreError]
+    void track_eth_fungible_token(string address_id, u64 chain_id, string token_address);
+
+    [Throws=CoreError]
     sequence<CoreTokens> tokens_for_eth_address(string checksum_address);
 
     [Throws=CoreError]

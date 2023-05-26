@@ -6,9 +6,17 @@ import SwiftUI
 
 struct ChainMenu: View {
     @ObservedObject var address: Address
+    @Binding var showImportToken: Bool
 
     var body: some View {
         Menu(address.chain.displayName) {
+            if address.chain.canTrackToken {
+                Button(action: {
+                    showImportToken = true
+                }, label: {
+                    Text("Import Token")
+                })
+            }
             if let url = address.blockchainExplorerLink {
                 Button(action: {
                     UIApplication.shared.open(url)

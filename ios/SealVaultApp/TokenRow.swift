@@ -27,7 +27,8 @@ struct TokenRow: View {
 
             Spacer()
 
-            TokenAmount(token: token)
+            // Progress bar is next to chain name
+            TokenAmount(token: token, showProgress: false)
         }
     }
 }

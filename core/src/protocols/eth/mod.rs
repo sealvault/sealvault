@@ -25,12 +25,15 @@ pub use chain_id::ChainId;
 pub use chain_settings::ChainSettings;
 pub use checksum_address::ChecksumAddress;
 pub use encrypted_signing_key::EncryptedSigningKey;
+pub use ethers::types::Address;
 pub use protocol_data::ProtocolData;
 #[cfg(test)]
 pub use rpc_provider::local::LocalRpcManager;
 pub use rpc_provider::{BaseProvider, RpcManager, RpcManagerI, RpcProvider};
 pub use signer::Signer;
-pub use token::{FungibleTokenAmount, NativeTokenAmount};
+pub use token::{
+    is_valid_fungible_token_address, FungibleTokenAmount, NativeTokenAmount,
+};
 pub use token_api::{
     fetch_token_balances, CommonTokenInfo, CommonTokens, FungibleTokenBalance,
     NFTBalance, TokenBalances,

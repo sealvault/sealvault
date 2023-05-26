@@ -29,7 +29,7 @@ use crate::{
 #[diesel(primary_key(deterministic_id))]
 pub struct Token {
     pub deterministic_id: TokenId,
-    pub identifier: eth::ChecksumAddress,
+    pub address: eth::ChecksumAddress,
     pub chain_id: DeterministicId,
     pub type_: TokenType,
     pub created_at: String,
@@ -157,15 +157,15 @@ impl Token {
         token_type: TokenType,
         chain_id: eth::ChainId,
         contract_addresses: impl IntoIterator<Item = &'a eth::ChecksumAddress>,
-    ) -> Result<Vec<TokenId>, Error> {
+    ) -> Result<HashMap<eth::ChecksumAddress, TokenId>, Error> {
         use chains::dsl as c;
         use tokens::dsl as t;
 
         let protocol_data: eth::ProtocolData = chain_id.into();
 
-        let token_ids: Vec<_> = tokens::table
+        let results = tokens::table
             .inner_join(chains::table.on(t::chain_id.eq(c::deterministic_id)))
-            .select(t::deterministic_id)
+            .select((t::address, t::deterministic_id))
             .filter(
                 t::address
                     .eq_any(contract_addresses)
@@ -173,9 +173,10 @@ impl Token {
                     .and(c::protocol.eq(BlockchainProtocol::Ethereum))
                     .and(c::protocol_data.eq(&protocol_data)),
             )
-            .load::<TokenId>(conn)?;
-
-        Ok(token_ids)
+            .load::<(eth::ChecksumAddress, TokenId)>(conn)?
+            .into_iter()
+            .collect();
+        Ok(results)
     }
 
     /// Fetch the token id for each contract address from the db.

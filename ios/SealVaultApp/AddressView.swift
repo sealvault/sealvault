@@ -13,6 +13,7 @@ struct AddressView: View {
 
     @State var showChainSelection: Bool = false
     @State var showSwitchAddress: Bool = false
+    @State var importAddress: Address?
     @EnvironmentObject private var model: GlobalModel
 
     var paddingTop: CGFloat = 50

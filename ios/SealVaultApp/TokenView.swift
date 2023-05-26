@@ -7,6 +7,7 @@ import SwiftUI
 struct TokenView: View {
     @ObservedObject var profile: Profile
     @ObservedObject var address: Address
+    @State var showImportToken: Bool = false
     var paddingTop: CGFloat
 
     var body: some View {
@@ -28,8 +29,10 @@ struct TokenView: View {
             }
         } header: {
             HStack(spacing: 5) {
-                ChainMenu(address: address)
-                if profile.isAddressSelectedForAdapp(addressId: address.id) {
+                ChainMenu(address: address, showImportToken: $showImportToken)
+                if address.loading {
+                    ProgressView()
+                } else if profile.isAddressSelectedForAdapp(addressId: address.id) {
                     Image(systemName: "checkmark.circle")
                         .foregroundColor(.green)
                 }
@@ -38,6 +41,11 @@ struct TokenView: View {
             .scaledToFit()
         }
         .headerProminence(.increased)
+        .sheet(isPresented: $showImportToken) {
+            ImportToken(userAddress: address)
+                    .presentationDetents([.medium])
+                    .background(.ultraThinMaterial)
+        }
 
         if !address.nftList.isEmpty {
             Section {

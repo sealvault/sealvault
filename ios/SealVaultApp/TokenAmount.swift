@@ -6,6 +6,7 @@ import SwiftUI
 
 struct TokenAmount: View {
     @ObservedObject var token: Token
+    @State var showProgress: Bool = true
 
     var body: some View {
         if let amount = token.amount {
@@ -15,7 +16,7 @@ struct TokenAmount: View {
             } else {
                 Text(amount)
             }
-        } else {
+        } else if showProgress {
             ProgressView()
         }
     }

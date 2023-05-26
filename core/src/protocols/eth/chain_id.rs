@@ -157,19 +157,23 @@ impl ChainId {
         }
     }
 
-    pub fn http_rpc_endpoint(&self) -> Url {
-        let raw_url = match *self {
-            Self::EthMainnet => "https://rpc.ankr.com/eth",
-            Self::EthGoerli => "https://rpc.ankr.com/eth_goerli",
-            Self::PolygonMainnet => "https://rpc.ankr.com/polygon",
-            Self::PolygonMumbai => "https://rpc.ankr.com/polygon_mumbai",
+    pub fn http_rpc_endpoint(&self) -> &'static str {
+        // Port numbers are important pending https://github.com/paritytech/jsonrpsee/issues/1048
+        match *self {
+            Self::EthMainnet => "https://rpc.ankr.com:443/eth",
+            Self::EthGoerli => "https://rpc.ankr.com:443/eth_goerli",
+            Self::PolygonMainnet => "https://rpc.ankr.com:443/polygon",
+            Self::PolygonMumbai => "https://rpc.ankr.com:443/polygon_mumbai",
             Self::FilecoinHyperspaceTestnet => {
-                "https://api.hyperspace.node.glif.io/rpc/v1"
+                "https://api.hyperspace.node.glif.io:443/rpc/v1"
             }
-            Self::ZkSync => "https://mainnet.era.zksync.io",
-            Self::ZkSyncTestnet => "https://testnet.era.zksync.dev",
-        };
-        Url::parse(raw_url).expect("unit test catches panics")
+            Self::ZkSync => "https://mainnet.era.zksync.io:443",
+            Self::ZkSyncTestnet => "https://testnet.era.zksync.dev:443",
+        }
+    }
+
+    pub fn http_rpc_url(&self) -> Url {
+        Url::parse(self.http_rpc_endpoint()).expect("unit test catches panics")
     }
 
     pub fn explorer_url(&self) -> Url {
@@ -338,7 +342,7 @@ mod tests {
     #[test]
     fn chain_rpc_endpoints_dont_panic() {
         for chain_id in ChainId::iter() {
-            assert!(chain_id.http_rpc_endpoint().host().is_some())
+            assert!(chain_id.http_rpc_url().host().is_some())
         }
     }
 
