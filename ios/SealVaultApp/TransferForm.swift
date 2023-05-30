@@ -18,6 +18,8 @@ class TransferState: ObservableObject {
 
     @Published var processing: Bool = false
 
+    @Published var bannerData: BannerData?
+
     var defaultPickerSelection: Address? {
         profile.allAddresses.filter({canTransferTo($0)}).first
     }
@@ -80,18 +82,12 @@ struct TransferForm: View {
                 .padding()
 
                 Spacer()
-
             }
             .padding()
         }
         .navigationTitle(Text("Transfer"))
         .dynamicTypeSize(..<DynamicTypeSize.accessibility2)
-        .refreshable {
-            async let profiles: () = self.model.refreshProfiles()
-            async let tokens: () = self.state.fromAddress.refreshTokens()
-            // Refresh concurrently
-            _ = await (profiles, tokens)
-        }
+        .banner(data: $state.bannerData)
         .sheet(isPresented: $state.showInAppSelection) {
             if let defaultPickerSelection = state.defaultPickerSelection {
                 InAppPicker(state: state, pickerSelection: defaultPickerSelection)
@@ -333,7 +329,8 @@ struct TransferButton: View {
     let cornerRadius: CGFloat = 8
 
     @ObservedObject var state: TransferState
-    @EnvironmentObject private var bannerModel: BannerModel
+
+    @Environment(\.dismiss) var dismiss
 
     func makeTransfer() async {
         await dispatchBackground(.userInteractive) {
@@ -352,10 +349,12 @@ struct TransferButton: View {
                         )
                         try core.ethTransferFungibleToken(args: args)
                     }
+
+                    dismiss()
                 }
             } catch CoreError.User(let message) {
                 DispatchQueue.main.async {
-                    bannerModel.bannerData = BannerData(
+                    state.bannerData = BannerData(
                         title: "Error transferring token",
                         detail: message,
                         type: .error
@@ -363,14 +362,14 @@ struct TransferButton: View {
                 }
             } catch CoreError.Retriable(let message) {
                 DispatchQueue.main.async {
-                    bannerModel.bannerData = BannerData(
+                    state.bannerData = BannerData(
                         title: "Error transferring token", detail: Config.retriableErrorMessage, type: .error
                     )
                 }
                 print("Retriable error while transferring token: \(message)")
             } catch let error {
                 DispatchQueue.main.async {
-                    bannerModel.bannerData = BannerData(
+                    state.bannerData = BannerData(
                         title: "Error transferring token", detail: Config.fatalErrorMessage, type: .error
                     )
                 }

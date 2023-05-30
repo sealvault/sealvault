@@ -8,24 +8,27 @@ struct TokenView: View {
     @ObservedObject var profile: Profile
     @ObservedObject var address: Address
     @State var showImportToken: Bool = false
+    @State var showTransferNativeToken = false
+    @State var showTransferToken = false
+
     var paddingTop: CGFloat
 
     var body: some View {
         Section {
-            NavigationLink {
-                TransferForm(state: TransferState(profile: profile, token: address.nativeToken, fromAddress: address))
-                    .navigationBarTitleDisplayMode(.inline)
+            Button {
+                showTransferNativeToken = true
             } label: {
                 NativeTokenRow(address: address)
             }
             .accessibilityLabel(address.nativeToken.symbol)
+            .sheet(isPresented: $showTransferNativeToken) {
+                TransferForm(state: TransferState(profile: profile, token: address.nativeToken, fromAddress: address))
+                    .presentationDetents([.large])
+                    .background(.ultraThinMaterial)
+            }
+
             ForEach(address.fungibleTokenList) { token in
-                NavigationLink {
-                    TransferForm(state: TransferState(profile: profile, token: token, fromAddress: address))
-                        .navigationBarTitleDisplayMode(.inline)
-                } label: {
-                    TokenRow(token: token)
-                }.accessibilityLabel(token.symbol)
+                TokenTransferButton(profile: profile, token: token, address: address)
             }
         } header: {
             HStack(spacing: 5) {
@@ -56,6 +59,28 @@ struct TokenView: View {
                 Text("NFTs")
             }
             .headerProminence(.standard)
+        }
+    }
+}
+
+struct TokenTransferButton: View {
+    @ObservedObject var profile: Profile
+    @ObservedObject var token: Token
+    @ObservedObject var address: Address
+
+    @State var showTransferToken: Bool = false
+
+    var body: some View {
+        Button {
+            showTransferToken = true
+        } label: {
+            TokenRow(token: token)
+        }
+        .accessibilityLabel(token.symbol)
+        .sheet(isPresented: $showTransferToken) {
+            TransferForm(state: TransferState(profile: profile, token: token, fromAddress: address))
+                .presentationDetents([.large])
+                .background(.ultraThinMaterial)
         }
     }
 }
