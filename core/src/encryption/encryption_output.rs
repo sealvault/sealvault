@@ -48,18 +48,18 @@ fn vector_too_short_error() -> Error {
 impl TryFrom<Vec<u8>> for EncryptionOutput {
     type Error = Error;
 
-    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        let mut slice = value.as_slice();
-        let nonce = slice
-            .take(..NONCE_BYTES)
-            .ok_or_else(vector_too_short_error)?;
+    fn try_from(mut value: Vec<u8>) -> Result<Self, Self::Error> {
+        if value.len() < NONCE_BYTES {
+            return Err(vector_too_short_error());
+        }
+        let nonce: Vec<_> = value.drain(..NONCE_BYTES).collect();
         let nonce: [u8; NONCE_BYTES] =
             nonce.try_into().map_err(|_| vector_too_short_error())?;
-        if slice.len() < TAG_BYTES + 1 {
+        if value.len() < TAG_BYTES + 1 {
             return Err(vector_too_short_error());
         }
         let out = EncryptionOutput::builder()
-            .cipher_text(slice)
+            .cipher_text(value)
             .nonce(nonce)
             .build();
         Ok(out)
@@ -123,8 +123,17 @@ mod tests {
     }
 
     #[test]
-    fn no_panic_on_short_from_vec() -> Result<()> {
+    fn no_panic_without_nonce() -> Result<()> {
         let v: Vec<u8> = vec![1, 2];
+        let result: Result<EncryptionOutput, Error> = TryFrom::<Vec<u8>>::try_from(v);
+        assert!(format!("{:?}", result).to_lowercase().contains("short"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn no_panic_without_cipher() -> Result<()> {
+        let v: Vec<u8> = vec![0; NONCE_BYTES + TAG_BYTES];
         let result: Result<EncryptionOutput, Error> = TryFrom::<Vec<u8>>::try_from(v);
         assert!(format!("{:?}", result).to_lowercase().contains("short"));
 

@@ -1,6 +1,5 @@
 [toolchain]
-# iOS simulator on Apple Silicon is only supported in the nightly channel
-channel = "nightly"
+channel = "stable"
 targets = [
     # iOS
     "aarch64-apple-ios",

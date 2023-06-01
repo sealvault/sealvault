@@ -2,8 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#![feature(slice_take)]
-
 // Needed for `core_macros`
 extern crate self as uniffi_sealvault_core;
 
