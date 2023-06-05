@@ -161,6 +161,7 @@ with new projects have the following problems:
 - [X] [Self-custody cloud backup](./backup.md)
 - [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
 - [ ] In-app on-ramp
+- [ ] Seed-phrase import
 - [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
 - [ ] iOS App Store release
 - [ ] MacOS app
