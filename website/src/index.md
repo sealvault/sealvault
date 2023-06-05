@@ -160,6 +160,7 @@ with new projects have the following problems:
 - [X] [Profiles](./profiles.md)
 - [X] [Self-custody cloud backup](./backup.md)
 - [ ] [Cross-connect](./dev-docs/design/cross-connect.md)
+- [ ] Replace built-in browser with iOS Safari extension
 - [ ] In-app on-ramp
 - [ ] Seed-phrase import
 - [ ] [Key export](https://github.com/sealvault/sealvault/issues/39)
