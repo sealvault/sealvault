@@ -2,6 +2,8 @@
 # Swift #
 #########
 
+Config.xcconfig
+
 xcuserdata/
 
 ## Obj-C/Swift specific

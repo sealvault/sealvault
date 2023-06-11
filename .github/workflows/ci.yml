@@ -29,4 +29,6 @@ jobs:
           cargo install svm-rs
           svm install 0.8.16
       - name: Run CI script
+        env:
+          ANKR_API_KEY: ${{ secrets.ANKR_API_KEY }}
         run: ./ci.py

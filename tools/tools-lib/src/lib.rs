@@ -31,6 +31,8 @@ impl ToolAppCore {
             device_name: "dev-tools-device-id".into(),
             cache_dir: cache_dir.to_str().expect("utf-8 path").into(),
             db_file_path: ":memory:".into(),
+            // Tools don't need ankr API
+            ankr_api_key: "no-key".into(),
         };
         let core = AppCore::new(
             backend_args,

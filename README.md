@@ -81,6 +81,23 @@ running `fastlane pre_build` in the `ios` directory.
   - `cargo install svm-rs` then `svm install 0.8.16`
 - The [Foundry](https://book.getfoundry.sh/getting-started/installation) 
   Ethereum development tools of which Anvil is needed for unit tests.
+- Get Ankr account to get a free [Advanced
+  API](https://www.ankr.com/rpc/advanced-api) endpoint and then set up
+  [development secrets](#development-secrets).
+
+### Development Secrets
+
+Navigate to the [Ankr Advanced API
+console](https://www.ankr.com/rpc/advanced-api), copy the endpoint that looks
+like this: https://rpc.ankr.com/multichain/1234abcde. Extract the API key which
+is the last part of the URL.
+
+Once you have the API key create the `ios/Config.xcconfig` file that is ignored
+by git with the following contents:
+
+```shell
+ANKR_API_KEY=1234abcde
+```
 
 ### Tests
 

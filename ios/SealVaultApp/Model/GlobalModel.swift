@@ -38,9 +38,14 @@ class GlobalModel: ObservableObject {
     }
 
     static func coreArgs() -> CoreArgs {
-        CoreArgs(
+        // We want to crash if ankr api key is not available
+        // swiftlint:disable force_cast
+        let ankrApiKey = Bundle.main.object(forInfoDictionaryKey: "ANKR_API_KEY") as! String
+        // swiftlint:enable force_cast
+
+        return CoreArgs(
             deviceId: deviceId(), deviceName: deviceName(), cacheDir: LocalFiles.cacheDir(),
-            dbFilePath: LocalFiles.ensureDbFilePath()
+            dbFilePath: LocalFiles.ensureDbFilePath(), ankrApiKey: ankrApiKey
         )
     }
 

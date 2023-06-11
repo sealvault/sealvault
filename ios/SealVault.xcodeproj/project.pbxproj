@@ -132,6 +132,7 @@
 		68BA3D0E295B4ABC00AB3CE8 /* onBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = onBackground.swift; sourceTree = "<group>"; };
 		68BA3D10295B4F8100AB3CE8 /* onInactive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = onInactive.swift; sourceTree = "<group>"; };
 		68BA3D12295B531D00AB3CE8 /* authenticate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = authenticate.swift; sourceTree = "<group>"; };
+		68C477D82A362D8400A76A7A /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Config.xcconfig; path = Config.xcconfig; sourceTree = SOURCE_ROOT; };
 		68CB392B29240507004BDD20 /* SealVaultApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SealVaultApp.entitlements; sourceTree = "<group>"; };
 		68CBB5A7296A0E2800E84ADA /* CoreBackupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreBackupStorage.swift; sourceTree = "<group>"; };
 		68CBB5A9296A13E300E84ADA /* LocalFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFiles.swift; sourceTree = "<group>"; };
@@ -257,6 +258,7 @@
 		68F6291028251A0900BDCD02 /* SealVaultApp */ = {
 			isa = PBXGroup;
 			children = (
+				68C477D82A362D8400A76A7A /* Config.xcconfig */,
 				68BA09A6295E06D0007D2340 /* AddProfile.swift */,
 				5850CC5D55BF9A269CEA1346 /* AddressMenu.swift */,
 				686D8BB528E5ED7C00031375 /* AddressView.swift */,
@@ -514,6 +516,7 @@
 /* Begin XCBuildConfiguration section */
 		68F6293028251A0B00BDCD02 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 68C477D82A362D8400A76A7A /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -574,6 +577,7 @@
 		};
 		68F6293128251A0B00BDCD02 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 68C477D82A362D8400A76A7A /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -639,6 +643,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SealVaultApp/Info.plist;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock SealVault with FaceID";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -669,6 +674,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SealVaultApp/Info.plist;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock SealVault with FaceID";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
