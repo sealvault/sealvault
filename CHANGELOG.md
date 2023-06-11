@@ -1,5 +1,18 @@
 # Changelog
 
+## 2023-06-11
+
+### iOS Beta v0.9.0
+
+- Add ZkSync support.
+- Disable dapp allotment transfers when new dapp key is created as we don't know
+  which chain will be used when the key is created.
+- Make sheet titles consistent.
+- Fetch common tokes by default with native token API.
+- Allow users to add custom tokens to wallet.
+- Make transfer form pop out instead of being behind a navigation link.
+- Fix tokens not loading from Ankr API.
+
 ## 2023-04-09
 
 ### iOS Beta v0.8.0
