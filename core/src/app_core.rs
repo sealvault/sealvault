@@ -56,7 +56,6 @@ impl AppCore {
         // No-op if logger has been already initialized.
         let _ = env_logger::try_init();
 
-        let rpc_manager = Box::new(eth::RpcManager::new());
         let connection_pool = ConnectionPool::new(&args.db_file_path)?;
         let keychain = Arc::new(Keychain::new());
         let public_suffix_list = PublicSuffixList::new()?;
@@ -65,8 +64,10 @@ impl AppCore {
         let CoreArgs {
             device_name,
             device_id,
+            ankr_api_key,
             ..
         } = args;
+        let rpc_manager = Box::new(eth::RpcManager::new(ankr_api_key));
         let device_id: DeviceIdentifier = device_id.try_into()?;
         let device_name: DeviceName = device_name.try_into()?;
 
@@ -492,6 +493,7 @@ pub struct CoreArgs {
     pub device_name: String,
     pub cache_dir: String,
     pub db_file_path: String,
+    pub ankr_api_key: String,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]

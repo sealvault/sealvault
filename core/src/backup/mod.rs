@@ -152,9 +152,10 @@ mod tests {
             let core_args = CoreArgs {
                 device_id: self.resources.device_id().to_string(),
                 device_name: self.resources.device_name().to_string(),
-                // This is not used for restore
-                cache_dir: "".into(),
                 db_file_path,
+                // These are not used for restore
+                cache_dir: "".into(),
+                ankr_api_key: "no-key".into(),
             };
 
             let backup_metadata = restore_backup_inner(

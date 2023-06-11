@@ -88,11 +88,13 @@ pub trait RpcManagerI: Debug + Send + Sync {
 
 /// Factory for RPC providers.
 #[derive(Debug, Default)]
-pub struct RpcManager {}
+pub struct RpcManager {
+    ankr_api_key: String,
+}
 
 impl RpcManager {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(ankr_api_key: String) -> Self {
+        Self { ankr_api_key }
     }
 }
 
@@ -140,9 +142,10 @@ impl RpcManagerI for RpcManager {
     }
 
     async fn ankr_api_client(&self) -> Result<jsonrpsee::http_client::HttpClient, Error> {
+        let url = format!("{}{}", config::ANKR_API, self.ankr_api_key);
         let client = jsonrpsee::http_client::HttpClientBuilder::default()
             .use_webpki_rustls()
-            .build(config::ANKR_API)
+            .build(url)
             .map_err(|err| Error::Fatal {
                 error: err.to_string(),
             })?;

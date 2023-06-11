@@ -162,6 +162,7 @@ dictionary CoreArgs {
     string device_name;
     string cache_dir;
     string db_file_path;
+    string ankr_api_key;
 };
 
 dictionary CoreEthChain {
