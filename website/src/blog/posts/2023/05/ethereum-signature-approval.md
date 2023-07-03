@@ -323,9 +323,10 @@ available as a service from many software-as-a-service providers, but these
 services are closed source and transaction simulation is [tricky to get
 right,](https://zengo.com/zengo-uncovers-security-vulnerabilities-in-popular-web3-transaction-simulation-solutions-the-red-pill-attack/)
 so we prefer to have our own open source implementation. We’re going to use
-[Reth](https://github.com/paradigmxyz/reth) as a dependency of the engine to
-provide transaction simulation and we’ll continue to make contributions to Rust
-Ethereum ecosystem packages during development.
+[Rethnet](https://github.com/NomicFoundation/hardhat/tree/rethnet/main/crates)
+as a dependency of the engine to provide transaction simulation and we’ll
+continue to make contributions to Rust Ethereum ecosystem packages during
+development.
 
 In order to interpret off-chain signatures, we need to build custom parsers for
 the most commonly used formats in the ecosystem such as [permit
