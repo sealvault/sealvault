@@ -1,3 +1,1 @@
 max_width = 90
-imports_granularity = "Crate"
-group_imports = "StdExternalCrate"

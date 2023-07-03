@@ -97,7 +97,7 @@ def run_clippy(target=None, tests=False):
 
 def run_rustfmt_check():
     sp.run(
-        f"cargo +nightly fmt --check --all".split(" "),
+        f"cargo fmt --check --all".split(" "),
         check=True,
     )
 
