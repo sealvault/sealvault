@@ -26,8 +26,6 @@ use crate::{
 
 /// Create backup to the desired directory if needed. The directory is assumed to exist.
 /// Returns the backup metadata if a backup was created.
-/// A backup is needed if the pending backup version matches the completed backup version in the
-/// database.
 /// The backup is a zip file that contains an encrypted database backup and the metadata. Returns
 /// the path to the zip file. More info:
 /// https://sealvault.org/dev-docs/design/backup/#backup-contents
@@ -216,6 +214,7 @@ fn create_backup_zip(
 
     Ok(())
 }
+
 fn map_zip_error(err: zip::result::ZipError) -> Error {
     Error::Retriable {
         error: format!("Failed to create backup zip with error: '{err}'"),
