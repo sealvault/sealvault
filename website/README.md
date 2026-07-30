@@ -13,11 +13,21 @@ MkDocs](https://squidfunk.github.io/mkdocs-material/).
 
 ## Development
 
-The landing page and the blog depend on paid features from [Mkdocs Material
-Insiders](https://squidfunk.github.io/mkdocs-material/insiders/), but you can
-work on the developer documentation without these by installing the free version
-as documented
-[here.](https://squidfunk.github.io/mkdocs-material/getting-started/)
+The blog and privacy features used by the site used to require [Mkdocs Material
+Insiders,](https://squidfunk.github.io/mkdocs-material/insiders/) but they are
+part of the free community edition now, so no license is needed to build the
+site.
+
+Install the dependencies and serve the site locally with
+[pipenv:](https://pipenv.pypa.io/)
+
+```sh
+pipenv install
+pipenv run mkdocs serve
+```
+
+Note that the `privacy` plugin downloads external assets (web fonts, MathJax)
+at build time, so the first build needs network access.
 
 ## Deployment
 

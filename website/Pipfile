@@ -4,13 +4,16 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-mkdocs-material = {editable = true, ref = "master", git = "https://${GITHUB_TOKEN}:x-oauth-basic@github.com/sealvault/mkdocs-material-insiders.git"}
+# The blog and privacy plugins that used to require Mkdocs Material Insiders
+# are part of the free community edition since 9.5, so the previously used
+# private Insiders fork is no longer needed.
+mkdocs-material = ">=9.5"
 
 [dev-packages]
 invoke = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.12"
 
 [pipenv]
 allow_prereleases = true

@@ -378,7 +378,6 @@ impl AppCore {
     }
 
     /// Transfer fungible native token on an Ethereum protocol network.
-    /// Returns the tx hash that can be used to poll for the result.
     pub fn eth_transfer_fungible_token(
         &self,
         args: EthTransferFungibleTokenArgs,

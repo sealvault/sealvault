@@ -1,6 +1,6 @@
 [build]
 base = "website/"
-command = "mkdocs build --config-file mkdocs.insiders.yml"
+command = "mkdocs build"
 publish = "site"
 
 [[headers]]
